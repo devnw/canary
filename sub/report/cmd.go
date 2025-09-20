@@ -3,21 +3,14 @@ package report
 import (
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"os"
-	"sync"
 
 	"github.com/spf13/cobra"
-	"go.spyder.org/gen/cli"
 )
 
 var Cmd = &cobra.Command{Use: "report", Short: "print summary from status.json", RunE: Run}
 
 func init() {
-	if err := cli.SetArgs(Cmd.Flags(), "", Args()); err != nil {
-		slog.Error("error setting arguments", "error", err, "args", Args())
-		return
-	}
 	f := Cmd.Flags()
 	f.String("input", "status.json", "status.json to summarize")
 }
@@ -42,13 +35,4 @@ func Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-//nolint:gochecknoglobals
-var once sync.Once
-
-//nolint:gochecknoglobals
-var args cli.Args
-
-func Args() cli.Args {
-	once.Do(func() { args = cli.Args{} })
-	return args
-}
+// removed external cli arg reflection dependency

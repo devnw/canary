@@ -3,23 +3,17 @@ package verify
 import (
 	"log/slog"
 	"regexp"
-	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
 	"go.codepros.org/canary/internal/cli/exitcodes"
 	"go.codepros.org/canary/internal/core"
-	"go.spyder.org/gen/cli"
 )
 
 // CANARY: REQ=CBIN-102; FEATURE="VerifyGate"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_102_CLI_Verify; BENCH=BenchmarkCANARY_CBIN_102_CLI_Verify; OWNER=canary; UPDATED=2025-09-20
 var Cmd = &cobra.Command{Use: "verify", Short: "verify GAP claims & optional staleness", RunE: Run}
 
 func init() {
-	if err := cli.SetArgs(Cmd.Flags(), "", Args()); err != nil {
-		slog.Error("error setting arguments", "error", err, "args", Args())
-		return
-	}
 	f := Cmd.Flags()
 	f.String("root", ".", "root directory to scan before verification")
 	f.String("gap", "GAP_ANALYSIS.md", "gap analysis file to verify")
@@ -65,13 +59,4 @@ func Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-//nolint:gochecknoglobals
-var once sync.Once
-
-//nolint:gochecknoglobals
-var args cli.Args
-
-func Args() cli.Args {
-	once.Do(func() { args = cli.Args{} })
-	return args
-}
+// removed external cli arg reflection dependency

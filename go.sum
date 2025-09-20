@@ -69,6 +69,8 @@ go.spyder.org/gen v0.0.0-20250731191358-38409dc1c909 h1:pVGzxPcB7y2Jc9YAXCeoyvrI
 go.spyder.org/gen v0.0.0-20250731191358-38409dc1c909/go.mod h1:BfFefPrrtCxBCu7l+gSyZ9f+IN5uTnteSyy6ELp5/DE=
 go.spyder.org/log v0.0.0-20250411010018-06225209381d h1:Z6RefmPbLtaFjBN2U+7Y9tIoTYoovjp00LGE6x0UGI0=
 go.spyder.org/log v0.0.0-20250411010018-06225209381d/go.mod h1:LWFHqLLCB9rLX+pk9sp9GMJ7EIRD/ThGpanDZj73+PA=
+go.spyder.org/opt v0.0.0-20250731184948-379c8b395af6 h1:3a75ayxW6XU9TLS3BZirwuN2SOesi0jYf4eLNBmrT6k=
+go.spyder.org/opt v0.0.0-20250731184948-379c8b395af6/go.mod h1:HY+AJfqv41i8GXX7ZPUFvbjEOs9hyTTBKy5afqtuu/w=
 go.spyder.org/opt v0.0.0-20250806215718-85d689e69ed2 h1:jGWOyIpkmPhJs6j4VW3bwIoqdzDfeRTInL3vs6BfdmQ=
 go.spyder.org/opt v0.0.0-20250806215718-85d689e69ed2/go.mod h1:cryQLNphY3J24HJzqhnpw7QTB64wv8cqiE3fpzPGdVU=
 go.yaml.in/yaml/v3 v3.0.4 h1:tfq32ie2Jv2UxXFdLJdh3jXuOzWiL1fo0bu/FbuKpbc=
