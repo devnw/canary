@@ -1,3 +1,4 @@
 req,feature,aspect,status,file,test,bench,owner,updated
-REQ-GQL-042,CDC/Streaming,API,STUB,internal/fixtures/file1.zig,tests/e2e_cdc.zig:TestCANARY_REQ_GQL_042_CDC_StartStop,,streaming,2025-09-20
-REQ-GQL-046,TDE,Storage,TESTED,internal/fixtures/file2.go,TestCANARY_REQ_GQL_046_KeyRotate,,security,2025-09-20
+CBIN-101,ScannerCore,Engine,BENCHED,tools/canary/main.go,TestCANARY_CBIN_101_Engine_ScanBasic,BenchmarkCANARY_CBIN_101_Engine_Scan,canary,2025-09-20
+CBIN-102,VerifyGate,CLI,BENCHED,tools/canary/verify.go,TestCANARY_CBIN_102_CLI_Verify,BenchmarkCANARY_CBIN_102_CLI_Verify,canary,2025-09-20
+CBIN-103,StatusJSON,API,BENCHED,tools/canary/status.go,TestCANARY_CBIN_103_API_StatusSchema,BenchmarkCANARY_CBIN_103_API_Emit,canary,2025-09-20

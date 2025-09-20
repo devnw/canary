@@ -152,6 +152,16 @@ release:
 	git tag -a ${tag} -m "${tag}"
 	git push origin ${tag}
 
+# Canary targets
+canary:
+	go build -o ./bin/canary ./tools/canary && ./bin/canary --root . --out status.json --csv status.csv
+
+canary-verify:
+	./bin/canary --root . --verify GAP_ANALYSIS.md --strict
+
+acceptance:
+	go test ./tools/canary/... -run TestAcceptance -v
+
 clean: 
 	rm -rf dist
 	rm -rf out

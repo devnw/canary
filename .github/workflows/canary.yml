@@ -6,6 +6,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
+        with: { go-version: '1.25' }
+      - name: Build scanner
+        run: go build -o ./bin/canary ./tools/canary
+      - name: Generate status
+        run: ./bin/canary --root . --out status.json --csv status.csv
+      - name: Self-verify
+        run: ./bin/canary --root tools/canary --verify GAP_ANALYSIS.md --strict
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: canary-status
+          path: |
+            status.json
+            status.csv
+name: canary
+on: [push, pull_request]
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
       - name: Build scanner

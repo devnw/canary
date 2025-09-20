@@ -1,0 +1,26 @@
+name: canary
+id: 'ari:cloud:compass:89436501-45fd-498f-9c7c-b0db10b968cb:component/d819e7ce-7ec1-48ae-b718-cb3459fc6e06/41e70807-ff9f-4225-8e75-83c73d405ad6'
+slug: canary
+description: 'Creator, Manager and Manager of Agent Prompts and Canary Tokens in Agent Repositories'
+configVersion: 1
+typeId: APPLICATION
+ownerId: 'ari:cloud:identity::team/94046dbf-b5f2-435e-bd32-3aee54446e1f'
+fields:
+  lifecycle: Pre-release
+  tier: 4
+  isMonorepoProject: false
+links:
+  - name: null
+    type: REPOSITORY
+    url: 'https://github.com/codeprosorg/canary'
+  - name: ''
+    type: PROJECT
+    url: 'https://devnw.atlassian.net/browse/CP'
+relationships: {}
+labels:
+  - 'source:github'
+  - synced-with-jsm
+customFields: null
+
+# Learn more about formatting compass.yml:
+# https://go.atlassian.com/compass-yml-format

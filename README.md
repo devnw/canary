@@ -51,3 +51,12 @@ Example: if a feature is marked `STATUS=IMPL` and has a `TEST=TestCANARY_REQ_GQL
 cd tools/canary
 go test -v
 ```
+
+## CANARY at a glance
+
+Policy excerpt (see `docs/CANARY_POLICY.md`). Example tokens:
+
+`CANARY: REQ=CBIN-101; FEATURE="ScannerCore"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_101_Engine_ScanBasic; BENCH=BenchmarkCANARY_CBIN_101_Engine_Scan; OWNER=canary; UPDATED=2025-09-20`
+
+`CANARY: REQ=CBIN-102; FEATURE="VerifyGate"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_102_CLI_Verify; BENCH=BenchmarkCANARY_CBIN_102_CLI_Verify; OWNER=canary; UPDATED=2025-09-20`
+

@@ -1,7 +1,0 @@
-{
-  "dismiss": {
-    "packet too short to decode": "tool limitation",
-    "Malformed Packet": "decoder differences",
-    "unknown version": "tool quirk"
-  }
-}
