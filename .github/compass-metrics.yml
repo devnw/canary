@@ -1,0 +1,155 @@
+# Compass Metrics Configuration
+# This file maps metric names to their Compass metric source UUIDs
+# The full ARN is constructed as: {compass.base_arn}:metric-source/{component_uuid}/{metric_uuid}
+
+# Compass API Configuration
+compass:
+  # Your Atlassian instance URL
+  url: 'https://devnw.atlassian.net'
+
+  # Base Compass ARN (instance identifier)
+  base_arn: 'ari:cloud:compass:89436501-45fd-498f-9c7c-b0db10b968cb'
+
+  # Component UUID (extracted from compass.yml component ID)
+  # This will be auto-extracted from the component ID: only the first UUID (d819e7ce-7ec1-48ae-b718-cb3459fc6e06)
+  # Full component ID: ari:cloud:compass:...:component/d819e7ce-7ec1-48ae-b718-cb3459fc6e06/1420c0b0-56eb-401f-8c63-63f93faeea91
+  # You can also specify it manually here if needed:
+  # component_uuid: 'd819e7ce-7ec1-48ae-b718-cb3459fc6e06'
+
+# Metric Mappings
+# Each metric name maps to its specific metric source UUID
+# To get these UUIDs:
+# 1. Go to your Compass component page
+# 2. Navigate to the metric you want to configure
+# 3. Click "Copy cURL command"
+# 4. Extract the UUID from the "metricSourceId" (the part after the last /)
+metrics:
+  # Code Quality Metrics
+  test_coverage_percentage:
+    uuid: '11d716cf-5667-427f-b12a-b3a769654646'
+    description: 'Overall test coverage percentage of the codebase'
+
+  total_tests:
+    uuid: '4edc8ac9-ee6e-4e7d-9ab0-cdb5f56cd54b'
+    description: 'Total number of test functions'
+
+  failed_tests:
+    uuid: '61c8881f-c858-4b88-afdd-f8e68d3cfd64'
+    description: 'Number of failed tests'
+
+  passed_tests:
+    uuid: 'cd0a5e70-8bc1-4dde-a803-cc1411bbc99f'
+    description: 'Number of passed tests'
+
+  test_success_rate:
+    uuid: '8fb59d8d-545b-4fc3-9ee7-00a45879b89b'
+    description: 'Percentage of tests that pass'
+
+  # Code Complexity Metrics
+  avg_cyclomatic_complexity:
+    uuid: '91450e63-fc2c-4082-b216-f5c0f74c4337'
+    description: 'Average cyclomatic complexity across all functions'
+
+  high_complexity_functions:
+    uuid: 'f9413012-6459-4235-bc2b-227aa7f79256'
+    description: 'Number of functions with complexity > 10'
+
+  function_count:
+    uuid: '98f2173b-300a-4b8f-9493-03032e37bd60'
+    description: 'Total number of functions (excluding tests)'
+
+  test_function_count:
+    uuid: 'dddfb653-c4a3-40e9-bd07-f6f800f72474'
+    description: 'Number of test functions'
+
+  benchmark_function_count:
+    uuid: 'fa8e56c7-8e7a-4b59-9ad1-445972bcfa2f'
+    description: 'Number of benchmark functions'
+
+  # Repository Metrics
+  lines_of_code:
+    uuid: '6ff6fc77-b77a-4780-8441-dcd4e075d23e'
+    description: 'Total lines of Go code'
+
+  go_files_count:
+    uuid: 'a0e73f35-5207-41d6-a955-a8e617d5ec17'
+    description: 'Number of Go source files'
+
+  package_count:
+    uuid: '41798047-20de-4011-a42f-e4a17485d6d6'
+    description: 'Number of Go packages'
+
+  direct_dependencies:
+    uuid: '28392e75-9434-45dd-9119-b8bde436688f'
+    description: 'Number of direct Go module dependencies'
+
+  # Performance Metrics
+  benchmark_count:
+    uuid: '2ab5c86e-bf1f-434a-bea6-920907fccd1d'
+    description: 'Number of benchmark tests'
+
+  avg_benchmark_ns_per_op:
+    uuid: 'd4a2e683-69de-411b-b05c-2b5de50752c8'
+    description: 'Average nanoseconds per operation across benchmarks'
+
+  avg_benchmark_bytes_per_op:
+    uuid: 'ce949ae0-e67b-4de8-9dcf-d53eeb4b2484'
+    description: 'Average bytes per operation across benchmarks'
+
+  avg_benchmark_allocs_per_op:
+    uuid: 'aa4a0bbf-34cf-4748-96c2-62dbc5a2498e'
+    description: 'Average allocations per operation across benchmarks'
+
+  slowest_benchmark_ns_per_op:
+    uuid: 'acd737c6-3606-4eb7-9d04-6c884ed940de'
+    description: 'Slowest benchmark (highest ns/op)'
+
+  fastest_benchmark_ns_per_op:
+    uuid: '857c7ccc-030d-4ebc-a883-4cfc1406dc3d'
+    description: 'Fastest benchmark (lowest ns/op)'
+
+  benchmark_performance_variance:
+    uuid: 'a8abd71d-0d5a-4ec9-8862-587bae2ae003'
+    description: 'Standard deviation of benchmark performance'
+
+  # Development Activity Metrics
+  total_commits:
+    uuid: 'ed4fd8ea-79ad-47eb-83ae-24581e28b3b7'
+    description: 'Total number of commits in the repository'
+
+  commits_last_30_days:
+    uuid: '6dcb75d4-e5f1-47e1-9824-cffa8f634151'
+    description: 'Number of commits in the last 30 days'
+
+  # Additional Benchmark Metrics (from JSON parsing)
+  successful_benchmarks:
+    uuid: '47c1d92a-02a2-42c1-b584-3c1ef2dd81f0'
+    description: 'Number of successful benchmark runs'
+
+  failed_benchmarks:
+    uuid: '6cbcc1a2-5250-400b-b064-48aecb881c5a'
+    description: 'Number of failed benchmark runs'
+
+  benchmark_success_rate:
+    uuid: 'dc4c97bd-8574-458c-9a3b-090f32aedb75'
+    description: 'Percentage of benchmarks that pass'
+
+  total_benchmark_time_seconds:
+    uuid: '53d4eb4b-4cfb-4b7d-b087-833c679a50df'
+    description: 'Total benchmark execution time in seconds'
+
+# Configuration for metric pushing behavior
+settings:
+  # Whether to continue pushing other metrics if one fails
+  continue_on_error: true
+
+  # Whether to validate ARN format before pushing
+  validate_arn_format: true
+
+  # Timeout for each metric push request (in seconds)
+  request_timeout: 30
+
+  # Whether to log detailed responses for debugging
+  verbose_logging: true
+# NOTE: Replace all the example ARNs above with the actual metric source ARNs from your Compass instance
+# The ARNs shown are examples and will not work without being updated to match your actual metrics

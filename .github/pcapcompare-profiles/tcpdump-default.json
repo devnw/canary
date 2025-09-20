@@ -1,0 +1,6 @@
+{
+  "dismiss": {
+    "truncated-ip": "tool limitation",
+    "bad udp cksum": "checker variance"
+  }
+}

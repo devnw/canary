@@ -1,0 +1,60 @@
+name: Compare-Captures
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install dependencies (tshark, tcpdump)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tshark tcpdump
+
+      - name: Build tools
+        run: |
+          go build ./...
+
+      - name: Run pcapcompare (tshark)
+        run: |
+          set -e
+          go run ./cmd/pcapcompare --root ./testdata/pcap --tool tshark \
+            --dismiss-profile .github/pcapcompare-profiles/tshark-default.json \
+            --summary-only > compare_tshark.json
+
+      - name: Run pcapcompare (tcpdump)
+        run: |
+          set -e
+          go run ./cmd/pcapcompare --root ./testdata/pcap --tool tcpdump \
+            --dismiss-profile .github/pcapcompare-profiles/tcpdump-default.json \
+            --summary-only > compare_tcpdump.json
+
+      - name: Summaries
+        run: |
+          echo "TSHARK_SUMMARY=$(cat compare_tshark.json)" >> $GITHUB_ENV
+          echo "TCPDUMP_SUMMARY=$(cat compare_tcpdump.json)" >> $GITHUB_ENV
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pcapcompare-summaries
+          path: |
+            compare_tshark.json
+            compare_tcpdump.json
+
+      - name: Fail on diffs
+        run: |
+          # Minimal grep check; if either summary reports non-zero diffs, fail the job.
+          if ! grep -q '"diffs":0' compare_tshark.json; then echo "tshark diffs detected"; cat compare_tshark.json; exit 1; fi
+          if ! grep -q '"diffs":0' compare_tcpdump.json; then echo "tcpdump diffs detected"; cat compare_tcpdump.json; exit 1; fi
