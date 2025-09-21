@@ -54,6 +54,10 @@ func Scan(root string) (report, error) {
 		}
 		defer f.Close()
 		sc := bufio.NewScanner(f)
+		// Set max scanner buffer to 1MB for large lines
+		const maxScanTokenSize = 1024 * 1024
+		buf := make([]byte, maxScanTokenSize)
+		sc.Buffer(buf, maxScanTokenSize)
 		ln := 0
 		for sc.Scan() {
 			ln++

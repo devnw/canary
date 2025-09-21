@@ -44,7 +44,7 @@ func main() {
 	flag.StringVar(&out, "out", "status.json", "output JSON file")
 	flag.StringVar(&csv, "csv", "", "optional CSV output file")
 	flag.StringVar(&verify, "verify", "", "verify claims in GAP_ANALYSIS.md")
-	flag.BoolVar(&strict, "strict", false, "strict mode: fail on stale UPDATED (>60 days) for TESTED/BENCHED")
+	flag.BoolVar(&strict, "strict", false, "strict mode: fail on stale UPDATED (>30 days) for TESTED/BENCHED")
 	flag.Parse()
 
 	rep, err := Scan(root)
@@ -56,7 +56,7 @@ func main() {
 
 	// Strict staleness check
 	if strict {
-		if err := CheckStaleness(rep, 60*24*time.Hour); err != nil {
+		if err := CheckStaleness(rep, 30*24*time.Hour); err != nil {
 			log.Printf("CANARY_STALE %v", err)
 			// still write outputs for inspection
 			writeOutputs(rep, out, csv)
@@ -94,7 +94,7 @@ func writeOutputs(rep report, out, csv string) error {
 	defer jf.Close()
 	enc := json.NewEncoder(jf)
 	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
+	// Minified JSON output (no indentation)
 	if err := enc.Encode(rep); err != nil {
 		return err
 	}
