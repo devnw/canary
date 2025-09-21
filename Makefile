@@ -154,13 +154,30 @@ release:
 
 # Canary targets
 canary:
-	go build -o ./bin/canary ./tools/canary && ./bin/canary --root . --out status.json --csv status.csv
+	go build -o ./bin/canary ./main.go && ./bin/canary --root . --out status.json --csv status.csv
 
 canary-verify:
 	./bin/canary --root . --verify GAP_ANALYSIS.md --strict
 
+canary-build:
+	go build -ldflags="-s -w" -o ./bin/canary ./main.go
+
+canary-install:
+	go install ./main.go
+
 acceptance:
 	go test ./tools/canary/... -run TestAcceptance -v
+	go test ./internal/acceptance/... -v
+
+# GoReleaser targets
+release-snapshot:
+	goreleaser release --snapshot --clean
+
+release-check:
+	goreleaser check
+
+release-local:
+	goreleaser release --snapshot --skip=publish --clean
 
 clean: 
 	rm -rf dist

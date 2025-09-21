@@ -6,8 +6,11 @@ make test              # Run all tests with race detection: go test -v -cover -f
 make lint              # Run formatters and linters (fmt, importguard, doccheck, lint)
 make build             # Test then build: go build ./...
 make canary            # Build and run canary scanner
+make canary-build      # Build canary binary only
 make canary-verify     # Run canary verification against GAP_ANALYSIS.md
-make acceptance        # Run acceptance tests: go test ./tools/canary/... -run TestAcceptance -v
+make acceptance        # Run acceptance tests for canary
+make release-snapshot  # Create release snapshot with GoReleaser
+make release-local     # Test release locally without publishing
 go test -v -run TestName ./package/...  # Run single test by name
 ```
 
