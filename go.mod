@@ -1,4 +1,4 @@
-module go.codepros.org/canary
+module go.spyder.org/canary
 
 go 1.25.0
 
