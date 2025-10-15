@@ -24,7 +24,8 @@ go test -v -run TestName ./package/...  # Run single test by name
 
 ## CANARY Token Format (Required at top of implementation files)
 ```
-CANARY: REQ=CBIN-<###>; FEATURE="<name>"; ASPECT=<ASPECT>; STATUS=<STATUS>; TEST=<TestName>; BENCH=<BenchName>; OWNER=<team>; UPDATED=<YYYY-MM-DD>
+Example template (replace placeholders with actual values):
+CANARY: REQ=CBIN-101; FEATURE="MyFeature"; ASPECT=API; STATUS=IMPL; TEST=TestCANARY_CBIN_101_API_MyFeature; BENCH=BenchmarkCANARY_CBIN_101_API_MyFeature; OWNER=team; UPDATED=2025-10-15
 ```
 - **ASPECT**: API, CLI, Engine, Planner, Storage, Wire, Security, Docs, Encode, Decode, RoundTrip, Bench, FrontEnd, Dist
 - **STATUS**: MISSING, STUB, IMPL, TESTED, BENCHED, REMOVED

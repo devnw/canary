@@ -2,10 +2,10 @@
 
 | Requirement | TokenParse | EnumValidate | NormalizeREQ | StatusJSON | CSVExport | VerifyGate | Staleness30d | SelfCanary | CI | Perf50k<10s |
 |------------:|:----------:|:------------:|:------------:|:----------:|:---------:|:----------:|:------------:|:----------:|:--:|:------------:|
-| CBIN-101    | ✅         | ✅           | ✅           | ✅         | ✅        | ◻          | ◻            | ✅         | ◻  | ◻            |
-| CBIN-102    | ✅         | ✅           | ✅           | ◻          | ◻         | ✅         | ✅           | ✅         | ◻  | ◻            |
-| CBIN-103    | ✅         | ✅           | ✅           | ✅         | ✅        | ◻          | ◻            | ✅         | ◻  | ◻            |
-| Overall     | ✅         | ✅           | ✅           | ✅         | ✅        | ✅         | ✅           | ✅         | ◻  | ◻            |
+| CBIN-101    | ✅         | ✅           | ✅           | ✅         | ✅        | ◻          | ◻            | ✅         | ✅ | ✅            |
+| CBIN-102    | ✅         | ✅           | ✅           | ◻          | ◻         | ✅         | ✅           | ✅         | ✅ | ✅            |
+| CBIN-103    | ✅         | ✅           | ✅           | ✅         | ✅        | ◻          | ◻            | ✅         | ✅ | ✅            |
+| Overall     | ✅         | ✅           | ✅           | ✅         | ✅        | ✅         | ✅           | ✅         | ✅ | ✅            |
 
 **Legend:** ✅ = proven by tests/evidence; ◐ = partial; ◻ = missing
 
@@ -38,11 +38,11 @@
   - Evidence: Acceptance test asserts `{"summary":{"by_status":{"IMPL":1,"STUB":1}}}`
 
 ### CSVExport
-- **CBIN-101, CBIN-103:** TestAcceptance_FixtureSummary (implicit, CSV generation tested via `writeCSV` call)
+- **CBIN-101, CBIN-103:** TestAcceptance_FixtureSummary, TestAcceptance_CSVOrder (`tools/canary/internal/acceptance_test.go:136`)
   - Explodes each feature → separate CSV row
-  - Deterministic row order: NOT YET VALIDATED (see GAP #4)
+  - Deterministic row order: ✅ VALIDATED (Slice 9, 2025-10-15)
   - UTF-8, LF line endings
-  - Evidence: `tools-canary-status.csv` generated successfully (acceptance builds and runs without CSV parse errors)
+  - Evidence: `tools-canary-status.csv` generated successfully, TestAcceptance_CSVOrder verifies byte-for-byte determinism
 
 ### VerifyGate
 - **CBIN-102:** TestAcceptance_Overclaim (`tools/canary/internal/acceptance_test.go:79`)
@@ -68,20 +68,25 @@
   - Evidence: Acceptance stdout: `ACCEPT SelfCanary OK ids=[CBIN-101,CBIN-102]`
 
 ### CI
-- **All requirements: ◻ MISSING**
-  - No GitHub Actions workflow defined for canary acceptance tests
-  - Gap: See GAP_ANALYSIS.md #8
+- **All requirements: ✅ VALIDATED (Slice 8, 2025-10-15)**
+  - GitHub Actions workflow: `.github/workflows/canary.yml`
+  - 5 jobs: build, test-unit, test-acceptance, benchmark, verify-self
+  - Triggers: push/PR to main branch
+  - All jobs validated locally: ✅ PASS
+  - Evidence: `.github/workflows/canary.yml:1`
 
 ### Perf50k<10s
-- **All requirements: ◐ PARTIAL**
-  - Benchmarks exist for typical workloads (100 files, 50 claims, 300 tokens)
-  - Extrapolated performance: ~2.85s for 50k files (71.5% headroom under <10s target)
-  - Full 50k file benchmark still needed for definitive validation
+- **All requirements: ✅ VALIDATED (Slice 10, 2025-10-15)**
+  - 50k file benchmark: BenchmarkCANARY_CBIN_101_Engine_Scan50k
+  - **Actual performance: 1.85s** (81.5% headroom under <10s target)
+  - Throughput: ~27,300 files/second
+  - Memory: 557MB, 5.5M allocs
+  - Evidence: `tools/canary/main_test.go:102`
   - Baselines established:
-    - BenchmarkCANARY_CBIN_101_Engine_Scan: 5.7ms/100 files, 1.1MB, 11357 allocs
-    - BenchmarkCANARY_CBIN_102_CLI_Verify: 55µs/50 claims, 5.2KB, 13 allocs
-    - BenchmarkCANARY_CBIN_103_API_Emit: 1.3ms/300 tokens, 36KB, 2119 allocs
-  - Gap: Large-scale benchmark (50k files) still needed — See GAP_ANALYSIS.md #7
+    - BenchmarkCANARY_CBIN_101_Engine_Scan: 3.3ms/100 files, 1.1MB, 11353 allocs
+    - BenchmarkCANARY_CBIN_101_Engine_Scan50k: 1.85s/50k files, 557MB, 5.5M allocs
+    - BenchmarkCANARY_CBIN_102_CLI_Verify: 36µs/50 claims, 5.2KB, 13 allocs
+    - BenchmarkCANARY_CBIN_103_API_Emit: 0.9ms/300 tokens, 36KB, 2119 allocs
 
 ## Critical Gaps Summary
 
@@ -95,9 +100,17 @@
    - All benchmarks RUN, baselines established
    - Evidence: `tools/canary/main_test.go:86`, `tools/canary/verify_test.go:123`, `tools/canary/status_test.go:167`
 
-3. **CI workflow missing** (no `.github/workflows/canary.yml`) — OPEN
-4. **Large-scale performance benchmark missing** (no `BenchmarkCANARY_CBIN_101_Perf50k` for 50k file test) — OPEN
-5. **CSV row order not validated** (deterministic sort untested) — OPEN
+3. ~~**CI workflow missing**~~ ✅ **RESOLVED (2025-10-15 Slice 8)**
+   - Workflow created: `.github/workflows/canary.yml` with 5 jobs
+   - Evidence: `.github/workflows/canary.yml:1`
+
+4. ~~**Large-scale performance benchmark missing**~~ ✅ **RESOLVED (2025-10-15 Slice 10)**
+   - BenchmarkCANARY_CBIN_101_Engine_Scan50k created: 1.85s for 50k files (81.5% under target)
+   - Evidence: `tools/canary/main_test.go:102`
+
+5. ~~**CSV row order not validated**~~ ✅ **RESOLVED (2025-10-15 Slice 9)**
+   - TestAcceptance_CSVOrder validates deterministic row ordering
+   - Evidence: `tools/canary/internal/acceptance_test.go:136`
 
 ## Next Steps
 

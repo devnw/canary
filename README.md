@@ -26,7 +26,11 @@ go build -o ./bin/canary ./cmd/canary
 **Token format**
 
 ```text
-CANARY: REQ=REQ-###-###; FEATURE="Name"; ASPECT=...; STATUS=MISSING|STUB|IMPL|TESTED|BENCHED|REMOVED; TEST=...; BENCH=...; OWNER=...; UPDATED=YYYY-MM-DD
+Example template (replace with actual values):
+CANARY: REQ=CBIN-101; FEATURE="MyFeature"; ASPECT=API; STATUS=IMPL; TEST=TestCANARY_CBIN_101_API_MyFeature; BENCH=BenchmarkCANARY_CBIN_101_API_MyFeature; OWNER=team; UPDATED=2025-10-15
+
+Valid ASPECT values: API, CLI, Engine, Planner, Storage, Wire, Security, Docs, Encode, Decode, RoundTrip, Bench, FrontEnd, Dist
+Valid STATUS values: MISSING, STUB, IMPL, TESTED, BENCHED, REMOVED
 ```
 
 **Supported comment styles**: `//`, `#`, `--`, `<!--` (Python, Go, Bash, SQL, Markdown, etc.)

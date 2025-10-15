@@ -5,7 +5,11 @@ This document provides examples of how to add CANARY tokens throughout the spec-
 ## Token Format
 
 ```
-CANARY: REQ=REQ-SK-###; FEATURE="Name"; ASPECT=...; STATUS=MISSING|STUB|IMPL|TESTED|BENCHED|REMOVED; TEST=...; BENCH=...; OWNER=...; UPDATED=YYYY-MM-DD
+Example template (replace with actual values):
+CANARY: REQ=REQ-SK-101; FEATURE="MyFeature"; ASPECT=CLI; STATUS=IMPL; TEST=test_my_feature; OWNER=team; UPDATED=2025-10-15
+
+Valid ASPECT values: API, CLI, Engine, Planner, Storage, Wire, Security, Docs, Encode, Decode, RoundTrip, Bench, FrontEnd, Dist
+Valid STATUS values: MISSING, STUB, IMPL, TESTED, BENCHED, REMOVED
 ```
 
 ## Status Definitions
