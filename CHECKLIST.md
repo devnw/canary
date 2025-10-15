@@ -73,18 +73,31 @@
   - Gap: See GAP_ANALYSIS.md #8
 
 ### Perf50k<10s
-- **All requirements: ◻ MISSING**
-  - No performance benchmarks exist
-  - Requirement: Scan 50k files in <10s, ≤512 MiB RSS
-  - Gap: See GAP_ANALYSIS.md #7
+- **All requirements: ◐ PARTIAL**
+  - Benchmarks exist for typical workloads (100 files, 50 claims, 300 tokens)
+  - Extrapolated performance: ~2.85s for 50k files (71.5% headroom under <10s target)
+  - Full 50k file benchmark still needed for definitive validation
+  - Baselines established:
+    - BenchmarkCANARY_CBIN_101_Engine_Scan: 5.7ms/100 files, 1.1MB, 11357 allocs
+    - BenchmarkCANARY_CBIN_102_CLI_Verify: 55µs/50 claims, 5.2KB, 13 allocs
+    - BenchmarkCANARY_CBIN_103_API_Emit: 1.3ms/300 tokens, 36KB, 2119 allocs
+  - Gap: Large-scale benchmark (50k files) still needed — See GAP_ANALYSIS.md #7
 
 ## Critical Gaps Summary
 
-1. **TestCANARY_* functions missing** (ref: tokens cite `TestCANARY_CBIN_101_Engine_ScanBasic`, etc. but functions don't exist)
-2. **BenchmarkCANARY_* functions missing** (ref: tokens cite `BenchmarkCANARY_CBIN_101_Engine_Scan`, etc. but functions don't exist)
-3. **CI workflow missing** (no `.github/workflows/canary.yml`)
-4. **Performance benchmarks missing** (no `BenchmarkCANARY_CBIN_101_Perf50k` for 50k file test)
-5. **CSV row order not validated** (deterministic sort untested)
+1. ~~**TestCANARY_* functions missing**~~ ✅ **RESOLVED (2025-10-15)**
+   - 3 functions implemented: TestCANARY_CBIN_101_Engine_ScanBasic, TestCANARY_CBIN_102_CLI_Verify, TestCANARY_CBIN_103_API_StatusSchema
+   - All tests PASS, names match token references exactly
+   - Evidence: `tools/canary/main_test.go:16`, `tools/canary/verify_test.go:11`, `tools/canary/status_test.go:12`
+
+2. ~~**BenchmarkCANARY_* functions missing**~~ ✅ **RESOLVED (2025-10-15)**
+   - 3 functions implemented: BenchmarkCANARY_CBIN_101_Engine_Scan, BenchmarkCANARY_CBIN_102_CLI_Verify, BenchmarkCANARY_CBIN_103_API_Emit
+   - All benchmarks RUN, baselines established
+   - Evidence: `tools/canary/main_test.go:86`, `tools/canary/verify_test.go:123`, `tools/canary/status_test.go:167`
+
+3. **CI workflow missing** (no `.github/workflows/canary.yml`) — OPEN
+4. **Large-scale performance benchmark missing** (no `BenchmarkCANARY_CBIN_101_Perf50k` for 50k file test) — OPEN
+5. **CSV row order not validated** (deterministic sort untested) — OPEN
 
 ## Next Steps
 

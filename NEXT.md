@@ -1,170 +1,150 @@
 # Canary CLI — Next Slices
 
-## Completed (This Evaluation)
+## Completed
 
-### ✅ Evidence-Based Gap Analysis (2025-10-15)
-- **Scope:** Built canary binary, ran 4 acceptance tests (ALL PASS), scanned `tools/canary` for tokens, verified self-canary dogfood.
-- **Artifacts:**
-  - `GAP_ANALYSIS.md` — Updated with tested truth, 10 cross-cutting gaps identified
-  - `CHECKLIST.md` — Created with evidence links for CBIN-101, CBIN-102, CBIN-103
-  - `tools-canary-status.json` — 3 BENCHED requirements via auto-promotion
-- **Acceptance:**
-  ```bash
-  go test ./tools/canary/internal -run TestAcceptance -v
-  # Output: 4/4 PASS
-  # - TestAcceptance_FixtureSummary: {"summary":{"by_status":{"IMPL":1,"STUB":1}}}
-  # - TestAcceptance_Overclaim: ACCEPT Overclaim Exit=2
-  # - TestAcceptance_Stale: ACCEPT Stale Exit=2
-  # - TestAcceptance_SelfCanary: ACCEPT SelfCanary OK ids=[CBIN-101,CBIN-102]
-  ```
+### ✅ Evidence-Based Gap Analysis (2025-10-15 Initial)
+- **Scope:** Built canary binary, ran acceptance tests, scanned `tools/canary` for tokens, verified self-canary dogfood.
+- **Artifacts:** `GAP_ANALYSIS.md`, `CHECKLIST.md`, `tools-canary-status.json`
 - **Status:** TESTED (acceptance validation complete)
 
----
+### ✅ Phase 1: TestCANARY_* Functions (2025-10-15)
+- **Scope:** Implemented 3 unit tests matching token references exactly
+- **Deliverables:**
+  - `tools/canary/main_test.go` — TestCANARY_CBIN_101_Engine_ScanBasic
+  - `tools/canary/verify_test.go` — TestCANARY_CBIN_102_CLI_Verify
+  - `tools/canary/status_test.go` — TestCANARY_CBIN_103_API_StatusSchema
+- **Validation:** `go test -run TestCANARY_CBIN -v` → 3/3 PASS
+- **Status:** COMPLETED (all tests pass, names match token refs)
 
-## Up Next (Small, Verifiable Slices)
+### ✅ Phase 2: BenchmarkCANARY_* Functions (2025-10-15)
+- **Scope:** Implemented 3 performance benchmarks with baseline measurements
+- **Deliverables:**
+  - BenchmarkCANARY_CBIN_101_Engine_Scan → 5.7ms/100 files, 1.1MB, 11357 allocs
+  - BenchmarkCANARY_CBIN_102_CLI_Verify → 55µs/50 claims, 5.2KB, 13 allocs
+  - BenchmarkCANARY_CBIN_103_API_Emit → 1.3ms/300 tokens, 36KB, 2119 allocs
+- **Token Updates:** All 3 tokens → STATUS=BENCHED, UPDATED=2025-10-15
+- **Validation:** `go test -bench BenchmarkCANARY -run ^$ -benchmem` → 3/3 RUN
+- **Status:** COMPLETED (baselines established, extrapolated 50k perf: ~2.85s < 10s target)
 
-### Slice 1: Create TestCANARY_CBIN_101_Engine_ScanBasic
-**Scope:** Implement canonical test function matching CBIN-101 token reference.
-**File:** `tools/canary/main_test.go` (new file)
-**Acceptance:**
-```bash
-go test ./tools/canary -run TestCANARY_CBIN_101 -v
-# Expected stdout:
-# === RUN   TestCANARY_CBIN_101_Engine_ScanBasic
-# --- PASS: TestCANARY_CBIN_101_Engine_ScanBasic (0.XXs)
-# PASS
-```
-**Test Body:**
-- Create temp dir with 3 token fixtures (CBIN-200, CBIN-201, CBIN-202)
-- Call `scan(root, skipRe)` function from `main.go`
-- Assert `rep.Summary.ByStatus["STUB"] == 1`, `rep.Summary.ByStatus["IMPL"] == 2`
-- Assert `len(rep.Requirements) == 3`
-**CANARY:** Update `tools/canary/main.go:3` to `STATUS=TESTED` once test passes.
-
----
-
-### Slice 2: Create TestCANARY_CBIN_102_CLI_Verify
-**Scope:** Implement canonical test function matching CBIN-102 token reference.
-**File:** `tools/canary/verify_test.go` (new file)
-**Acceptance:**
-```bash
-go test ./tools/canary -run TestCANARY_CBIN_102 -v
-# Expected stdout:
-# === RUN   TestCANARY_CBIN_102_CLI_Verify
-# --- PASS: TestCANARY_CBIN_102_CLI_Verify (0.XXs)
-# PASS
-```
-**Test Body:**
-- Create temp GAP file with `✅ CBIN-999` claim
-- Create temp repo with `CBIN-888` token (no CBIN-999)
-- Call `verifyClaims(rep, gapPath)` from `verify.go`
-- Assert diagnostics contain `CANARY_VERIFY_FAIL REQ=CBIN-999`
-**CANARY:** Update `tools/canary/verify.go:3` to `STATUS=TESTED` once test passes.
+### ✅ Phase 3: Documentation Updates (2025-10-15)
+- **Scope:** Updated GAP_ANALYSIS.md, CHECKLIST.md, NEXT.md with Phase 1 & 2 results
+- **Changes:**
+  - Marked gaps #1 and #2 as RESOLVED in all docs
+  - Added benchmark baselines to GAP_ANALYSIS.md
+  - Updated evidence collection commands
+  - Moved Slices 1-6 from "Up Next" to "Completed"
+- **Status:** COMPLETED
 
 ---
 
-### Slice 3: Create TestCANARY_CBIN_103_API_StatusSchema
-**Scope:** Implement canonical test function matching CBIN-103 token reference.
-**File:** `tools/canary/status_test.go` (new file)
+## Up Next (Prioritized Slices)
+
+### Slice 7: Fix CRUSH.md Placeholder
+**Scope:** Remove invalid CANARY token causing parse errors
+**File:** `CRUSH.md:27`
+**Issue:** Line contains `ASPECT=<ASPECT>` placeholder causing `CANARY_PARSE_ERROR`
+**Fix Options:**
+1. Replace with valid ASPECT enum value (e.g., `ASPECT=Docs`)
+2. Remove the example token entirely
+3. Comment out the token line with additional `#` prefix
 **Acceptance:**
 ```bash
-go test ./tools/canary -run TestCANARY_CBIN_103 -v
-# Expected stdout:
-# === RUN   TestCANARY_CBIN_103_API_StatusSchema
-# --- PASS: TestCANARY_CBIN_103_API_StatusSchema (0.XXs)
-# PASS
+./bin/canary --root . --out status.json --skip '(^|/)(.git|.direnv|node_modules)($|/)'
+# Expected: EXIT=0 (no parse error)
 ```
-**Test Body:**
-- Create `Report` struct with 2 requirements (CBIN-101, CBIN-102)
-- Marshal to JSON via `writeJSON` or direct `json.Marshal`
-- Assert JSON contains keys: `generated_at`, `requirements`, `summary.by_status`, `summary.by_aspect`
-- Assert sorted key order: `by_aspect` before `by_status` in `summary`
-**CANARY:** Update `tools/canary/status.go:3` to `STATUS=TESTED` once test passes.
+**Estimated Time:** 5 minutes
 
 ---
 
-### Slice 4: Create BenchmarkCANARY_CBIN_101_Engine_Scan
-**Scope:** Implement benchmark matching CBIN-101 token reference.
-**File:** `tools/canary/main_test.go`
+### Slice 8: Add CI Workflow
+**Scope:** Create GitHub Actions workflow for canary validation
+**File:** `.github/workflows/canary.yml` (NEW)
+**Jobs:**
+1. **build** — `go build -o ./bin/canary ./tools/canary`
+2. **test-unit** — `go test ./tools/canary -v`
+3. **test-acceptance** — `go test ./tools/canary/internal -v`
+4. **benchmark** — `go test ./tools/canary -bench BenchmarkCANARY -run ^$ -benchmem`
+5. **verify-self** — `./bin/canary --root tools/canary --verify GAP_SELF.md --strict`
+**Triggers:** `push` to `main`, `pull_request` to `main`
 **Acceptance:**
 ```bash
-go test ./tools/canary -bench BenchmarkCANARY_CBIN_101 -run ^$
-# Expected output:
-# BenchmarkCANARY_CBIN_101_Engine_Scan-X    NNNN   YYYY ns/op   Z allocs/op
-# PASS
+# After push to branch:
+# GitHub Actions UI shows workflow run
+# All 5 jobs pass (green checkmarks)
 ```
-**Benchmark Body:**
-```go
-func BenchmarkCANARY_CBIN_101_Engine_Scan(b *testing.B) {
-    dir := setupFixture(b, 100) // 100 files with CANARY tokens
-    skip := skipDefault
-    b.ResetTimer()
-    for i := 0; i < b.N; i++ {
-        _, err := scan(dir, skip)
-        if err != nil {
-            b.Fatal(err)
-        }
-    }
-}
-```
-**Regression Guard:** `allocs/op ≤ 10` (baseline to be established)
-**CANARY:** Update `tools/canary/main.go:3` to `STATUS=BENCHED` once bench runs.
+**Estimated Time:** 1 hour
 
 ---
 
-### Slice 5: Create BenchmarkCANARY_CBIN_102_CLI_Verify
-**Scope:** Implement benchmark matching CBIN-102 token reference.
-**File:** `tools/canary/verify_test.go`
+### Slice 9: CSV Row Order Test
+**Scope:** Validate deterministic CSV row ordering
+**File:** `tools/canary/csv_test.go` (NEW)
+**Test:** `TestAcceptance_CSVOrder`
+**Logic:**
+- Create fixture with 10 requirements in random order (CBIN-050, CBIN-010, CBIN-030, ...)
+- Scan and generate CSV
+- Read CSV rows
+- Assert rows sorted by REQ ID ascending (CBIN-010, CBIN-030, CBIN-050, ...)
 **Acceptance:**
 ```bash
-go test ./tools/canary -bench BenchmarkCANARY_CBIN_102 -run ^$
-# Expected output:
-# BenchmarkCANARY_CBIN_102_CLI_Verify-X    NNNN   YYYY ns/op   Z allocs/op
-# PASS
+go test ./tools/canary -run TestAcceptance_CSVOrder -v
+# Expected: PASS
 ```
-**Benchmark Body:**
-- Setup: GAP file with 50 claims, repo scan result with 50 matching requirements
-- Measure: `verifyClaims(rep, gapPath)` execution time
-**Regression Guard:** `allocs/op ≤ 5` (baseline to be established)
-**CANARY:** Update `tools/canary/verify.go:3` to `STATUS=BENCHED` once bench runs.
+**Estimated Time:** 1 hour
 
 ---
 
-### Slice 6: Create BenchmarkCANARY_CBIN_103_API_Emit
-**Scope:** Implement benchmark matching CBIN-103 token reference.
-**File:** `tools/canary/status_test.go`
+### Slice 10: Large-Scale Performance Benchmark (50k files)
+**Scope:** Definitive validation of <10s requirement
+**File:** `tools/canary/perf_test.go` (NEW)
+**Benchmark:** `BenchmarkCANARY_CBIN_101_Perf50k`
+**Setup:**
+- Generate 50,000 files with CANARY tokens in temp dir
+- Mix of file types (.go, .py, .js, .md, etc.)
+- Realistic directory tree (depth 3-5, 100-500 files per dir)
+**Measure:**
+- Scan time (target: <10s)
+- RSS memory (target: ≤512 MiB)
+- Allocations per file
 **Acceptance:**
 ```bash
-go test ./tools/canary -bench BenchmarkCANARY_CBIN_103 -run ^$
-# Expected output:
-# BenchmarkCANARY_CBIN_103_API_Emit-X    NNNN   YYYY ns/op   Z allocs/op
+go test ./tools/canary -bench BenchmarkCANARY_CBIN_101_Perf50k -run ^$ -benchmem -timeout 30s
+# Expected:
+# BenchmarkCANARY_CBIN_101_Perf50k-X    1    YYYY ns/op (<10s)    ZZZ MB/op (≤512 MiB)
 # PASS
 ```
-**Benchmark Body:**
-- Setup: `Report` with 100 requirements, 300 features
-- Measure: `writeJSON` and `writeCSV` execution time
-**Regression Guard:** `allocs/op ≤ 15` (baseline to be established)
-**CANARY:** Update `tools/canary/status.go:3` to `STATUS=BENCHED` once bench runs.
+**Notes:**
+- May need to adjust buffer sizes or enable parallel scanning
+- First run will establish baseline for future regression detection
+**Estimated Time:** 2-3 hours
 
 ---
 
 ## Prioritization Rationale
 
-1. **Slices 1-3 (TestCANARY_*)** close the highest-priority gap (token references without actual tests). These enable proper evidence validation and self-consistency.
-2. **Slices 4-6 (BenchmarkCANARY_*)** establish performance baselines and enable future regression detection. Required before claiming BENCHED status.
-3. All slices are **independently testable** with exact acceptance commands.
-4. Each slice is **<100 LOC** and **<1 hour** of implementation time.
-5. Completing Slices 1-6 moves CBIN-101, CBIN-102, CBIN-103 from "auto-promoted BENCHED" to "actually BENCHED with evidence."
+**Slices 7-10** address the remaining open gaps:
+1. **Slice 7 (CRUSH.md fix)** — Quick win (5 min), unblocks full-repo scanning
+2. **Slice 8 (CI)** — High value, enables automated validation on every PR
+3. **Slice 9 (CSV order)** — Closes determinism gap, enables reproducible builds
+4. **Slice 10 (50k perf)** — Definitive validation of performance requirement
+
+**Estimated Total Time:** 4-5 hours (can parallelize Slices 7 & 9)
 
 ## Dependencies & Sequencing
 
-- Slices 1-3 can be done in **parallel** (independent test files).
-- Slices 4-6 **depend on** Slices 1-3 (benchmarks reference same fixtures/functions as tests).
-- After Slice 6: Update `GAP_ANALYSIS.md` and `CHECKLIST.md` to reflect new test/bench evidence.
+- **Slice 7** — Independent, can be done first
+- **Slice 8** — Should be done after Slice 7 (CI runs on clean repo)
+- **Slice 9** — Independent, can be done in parallel with Slice 7
+- **Slice 10** — Can be done anytime, but may inform optimizations
 
-## Post-Slices 1-6: Next Priorities
+**Recommendation:** Slice 7 → Slice 8 → (Slice 9 + Slice 10 in parallel)
 
-1. **Fix CRUSH.md placeholder** — Remove `ASPECT=<ASPECT>` to allow full-repo scanning.
-2. **Add CI workflow** — `.github/workflows/canary.yml` to run acceptance tests + verify gate on PR.
-3. **CSV row order test** — Validate deterministic sort (by REQ ID, then feature name).
-4. **Performance benchmark (50k files)** — Add `BenchmarkCANARY_CBIN_101_Perf50k` with large fixture.
+## Success Metrics
+
+After completing Slices 7-10:
+- ✅ All 5 critical gaps resolved
+- ✅ CI enforces test/bench/verify on every PR
+- ✅ CSV output deterministic and reproducible
+- ✅ Performance validated at scale (50k files)
+- ✅ Full repo scannable without parse errors
+- ✅ CHECKLIST.md shows ✅ for all CBIN-101/102/103 capabilities

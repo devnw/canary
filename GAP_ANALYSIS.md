@@ -1,18 +1,20 @@
-# Canary CLI — Requirements Gap Analysis (Updated: 2025-10-15)
+# Canary CLI — Requirements Gap Analysis (Updated: 2025-10-15 Phase 3)
 
 ## Scope & Method
 
 **Scanner Build:** `tools/canary/` → `./bin/canary` (Go 1.25.0)
 **Evidence Collection:**
-- Scan command: `./bin/canary --root tools/canary --out tools-canary-status.json --csv tools-canary-status.csv`
-- Acceptance tests: `go test ./tools/canary/internal -run TestAcceptance -v` (4 tests, ALL PASS)
+- Scan command: `./bin/canary --root tools/canary --out tools-canary-status-phase2.json --csv tools-canary-status-phase2.csv`
+- Unit tests: `go test ./tools/canary -v` (3 TestCANARY_* tests, ALL PASS)
+- Acceptance tests: `go test ./tools/canary/internal -run TestAcceptance -v` (5 tests, ALL PASS)
+- Benchmarks: `go test ./tools/canary -bench BenchmarkCANARY -run ^$ -benchmem` (3 benchmarks, ALL RUN)
 - Verify/staleness: `./bin/canary --root tools/canary --verify GAP_SELF.md --strict` (EXIT=0)
-- Benchmark command: `go test ./... -bench BenchmarkCANARY -run ^$` (NO BENCHMARKS FOUND)
 - Skip pattern: `(^|/)(.git|.direnv|.crush|node_modules|vendor|bin|dist|build|zig-out|.zig-cache)($|/)`
 
 **Artifacts:**
-- `tools-canary-status.json` — 3 requirements (CBIN-101, CBIN-102, CBIN-103), all BENCHED via auto-promotion
-- `tools/canary/internal/acceptance_test.go` — 4 acceptance tests with exact outputs per requirements
+- `tools-canary-status-phase2.json` — 3 core requirements (CBIN-101, CBIN-102, CBIN-103), all BENCHED with actual test/bench evidence
+- `tools/canary/internal/acceptance_test.go` — 5 acceptance tests with exact outputs per requirements
+- `tools/canary/{main,verify,status}_test.go` — 3 TestCANARY_* tests + 3 BenchmarkCANARY_* benchmarks
 
 ## Recent Updates (Since 2025-08-20)
 
@@ -25,11 +27,27 @@
 - ✅ **Auto-promotion** — IMPL+TEST→TESTED, IMPL/TESTED+BENCH→BENCHED (in-memory, no source mutation)
 - ✅ **Self-canary dogfood** — CBIN-101, CBIN-102, CBIN-103 tokens present in `tools/canary/*.go`, verified by TestAcceptance_SelfCanary
 
-**Acceptance Test Results:**
-1. **TestAcceptance_FixtureSummary** — PASS, stdout: `{"summary":{"by_status":{"IMPL":1,"STUB":1}}}`
-2. **TestAcceptance_Overclaim** — PASS, stdout: `ACCEPT Overclaim Exit=2`, stderr: `CANARY_VERIFY_FAIL REQ=CBIN-042`
-3. **TestAcceptance_Stale** — PASS, stdout: `ACCEPT Stale Exit=2`, stderr: `CANARY_STALE REQ=CBIN-051`
-4. **TestAcceptance_SelfCanary** — PASS, stdout: `ACCEPT SelfCanary OK ids=[CBIN-101,CBIN-102]`, exit: 0
+**Phase 1 & 2 Additions (2025-10-15):**
+- ✅ **TestCANARY_* functions** — 3 unit tests matching token references exactly (all PASS)
+- ✅ **BenchmarkCANARY_* functions** — 3 performance benchmarks with baselines established (all RUN)
+- ✅ **Performance baselines** — Engine scan: 5.7ms/100 files, Verify: 55µs/50 claims, Emit: 1.3ms/300 tokens
+- ✅ **Token status updates** — All 3 tokens now BENCHED with UPDATED=2025-10-15
+- ✅ **Evidence alignment** — Test/bench function names match token references exactly
+
+**Test Results:**
+1. **TestCANARY_CBIN_101_Engine_ScanBasic** — PASS (tools/canary/main_test.go:16)
+2. **TestCANARY_CBIN_102_CLI_Verify** — PASS (tools/canary/verify_test.go:11)
+3. **TestCANARY_CBIN_103_API_StatusSchema** — PASS (tools/canary/status_test.go:12)
+4. **TestAcceptance_FixtureSummary** — PASS, stdout: `{"summary":{"by_status":{"IMPL":1,"STUB":1}}}`
+5. **TestAcceptance_Overclaim** — PASS, stdout: `ACCEPT Overclaim Exit=2`, stderr: `CANARY_VERIFY_FAIL REQ=CBIN-042`
+6. **TestAcceptance_Stale** — PASS, stdout: `ACCEPT Stale Exit=2`, stderr: `CANARY_STALE REQ=CBIN-051`
+7. **TestAcceptance_SelfCanary** — PASS, stdout: `ACCEPT SelfCanary OK ids=[CBIN-101,CBIN-102]`, exit: 0
+8. **TestMetadata** — PASS (go=go1.25.0 os=linux arch=amd64)
+
+**Benchmark Results:**
+1. **BenchmarkCANARY_CBIN_101_Engine_Scan** — 5708263 ns/op, 1124546 B/op, 11357 allocs/op (100 files)
+2. **BenchmarkCANARY_CBIN_102_CLI_Verify** — 55095 ns/op, 5194 B/op, 13 allocs/op (50 claims)
+3. **BenchmarkCANARY_CBIN_103_API_Emit** — 1279369 ns/op, 36403 B/op, 2119 allocs/op (300 tokens)
 
 ## Implemented Map (By Aspect)
 
@@ -70,9 +88,9 @@
 
 ## Cross-Cutting Gaps
 
-1. **TestCANARY_* functions missing** — Tokens reference `TestCANARY_CBIN_101_Engine_ScanBasic`, etc. but NO actual test functions exist with these names. Acceptance tests exist but don't follow the naming convention.
+1. ~~**TestCANARY_* functions missing**~~ ✅ **RESOLVED (2025-10-15 Phase 1)** — Implemented TestCANARY_CBIN_101_Engine_ScanBasic (tools/canary/main_test.go:16), TestCANARY_CBIN_102_CLI_Verify (tools/canary/verify_test.go:11), TestCANARY_CBIN_103_API_StatusSchema (tools/canary/status_test.go:12). All tests PASS, names match token references exactly.
 
-2. **BenchmarkCANARY_* functions missing** — Tokens reference `BenchmarkCANARY_CBIN_101_Engine_Scan`, etc. but NO benchmark functions exist. Auto-promotion treats bench refs as evidence but no actual benchmarks run.
+2. ~~**BenchmarkCANARY_* functions missing**~~ ✅ **RESOLVED (2025-10-15 Phase 2)** — Implemented BenchmarkCANARY_CBIN_101_Engine_Scan (tools/canary/main_test.go:86), BenchmarkCANARY_CBIN_102_CLI_Verify (tools/canary/verify_test.go:123), BenchmarkCANARY_CBIN_103_API_Emit (tools/canary/status_test.go:167). All benchmarks RUN with baselines: Engine 5.7ms/100 files, Verify 55µs/50 claims, Emit 1.3ms/300 tokens.
 
 3. **cmd/canary build failure** — Main CLI in `cmd/canary/init.go` references non-existent packages:
    ```
@@ -86,7 +104,7 @@
 
 6. **Regex portability (--skip)** — Default skip regex works but edge cases (symlinks, nested paths) not tested.
 
-7. **Performance benchmarks absent** — Requirement: <10s for 50k files, ≤512 MiB RSS. NO performance tests exist yet.
+7. **Large-scale performance benchmark absent** — Requirement: <10s for 50k files, ≤512 MiB RSS. Benchmarks exist for 100-file workload (5.7ms), extrapolating to ~2.85s for 50k files (71.5% headroom). Full 50k file benchmark still needed for definitive validation.
 
 8. **CI integration missing** — No GitHub Actions workflow validating acceptance tests, verify gate, or staleness checks.
 
