@@ -77,10 +77,10 @@ This project includes comprehensive tracking for the **spec-kit** submodule:
 
 ```bash
 # Scan spec-kit
-./canary --root ./specs/spec-kit --out spec-kit-status.json --csv spec-kit-status.csv
+./canary --root ./specs/spec-kit-repo --out spec-kit-status.json --csv spec-kit-status.csv
 
 # Verify against gap analysis
-./canary verify --root ./specs/spec-kit --gap docs/SPEC_KIT_GAP_ANALYSIS.md --strict
+./canary verify --root ./specs/spec-kit-repo --gap docs/SPEC_KIT_GAP_ANALYSIS.md --strict
 ```
 
 ### Documentation

@@ -1,0 +1,4 @@
+req,feature,aspect,status,file,test,bench,owner,updated
+CBIN-101,ScannerCore,Engine,BENCHED,tools/canary/main.go,TestCANARY_CBIN_101_Engine_ScanBasic,BenchmarkCANARY_CBIN_101_Engine_Scan,canary,2025-09-20
+CBIN-102,VerifyGate,CLI,BENCHED,tools/canary/verify.go,TestCANARY_CBIN_102_CLI_Verify,BenchmarkCANARY_CBIN_102_CLI_Verify,canary,2025-09-20
+CBIN-103,StatusJSON,API,BENCHED,tools/canary/status.go,TestCANARY_CBIN_103_API_StatusSchema,BenchmarkCANARY_CBIN_103_API_Emit,canary,2025-09-20
