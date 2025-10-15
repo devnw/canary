@@ -3,6 +3,8 @@
 Scan, update, create, verify and manage **CANARY** tokens across
 repositories, emit `status.json` / `status.csv`, and **verify** GAP claims.
 
+**Now with full spec-kit integration!** Track all 46 spec-kit features with comprehensive requirements documentation. See [`docs/SPEC_KIT_INTEGRATION_SUMMARY.md`](docs/SPEC_KIT_INTEGRATION_SUMMARY.md) for details.
+
 ## Build
 
 ```bash
@@ -24,8 +26,10 @@ go build -o ./bin/canary ./cmd/canary
 **Token format**
 
 ```text
-CANARY: REQ=REQ-GQL-###; FEATURE="Name"; ASPECT=...; STATUS=MISSING|STUB|IMPL|TESTED|BENCHED|REMOVED; TEST=...; BENCH=...; OWNER=...; UPDATED=YYYY-MM-DD
+CANARY: REQ=REQ-###-###; FEATURE="Name"; ASPECT=...; STATUS=MISSING|STUB|IMPL|TESTED|BENCHED|REMOVED; TEST=...; BENCH=...; OWNER=...; UPDATED=YYYY-MM-DD
 ```
+
+**Supported comment styles**: `//`, `#`, `--`, `<!--` (Python, Go, Bash, SQL, Markdown, etc.)
 
 ## Status Auto-Promotion
 
@@ -60,3 +64,29 @@ Policy excerpt (see `docs/CANARY_POLICY.md`). Example tokens:
 
 `CANARY: REQ=CBIN-102; FEATURE="VerifyGate"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_102_CLI_Verify; BENCH=BenchmarkCANARY_CBIN_102_CLI_Verify; OWNER=canary; UPDATED=2025-09-20`
 
+## Spec-Kit Integration
+
+This project includes comprehensive tracking for the **spec-kit** submodule:
+
+- **46 Requirements** across 10 categories (Core Workflows, CLI Tools, Templates, etc.)
+- **Complete Documentation**: Requirements catalog, gap analysis, integration guide, examples
+- **Sample Implementation**: 7 tokens demonstrating the integration pattern
+- **Enhanced Scanner**: Support for HTML-style comments in Markdown files
+
+### Quick Start
+
+```bash
+# Scan spec-kit
+./canary --root ./specs/spec-kit --out spec-kit-status.json --csv spec-kit-status.csv
+
+# Verify against gap analysis
+./canary verify --root ./specs/spec-kit --gap docs/SPEC_KIT_GAP_ANALYSIS.md --strict
+```
+
+### Documentation
+
+- [Integration Summary](docs/SPEC_KIT_INTEGRATION_SUMMARY.md) - Overview and status
+- [Requirements Catalog](docs/SPEC_KIT_REQUIREMENTS.md) - All 46 requirements
+- [Gap Analysis](docs/SPEC_KIT_GAP_ANALYSIS.md) - Tracking document
+- [Integration Guide](docs/SPEC_KIT_INTEGRATION_GUIDE.md) - Step-by-step instructions
+- [CANARY Examples](docs/CANARY_EXAMPLES_SPEC_KIT.md) - Token patterns and examples

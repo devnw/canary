@@ -1,0 +1,8 @@
+req,feature,aspect,status,file,test,bench,owner,updated
+REQ-SK-102,SpecifyCommand,CLI,IMPL,specs/spec-kit/templates/commands/specify.md,,,commands,2025-10-15
+REQ-SK-201,SpecifyCLIInit,CLI,IMPL,specs/spec-kit/src/specify_cli/__init__.py,,,specify,2025-10-15
+REQ-SK-202,SpecifyCLICheck,CLI,IMPL,specs/spec-kit/src/specify_cli/__init__.py,,,specify,2025-10-15
+REQ-SK-203,AgentDetection,Core,IMPL,specs/spec-kit/src/specify_cli/__init__.py,,,specify,2025-10-15
+REQ-SK-301,SpecTemplate,Templates,IMPL,specs/spec-kit/templates/spec-template.md,,,templates,2025-10-15
+REQ-SK-302,PlanTemplate,Templates,IMPL,specs/spec-kit/templates/plan-template.md,,,templates,2025-10-15
+REQ-SK-501,FeatureCreationScript,Automation,IMPL,specs/spec-kit/scripts/bash/create-new-feature.sh,,,scripts,2025-10-15

@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-var canaryRe = regexp.MustCompile(`^\s*(?://|#|--)\s*CANARY:\s*(.*)$`)
+var canaryRe = regexp.MustCompile(`^\s*(?://|#|--|\[//\]:\s*#|<!--)\s*CANARY:\s*(.*)$`)
 var kvRe = regexp.MustCompile(`\s*([^=;\s]+)\s*=\s*([^;]+)\s*`)
 
 // directories to skip during scan
@@ -156,6 +156,10 @@ func Scan(root string) (report, error) {
 }
 
 func parseCanaryKV(s string) (map[string]string, error) {
+	// Strip HTML comment closing marker if present
+	s = strings.TrimSuffix(strings.TrimSpace(s), "-->")
+	s = strings.TrimSpace(s)
+
 	out := map[string]string{}
 	for _, seg := range strings.Split(s, ";") {
 		seg = strings.TrimSpace(seg)
