@@ -11,17 +11,45 @@ repositories, emit `status.json` / `status.csv`, and **verify** GAP claims.
 go build -o ./bin/canary ./cmd/canary
 ```
 
-## Usage
+## CLI Commands
+
+Canary provides spec-kit-inspired commands for managing CANARY tokens:
+
+### Initialize a New Project
 
 ```bash
-./bin/canary --root . --out status.json --csv status.csv
-./bin/canary --root . --verify GAP_ANALYSIS.md --strict
-./bin/canary verify --root . --gap docs/GAP_ANALYSIS.md --strict --skip '(^|/)(.git|.direnv|node_modules|vendor|bin|dist|build|zig-out|.zig-cache)(/|$)'; echo EXIT:$?
+canary init <project-name>
+# Creates README_CANARY.md and GAP_ANALYSIS.md templates
 ```
+
+### Create a New Requirement Token
+
+```bash
+canary create CBIN-105 "FeatureName" --aspect API --status IMPL --owner team
+# Outputs a properly formatted CANARY token ready to paste
+```
+
+### Scan for Tokens
+
+```bash
+canary scan --root . --out status.json --csv status.csv
+canary scan --root . --verify GAP_ANALYSIS.md --strict
+canary scan --root . --update-stale  # Auto-update stale TESTED/BENCHED tokens
+```
+
+### Exit Codes
 
 - **Exit 0**: OK
 - **Exit 2**: Verification/staleness failed
 - **Exit 3**: Parse or IO error
+
+### Legacy Usage
+
+The standalone scanner is still available at `tools/canary`:
+
+```bash
+go run ./tools/canary --root . --out status.json
+```
 
 **Token format**
 
