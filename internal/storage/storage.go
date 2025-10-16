@@ -48,6 +48,14 @@ type Token struct {
 	RelatedTo   string
 	RawToken    string
 	IndexedAt   string
+
+	// CANARY: REQ=CBIN-136; FEATURE="DocDatabaseSchema"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
+	// Documentation tracking fields
+	DocPath      string // Comma-separated doc file paths (e.g., "user:docs/user.md,api:docs/api.md")
+	DocHash      string // Comma-separated SHA256 hashes (abbreviated, first 16 chars)
+	DocType      string // Documentation type (user, technical, feature, api, architecture)
+	DocCheckedAt string // ISO 8601 timestamp of last staleness check
+	DocStatus    string // DOC_CURRENT, DOC_STALE, DOC_MISSING, DOC_UNHASHED
 }
 
 // Checkpoint represents a state snapshot
@@ -102,8 +110,9 @@ func (db *DB) UpsertToken(token *Token) error {
 			test, bench, owner, priority, phase, keywords, spec_status,
 			created_at, updated_at, started_at, completed_at,
 			commit_hash, branch, depends_on, blocks, related_to,
-			raw_token, indexed_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			raw_token, indexed_at,
+			doc_path, doc_hash, doc_type, doc_checked_at, doc_status
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(req_id, feature, file_path, line_number)
 		DO UPDATE SET
 			aspect = excluded.aspect,
@@ -124,7 +133,12 @@ func (db *DB) UpsertToken(token *Token) error {
 			blocks = excluded.blocks,
 			related_to = excluded.related_to,
 			raw_token = excluded.raw_token,
-			indexed_at = excluded.indexed_at
+			indexed_at = excluded.indexed_at,
+			doc_path = excluded.doc_path,
+			doc_hash = excluded.doc_hash,
+			doc_type = excluded.doc_type,
+			doc_checked_at = excluded.doc_checked_at,
+			doc_status = excluded.doc_status
 	`
 
 	_, err := db.conn.Exec(query,
@@ -136,6 +150,7 @@ func (db *DB) UpsertToken(token *Token) error {
 		token.CommitHash, token.Branch,
 		token.DependsOn, token.Blocks, token.RelatedTo,
 		token.RawToken, token.IndexedAt,
+		token.DocPath, token.DocHash, token.DocType, token.DocCheckedAt, token.DocStatus,
 	)
 
 	return err
@@ -148,7 +163,8 @@ func (db *DB) GetTokensByReqID(reqID string) ([]*Token, error) {
 			test, bench, owner, priority, phase, keywords, spec_status,
 			created_at, updated_at, started_at, completed_at,
 			commit_hash, branch, depends_on, blocks, related_to,
-			raw_token, indexed_at
+			raw_token, indexed_at,
+			doc_path, doc_hash, doc_type, doc_checked_at, doc_status
 		FROM tokens
 		WHERE req_id = ?
 		ORDER BY priority ASC, feature ASC
@@ -172,7 +188,8 @@ func (db *DB) ListTokens(filters map[string]string, idPattern string, orderBy st
 			test, bench, owner, priority, phase, keywords, spec_status,
 			created_at, updated_at, started_at, completed_at,
 			commit_hash, branch, depends_on, blocks, related_to,
-			raw_token, indexed_at
+			raw_token, indexed_at,
+			doc_path, doc_hash, doc_type, doc_checked_at, doc_status
 		FROM tokens
 		WHERE 1=1
 	`
@@ -245,7 +262,8 @@ func (db *DB) SearchTokens(keywords string) ([]*Token, error) {
 			test, bench, owner, priority, phase, keywords, spec_status,
 			created_at, updated_at, started_at, completed_at,
 			commit_hash, branch, depends_on, blocks, related_to,
-			raw_token, indexed_at
+			raw_token, indexed_at,
+			doc_path, doc_hash, doc_type, doc_checked_at, doc_status
 		FROM tokens
 		WHERE keywords LIKE ? OR feature LIKE ? OR req_id LIKE ?
 		ORDER BY priority ASC
@@ -351,6 +369,7 @@ func scanTokens(rows *sql.Rows) ([]*Token, error) {
 			&t.CommitHash, &t.Branch,
 			&t.DependsOn, &t.Blocks, &t.RelatedTo,
 			&t.RawToken, &t.IndexedAt,
+			&t.DocPath, &t.DocHash, &t.DocType, &t.DocCheckedAt, &t.DocStatus,
 		)
 		if err != nil {
 			return nil, err
