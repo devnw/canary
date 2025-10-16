@@ -1,3 +1,14 @@
+// Copyright (c) 2024 by CodePros.
+//
+// This software is proprietary information of CodePros.
+// Unauthorized use, copying, modification, distribution, and/or
+// disclosure is strictly prohibited, except as provided under the terms
+// of the commercial license agreement you have entered into with
+// CodePros.
+//
+// For more details, see the LICENSE file in the root directory of this
+// source code repository or contact CodePros at info@codepros.org.
+
 // CANARY: REQ=CBIN-132; FEATURE="NextPriorityCommand"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; UPDATED=2025-10-16
 package main
 
@@ -11,6 +22,7 @@ import (
 	"text/template"
 	"time"
 
+	"go.spyder.org/canary/internal/config"
 	"go.spyder.org/canary/internal/storage"
 )
 
@@ -69,6 +81,13 @@ func selectFromDatabase(db *storage.DB, filters map[string]string) (*storage.Tok
 		filters = make(map[string]string)
 	}
 
+	// Load project config for ID pattern filtering
+	cfg, _ := config.Load(".")
+	idPattern := ""
+	if cfg != nil && cfg.Requirements.IDPattern != "" {
+		idPattern = cfg.Requirements.IDPattern
+	}
+
 	// If no status filter, only select STUB or IMPL by default
 	if _, hasStatusFilter := filters["status"]; !hasStatusFilter {
 		// Query separately for STUB and IMPL, prioritizing STUB
@@ -79,7 +98,7 @@ func selectFromDatabase(db *storage.DB, filters map[string]string) (*storage.Tok
 		stubFilters["status"] = "STUB"
 
 		// Try STUB first
-		tokens, err := db.ListTokens(stubFilters, "priority ASC, updated_at DESC", 50)
+		tokens, err := db.ListTokens(stubFilters, idPattern, "priority ASC, updated_at DESC", 50)
 		if err != nil {
 			return nil, fmt.Errorf("query STUB tokens: %w", err)
 		}
@@ -98,7 +117,7 @@ func selectFromDatabase(db *storage.DB, filters map[string]string) (*storage.Tok
 		}
 		implFilters["status"] = "IMPL"
 
-		tokens, err = db.ListTokens(implFilters, "priority ASC, updated_at DESC", 50)
+		tokens, err = db.ListTokens(implFilters, idPattern, "priority ASC, updated_at DESC", 50)
 		if err != nil {
 			return nil, fmt.Errorf("query IMPL tokens: %w", err)
 		}
@@ -113,7 +132,7 @@ func selectFromDatabase(db *storage.DB, filters map[string]string) (*storage.Tok
 	}
 
 	// Use provided filters
-	tokens, err := db.ListTokens(filters, "priority ASC, updated_at DESC", 50)
+	tokens, err := db.ListTokens(filters, idPattern, "priority ASC, updated_at DESC", 50)
 	if err != nil {
 		return nil, fmt.Errorf("query tokens: %w", err)
 	}

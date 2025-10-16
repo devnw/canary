@@ -103,41 +103,6 @@ User input: "Add user authentication with email/password and OAuth2 support"
    }
    ```
 
-## Modifying Existing Specifications
-
-To update an existing specification (instead of creating a new one), use the `update` subcommand:
-
-### Exact ID Lookup
-```bash
-canary specify update CBIN-XXX
-```
-- Fastest method when you know the requirement ID
-- Returns full spec.md content
-- Shows path to plan.md if it exists
-
-### Fuzzy Search
-```bash
-canary specify update --search "feature keywords"
-```
-- Use when you don't know the exact ID
-- Searches across requirement IDs and feature names
-- Returns ranked matches with scores
-- Auto-selects if single strong match (>90% score)
-
-### Section-Specific Loading
-```bash
-canary specify update CBIN-XXX --sections overview,requirements
-```
-- Minimizes context usage for AI agents
-- Reduces content by 50-80%
-- Only loads requested sections
-- Preserves metadata at top
-
-### When to Update vs. Create
-- **Update existing spec** when modifying scope, requirements, or clarifications
-- **Create new spec** when adding a completely new feature
-- If unsure, search first: `canary specify update --search "your feature"`
-
 ## Guidelines
 
 - **Specification Focus**: WHAT and WHY, not HOW

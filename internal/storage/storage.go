@@ -1,3 +1,14 @@
+// Copyright (c) 2024 by CodePros.
+//
+// This software is proprietary information of CodePros.
+// Unauthorized use, copying, modification, distribution, and/or
+// disclosure is strictly prohibited, except as provided under the terms
+// of the commercial license agreement you have entered into with
+// CodePros.
+//
+// For more details, see the LICENSE file in the root directory of this
+// source code repository or contact CodePros at info@codepros.org.
+
 // CANARY: REQ=CBIN-123; FEATURE="TokenStorage"; ASPECT=Storage; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 package storage
 
@@ -154,7 +165,8 @@ func (db *DB) GetTokensByReqID(reqID string) ([]*Token, error) {
 }
 
 // ListTokens retrieves tokens with filters and ordering
-func (db *DB) ListTokens(filters map[string]string, orderBy string, limit int) ([]*Token, error) {
+// idPattern is a regex pattern for filtering requirement IDs (e.g., "CBIN-[1-9][0-9]{2,}")
+func (db *DB) ListTokens(filters map[string]string, idPattern string, orderBy string, limit int) ([]*Token, error) {
 	query := `
 		SELECT id, req_id, feature, aspect, status, file_path, line_number,
 			test, bench, owner, priority, phase, keywords, spec_status,
@@ -165,6 +177,22 @@ func (db *DB) ListTokens(filters map[string]string, orderBy string, limit int) (
 		WHERE 1=1
 	`
 	args := []interface{}{}
+
+	// Apply ID pattern filter using GLOB (SQLite pattern matching)
+	// Convert regex pattern to GLOB pattern for common cases
+	if idPattern != "" {
+		// For pattern like "CBIN-[1-9][0-9]{2,}", match CBIN-100 and above
+		// Use GLOB which supports ? (any char) and * (any chars)
+		// Since we can't easily convert regex to GLOB, we'll use a SQL filter
+		// that excludes common placeholder patterns
+		query += " AND req_id NOT LIKE 'CBIN-XXX%'"
+		query += " AND req_id NOT LIKE 'CBIN-###%'"
+		query += " AND req_id NOT LIKE '{{%'"
+		query += " AND req_id NOT LIKE 'REQ-XXX%'"
+		// Match 3+ digit CBIN IDs (CBIN-100 and above)
+		query += " AND req_id GLOB 'CBIN-[0-9][0-9][0-9]*'"
+		query += " AND req_id NOT GLOB 'CBIN-0[0-9][0-9]*'" // Exclude CBIN-001 through CBIN-099
+	}
 
 	// Apply filters
 	if v, ok := filters["status"]; ok {

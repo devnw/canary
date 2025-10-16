@@ -1,3 +1,14 @@
+// Copyright (c) 2024 by CodePros.
+//
+// This software is proprietary information of CodePros.
+// Unauthorized use, copying, modification, distribution, and/or
+// disclosure is strictly prohibited, except as provided under the terms
+// of the commercial license agreement you have entered into with
+// CodePros.
+//
+// For more details, see the LICENSE file in the root directory of this
+// source code repository or contact CodePros at info@codepros.org.
+
 // CANARY: REQ=CBIN-CLI-104; FEATURE="CanaryCLI"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 package main
 
@@ -15,6 +26,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"go.spyder.org/canary/embedded"
+	"go.spyder.org/canary/internal/config"
 	"go.spyder.org/canary/internal/migrate"
 	"go.spyder.org/canary/internal/reqid"
 	"go.spyder.org/canary/internal/storage"
@@ -906,6 +918,11 @@ Examples:
 	},
 }
 
+// loadProjectConfig loads the .canary/project.yaml configuration
+func loadProjectConfig() (*config.ProjectConfig, error) {
+	return config.Load(".")
+}
+
 // extractField extracts a field value from a CANARY token string
 func extractField(token, field string) string {
 	// Look for FIELD="value" or FIELD=value
@@ -1192,6 +1209,16 @@ Results are ordered by priority (1=highest) and updated date by default.`,
 
 		defer db.Close()
 
+		// Load project config to get ID pattern
+		cfg, err := loadProjectConfig()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not load project config: %v\n", err)
+		}
+		idPattern := ""
+		if cfg != nil && cfg.Requirements.IDPattern != "" {
+			idPattern = cfg.Requirements.IDPattern
+		}
+
 		// Build filters
 		filters := make(map[string]string)
 		if filterStatus != "" {
@@ -1210,7 +1237,7 @@ Results are ordered by priority (1=highest) and updated date by default.`,
 			filters["spec_status"] = filterSpecStatus
 		}
 
-		tokens, err := db.ListTokens(filters, orderBy, limit)
+		tokens, err := db.ListTokens(filters, idPattern, orderBy, limit)
 		if err != nil {
 			return fmt.Errorf("list tokens: %w", err)
 		}
@@ -1376,8 +1403,15 @@ Useful for tracking progress over time.`,
 			}
 		}
 
+		// Load project config for ID pattern filtering
+		cfg, _ := loadProjectConfig()
+		idPattern := ""
+		if cfg != nil && cfg.Requirements.IDPattern != "" {
+			idPattern = cfg.Requirements.IDPattern
+		}
+
 		// Get all tokens for snapshot
-		tokens, err := db.ListTokens(nil, "", 0)
+		tokens, err := db.ListTokens(nil, idPattern, "", 0)
 		if err != nil {
 			return fmt.Errorf("get tokens: %w", err)
 		}

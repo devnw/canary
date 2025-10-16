@@ -4,11 +4,15 @@
 
 List requirements that are fully implemented and verified:
 
-✅ CBIN-101 - ScannerCore (Engine, BENCHED, verified)
+✅ CBIN-001 - UserAuth API fully tested
+✅ CBIN-002 - DataValidation with benchmarks
 
 ## Gaps
 
-(No open gaps - all requirements in tools/canary are complete)
+List requirements that are planned or in progress:
+
+- [ ] CBIN-003 - ReportGeneration (STATUS=IMPL, needs tests)
+- [ ] CBIN-004 - CacheOptimization (STATUS=STUB)
 
 ## Verification
 
