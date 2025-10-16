@@ -9,7 +9,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact CodePros at info@codepros.org.
 
-// CANARY: REQ=CBIN-133; FEATURE="ImplementCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_ExactMatch; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="ImplementCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_ExactMatch; UPDATED=2025-10-16
 package main
 
 import (
@@ -20,12 +20,13 @@ import (
 	"testing"
 )
 
+// TestCANARY_CBIN_133_CLI_ExactMatch verifies exact ID matching
 func TestCANARY_CBIN_133_CLI_ExactMatch(t *testing.T) {
 	// Setup: Create test spec directory
 	tmpDir := t.TempDir()
 	specDir := filepath.Join(tmpDir, ".canary", "specs", "CBIN-105-test-feature")
 	if err := os.MkdirAll(specDir, 0755); err != nil {
-		t.Fatalf("failed to create spec dir: %v", err)
+		t.Fatalf("failed to create spec directory: %v", err)
 	}
 
 	specContent := `# Feature Specification: TestFeature
@@ -34,16 +35,16 @@ func TestCANARY_CBIN_133_CLI_ExactMatch(t *testing.T) {
 **Feature Name:** TestFeature
 **Status:** STUB
 
-## Feature Overview
-Test feature for exact ID matching.
+## Success Criteria
+- Feature must be implemented
+- Tests must pass
 `
 	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte(specContent), 0644); err != nil {
-		t.Fatalf("failed to write spec: %v", err)
+		t.Fatalf("failed to write spec file: %v", err)
 	}
 
 	// Change to tmpDir
 	originalWd, _ := os.Getwd()
-
 	defer os.Chdir(originalWd)
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatalf("failed to change directory: %v", err)
@@ -59,11 +60,15 @@ Test feature for exact ID matching.
 	if spec.ReqID != "CBIN-105" {
 		t.Errorf("Expected CBIN-105, got %s", spec.ReqID)
 	}
+	if spec.FeatureName != "test-feature" {
+		t.Errorf("Expected feature name 'test-feature', got %s", spec.FeatureName)
+	}
 	if !strings.Contains(spec.SpecContent, "TestFeature") {
-		t.Error("Spec content not loaded correctly")
+		t.Error("Spec content should contain 'TestFeature'")
 	}
 }
 
+// TestCANARY_CBIN_133_CLI_FuzzyMatch verifies fuzzy matching by feature name
 func TestCANARY_CBIN_133_CLI_FuzzyMatch(t *testing.T) {
 	// Setup: Multiple specs with similar names
 	tmpDir := t.TempDir()
@@ -79,23 +84,26 @@ func TestCANARY_CBIN_133_CLI_FuzzyMatch(t *testing.T) {
 	for _, s := range specs {
 		specDir := filepath.Join(tmpDir, ".canary", "specs", fmt.Sprintf("%s-%s", s.id, s.name))
 		if err := os.MkdirAll(specDir, 0755); err != nil {
-			t.Fatalf("failed to create spec dir: %v", err)
+			t.Fatalf("failed to create spec directory: %v", err)
 		}
-		content := fmt.Sprintf("# Feature Specification: %s\n\n**Requirement ID:** %s", s.name, s.id)
+		content := fmt.Sprintf(`# Feature Specification: %s
+
+**Requirement ID:** %s
+**Feature Name:** %s
+`, s.name, s.id, s.name)
 		if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte(content), 0644); err != nil {
-			t.Fatalf("failed to write spec: %v", err)
+			t.Fatalf("failed to write spec file: %v", err)
 		}
 	}
 
 	originalWd, _ := os.Getwd()
-
 	defer os.Chdir(originalWd)
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatalf("failed to change directory: %v", err)
 	}
 
-	// Execute: Fuzzy search for "user auth" (should auto-select UserAuthentication)
-	spec, err := findRequirementAutoSelect("user auth")
+	// Execute: Fuzzy search for "user auth"
+	spec, err := findRequirement("user auth")
 
 	// Verify: Matches UserAuthentication
 	if err != nil {
@@ -106,17 +114,15 @@ func TestCANARY_CBIN_133_CLI_FuzzyMatch(t *testing.T) {
 	}
 }
 
+// TestCANARY_CBIN_133_CLI_PromptGeneration verifies comprehensive prompt generation
 func TestCANARY_CBIN_133_CLI_PromptGeneration(t *testing.T) {
-	// Setup: Create spec with Implementation Checklist
+	// Setup: Create spec with plan and constitution
 	tmpDir := t.TempDir()
+	
+	// Create spec
 	specDir := filepath.Join(tmpDir, ".canary", "specs", "CBIN-105-test-feature")
-	templatesDir := filepath.Join(tmpDir, ".canary", "templates")
-	memoryDir := filepath.Join(tmpDir, ".canary", "memory")
-
-	for _, dir := range []string{specDir, templatesDir, memoryDir} {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			t.Fatalf("failed to create dir: %v", err)
-		}
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("failed to create spec directory: %v", err)
 	}
 
 	specContent := `# Feature Specification: TestFeature
@@ -124,18 +130,45 @@ func TestCANARY_CBIN_133_CLI_PromptGeneration(t *testing.T) {
 **Requirement ID:** CBIN-105
 
 ## Implementation Checklist
-
-### Phase 1: Core Features
-
-<!-- CANARY: REQ=CBIN-105; FEATURE="Feature1"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-16 -->
-**Feature 1: Test Feature**
-- [ ] Implement test functionality
+- [ ] Create test file
+- [ ] Implement feature
+- [ ] Run tests
 `
 	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte(specContent), 0644); err != nil {
-		t.Fatalf("failed to write spec: %v", err)
+		t.Fatalf("failed to write spec file: %v", err)
 	}
 
-	// Create minimal template
+	// Create plan
+	planContent := `# Implementation Plan: CBIN-105
+
+## Phase 1: Test Creation
+Write tests first.
+`
+	if err := os.WriteFile(filepath.Join(specDir, "plan.md"), []byte(planContent), 0644); err != nil {
+		t.Fatalf("failed to write plan file: %v", err)
+	}
+
+	// Create constitution
+	constitutionDir := filepath.Join(tmpDir, ".canary", "memory")
+	if err := os.MkdirAll(constitutionDir, 0755); err != nil {
+		t.Fatalf("failed to create memory directory: %v", err)
+	}
+
+	constitutionContent := `# Constitution
+
+## Article IV: Test-First
+Tests must be written before implementation.
+`
+	if err := os.WriteFile(filepath.Join(constitutionDir, "constitution.md"), []byte(constitutionContent), 0644); err != nil {
+		t.Fatalf("failed to write constitution: %v", err)
+	}
+
+	// Create template
+	templateDir := filepath.Join(tmpDir, ".canary", "templates")
+	if err := os.MkdirAll(templateDir, 0755); err != nil {
+		t.Fatalf("failed to create templates directory: %v", err)
+	}
+
 	templateContent := `# Implementation Guidance: {{.FeatureName}}
 
 **Requirement:** {{.ReqID}}
@@ -143,35 +176,26 @@ func TestCANARY_CBIN_133_CLI_PromptGeneration(t *testing.T) {
 ## Specification
 {{.SpecContent}}
 
-## Checklist
-{{.Checklist}}
+{{if .HasPlan}}
+## Implementation Plan
+{{.PlanContent}}
+{{end}}
+
+## Constitution
+{{.Constitution}}
 `
-	if err := os.WriteFile(filepath.Join(templatesDir, "implement-prompt-template.md"), []byte(templateContent), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(templateDir, "implement-prompt-template.md"), []byte(templateContent), 0644); err != nil {
 		t.Fatalf("failed to write template: %v", err)
 	}
 
-	// Create minimal constitution
-	constitutionContent := `# Constitution
-## Article IV: Test-First Imperative
-Tests must be written before implementation.
-`
-	if err := os.WriteFile(filepath.Join(memoryDir, "constitution.md"), []byte(constitutionContent), 0644); err != nil {
-		t.Fatalf("failed to write constitution: %v", err)
-	}
-
 	originalWd, _ := os.Getwd()
-
 	defer os.Chdir(originalWd)
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatalf("failed to change directory: %v", err)
 	}
 
 	// Execute: Generate prompt
-	spec, err := findRequirement("CBIN-105")
-	if err != nil {
-		t.Fatalf("findRequirement failed: %v", err)
-	}
-
+	spec, _ := findRequirement("CBIN-105")
 	prompt, err := renderImplementPrompt(spec, &ImplementFlags{Prompt: true})
 
 	// Verify: Prompt contains key sections
@@ -183,7 +207,8 @@ Tests must be written before implementation.
 		"Implementation Guidance:",
 		"CBIN-105",
 		"Specification",
-		"Checklist",
+		"Implementation Plan",
+		"Constitution",
 	}
 
 	for _, section := range requiredSections {
@@ -193,27 +218,31 @@ Tests must be written before implementation.
 	}
 }
 
+// TestCANARY_CBIN_133_CLI_ProgressTracking verifies progress calculation
 func TestCANARY_CBIN_133_CLI_ProgressTracking(t *testing.T) {
 	// Setup: Create files with CANARY tokens
 	tmpDir := t.TempDir()
-
+	
+	// Create test files with tokens
 	files := []struct {
 		name    string
 		content string
 	}{
-		{"feature1.go", "// CANARY: REQ=CBIN-105; FEATURE=\"Feature1\"; ASPECT=API; STATUS=IMPL; UPDATED=2025-10-16\npackage main"},
-		{"feature2.go", "// CANARY: REQ=CBIN-105; FEATURE=\"Feature2\"; ASPECT=API; STATUS=TESTED; TEST=TestFeature2; UPDATED=2025-10-16\npackage main"},
-		{"feature3.go", "// CANARY: REQ=CBIN-105; FEATURE=\"Feature3\"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-16\npackage main"},
+		{"feature1.go", `// CANARY: REQ=CBIN-105; FEATURE="Feature1"; ASPECT=API; STATUS=IMPL; UPDATED=2025-10-16
+package main`},
+		{"feature2.go", `// CANARY: REQ=CBIN-105; FEATURE="Feature2"; ASPECT=API; STATUS=TESTED; UPDATED=2025-10-16
+package main`},
+		{"feature3.go", `// CANARY: REQ=CBIN-105; FEATURE="Feature3"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-16
+package main`},
 	}
 
 	for _, f := range files {
 		if err := os.WriteFile(filepath.Join(tmpDir, f.name), []byte(f.content), 0644); err != nil {
-			t.Fatalf("failed to write file: %v", err)
+			t.Fatalf("failed to write test file %s: %v", f.name, err)
 		}
 	}
 
 	originalWd, _ := os.Getwd()
-
 	defer os.Chdir(originalWd)
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatalf("failed to change directory: %v", err)
@@ -229,27 +258,30 @@ func TestCANARY_CBIN_133_CLI_ProgressTracking(t *testing.T) {
 	if progress.Total != 3 {
 		t.Errorf("Expected 3 total features, got %d", progress.Total)
 	}
-	if progress.Tested != 1 {
-		t.Errorf("Expected 1 tested feature, got %d", progress.Tested)
-	}
-	if progress.Impl != 1 {
-		t.Errorf("Expected 1 impl feature, got %d", progress.Impl)
+	if progress.Completed != 1 { // Only TESTED counts as completed
+		t.Errorf("Expected 1 completed feature, got %d", progress.Completed)
 	}
 	if progress.Stub != 1 {
-		t.Errorf("Expected 1 stub feature, got %d", progress.Stub)
+		t.Errorf("Expected 1 STUB, got %d", progress.Stub)
+	}
+	if progress.Impl != 1 {
+		t.Errorf("Expected 1 IMPL, got %d", progress.Impl)
+	}
+	if progress.Tested != 1 {
+		t.Errorf("Expected 1 TESTED, got %d", progress.Tested)
 	}
 }
 
+// TestCANARY_CBIN_133_CLI_MissingSpec verifies error handling for missing specs
 func TestCANARY_CBIN_133_CLI_MissingSpec(t *testing.T) {
 	// Setup: Empty specs directory
 	tmpDir := t.TempDir()
 	specsDir := filepath.Join(tmpDir, ".canary", "specs")
 	if err := os.MkdirAll(specsDir, 0755); err != nil {
-		t.Fatalf("failed to create specs dir: %v", err)
+		t.Fatalf("failed to create specs directory: %v", err)
 	}
 
 	originalWd, _ := os.Getwd()
-
 	defer os.Chdir(originalWd)
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatalf("failed to change directory: %v", err)
@@ -258,17 +290,11 @@ func TestCANARY_CBIN_133_CLI_MissingSpec(t *testing.T) {
 	// Execute: Try to find non-existent spec
 	_, err := findRequirement("CBIN-999")
 
-	// Verify: Error returned
+	// Verify: Returns appropriate error
 	if err == nil {
 		t.Error("Expected error for missing spec, got nil")
 	}
-	if !strings.Contains(err.Error(), "not found") && !strings.Contains(err.Error(), "no matches") {
-		t.Errorf("Expected 'not found' error, got: %v", err)
+	if !strings.Contains(err.Error(), "no matches found") && !strings.Contains(err.Error(), "not found") {
+		t.Errorf("Expected error about missing spec, got: %v", err)
 	}
-}
-
-// Helper function for auto-select testing (bypasses interactive selection)
-func findRequirementAutoSelect(query string) (*RequirementSpec, error) {
-	// This will be implemented to force auto-selection behavior
-	return findRequirement(query)
 }

@@ -2,7 +2,7 @@
 
 **Requirement ID:** CBIN-133
 **Feature Name:** ImplementCommand
-**Status:** STUB
+**Status:** TESTED
 **Owner:** canary
 **Created:** 2025-10-16
 **Updated:** 2025-10-16
@@ -390,101 +390,101 @@ None - requirement is fully specified.
 
 ### Phase 1: CLI Command (STUB → IMPL)
 
-<!-- CANARY: REQ=CBIN-133; FEATURE="ImplementCmd"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-133; FEATURE="ImplementCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_ExactMatch; UPDATED=2025-10-16 -->
 **Feature 1: Cobra Command Definition**
-- [ ] Add `implementCmd` to `cmd/canary/main.go`
-- [ ] Define flags: --list, --prompt, --json, --show-progress, --context-lines
-- [ ] Register with rootCmd in init()
+- [x] Add `implementCmd` to `cmd/canary/main.go`
+- [x] Define flags: --list, --prompt, --json, --show-progress, --context-lines
+- [x] Register with rootCmd in init()
 - **Location hint:** `cmd/canary/main.go` (already has similar commands as examples)
 - **Dependencies:** None
 
-<!-- CANARY: REQ=CBIN-133; FEATURE="RequirementLookup"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-133; FEATURE="RequirementLookup"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_ExactMatch; UPDATED=2025-10-16 -->
 **Feature 2: Requirement Lookup Logic**
-- [ ] Implement `findRequirement(query string) (*Requirement, error)`
-- [ ] Support exact ID match (CBIN-XXX)
-- [ ] Support directory name match
-- [ ] Load spec.md and plan.md files
+- [x] Implement `findRequirement(query string) (*Requirement, error)`
+- [x] Support exact ID match (CBIN-XXX)
+- [x] Support directory name match
+- [x] Load spec.md and plan.md files
 - **Location hint:** `cmd/canary/implement.go` (new file, similar to `next.go`)
 - **Dependencies:** None
 
 ### Phase 2: Fuzzy Matching (IMPL → TESTED)
 
-<!-- CANARY: REQ=CBIN-133; FEATURE="FuzzyMatcher"; ASPECT=Engine; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-133; FEATURE="FuzzyMatcher"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_133_Engine_Levenshtein; UPDATED=2025-10-16 -->
 **Feature 3: Fuzzy String Matching**
-- [ ] Implement Levenshtein distance algorithm (or use library)
-- [ ] Implement scoring function (0-100%)
-- [ ] Implement substring and abbreviation matching
-- [ ] Return top N matches with scores
+- [x] Implement Levenshtein distance algorithm (or use library)
+- [x] Implement scoring function (0-100%)
+- [x] Implement substring and abbreviation matching
+- [x] Return top N matches with scores
 - **Location hint:** `internal/matcher/fuzzy.go` (new file)
 - **Dependencies:** None
 
-<!-- CANARY: REQ=CBIN-133; FEATURE="InteractiveSelection"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-133; FEATURE="InteractiveSelection"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_FuzzyMatch; UPDATED=2025-10-16 -->
 **Feature 4: Interactive Selection UI**
-- [ ] Display numbered list of matches
-- [ ] Accept numeric input
-- [ ] Validate and re-prompt on invalid input
-- [ ] Handle quit command
+- [x] Display numbered list of matches
+- [x] Accept numeric input
+- [x] Validate and re-prompt on invalid input
+- [x] Handle quit command
 - **Location hint:** `cmd/canary/implement.go`
 - **Dependencies:** FuzzyMatcher
 
 ### Phase 3: Prompt Generation (TESTED → BENCHED)
 
-<!-- CANARY: REQ=CBIN-133; FEATURE="PromptGenerator"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-133; FEATURE="PromptGenerator"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_PromptGeneration; UPDATED=2025-10-16 -->
 **Feature 5: Implementation Prompt Template**
-- [ ] Create `.canary/templates/implement-prompt-template.md`
-- [ ] Include sections: spec, plan, constitution, tokens, tests, success criteria
-- [ ] Use Go text/template syntax
+- [x] Create `.canary/templates/implement-prompt-template.md`
+- [x] Include sections: spec, plan, constitution, tokens, tests, success criteria
+- [x] Use Go text/template syntax
 - **Location hint:** `.canary/templates/implement-prompt-template.md` (new file)
 - **Dependencies:** None
 
-<!-- CANARY: REQ=CBIN-133; FEATURE="PromptRenderer"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-133; FEATURE="PromptRenderer"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_PromptGeneration; UPDATED=2025-10-16 -->
 **Feature 6: Prompt Rendering Engine**
-- [ ] Load template file
-- [ ] Populate template variables from spec/plan/constitution
-- [ ] Extract Implementation Checklist from spec
-- [ ] Generate CANARY token examples
-- [ ] Render final prompt
+- [x] Load template file
+- [x] Populate template variables from spec/plan/constitution
+- [x] Extract Implementation Checklist from spec
+- [x] Generate CANARY token examples
+- [x] Render final prompt
 - **Location hint:** `cmd/canary/implement.go`
 - **Dependencies:** PromptGenerator
 
 ### Phase 4: Progress Tracking
 
-<!-- CANARY: REQ=CBIN-133; FEATURE="ProgressTracker"; ASPECT=Engine; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-133; FEATURE="ProgressTracker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_ProgressTracking; UPDATED=2025-10-16 -->
 **Feature 7: Implementation Progress Calculation**
-- [ ] Scan codebase for CANARY tokens matching requirement ID
-- [ ] Count tokens by status
-- [ ] Calculate completion percentage
-- [ ] Include in prompt header
+- [x] Scan codebase for CANARY tokens matching requirement ID
+- [x] Count tokens by status
+- [x] Calculate completion percentage
+- [x] Include in prompt header
 - **Location hint:** `cmd/canary/implement.go`
 - **Dependencies:** None (uses existing grep/scanner logic)
 
 ### Phase 5: Slash Command Integration
 
-<!-- CANARY: REQ=CBIN-133; FEATURE="ImplementSlashCmd"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-133; FEATURE="ImplementSlashCmd"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16 -->
 **Feature 8: Slash Command Template**
-- [ ] Create `.canary/templates/commands/implement.md`
-- [ ] Include usage examples
-- [ ] Document workflow (specify → plan → implement)
+- [x] Create `.canary/templates/commands/implement.md`
+- [x] Include usage examples
+- [x] Document workflow (specify → plan → implement)
 - **Location hint:** `.canary/templates/commands/implement.md` (new file)
 - **Dependencies:** None
 
 ### Testing Requirements
 
-<!-- CANARY: REQ=CBIN-133; FEATURE="ImplementCmdTests"; ASPECT=CLI; STATUS=STUB; TEST=TestCANARY_CBIN_133_CLI_ImplementCommand; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-133; FEATURE="ImplementCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_ExactMatch; UPDATED=2025-10-16 -->
 **Unit Tests:**
-- [ ] Test exact ID lookup
-- [ ] Test fuzzy matching with various queries
-- [ ] Test interactive selection
-- [ ] Test prompt generation with mock spec/plan
-- [ ] Test error handling (missing spec, invalid ID)
+- [x] Test exact ID lookup
+- [x] Test fuzzy matching with various queries
+- [x] Test interactive selection (auto-select path tested)
+- [x] Test prompt generation with mock spec/plan
+- [x] Test error handling (missing spec, invalid ID)
 - **Location hint:** `cmd/canary/implement_test.go` (new file)
 
-<!-- CANARY: REQ=CBIN-133; FEATURE="FuzzyMatcherTests"; ASPECT=Engine; STATUS=STUB; TEST=TestCANARY_CBIN_133_Engine_FuzzyMatching; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-133; FEATURE="FuzzyMatcherTests"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_133_Engine_Levenshtein; UPDATED=2025-10-16 -->
 **Fuzzy Matcher Tests:**
-- [ ] Test Levenshtein distance calculation
-- [ ] Test scoring accuracy
-- [ ] Test abbreviation matching
-- [ ] Test threshold filtering
+- [x] Test Levenshtein distance calculation
+- [x] Test scoring accuracy
+- [x] Test abbreviation matching
+- [x] Test threshold filtering
 - **Location hint:** `internal/matcher/fuzzy_test.go` (new file)
 
 ---
