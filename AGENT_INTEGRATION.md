@@ -129,6 +129,75 @@ canary plan CBIN-001 "Go standard library with golang-jwt/jwt for tokens"
      - **Phase 3**: Benchmarking (performance-critical features)
 3. **Execute Phase 1 BEFORE Phase 2** (Article IV)
 
+### Find Implementation Locations
+
+**Command:** `canary implement <CBIN-XXX> [flags]`
+
+**Purpose:** Show all implementation points for a requirement with exact file locations
+
+**Flags:**
+- `--status`: Filter by status (STUB, IMPL, TESTED, BENCHED)
+- `--aspect`: Filter by aspect (API, CLI, Engine, etc.)
+- `--feature`: Filter by feature name (partial match)
+- `--context`: Show code context around each token
+- `--context-lines int`: Number of context lines (default 3)
+
+**Agent usage:**
+```bash
+# See all implementation points
+canary implement CBIN-001
+
+# Output:
+# Implementation points for CBIN-001:
+#
+# 1. CoreFeature1 (API, STUB)
+#    Location: .canary/specs/CBIN-001-User-authentication/spec.md:175
+#
+# 2. JWTValidation (API, IMPL)
+#    Location: src/auth.go:45
+#    Test: TestJWTValidation
+#
+# Summary:
+#   STUB: 1
+#   IMPL: 1
+#   Total: 2 implementation points
+#
+# Progress: 50% (1/2)
+```
+
+**With context (for precise navigation):**
+```bash
+canary implement CBIN-001 --context --context-lines 2
+
+# Shows surrounding code:
+#    Context:
+#       44: func ValidateJWT(token string) (*Claims, error) {
+#    >> 45: // CANARY: REQ=CBIN-001; FEATURE="JWTValidation"; ASPECT=API; STATUS=IMPL
+#       46:     claims := &Claims{}
+```
+
+**Find remaining work:**
+```bash
+# Show only unimplemented features
+canary implement CBIN-001 --status STUB
+
+# Shows:
+# 1. CoreFeature1 (API, STUB)
+#    Location: .canary/specs/CBIN-001-User-authentication/spec.md:175
+#
+# Summary:
+#   STUB: 1
+#   Total: 1 implementation points
+#
+# Progress: 0% (0/1)
+```
+
+**Key benefits for agents:**
+1. **Reduces context** - Get exact file:line locations instead of searching
+2. **Shows progress** - See what's done vs. remaining
+3. **Filters precisely** - Find only what you need (STUB, specific aspect, etc.)
+4. **Provides snippets** - `--context` gives code without reading whole files
+
 ### Generate CANARY Token
 
 **Command:** `canary create <req-id> <feature-name> [flags]`
@@ -209,23 +278,37 @@ canary constitution
 # 3. Create requirement
 canary specify "Add health check endpoint"
 # Creates: CBIN-001
+# Spec includes Implementation Checklist with CANARY tokens for each sub-feature
 
 # 4. Edit spec (agent fills in details)
 # Edit .canary/specs/CBIN-001-Add-health-check-endpoint/spec.md
 # Fill in user stories, requirements, success criteria
+# Update Implementation Checklist with specific features
 
 # 5. Create plan
 canary plan CBIN-001 "Go 1.21 net/http"
 # Edit .canary/specs/CBIN-001-Add-health-check-endpoint/plan.md
 # Fill in tech rationale, phases, test strategy
 
-# 6. Implement - PHASE 1: TESTS FIRST (Article IV)
+# 6. Find what needs implementation
+canary implement CBIN-001 --status STUB
+# Output shows:
+# 1. HealthCheckEndpoint (API, STUB)
+#    Location: .canary/specs/CBIN-001-Add-health-check-endpoint/spec.md:175
+# 2. HealthCheckTests (API, STUB)
+#    Location: .canary/specs/CBIN-001-Add-health-check-endpoint/spec.md:201
+
+# 7. Implement - PHASE 1: TESTS FIRST (Article IV)
+# Find exact location for tests
+canary implement CBIN-001 --feature HealthCheckTests --context
+
 # Write test:
 cat > health_test.go <<'EOF'
 package main
 
 import "testing"
 
+// CANARY: REQ=CBIN-001; FEATURE="HealthCheckTests"; ASPECT=API; STATUS=IMPL; TEST=TestHealthCheck; UPDATED=2025-10-16
 // Test MUST exist before implementation
 func TestHealthCheck(t *testing.T) {
     // This will FAIL until implementation exists (Red phase)
@@ -239,11 +322,14 @@ EOF
 # Run test - confirm it FAILS
 go test ./...
 
-# 7. Implement - PHASE 2: MAKE TESTS PASS (Green phase)
+# 8. Implement - PHASE 2: MAKE TESTS PASS (Green phase)
+# Find exact location for implementation
+canary implement CBIN-001 --feature HealthCheckEndpoint --context
+
 cat > main.go <<'EOF'
 package main
 
-// CANARY: REQ=CBIN-001; FEATURE="HealthCheck"; ASPECT=API; STATUS=IMPL; TEST=TestHealthCheck; OWNER=backend; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-001; FEATURE="HealthCheckEndpoint"; ASPECT=API; STATUS=IMPL; TEST=TestHealthCheck; OWNER=backend; UPDATED=2025-10-16
 func HealthCheck() string {
     return "OK"
 }
@@ -252,13 +338,17 @@ EOF
 # Run test - confirm it PASSES
 go test ./...
 
-# 8. Scan and verify
+# 9. Check progress
+canary implement CBIN-001
+# Shows: Progress: 100% (2/2)
+
+# 10. Scan and verify
 canary scan --root . --out status.json
 
-# 9. Update GAP_ANALYSIS.md
+# 11. Update GAP_ANALYSIS.md
 echo "✅ CBIN-001 - Health check endpoint fully tested" >> GAP_ANALYSIS.md
 
-# 10. Verify claims
+# 12. Verify claims
 canary scan --root . --verify GAP_ANALYSIS.md --strict
 ```
 

@@ -166,12 +166,80 @@ So that [benefit/value].
 
 ---
 
-## CANARY Token
+## Implementation Checklist
 
-Once this spec is approved, add this token to your code:
+Break down this requirement into specific implementation points. Each point gets its own CANARY token to help agents locate where to implement changes.
 
+### Core Features
+
+<!-- CANARY: REQ=CBIN-XXX; FEATURE="CoreFeature1"; ASPECT=API; STATUS=STUB; UPDATED=YYYY-MM-DD -->
+**Feature 1: [Component Name]**
+- [ ] Implement [specific functionality]
+- **Location hint:** [e.g., "auth.go", "handlers/", "services/auth/"]
+- **Dependencies:** [other features this depends on]
+
+<!-- CANARY: REQ=CBIN-XXX; FEATURE="CoreFeature2"; ASPECT=API; STATUS=STUB; UPDATED=YYYY-MM-DD -->
+**Feature 2: [Component Name]**
+- [ ] Implement [specific functionality]
+- **Location hint:** [e.g., "validation.go", "middleware/"]
+- **Dependencies:** [other features this depends on]
+
+### Data Layer (if applicable)
+
+<!-- CANARY: REQ=CBIN-XXX; FEATURE="DataModel"; ASPECT=Storage; STATUS=STUB; UPDATED=YYYY-MM-DD -->
+**Data Model:**
+- [ ] Define schema/structure
+- **Location hint:** [e.g., "models/", "schema/"]
+
+<!-- CANARY: REQ=CBIN-XXX; FEATURE="DataAccess"; ASPECT=Storage; STATUS=STUB; UPDATED=YYYY-MM-DD -->
+**Data Access:**
+- [ ] Implement CRUD operations
+- **Location hint:** [e.g., "repository/", "dao/"]
+
+### Testing Requirements
+
+<!-- CANARY: REQ=CBIN-XXX; FEATURE="UnitTests"; ASPECT=API; STATUS=STUB; TEST=TestCBINXXX; UPDATED=YYYY-MM-DD -->
+**Unit Tests:**
+- [ ] Test core functionality
+- **Location hint:** [e.g., "*_test.go files"]
+
+<!-- CANARY: REQ=CBIN-XXX; FEATURE="IntegrationTests"; ASPECT=API; STATUS=STUB; TEST=TestCBINXXXIntegration; UPDATED=YYYY-MM-DD -->
+**Integration Tests:**
+- [ ] Test end-to-end flows
+- **Location hint:** [e.g., "integration/", "*_integration_test.go"]
+
+### Documentation
+
+<!-- CANARY: REQ=CBIN-XXX; FEATURE="APIDocs"; ASPECT=Docs; STATUS=STUB; UPDATED=YYYY-MM-DD -->
+**API Documentation:**
+- [ ] Document public interfaces
+- **Location hint:** [e.g., "docs/api/", "README.md"]
+
+---
+
+**Agent Instructions:**
+
+After implementing each feature:
+1. Update the CANARY token in the spec from `STATUS=STUB` to `STATUS=IMPL`
+2. Add the same token to your source code at the implementation location
+3. Add `TEST=TestName` when tests are written
+4. Run `canary implement CBIN-XXX` to see implementation progress
+
+---
+
+## CANARY Tokens Reference
+
+**Main requirement token** (add to primary implementation file):
 ```
-// CANARY: REQ=CBIN-XXX; FEATURE="FeatureName"; ASPECT=API; STATUS=STUB; UPDATED=YYYY-MM-DD
+// CANARY: REQ=CBIN-XXX; FEATURE="FeatureName"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD
 ```
 
-Place the token in the appropriate code file based on ASPECT.
+**Sub-feature tokens** (use the specific feature names from Implementation Checklist):
+```
+// CANARY: REQ=CBIN-XXX; FEATURE="CoreFeature1"; ASPECT=API; STATUS=IMPL; TEST=TestCoreFeature1; UPDATED=YYYY-MM-DD
+```
+
+**Use `canary implement CBIN-XXX` to find:**
+- Which features are implemented vs. still TODO
+- Exact file locations and line numbers
+- Context around each implementation point

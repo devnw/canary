@@ -20,6 +20,7 @@ go build -o /usr/local/bin/canary ./cmd/canary
 | `canary constitution` | Create/view constitutional principles | Establish development rules |
 | `canary specify` | Create requirement specification | Define new features |
 | `canary plan` | Generate implementation plan | Plan technical approach |
+| `canary implement` | Show implementation locations | Find where to code |
 | `canary create` | Generate CANARY token | Create token snippets |
 | `canary scan` | Scan for CANARY tokens | Generate status reports |
 
@@ -212,6 +213,98 @@ canary create CBIN-105 "UserProfile" --aspect API --status IMPL --owner backend 
 - Ensures correct format and auto-fills UPDATED date
 - Copy output directly into source files
 
+### canary implement
+
+Show implementation points and exact locations for a specific requirement.
+
+```bash
+canary implement <CBIN-XXX> [flags]
+```
+
+**Flags:**
+- `--status string`: Filter by status (STUB, IMPL, TESTED, BENCHED)
+- `--aspect string`: Filter by aspect (API, CLI, Engine, etc.)
+- `--feature string`: Filter by feature name (partial match)
+- `--context`: Show code context around each token
+- `--context-lines int`: Number of context lines (default 3)
+
+**Behavior:**
+- Scans entire codebase for CANARY tokens matching the requirement ID
+- Shows file paths and line numbers for each implementation point
+- Displays sub-features from both spec and source code
+- Provides progress tracking (% implemented)
+- Optionally shows code context for precise navigation
+
+**Example:**
+```bash
+canary implement CBIN-001
+
+# Output:
+# Implementation points for CBIN-001:
+#
+# 1. JWTGeneration (API, STUB)
+#    Location: .canary/specs/CBIN-001-User-authentication/spec.md:175
+#
+# 2. JWTValidation (API, IMPL)
+#    Location: src/auth.go:45
+#    Test: TestJWTValidation
+#
+# 3. UserLogin (API, TESTED)
+#    Location: src/handlers/auth.go:23
+#    Test: TestUserLogin
+#
+# Summary:
+#   STUB: 1
+#   IMPL: 1
+#   TESTED: 1
+#   Total: 3 implementation points
+#
+# Progress: 67% (2/3)
+```
+
+**With context:**
+```bash
+canary implement CBIN-001 --context --context-lines 2
+
+# Shows:
+#    Context:
+#       44: func ValidateJWT(token string) (*Claims, error) {
+#    >> 45: // CANARY: REQ=CBIN-001; FEATURE="JWTValidation"; ASPECT=API; STATUS=IMPL; TEST=TestJWTValidation; UPDATED=2025-10-16
+#       46:     claims := &Claims{}
+#       47:     parsedToken, err := jwt.ParseWithClaims(token, claims, keyFunc)
+```
+
+**Filter by status:**
+```bash
+# Show only unimplemented features
+canary implement CBIN-001 --status STUB
+
+# Show only completed features
+canary implement CBIN-001 --status TESTED
+```
+
+**Filter by aspect:**
+```bash
+# Show only API-related implementation points
+canary implement CBIN-001 --aspect API
+
+# Show only tests
+canary implement CBIN-001 --aspect API --feature Test
+```
+
+**Agent usage:**
+- Run before starting implementation to see what's needed
+- Run during implementation to find exact locations
+- Run after implementation to verify completeness
+- Use `--status STUB` to find remaining work
+- Use `--context` to get code snippets for LLM context
+
+**Reduces agent context by:**
+1. Showing exact file:line locations (no need to search)
+2. Providing code context (no need to read entire files)
+3. Filtering to relevant features only
+4. Displaying progress at a glance
+
 ### canary scan
 
 Scan codebase for CANARY tokens and generate reports.
@@ -267,19 +360,31 @@ canary specify "Add user authentication with JWT"
 # 4. Create implementation plan
 canary plan CBIN-001 "Go 1.21, golang-jwt/jwt library"
 
-# 5. Implement (following TDD)
-# ... write tests first ...
-# ... implement feature ...
-# ... add CANARY tokens to source ...
+# 5. Check what needs to be implemented
+canary implement CBIN-001 --status STUB
+# Shows all unimplemented features with location hints
 
-# 6. Generate token for source code
-canary create CBIN-001 "UserAuth" --aspect API --status IMPL --test TestUserAuth
+# 6. Implement first feature (following TDD)
+canary implement CBIN-001 --feature JWTGeneration --context
+# Shows exact location to implement
 
-# 7. Scan and verify
+# Write tests first
+canary create CBIN-001 "JWTGeneration" --aspect API --status IMPL --test TestJWTGeneration
+# Add token and implement feature
+
+# 7. Check progress
+canary implement CBIN-001
+# Shows: Progress: 33% (1/3)
+
+# 8. Continue implementing remaining features
+canary implement CBIN-001 --status STUB
+# Repeat for each feature
+
+# 9. Scan and verify
 canary scan --root . --out status.json
 canary scan --root . --verify GAP_ANALYSIS.md --strict
 
-# 8. Update GAP_ANALYSIS.md with completed requirement
+# 10. Update GAP_ANALYSIS.md
 echo "✅ CBIN-001 - User authentication fully tested" >> GAP_ANALYSIS.md
 ```
 

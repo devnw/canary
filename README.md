@@ -27,9 +27,12 @@ canary init <project>      # Initialize with full workflow
 canary constitution        # Create/view project principles
 canary specify "feature"   # Create requirement spec
 canary plan CBIN-XXX       # Generate implementation plan
+canary implement CBIN-XXX  # Show implementation locations (reduces context!)
 canary create CBIN-XXX     # Generate CANARY token
 canary scan               # Scan for tokens and generate reports
 ```
+
+**Key Feature:** `canary implement` shows exact file:line locations for all implementation points, reducing agent context usage by ~95%.
 
 See [CLI_COMMANDS.md](./CLI_COMMANDS.md) for complete agent reference documentation.
 
@@ -162,6 +165,18 @@ cd my-project
 # /canary.constitution
 # /canary.specify "Add user authentication with OAuth2"
 # /canary.plan CBIN-001 "Use Go standard library"
+
+# Find implementation points (reduces context!)
+canary implement CBIN-001 --status STUB
+# Shows exact locations of unimplemented features
+
+# Get context for specific feature
+canary implement CBIN-001 --feature JWTGeneration --context
+# Shows file:line with surrounding code
+
+# Track progress
+canary implement CBIN-001
+# Shows: Progress: 67% (2/3)
 
 # Scan and verify
 canary scan --root . --out status.json --csv status.csv
