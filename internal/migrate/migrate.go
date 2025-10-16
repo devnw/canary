@@ -128,6 +128,8 @@ func PlanMigration(rootDir string, systemType SystemType, dryRun bool) (*Migrati
 		return planSpecKitMigration(rootDir, plan)
 	case SystemTypeLegacyCanary:
 		return planLegacyCanaryMigration(rootDir, plan)
+	case SystemTypeMigrated, SystemTypeUnknown:
+		return nil, fmt.Errorf("cannot migrate from type: %s", systemType)
 	default:
 		return nil, fmt.Errorf("unsupported system type: %s", systemType)
 	}
@@ -334,12 +336,14 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
+
 	defer sourceFile.Close()
 
 	destFile, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
+
 	defer destFile.Close()
 
 	if _, err := io.Copy(destFile, sourceFile); err != nil {

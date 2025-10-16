@@ -59,6 +59,7 @@ func main() {
 		if err := CheckStaleness(rep, 30*24*time.Hour); err != nil {
 			log.Printf("CANARY_STALE %v", err)
 			// still write outputs for inspection
+			//nolint:errcheck // Error doesn't matter here, we're exiting anyway
 			writeOutputs(rep, out, csv)
 			os.Exit(2)
 		}
@@ -69,11 +70,13 @@ func main() {
 		claims, err := ParseGAPClaims(verify)
 		if err != nil {
 			log.Printf("ERROR verify-parse: %v", err)
+			//nolint:errcheck // Error doesn't matter here, we're exiting anyway
 			writeOutputs(rep, out, csv)
 			os.Exit(3)
 		}
 		if err := VerifyClaims(rep, claims); err != nil {
 			log.Printf("CANARY_VERIFY_FAIL %v", err)
+			//nolint:errcheck // Error doesn't matter here, we're exiting anyway
 			writeOutputs(rep, out, csv)
 			os.Exit(2)
 		}
@@ -91,6 +94,7 @@ func writeOutputs(rep report, out, csv string) error {
 	if err != nil {
 		return err
 	}
+
 	defer jf.Close()
 	enc := json.NewEncoder(jf)
 	enc.SetEscapeHTML(false)

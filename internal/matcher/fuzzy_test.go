@@ -88,7 +88,7 @@ func TestCANARY_CBIN_133_Engine_FindBestMatches(t *testing.T) {
 		{"exact ID match", "CBIN-105", 5, "CBIN-105", 1},
 		{"fuzzy feature match", "user auth", 5, "CBIN-105", 1},
 		{"partial match", "auth", 5, "CBIN-110", 2}, // Matches OAuthIntegration and UserAuthentication
-		{"list all", "", 5, "", 4},                   // Empty query returns all
+		{"list all", "", 5, "", 4},                  // Empty query returns all
 	}
 
 	for _, tc := range tests {

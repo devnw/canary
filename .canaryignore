@@ -11,10 +11,7 @@
 # - Use ! to negate patterns (whitelist)
 # - Patterns are relative to the root directory
 
-# Template and embedded files (contain placeholder CANARY tokens)
-base/
-embedded/
-claude/
+# Template and AI agent configuration directories
 .canary/
 .claude/
 .cursor/
@@ -28,22 +25,9 @@ claude/
 .codebuddy/
 .amazonq/
 
-# Documentation with example tokens
+# Documentation directories (often contain example tokens)
 docs/
 specs/
-prompts/
-
-# Summary and completion documents (contain example snippets)
-*_COMPLETE.md
-*_SUMMARY*.md
-IMPLEMENTATION_*.md
-SLICE_*.md
-PHASE_*.md
-FINAL_*.md
-CHECKLIST.md
-AGENT_INTEGRATION.md
-CLI_COMMANDS.md
-README_CANARY.md
 
 # Build artifacts
 bin/
@@ -57,14 +41,14 @@ build/
 # Dependencies and caches
 node_modules/
 vendor/
-.zig-cache/
-zig-out/
+__pycache__/
+*.pyc
+.cache/
 
 # Test data (may contain fixture tokens)
 testdata/
 fixtures/
 test-fixtures/
-internal/
 *_test.go
 
 # Version control
@@ -77,3 +61,10 @@ status.csv
 *.db
 *.sqlite
 *.sqlite3
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

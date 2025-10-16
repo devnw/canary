@@ -25,6 +25,7 @@ func ParseGAPClaims(path string) (map[string]claim, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	defer f.Close()
 	claims := map[string]claim{}
 	sc := bufio.NewScanner(f)

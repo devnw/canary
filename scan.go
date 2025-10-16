@@ -52,6 +52,7 @@ func Scan(root string) (report, error) {
 		if err != nil {
 			return nil // skip unreadable files
 		}
+
 		defer f.Close()
 		sc := bufio.NewScanner(f)
 		// Set max scanner buffer to 1MB for large lines
@@ -267,6 +268,7 @@ func WriteCSV(rep report, path string) error {
 	if err != nil {
 		return err
 	}
+
 	defer f.Close()
 	w := csv.NewWriter(f)
 	defer w.Flush()

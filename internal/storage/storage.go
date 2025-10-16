@@ -71,6 +71,7 @@ func Open(dbPath string) (*DB, error) {
 
 	// Enable foreign keys
 	if _, err := conn.Exec("PRAGMA foreign_keys = ON"); err != nil {
+
 		conn.Close()
 		return nil, fmt.Errorf("enable foreign keys: %w", err)
 	}
@@ -147,6 +148,7 @@ func (db *DB) GetTokensByReqID(reqID string) ([]*Token, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	return scanTokens(rows)
@@ -203,6 +205,7 @@ func (db *DB) ListTokens(filters map[string]string, orderBy string, limit int) (
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	return scanTokens(rows)
@@ -226,6 +229,7 @@ func (db *DB) SearchTokens(keywords string) ([]*Token, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	return scanTokens(rows)
@@ -288,6 +292,7 @@ func (db *DB) GetCheckpoints() ([]*Checkpoint, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	var checkpoints []*Checkpoint
