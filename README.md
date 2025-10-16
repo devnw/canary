@@ -31,6 +31,11 @@ canary implement CBIN-XXX  # Show implementation locations (reduces context!)
 canary create CBIN-XXX     # Generate CANARY token
 canary scan               # Scan for tokens and generate reports
 
+# Migration from spec-kit or legacy canary
+canary detect             # Detect existing system type
+canary migrate-from spec-kit --dry-run  # Preview migration
+canary migrate-from spec-kit            # Execute migration
+
 # Advanced: Structured Storage & Priority Management
 canary migrate all        # Run database migrations
 canary index              # Build SQLite database from tokens
@@ -46,6 +51,36 @@ canary rollback 1         # Roll back last migration
 - `canary index` + `list/search` enable priority-driven development with SQLite storage
 
 See [CLI_COMMANDS.md](./CLI_COMMANDS.md) for complete agent reference documentation.
+
+## Migrating from spec-kit or Legacy CANARY
+
+Already have a spec-kit or legacy CANARY project? Migrate it easily:
+
+```bash
+# 1. Detect what system you have
+canary detect
+# Detects: spec-kit, legacy-canary, migrated, or unknown
+
+# 2. Preview migration (no changes)
+canary migrate-from spec-kit --dry-run
+
+# 3. Execute migration
+canary migrate-from spec-kit
+# Creates .canary/ structure with templates and slash commands
+
+# 4. Start using the unified system
+canary index
+canary list
+```
+
+**Features:**
+- Auto-detects spec-kit, legacy CANARY, or already-migrated systems
+- Prevents double-migration (detects if already using unified system)
+- Creates files from embedded templates (constitution, slash commands)
+- Preserves existing files (status.json, GAP_ANALYSIS.md)
+- Dry-run mode for safe preview
+
+See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) for complete migration instructions.
 
 ### Initialize a New Project
 

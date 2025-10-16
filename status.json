@@ -1,9 +1,9 @@
 {
-  "generated_at": "2025-10-16T07:00:00Z",
+  "generated_at": "2025-10-16T07:10:00Z",
   "summary": {
     "by_status": {
       "BENCHED": 4,
-      "IMPL": 28,
+      "IMPL": 30,
       "MISSING": 0,
       "REMOVED": 0,
       "STUB": 3,
@@ -11,13 +11,13 @@
     },
     "by_aspect": {
       "API": 9,
-      "CLI": 18,
+      "CLI": 20,
       "Docs": 4,
       "Engine": 2,
       "Storage": 5
     },
-    "total_tokens": 38,
-    "unique_requirements": 30
+    "total_tokens": 40,
+    "unique_requirements": 31
   },
-  "notes": "Phase 3 complete + Auto-Migration: Automatic database version detection and migration (CBIN-130). All DB commands auto-upgrade schema on startup. User-friendly progress messages. No manual migration needed. Pure Go SQLite (modernc.org/sqlite). Binary: 11MB."
+  "notes": "Phase 3 complete + Migration Tools: Added system detection and migration from spec-kit/legacy (CBIN-131). Commands: detect, migrate-from. Supports dry-run, auto-detection, validation, already-migrated detection. Creates files from embedded templates. Tested with real legacy system. Complete migration guide included. Binary: 11MB."
 }
