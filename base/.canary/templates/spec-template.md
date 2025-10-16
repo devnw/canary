@@ -1,7 +1,8 @@
-# CANARY: REQ=CBIN-115; FEATURE="SpecTemplate"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+# CANARY: REQ=CBIN-Docs-115; FEATURE="SpecTemplate"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 # Feature Specification: [FEATURE NAME]
 
-**Requirement ID:** CBIN-XXX
+**Requirement ID:** CBIN-XXX (will be generated as CBIN-<ASPECT>-XXX)
+**Aspect:** [API|CLI|Engine|Storage|Security|Docs|Wire|Planner|Decode|Encode|RoundTrip|Bench|FrontEnd|Dist]
 **Status:** STUB
 **Created:** YYYY-MM-DD
 **Last Updated:** YYYY-MM-DD
