@@ -506,7 +506,7 @@ After implementing each feature:
 
 **Main requirement token** (add to primary implementation file):
 ```go
-// CANARY: REQ=CBIN-136; FEATURE="DocumentationTracking"; ASPECT=Docs; STATUS=IMPL; DOC=docs/features/documentation-tracking.md; DOC_HASH=abc123...; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-136; FEATURE="DocumentationTracking"; ASPECT=Docs; STATUS=IMPL; DOC=user:docs/user/documentation-tracking-guide.md; DOC_HASH=1e32f44252c80284; UPDATED=2025-10-16
 ```
 
 **Sub-feature tokens** (use the specific feature names from Implementation Checklist):

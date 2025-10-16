@@ -1,60 +1,139 @@
-# User Documentation
+# {{FEATURE}} User Guide
 
 **Requirement:** {{REQ_ID}}
-**Type:** User Documentation
-**Created:** {{DATE}}
+**Status:** Draft
+**Last Updated:** {{DATE}}
 
 ## Overview
 
-Brief overview of this feature from the user's perspective.
+Brief description of what this feature does and why users would want to use it.
 
 ## Getting Started
 
 ### Prerequisites
 
-List what users need before using this feature.
+List any requirements or setup needed before using this feature:
+- Requirement 1
+- Requirement 2
 
-### Quick Start
+### Installation / Setup
 
-Provide a simple example to get users started quickly.
+Step-by-step instructions for getting started:
 
-```
-# Example command or code snippet
-```
+1. First step
+2. Second step
+3. Third step
 
-## Features
+## Usage
 
-### Feature 1
+### Basic Usage
 
-Description of feature 1.
+Show the most common use case:
 
-### Feature 2
-
-Description of feature 2.
-
-## Usage Examples
-
-### Example 1: Basic Usage
-
-```
-# Code example
+```bash
+# Example command or code
 ```
 
-### Example 2: Advanced Usage
+Expected output:
+```
+Output example
+```
 
+### Common Tasks
+
+#### Task 1: [Task Name]
+
+Description of the task.
+
+```bash
+# Example
 ```
-# Code example
+
+#### Task 2: [Task Name]
+
+Description of the task.
+
+```bash
+# Example
 ```
+
+## Examples
+
+### Example 1: [Scenario Name]
+
+Real-world example showing:
+
+```bash
+# Complete example with context
+```
+
+**Explanation:**
+- What this does
+- Why it's useful
+
+### Example 2: [Another Scenario]
+
+```bash
+# Another example
+```
+
+## Configuration
+
+If applicable, describe configuration options:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| option1 | string | "default" | What it does |
+| option2 | boolean | false | What it controls |
+
+## Best Practices
+
+- Best practice 1
+- Best practice 2
+- Best practice 3
 
 ## Troubleshooting
 
-### Common Issues
+### Problem: [Common Issue]
 
-**Issue:** Description
-**Solution:** How to resolve
+**Symptoms:**
+- What the user sees
+
+**Solution:**
+1. Step to fix
+2. How to verify
+
+### Problem: [Another Issue]
+
+**Symptoms:**
+- Description
+
+**Solution:**
+- Fix steps
+
+## FAQ
+
+**Q: Common question?**
+
+A: Answer to the question.
+
+**Q: Another common question?**
+
+A: Detailed answer.
 
 ## Related Documentation
 
+- Link to related feature docs
 - Link to API documentation
-- Link to technical documentation
-- Link to related features
+- Link to technical design
+
+## Support
+
+If you encounter issues:
+1. Check the troubleshooting section above
+2. Review related documentation
+3. Report issues at [link to issue tracker]
+
+---
+
+*Generated from user-template.md*

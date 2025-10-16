@@ -1115,6 +1115,18 @@ The database is stored at .canary/canary.db by default.`,
 			}
 
 			// Build token struct
+			docPath := extractField(content, "DOC")
+			docType := extractField(content, "DOC_TYPE")
+
+			// Auto-infer DOC_TYPE from type prefix if not explicitly set
+			if docPath != "" && docType == "" {
+				// Extract type from first doc path (e.g., "user:docs/file.md" -> "user")
+				firstPath := strings.Split(docPath, ",")[0]
+				if strings.Contains(firstPath, ":") {
+					docType = strings.Split(firstPath, ":")[0]
+				}
+			}
+
 			token := &storage.Token{
 				ReqID:       reqID,
 				Feature:     feature,
@@ -1137,6 +1149,9 @@ The database is stored at .canary/canary.db by default.`,
 				DependsOn:   extractField(content, "DEPENDS_ON"),
 				Blocks:      extractField(content, "BLOCKS"),
 				RelatedTo:   extractField(content, "RELATED_TO"),
+				DocPath:     docPath,
+				DocHash:     extractField(content, "DOC_HASH"),
+				DocType:     docType,
 				RawToken:    content,
 				IndexedAt:   time.Now().UTC().Format(time.RFC3339),
 			}
