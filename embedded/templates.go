@@ -4,4 +4,5 @@ package embedded
 import "embed"
 
 //go:embed all:base/.canary
+//go:embed base/.canaryignore
 var CanaryFS embed.FS

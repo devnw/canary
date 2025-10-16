@@ -112,6 +112,54 @@ canary scan --root . --verify GAP_ANALYSIS.md --strict
 canary scan --root . --update-stale  # Auto-update stale TESTED/BENCHED tokens
 ```
 
+### Filtering Scanned Files
+
+The scanner supports two methods for excluding files from scans:
+
+**1. .canaryignore file (gitignore-style patterns)**
+
+Create a `.canaryignore` file in your project root to exclude template files, documentation, test fixtures, and generated content:
+
+```gitignore
+# Template directories
+base/
+embedded/
+.canary/
+.claude/
+
+# Documentation with example tokens
+docs/
+*_SUMMARY*.md
+IMPLEMENTATION_*.md
+
+# Test data
+testdata/
+*_test.go
+
+# Build artifacts
+dist/
+*.db
+```
+
+The `.canaryignore` file uses standard gitignore syntax:
+- `#` for comments
+- `/` for directory separators
+- `*` for wildcards, `**` for recursive wildcards
+- `!` to negate patterns (whitelist)
+- Patterns are relative to the project root
+
+**2. --skip regex flag**
+
+For one-off exclusions, use the `--skip` flag with a regex pattern:
+
+```bash
+canary scan --root . --skip '(^|/)(.git|node_modules|vendor)(/|$)'
+```
+
+**When to use each:**
+- `.canaryignore`: Permanent project-specific exclusions (templates, docs, test fixtures)
+- `--skip`: Temporary or command-specific exclusions (build artifacts, directories)
+
 ### Exit Codes
 
 - **Exit 0**: OK

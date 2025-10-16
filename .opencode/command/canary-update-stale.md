@@ -109,7 +109,7 @@ Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days 
 
 ### Before Update
 ```go
-// CANARY: REQ=CBIN-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2024-01-01
+// CANARY: REQ=CBIN-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2025-10-16
 ```
 
 ### After Update
