@@ -26,6 +26,7 @@ const (
 	DBSourceName     = "iofs"
 	DBURLProtocol    = "sqlite://"
 	MigrateAll       = "all"
+	LatestVersion    = 1 // Update this when adding new migrations
 )
 
 var ErrDatabaseNotPopulated = errors.New("database not migrated")
@@ -185,4 +186,80 @@ func DatabasePopulated(db *sqlx.DB, targetVersion int) (bool, error) {
 func isInt(s string) bool {
 	_, err := strconv.Atoi(s)
 	return err == nil
+}
+
+// NeedsMigration checks if the database exists and needs migration
+func NeedsMigration(dbPath string) (bool, int, error) {
+	// Check if database file exists
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		return false, 0, nil // Database doesn't exist yet
+	}
+
+	// Open database to check version
+	db, err := sqlx.Open(DBDriver, dbPath)
+	if err != nil {
+		return false, 0, fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	// Check if schema_migrations table exists
+	var tableExists bool
+	err = db.Get(&tableExists, "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='schema_migrations')")
+	if err != nil {
+		return false, 0, fmt.Errorf("failed to check schema_migrations table: %w", err)
+	}
+
+	if !tableExists {
+		return true, 0, nil // Database exists but not migrated
+	}
+
+	// Get current version
+	var currentVersion int
+	err = db.Get(&currentVersion, "SELECT COALESCE(MAX(version), 0) FROM schema_migrations WHERE dirty = 0")
+	if err != nil {
+		return false, 0, fmt.Errorf("failed to get current version: %w", err)
+	}
+
+	// Check if migration needed
+	if currentVersion < LatestVersion {
+		return true, currentVersion, nil
+	}
+
+	return false, currentVersion, nil
+}
+
+// AutoMigrate automatically migrates the database if needed
+func AutoMigrate(dbPath string) error {
+	// Check if database file exists
+	_, err := os.Stat(dbPath)
+	dbExists := err == nil
+
+	if dbExists {
+		needsMigration, currentVersion, err := NeedsMigration(dbPath)
+		if err != nil {
+			return fmt.Errorf("failed to check migration status: %w", err)
+		}
+
+		if !needsMigration {
+			slog.Debug("Database is up to date", "version", currentVersion)
+			return nil
+		}
+
+		slog.Info("Database migration needed", "currentVersion", currentVersion, "targetVersion", LatestVersion)
+		fmt.Printf("🔄 Migrating database from version %d to %d...\n", currentVersion, LatestVersion)
+	} else {
+		slog.Info("Database does not exist, will create with migrations", "path", dbPath)
+		fmt.Printf("🔄 Creating database with schema version %d...\n", LatestVersion)
+	}
+
+	if err := MigrateDB(dbPath, MigrateAll); err != nil {
+		return fmt.Errorf("auto-migration failed: %w", err)
+	}
+
+	if dbExists {
+		fmt.Printf("✅ Database migrated to version %d\n", LatestVersion)
+	} else {
+		fmt.Printf("✅ Database created at version %d\n", LatestVersion)
+	}
+	return nil
 }

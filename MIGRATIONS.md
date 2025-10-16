@@ -140,6 +140,89 @@ canary migrate all
 sqlite3 .canary/canary.db "SELECT version FROM schema_migrations"
 ```
 
+## Automatic Migration
+
+**CANARY automatically detects and runs migrations when needed!**
+
+### How It Works
+
+Before any database command executes, CANARY:
+1. Checks if database file exists
+2. If exists, checks current schema version
+3. Compares to latest version (defined in `storage.LatestVersion`)
+4. Auto-migrates if needed
+5. Shows user-friendly progress messages
+
+### Example Scenarios
+
+**First time using database:**
+```bash
+$ canary index
+🔄 Creating database with schema version 1...
+✅ Database created at version 1
+✅ Indexed 288 CANARY tokens
+```
+
+**Database already up to date:**
+```bash
+$ canary list
+Found 10 tokens:
+...
+# No migration message - already at latest version
+```
+
+**After upgrading canary binary:**
+```bash
+$ canary search "auth"
+🔄 Migrating database from version 1 to 2...
+✅ Database migrated to version 2
+Search results for 'auth' (5 tokens):
+...
+```
+
+### Commands That Auto-Migrate
+
+✅ **Database commands (auto-migrate before running):**
+- `canary index` - Build token database
+- `canary list` - List tokens
+- `canary search` - Search tokens
+- `canary prioritize` - Update priorities
+- `canary checkpoint` - Create snapshots
+
+❌ **Non-database commands (skip migration check):**
+- `canary init` - Initialize project structure
+- `canary create` - Generate token templates
+- `canary implement` - Scan source files
+- `canary scan` - Legacy scanner
+- `canary migrate` - Manual migration management
+- `canary rollback` - Manual rollback
+
+### Implementation Details
+
+**PersistentPreRunE hook:**
+```go
+rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+    // Skip non-database commands
+    if skipCommands[cmd.Name()] {
+        return nil
+    }
+
+    // Auto-migrate if needed
+    return storage.AutoMigrate(dbPath)
+}
+```
+
+**Version detection:**
+- Checks `schema_migrations` table
+- Compares `MAX(version)` to `storage.LatestVersion`
+- Runs migrations if current < latest
+
+**User experience:**
+- Silent when up to date
+- Friendly progress messages when migrating
+- Emoji indicators (🔄 for in-progress, ✅ for complete)
+- No interruption to workflow
+
 ## CLI Commands
 
 ### canary migrate

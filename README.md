@@ -142,24 +142,36 @@ Canary now includes SQLite-based structured storage with proper migrations for a
 
 ### Database Migrations
 
+**Automatic migration:** All database commands automatically detect and run migrations when needed. You don't need to manually migrate!
+
 ```bash
-# Run all migrations (automatically run by index/list/search)
-canary migrate all
+# Database commands auto-migrate before running
+canary index       # Detects DB version, migrates if needed, then indexes
+canary list        # Auto-migrates, then lists
+canary search      # Auto-migrates, then searches
 
-# Run specific number of migrations
-canary migrate 1
-
-# Roll back migrations
-canary rollback 1
-canary rollback all
+# Manual migration (rarely needed)
+canary migrate all       # Force migration
+canary rollback 1        # Roll back 1 migration
 ```
 
 **Migration system:**
+- **Automatic detection:** Checks database version on startup
+- **Auto-upgrade:** Migrates from old versions automatically
+- **User feedback:** Shows migration progress (e.g., "🔄 Migrating database from version 0 to 1...")
 - Uses `golang-migrate/migrate` for version control
 - Pure Go SQLite driver (`modernc.org/sqlite`) - no CGO required
 - Migration files in `internal/storage/migrations/`
-- Automatic schema versioning via `schema_migrations` table
 - Cross-platform compatible (Linux, macOS, Windows)
+
+**Example auto-migration:**
+```bash
+$ canary list
+🔄 Migrating database from version 0 to 1...
+✅ Database migrated to version 1
+Found 10 tokens:
+...
+```
 
 ### Index and Query Tokens
 

@@ -60,18 +60,13 @@ type DB struct {
 	path string
 }
 
-// Open opens or creates the CANARY database with migrations
+// Open opens or creates the CANARY database
+// Note: Migrations are handled automatically by the CLI's PersistentPreRunE
 func Open(dbPath string) (*DB, error) {
 	// Initialize database connection
 	conn, err := InitDB(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("initialize database: %w", err)
-	}
-
-	// Run migrations to ensure schema is up to date
-	if err := MigrateDB(dbPath, MigrateAll); err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("migrate database: %w", err)
 	}
 
 	// Enable foreign keys
