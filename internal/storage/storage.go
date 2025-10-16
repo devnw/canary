@@ -3,15 +3,12 @@ package storage
 
 import (
 	"database/sql"
-	_ "embed"
 	"fmt"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/jmoiron/sqlx"
+	_ "modernc.org/sqlite"
 )
-
-//go:embed schema.sql
-var schemaSQL string
 
 // Token represents a parsed CANARY token with extended metadata
 type Token struct {
@@ -59,27 +56,28 @@ type Checkpoint struct {
 
 // DB wraps the SQLite database connection
 type DB struct {
-	conn *sql.DB
+	conn *sqlx.DB
 	path string
 }
 
-// Open opens or creates the CANARY database
+// Open opens or creates the CANARY database with migrations
 func Open(dbPath string) (*DB, error) {
-	conn, err := sql.Open("sqlite3", dbPath)
+	// Initialize database connection
+	conn, err := InitDB(dbPath)
 	if err != nil {
-		return nil, fmt.Errorf("open database: %w", err)
+		return nil, fmt.Errorf("initialize database: %w", err)
+	}
+
+	// Run migrations to ensure schema is up to date
+	if err := MigrateDB(dbPath, MigrateAll); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("migrate database: %w", err)
 	}
 
 	// Enable foreign keys
 	if _, err := conn.Exec("PRAGMA foreign_keys = ON"); err != nil {
 		conn.Close()
 		return nil, fmt.Errorf("enable foreign keys: %w", err)
-	}
-
-	// Create tables
-	if _, err := conn.Exec(schemaSQL); err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("create schema: %w", err)
 	}
 
 	return &DB{conn: conn, path: dbPath}, nil

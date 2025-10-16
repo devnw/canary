@@ -32,11 +32,13 @@ canary create CBIN-XXX     # Generate CANARY token
 canary scan               # Scan for tokens and generate reports
 
 # Advanced: Structured Storage & Priority Management
+canary migrate all        # Run database migrations
 canary index              # Build SQLite database from tokens
 canary list --status STUB  # List tokens with filtering
 canary search "keyword"    # Search by keywords
 canary prioritize CBIN-XXX Feature 1  # Set priority (1=highest)
 canary checkpoint "name"   # Create state snapshot
+canary rollback 1         # Roll back last migration
 ```
 
 **Key Features:**
@@ -136,12 +138,33 @@ Policy excerpt (see `docs/CANARY_POLICY.md`). Example tokens:
 
 ## Structured Storage & Priority Management
 
-Canary now includes SQLite-based structured storage for advanced token management:
+Canary now includes SQLite-based structured storage with proper migrations for advanced token management.
+
+### Database Migrations
+
+```bash
+# Run all migrations (automatically run by index/list/search)
+canary migrate all
+
+# Run specific number of migrations
+canary migrate 1
+
+# Roll back migrations
+canary rollback 1
+canary rollback all
+```
+
+**Migration system:**
+- Uses `golang-migrate/migrate` for version control
+- Pure Go SQLite driver (`modernc.org/sqlite`) - no CGO required
+- Migration files in `internal/storage/migrations/`
+- Automatic schema versioning via `schema_migrations` table
+- Cross-platform compatible (Linux, macOS, Windows)
 
 ### Index and Query Tokens
 
 ```bash
-# Build/rebuild database from codebase
+# Build/rebuild database from codebase (auto-runs migrations)
 canary index --root . --db .canary/canary.db
 
 # List tokens with filtering and priority ordering
