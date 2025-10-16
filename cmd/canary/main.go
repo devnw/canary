@@ -1205,7 +1205,15 @@ var listCmd = &cobra.Command{
 	Long: `List tokens from the database with priority ordering and filtering.
 
 Supports filtering by status, aspect, phase, owner, and spec status.
-Results are ordered by priority (1=highest) and updated date by default.`,
+Results are ordered by priority (1=highest) and updated date by default.
+
+By default, hides requirements from:
+- Test files (*_test.go, /tests/, /test/)
+- Template directories (.canary/templates/, /base/, /embedded/)
+- Documentation examples (IMPLEMENTATION_SUMMARY, FINAL_SUMMARY, etc.)
+- AI agent directories (.claude/, .cursor/, .github/prompts/, etc.)
+
+Use --include-hidden to show all requirements including hidden ones.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dbPath, _ := cmd.Flags().GetString("db")
 		filterStatus, _ := cmd.Flags().GetString("status")
@@ -1216,6 +1224,7 @@ Results are ordered by priority (1=highest) and updated date by default.`,
 		orderBy, _ := cmd.Flags().GetString("order-by")
 		limit, _ := cmd.Flags().GetInt("limit")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
+		includeHidden, _ := cmd.Flags().GetBool("include-hidden")
 
 		db, err := storage.Open(dbPath)
 		if err != nil {
@@ -1250,6 +1259,9 @@ Results are ordered by priority (1=highest) and updated date by default.`,
 		}
 		if filterSpecStatus != "" {
 			filters["spec_status"] = filterSpecStatus
+		}
+		if includeHidden {
+			filters["include_hidden"] = "true"
 		}
 
 		tokens, err := db.ListTokens(filters, idPattern, orderBy, limit)
@@ -1555,6 +1567,7 @@ comprehensive implementation guidance.
 This command automatically:
 - Queries database or scans filesystem for CANARY tokens
 - Identifies highest priority STUB or IMPL requirement
+- Excludes hidden requirements (test files, templates, examples)
 - Verifies dependencies are satisfied
 - Generates comprehensive implementation prompt with:
   - Specification details
@@ -1776,6 +1789,7 @@ func init() {
 	listCmd.Flags().String("order-by", "", "custom ORDER BY clause (default: priority ASC, updated_at DESC)")
 	listCmd.Flags().Int("limit", 0, "maximum number of results (0 = no limit)")
 	listCmd.Flags().Bool("json", false, "output as JSON")
+	listCmd.Flags().Bool("include-hidden", false, "include hidden requirements (test files, templates, examples)")
 
 	// searchCmd flags
 	searchCmd.Flags().String("db", ".canary/canary.db", "path to database file")

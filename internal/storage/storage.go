@@ -180,6 +180,67 @@ func (db *DB) GetTokensByReqID(reqID string) ([]*Token, error) {
 	return scanTokens(rows)
 }
 
+// isHiddenPath determines if a token should be hidden based on its file path
+// Hidden paths include test files, templates, documentation examples, and AI agent directories
+func isHiddenPath(filePath string) bool {
+	hiddenPatterns := []string{
+		// Test files
+		"_test.go",
+		"Test.",
+		"/tests/",
+		"/test/",
+
+		// Template directories
+		".canary/templates/",
+		"/templates/",
+		"/base/",
+		"/embedded/base/",
+		"/embedded/",
+
+		// Documentation examples
+		"IMPLEMENTATION_SUMMARY",
+		"FINAL_SUMMARY",
+		"README_CANARY.md",
+		"GAP_ANALYSIS.md",
+
+		// AI agent directories
+		".claude/",
+		".cursor/",
+		".github/prompts/",
+		".windsurf/",
+		".kilocode/",
+		".roo/",
+		".opencode/",
+		".codex/",
+		".augment/",
+		".codebuddy/",
+		".amazonq/",
+	}
+
+	for _, pattern := range hiddenPatterns {
+		if len(filePath) >= len(pattern) && contains(filePath, pattern) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// contains checks if a string contains a substring
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && indexOfSubstring(s, substr) >= 0
+}
+
+// indexOfSubstring returns the index of the first occurrence of substr in s, or -1 if not found
+func indexOfSubstring(s, substr string) int {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return i
+		}
+	}
+	return -1
+}
+
 // ListTokens retrieves tokens with filters and ordering
 // idPattern is a regex pattern for filtering requirement IDs (e.g., "CBIN-[1-9][0-9]{2,}")
 func (db *DB) ListTokens(filters map[string]string, idPattern string, orderBy string, limit int) ([]*Token, error) {
@@ -209,6 +270,40 @@ func (db *DB) ListTokens(filters map[string]string, idPattern string, orderBy st
 		// Match 3+ digit CBIN IDs (CBIN-100 and above)
 		query += " AND req_id GLOB 'CBIN-[0-9][0-9][0-9]*'"
 		query += " AND req_id NOT GLOB 'CBIN-0[0-9][0-9]*'" // Exclude CBIN-001 through CBIN-099
+	}
+
+	// Filter hidden paths by default (unless include_hidden is set)
+	includeHidden, _ := filters["include_hidden"]
+	if includeHidden != "true" {
+		// Exclude test files
+		query += " AND file_path NOT LIKE '%_test.go%'"
+		query += " AND file_path NOT LIKE '%Test.%'"
+		query += " AND file_path NOT LIKE '%/tests/%'"
+		query += " AND file_path NOT LIKE '%/test/%'"
+
+		// Exclude template directories
+		query += " AND file_path NOT LIKE '%.canary/templates/%'"
+		query += " AND file_path NOT LIKE '%/templates/%'"
+		query += " AND file_path NOT LIKE '%/base/%'"
+		query += " AND file_path NOT LIKE '%/embedded/%'"
+
+		// Exclude documentation examples
+		query += " AND file_path NOT LIKE '%IMPLEMENTATION_SUMMARY%'"
+		query += " AND file_path NOT LIKE '%FINAL_SUMMARY%'"
+		query += " AND file_path NOT LIKE '%README_CANARY.md%'"
+
+		// Exclude AI agent directories
+		query += " AND file_path NOT LIKE '.claude/%'"
+		query += " AND file_path NOT LIKE '.cursor/%'"
+		query += " AND file_path NOT LIKE '.github/prompts/%'"
+		query += " AND file_path NOT LIKE '.windsurf/%'"
+		query += " AND file_path NOT LIKE '.kilocode/%'"
+		query += " AND file_path NOT LIKE '.roo/%'"
+		query += " AND file_path NOT LIKE '.opencode/%'"
+		query += " AND file_path NOT LIKE '.codex/%'"
+		query += " AND file_path NOT LIKE '.augment/%'"
+		query += " AND file_path NOT LIKE '.codebuddy/%'"
+		query += " AND file_path NOT LIKE '.amazonq/%'"
 	}
 
 	// Apply filters

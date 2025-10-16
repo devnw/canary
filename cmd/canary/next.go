@@ -184,6 +184,28 @@ func hasUnresolvedDependencies(db *storage.DB, token *storage.Token) bool {
 	return false
 }
 
+// isHiddenPath determines if a token should be hidden based on its file path
+func isHiddenPath(filePath string) bool {
+	hiddenPatterns := []string{
+		// Test files
+		"_test.go", "Test.", "/tests/", "/test/",
+		// Template directories
+		".canary/templates/", "/templates/", "/base/", "/embedded/",
+		// Documentation examples
+		"IMPLEMENTATION_SUMMARY", "FINAL_SUMMARY", "README_CANARY.md", "GAP_ANALYSIS.md",
+		// AI agent directories
+		".claude/", ".cursor/", ".github/prompts/", ".windsurf/", ".kilocode/",
+		".roo/", ".opencode/", ".codex/", ".augment/", ".codebuddy/", ".amazonq/",
+	}
+
+	for _, pattern := range hiddenPatterns {
+		if strings.Contains(filePath, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
 // selectFromFilesystem scans filesystem for CANARY tokens when database unavailable
 func selectFromFilesystem(filters map[string]string) (*storage.Token, error) {
 	// Use grep to find all CANARY tokens
@@ -247,6 +269,13 @@ func selectFromFilesystem(filters map[string]string) (*storage.Token, error) {
 		// Only include STUB or IMPL unless filtered
 		if _, hasFilter := filters["status"]; !hasFilter {
 			if status != "STUB" && status != "IMPL" {
+				continue
+			}
+		}
+
+		// Skip hidden paths unless include_hidden is set
+		if includeHidden, ok := filters["include_hidden"]; !ok || includeHidden != "true" {
+			if isHiddenPath(file) {
 				continue
 			}
 		}
