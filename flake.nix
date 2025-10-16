@@ -99,6 +99,9 @@
                   export GH_TOKEN="$TOK"
                 fi
               fi
+              echo "✅ Canary development environment loaded"
+              echo "   - canary binary available in PATH"
+              echo "   - Run 'canary --help' to get started"
             '';
             env = {
               GOPRIVATE = goPrivate;
@@ -112,7 +115,8 @@
                 goPackages
                 commonPackages
               ]
-              ++ [ ];
+              # Add the canary binary to the development environment
+              ++ [ packages.canary ];
           };
 
           packages = {

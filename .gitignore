@@ -8,7 +8,7 @@ out/
 .direnv/
 result
 bin_canary
-canary
+/canary
 
 # build folders
 bin/
