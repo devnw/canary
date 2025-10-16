@@ -15,10 +15,10 @@ import (
 type SystemType string
 
 const (
-	SystemTypeSpecKit       SystemType = "spec-kit"
-	SystemTypeLegacyCanary  SystemType = "legacy-canary"
-	SystemTypeMigrated      SystemType = "migrated"
-	SystemTypeUnknown       SystemType = "unknown"
+	SystemTypeSpecKit      SystemType = "spec-kit"
+	SystemTypeLegacyCanary SystemType = "legacy-canary"
+	SystemTypeMigrated     SystemType = "migrated"
+	SystemTypeUnknown      SystemType = "unknown"
 )
 
 // DetectSystemType identifies what type of system exists in a directory
@@ -239,7 +239,7 @@ func planLegacyCanaryMigration(rootDir string, plan *MigrationPlan) (*MigrationP
 // ExecuteMigration performs the migration
 func ExecuteMigration(rootDir string, plan *MigrationPlan, dryRun bool) error {
 	if dryRun {
-		fmt.Println("\n🔍 DRY RUN MODE - No changes will be made\n")
+		fmt.Println("\n🔍 DRY RUN MODE - No changes will be made")
 	}
 
 	// Create directories

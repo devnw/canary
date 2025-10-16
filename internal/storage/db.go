@@ -21,12 +21,12 @@ import (
 var migrationFiles embed.FS
 
 const (
-	DBDriver         = "sqlite"
-	DBMigrationPath  = "migrations"
-	DBSourceName     = "iofs"
-	DBURLProtocol    = "sqlite://"
-	MigrateAll       = "all"
-	LatestVersion    = 1 // Update this when adding new migrations
+	DBDriver        = "sqlite"
+	DBMigrationPath = "migrations"
+	DBSourceName    = "iofs"
+	DBURLProtocol   = "sqlite://"
+	MigrateAll      = "all"
+	LatestVersion   = 1 // Update this when adding new migrations
 )
 
 var ErrDatabaseNotPopulated = errors.New("database not migrated")
