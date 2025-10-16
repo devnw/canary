@@ -263,12 +263,7 @@ Tokens: 278
 Tokens can now include these optional fields:
 
 ```
-CANARY: REQ=CBIN-XXX; FEATURE="Name"; ASPECT=API; STATUS=IMPL;
-        PRIORITY=1; PHASE=Phase1; KEYWORDS="auth,security";
-        SPEC_STATUS=approved; DEPENDS_ON=CBIN-001,CBIN-002;
-        BLOCKS=CBIN-005; RELATED_TO=CBIN-010;
-        TEST=TestName; BENCH=BenchName; OWNER=team;
-        UPDATED=2025-10-16
+CANARY: REQ=CBIN-XXX; FEATURE="Name"; ASPECT=API; STATUS=IMPL; PRIORITY=1; PHASE=Phase1; KEYWORDS="auth,security"; SPEC_STATUS=approved; DEPENDS_ON=CBIN-001,CBIN-002; BLOCKS=CBIN-005; RELATED_TO=CBIN-010; TEST=TestName; BENCH=BenchName; OWNER=team; UPDATED=2025-10-16
 ```
 
 **New fields:**
