@@ -1,9 +1,9 @@
 {
-  "generated_at": "2025-10-16T00:51:00Z",
+  "generated_at": "2025-10-16T03:30:00Z",
   "summary": {
     "by_status": {
       "BENCHED": 4,
-      "IMPL": 18,
+      "IMPL": 24,
       "MISSING": 0,
       "REMOVED": 0,
       "STUB": 3,
@@ -11,12 +11,13 @@
     },
     "by_aspect": {
       "API": 9,
-      "CLI": 11,
+      "CLI": 16,
       "Docs": 4,
-      "Engine": 2
+      "Engine": 2,
+      "Storage": 1
     },
-    "total_tokens": 28,
-    "unique_requirements": 22
+    "total_tokens": 34,
+    "unique_requirements": 28
   },
-  "notes": "Combined status from cmd/canary (4 reqs) and base/.canary (14 reqs) plus existing tools/canary (8 reqs). New spec-kit integration adds: CBIN-104 to CBIN-117 covering CLI commands, documentation templates, constitution, and agent context."
+  "notes": "Phase 3 complete: Added structured storage and priority management (CBIN-123 to CBIN-128). New features: SQLite database, priority ordering, keyword search, checkpoints, git integration. Commands: index, list, search, prioritize, checkpoint."
 }

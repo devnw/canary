@@ -30,9 +30,18 @@ canary plan CBIN-XXX       # Generate implementation plan
 canary implement CBIN-XXX  # Show implementation locations (reduces context!)
 canary create CBIN-XXX     # Generate CANARY token
 canary scan               # Scan for tokens and generate reports
+
+# Advanced: Structured Storage & Priority Management
+canary index              # Build SQLite database from tokens
+canary list --status STUB  # List tokens with filtering
+canary search "keyword"    # Search by keywords
+canary prioritize CBIN-XXX Feature 1  # Set priority (1=highest)
+canary checkpoint "name"   # Create state snapshot
 ```
 
-**Key Feature:** `canary implement` shows exact file:line locations for all implementation points, reducing agent context usage by ~95%.
+**Key Features:**
+- `canary implement` shows exact file:line locations, reducing agent context by ~95%
+- `canary index` + `list/search` enable priority-driven development with SQLite storage
 
 See [CLI_COMMANDS.md](./CLI_COMMANDS.md) for complete agent reference documentation.
 
@@ -124,6 +133,55 @@ Policy excerpt (see `docs/CANARY_POLICY.md`). Example tokens:
 `CANARY: REQ=CBIN-101; FEATURE="ScannerCore"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_101_Engine_ScanBasic; BENCH=BenchmarkCANARY_CBIN_101_Engine_Scan; OWNER=canary; UPDATED=2025-09-20`
 
 `CANARY: REQ=CBIN-102; FEATURE="VerifyGate"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_102_CLI_Verify; BENCH=BenchmarkCANARY_CBIN_102_CLI_Verify; OWNER=canary; UPDATED=2025-09-20`
+
+## Structured Storage & Priority Management
+
+Canary now includes SQLite-based structured storage for advanced token management:
+
+### Index and Query Tokens
+
+```bash
+# Build/rebuild database from codebase
+canary index --root . --db .canary/canary.db
+
+# List tokens with filtering and priority ordering
+canary list --status STUB --limit 10
+canary list --phase Phase1 --owner backend
+canary list --order-by "priority ASC, updated_at DESC"
+
+# Search by keywords
+canary search "authentication"
+canary search "oauth jwt"
+
+# Update priorities (1=highest, 10=lowest)
+canary prioritize CBIN-001 JWTGeneration 1
+```
+
+### Extended Metadata
+
+Tokens can now include:
+- **PRIORITY**: 1-10 (affects ordering)
+- **PHASE**: Phase0, Phase1, Phase2, Phase3
+- **KEYWORDS**: Comma-separated tags for search
+- **SPEC_STATUS**: draft, approved, in-progress, completed, archived
+- **DEPENDS_ON**: Comma-separated requirement IDs
+- **BLOCKS**: Requirement IDs this blocks
+- **RELATED_TO**: Related requirement IDs
+- **Git Integration**: Automatic commit hash and branch tracking
+
+### Checkpoints
+
+Create state snapshots for tracking progress:
+
+```bash
+canary checkpoint "phase1-complete" "All Phase 1 features implemented"
+canary checkpoint "v1.0.0" "Release 1.0.0 snapshot"
+```
+
+Checkpoints capture:
+- Token counts by status (STUB, IMPL, TESTED, BENCHED)
+- Git commit hash and timestamp
+- Full JSON snapshot of all tokens
 
 ## Spec-Kit Integration
 
