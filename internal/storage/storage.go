@@ -71,7 +71,6 @@ func Open(dbPath string) (*DB, error) {
 
 	// Enable foreign keys
 	if _, err := conn.Exec("PRAGMA foreign_keys = ON"); err != nil {
-
 		conn.Close()
 		return nil, fmt.Errorf("enable foreign keys: %w", err)
 	}
