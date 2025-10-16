@@ -1726,6 +1726,7 @@ func init() {
 	rootCmd.AddCommand(rollbackCmd)
 	rootCmd.AddCommand(detectCmd)
 	rootCmd.AddCommand(migrateFromCmd)
+	rootCmd.AddCommand(docCmd)
 
 	// initCmd flags
 	initCmd.Flags().StringSlice("agents", []string{}, "comma-separated list of agents to install for (claude,cursor,copilot,windsurf,kilocode,roo,opencode,codex,auggie,codebuddy,amazonq)")
