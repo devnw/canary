@@ -3,23 +3,49 @@
 Scan, update, create, verify and manage **CANARY** tokens across
 repositories, emit `status.json` / `status.csv`, and **verify** GAP claims.
 
-**Now with full spec-kit integration!** Track all 46 spec-kit features with comprehensive requirements documentation. See [`docs/SPEC_KIT_INTEGRATION_SUMMARY.md`](docs/SPEC_KIT_INTEGRATION_SUMMARY.md) for details.
+**Now with full spec-kit integration!** Initialize projects with `.canary/` workflow structure including slash commands, constitutional principles, and AI agent integration.
 
 ## Build
 
 ```bash
 go build -o ./bin/canary ./cmd/canary
+
+# Install system-wide (optional)
+sudo cp ./bin/canary /usr/local/bin/
+
+# The binary is self-contained with embedded templates
+# No additional files needed for installation
 ```
 
 ## CLI Commands
 
-Canary provides spec-kit-inspired commands for managing CANARY tokens:
+Canary provides spec-kit-inspired commands for managing CANARY tokens.
+
+**Quick Reference:**
+```bash
+canary init <project>      # Initialize with full workflow
+canary constitution        # Create/view project principles
+canary specify "feature"   # Create requirement spec
+canary plan CBIN-XXX       # Generate implementation plan
+canary create CBIN-XXX     # Generate CANARY token
+canary scan               # Scan for tokens and generate reports
+```
+
+See [CLI_COMMANDS.md](./CLI_COMMANDS.md) for complete agent reference documentation.
 
 ### Initialize a New Project
 
 ```bash
 canary init <project-name>
-# Creates README_CANARY.md and GAP_ANALYSIS.md templates
+# Creates:
+# - .canary/ directory with full workflow structure
+# - .canary/memory/constitution.md - Project governing principles
+# - .canary/templates/commands/ - Slash commands for AI agents
+# - .canary/templates/ - Spec and plan templates
+# - .canary/scripts/ - Automation scripts
+# - README_CANARY.md - Token format specification
+# - GAP_ANALYSIS.md - Requirements tracking template
+# - CLAUDE.md - AI agent integration guide
 ```
 
 ### Create a New Requirement Token
@@ -98,27 +124,69 @@ Policy excerpt (see `docs/CANARY_POLICY.md`). Example tokens:
 
 ## Spec-Kit Integration
 
-This project includes comprehensive tracking for the **spec-kit** submodule:
+Canary includes a full spec-kit-inspired workflow for requirement-driven development:
 
-- **46 Requirements** across 10 categories (Core Workflows, CLI Tools, Templates, etc.)
-- **Complete Documentation**: Requirements catalog, gap analysis, integration guide, examples
-- **Sample Implementation**: 7 tokens demonstrating the integration pattern
-- **Enhanced Scanner**: Support for HTML-style comments in Markdown files
+### AI Agent Integration
 
-### Quick Start
+After running `canary init`, AI agents can use slash commands:
+
+- `/canary.constitution` - Create/update project governing principles
+- `/canary.specify` - Create requirement specification from feature description
+- `/canary.plan` - Generate technical implementation plan for a requirement
+- `/canary.scan` - Scan codebase for CANARY tokens and generate reports
+- `/canary.verify` - Verify GAP_ANALYSIS.md claims against actual implementation
+- `/canary.update-stale` - Auto-update UPDATED field for stale tokens (>30 days)
+
+### Constitutional Governance
+
+Projects initialized with `canary init` include a constitution (`.canary/memory/constitution.md`) with 9 articles:
+
+1. **Requirement-First Development** - Every feature starts with a CANARY token
+2. **Specification Discipline** - Focus on WHAT before HOW
+3. **Token-Driven Planning** - Trackable, verifiable units of work
+4. **Test-First Imperative** - Non-negotiable TDD approach
+5. **Simplicity and Anti-Abstraction** - Minimal complexity, prefer standard library
+6. **Integration-First Testing** - Real environments over mocks
+7. **Documentation Currency** - CANARY tokens ARE the documentation
+8. **Continuous Improvement** - Metrics-driven development
+9. **Amendment Process** - How to evolve the constitution
+
+### Workflow Example
 
 ```bash
-# Scan spec-kit
-./canary --root ./specs/spec-kit-repo --out spec-kit-status.json --csv spec-kit-status.csv
+# Initialize project with full workflow
+canary init my-project
+cd my-project
 
-# Verify against gap analysis
-./canary verify --root ./specs/spec-kit-repo --gap docs/SPEC_KIT_GAP_ANALYSIS.md --strict
+# Use AI agent slash commands (in Claude Code, Cursor, etc.)
+# /canary.constitution
+# /canary.specify "Add user authentication with OAuth2"
+# /canary.plan CBIN-001 "Use Go standard library"
+
+# Scan and verify
+canary scan --root . --out status.json --csv status.csv
+canary scan --root . --verify GAP_ANALYSIS.md --strict
 ```
 
-### Documentation
+### Project Structure
 
-- [Integration Summary](docs/SPEC_KIT_INTEGRATION_SUMMARY.md) - Overview and status
-- [Requirements Catalog](docs/SPEC_KIT_REQUIREMENTS.md) - All 46 requirements
-- [Gap Analysis](docs/SPEC_KIT_GAP_ANALYSIS.md) - Tracking document
-- [Integration Guide](docs/SPEC_KIT_INTEGRATION_GUIDE.md) - Step-by-step instructions
-- [CANARY Examples](docs/CANARY_EXAMPLES_SPEC_KIT.md) - Token patterns and examples
+```
+.canary/
+├── memory/
+│   └── constitution.md          # Project principles
+├── scripts/
+│   └── create-new-requirement.sh # Automation
+├── templates/
+│   ├── commands/                # Slash command definitions
+│   ├── spec-template.md         # Requirement template
+│   └── plan-template.md         # Implementation plan template
+└── specs/
+    └── CBIN-XXX-feature/        # Individual requirements
+        ├── spec.md
+        └── plan.md
+
+GAP_ANALYSIS.md                   # Requirement tracking
+CLAUDE.md                         # AI agent integration guide
+README_CANARY.md                  # Token specification
+status.json                       # Scanner output
+```

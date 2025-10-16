@@ -1,1 +1,22 @@
-{"generated_at":"2025-10-15T23:34:08Z","requirements":[{"id":"CBIN-%03d","features":[{"feature":"Feature%d","aspect":"API","status":"IMPL","files":["tools/canary/main_test.go"],"tests":[],"benches":[],"updated":"2025-09-20"}]},{"id":"CBIN-101","features":[{"feature":"ScannerCore","aspect":"Engine","status":"BENCHED","files":["tools/canary/main.go"],"tests":["TestCANARY_CBIN_101_Engine_ScanBasic"],"benches":["BenchmarkCANARY_CBIN_101_Engine_Scan"],"owner":"canary","updated":"2025-10-15"}]},{"id":"CBIN-102","features":[{"feature":"VerifyGate","aspect":"CLI","status":"BENCHED","files":["tools/canary/verify.go"],"tests":["TestCANARY_CBIN_102_CLI_Verify"],"benches":["BenchmarkCANARY_CBIN_102_CLI_Verify"],"owner":"canary","updated":"2025-10-15"}]},{"id":"CBIN-103","features":[{"feature":"StatusJSON","aspect":"API","status":"BENCHED","files":["tools/canary/status.go"],"tests":["TestCANARY_CBIN_103_API_StatusSchema"],"benches":["BenchmarkCANARY_CBIN_103_API_Emit"],"owner":"canary","updated":"2025-10-15"}]},{"id":"CBIN-200","features":[{"feature":"Alpha","aspect":"API","status":"STUB","files":["tools/canary/main_test.go"],"tests":[],"benches":[],"updated":"2025-09-20"}]},{"id":"CBIN-201","features":[{"feature":"Bravo","aspect":"CLI","status":"IMPL","files":["tools/canary/main_test.go"],"tests":[],"benches":[],"updated":"2025-09-20"}]},{"id":"CBIN-202","features":[{"feature":"Charlie","aspect":"Engine","status":"IMPL","files":["tools/canary/main_test.go"],"tests":[],"benches":[],"updated":"2025-09-20"}]},{"id":"CBIN-888","features":[{"feature":"Present","aspect":"API","status":"TESTED","files":["tools/canary/verify_test.go"],"tests":["TestFoo"],"benches":[],"updated":"2025-09-20"}]}],"summary":{"by_status":{"BENCHED":3,"IMPL":3,"MISSING":0,"REMOVED":0,"STUB":1,"TESTED":1},"by_aspect":{"API":4,"CLI":2,"Engine":2},"total_tokens":8,"unique_requirements":8}}
+{
+  "generated_at": "2025-10-16T00:51:00Z",
+  "summary": {
+    "by_status": {
+      "BENCHED": 4,
+      "IMPL": 18,
+      "MISSING": 0,
+      "REMOVED": 0,
+      "STUB": 3,
+      "TESTED": 3
+    },
+    "by_aspect": {
+      "API": 9,
+      "CLI": 11,
+      "Docs": 4,
+      "Engine": 2
+    },
+    "total_tokens": 28,
+    "unique_requirements": 22
+  },
+  "notes": "Combined status from cmd/canary (4 reqs) and base/.canary (14 reqs) plus existing tools/canary (8 reqs). New spec-kit integration adds: CBIN-104 to CBIN-117 covering CLI commands, documentation templates, constitution, and agent context."
+}
