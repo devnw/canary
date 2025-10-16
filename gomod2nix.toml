@@ -55,6 +55,9 @@ schema = 3
   [mod."github.com/rogpeppe/go-internal"]
     version = "v1.12.0"
     hash = "sha256-qvDNCe3l84/LgrA8X4O15e1FeDcazyX91m9LmXGXX6M="
+  [mod."github.com/sabhiram/go-gitignore"]
+    version = "v0.0.0-20210923224102-525f6e181f06"
+    hash = "sha256-A1aJFlcPRQvDqdJmEwpzhftR8C1Kzv1hXPszq8eO76Q="
   [mod."github.com/spf13/cobra"]
     version = "v1.10.1"
     hash = "sha256-OP6wdqk4dvBD8U5aicTkySHZ2s0LWnBo2TST2SmgcpM="
