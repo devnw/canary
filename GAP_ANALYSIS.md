@@ -4,24 +4,31 @@
 
 List requirements that are fully implemented and verified:
 
-✅ CBIN-001 - UserAuth API fully tested
-✅ CBIN-002 - DataValidation with benchmarks
+(No requirements currently at TESTED or BENCHED status)
+
+## In Progress
+
+Requirements with STATUS=IMPL (implemented but not yet tested):
+
+- CBIN-104 through CBIN-131 - Various CLI commands and features
 
 ## Gaps
 
-List requirements that are planned or in progress:
+Planned or needed work:
 
-- [ ] CBIN-003 - ReportGeneration (STATUS=IMPL, needs tests)
-- [ ] CBIN-004 - CacheOptimization (STATUS=STUB)
+- Add tests for all IMPL-status requirements to promote to TESTED
+- Add benchmarks for performance-critical features to promote to BENCHED
 
 ## Verification
 
-Run verification with:
+Run verification with project filter:
 
 ```bash
-canary scan --root . --verify GAP_ANALYSIS.md
+canary scan --root . --verify GAP_ANALYSIS.md --project-only
 ```
 
 This will:
+- Filter by project pattern (CBIN-1[0-4][0-9]) from .canary/project.yaml
 - ✅ Verify claimed requirements are TESTED or BENCHED
 - ❌ Fail with exit code 2 if claims are overclaimed
+- Skip example requirements (CBIN-001, CBIN-002, etc.)
