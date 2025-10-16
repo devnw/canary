@@ -3,8 +3,8 @@
 
 # Project identification
 project:
-  name: "canary"
-  description: "CANARY requirement tracking system with spec-kit workflows"
+  name: "."
+  description: ". project with CANARY requirement tracking"
 
 # Requirement ID pattern for this project
 # This filters which CANARY tokens are considered "real" vs examples/tests
@@ -18,11 +18,11 @@ requirements:
 
   # Alternative: explicit ranges
   # id_ranges:
-  #   - "{{PROJECT_KEY}}-100:{{PROJECT_KEY}}-999"  # Inclusive range
+  #   - "CBIN-100:CBIN-999"  # Inclusive range
 
   # Alternative: exclude patterns (for examples/tests)
   # exclude_patterns:
-  #   - "{{PROJECT_KEY}}-0[0-9]{2}"  # Exclude {{PROJECT_KEY}}-001 through {{PROJECT_KEY}}-099 (examples)
+  #   - "CBIN-0[0-9]{2}"  # Exclude CBIN-001 through CBIN-099 (examples)
 
 # Scanner behavior
 scanner:
@@ -31,10 +31,6 @@ scanner:
     - "testdata/"
     - "fixtures/"
     - "examples/"
-    - ".canary/templates/"
-    - "specs/spec-kit-repo/"
-    - "FINAL_SUMMARY.md"
-    - "IMPLEMENTATION_SUMMARY_STORAGE.md"
 
   # File patterns to include (defaults to *.go, *.py, *.md, etc.)
   # include_patterns:
