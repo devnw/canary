@@ -1,0 +1,6 @@
+req,feature,aspect,status,file,test,bench,owner,updated
+CBIN-101,Alpha,CLI,TESTED,tools/canary/testdata/csvorder/a.txt,TestAlpha,,,2025-10-15
+CBIN-102,Bravo,API,BENCHED,tools/canary/testdata/csvorder/b.txt,TestBravo,BenchBravo,,2025-10-15
+CBIN-102,Charlie,CLI,IMPL,tools/canary/testdata/csvorder/c.txt,,,,2025-10-15
+CBIN-500,Mike,Engine,STUB,tools/canary/testdata/csvorder/m.txt,,,,2025-10-15
+CBIN-999,Zulu,API,IMPL,tools/canary/testdata/csvorder/z.txt,,,,2025-10-15

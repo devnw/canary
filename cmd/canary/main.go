@@ -1,4 +1,4 @@
-// CANARY: REQ=CBIN-104; FEATURE="CanaryCLI"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-104; FEATURE="CanaryCLI"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 package main
 
 import (
@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.spyder.org/canary/embedded"
 	"go.spyder.org/canary/internal/migrate"
+	"go.spyder.org/canary/internal/reqid"
 	"go.spyder.org/canary/internal/storage"
 )
 
@@ -670,7 +671,7 @@ var createCmd = &cobra.Command{
 	Long: `Create a properly formatted CANARY token for a new requirement.
 
 Example:
-  canary create CBIN-105 "UserProfile" --aspect API --status IMPL
+  canary create CBIN-CLI-105 "UserProfile" --aspect CLI --status IMPL
 
 Outputs a ready-to-paste CANARY token comment.`,
 	Args: cobra.MinimumNArgs(2),
@@ -683,6 +684,14 @@ Outputs a ready-to-paste CANARY token comment.`,
 		owner, _ := cmd.Flags().GetString("owner")
 		test, _ := cmd.Flags().GetString("test")
 		bench, _ := cmd.Flags().GetString("bench")
+
+		// Validate aspect
+		if err := reqid.ValidateAspect(aspect); err != nil {
+			return fmt.Errorf("invalid aspect: %w", err)
+		}
+
+		// Normalize aspect to canonical form
+		aspect = reqid.NormalizeAspect(aspect)
 
 		// Get today's date
 		today := time.Now().UTC().Format("2006-01-02")
@@ -767,24 +776,25 @@ var specifyCmd = &cobra.Command{
 	Short: "Create a new requirement specification",
 	Long: `Create a new CANARY requirement specification from a feature description.
 
-Generates a new requirement ID (CBIN-XXX), creates a spec directory,
-and populates it with a specification template.`,
+Generates a new requirement ID with aspect-based format (CBIN-<ASPECT>-XXX),
+creates a spec directory, and populates it with a specification template.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		featureDesc := strings.Join(args, " ")
+		aspect, _ := cmd.Flags().GetString("aspect")
 
-		// Generate requirement ID by finding next available
-		reqID := "CBIN-001"
-		specsDir := ".canary/specs"
-		if entries, err := os.ReadDir(specsDir); err == nil {
-			maxNum := 0
-			for _, entry := range entries {
-				var num int
-				if _, err := fmt.Sscanf(entry.Name(), "CBIN-%d", &num); err == nil && num > maxNum {
-					maxNum = num
-				}
-			}
-			reqID = fmt.Sprintf("CBIN-%03d", maxNum+1)
+		// Validate aspect
+		if err := reqid.ValidateAspect(aspect); err != nil {
+			return fmt.Errorf("invalid aspect: %w", err)
+		}
+
+		// Normalize aspect to canonical form
+		aspect = reqid.NormalizeAspect(aspect)
+
+		// Generate next requirement ID for this aspect
+		generatedID, err := reqid.GenerateNextID("CBIN", aspect)
+		if err != nil {
+			return fmt.Errorf("generate requirement ID: %w", err)
 		}
 
 		// Create sanitized feature name for directory
@@ -799,7 +809,8 @@ and populates it with a specification template.`,
 		}
 		featureName = strings.Trim(featureName, "-")
 
-		specDir := filepath.Join(specsDir, fmt.Sprintf("%s-%s", reqID, featureName))
+		specsDir := ".canary/specs"
+		specDir := filepath.Join(specsDir, fmt.Sprintf("%s-%s", generatedID, featureName))
 		specFile := filepath.Join(specDir, "spec.md")
 
 		// Create directory
@@ -814,7 +825,7 @@ and populates it with a specification template.`,
 		}
 
 		content := string(templateContent)
-		content = strings.ReplaceAll(content, "CBIN-XXX", reqID)
+		content = strings.ReplaceAll(content, "CBIN-XXX", generatedID)
 		content = strings.ReplaceAll(content, "[FEATURE NAME]", featureDesc)
 		content = strings.ReplaceAll(content, "YYYY-MM-DD", time.Now().UTC().Format("2006-01-02"))
 
@@ -823,11 +834,12 @@ and populates it with a specification template.`,
 		}
 
 		fmt.Printf("✅ Created specification: %s\n", specFile)
-		fmt.Printf("\nRequirement ID: %s\n", reqID)
+		fmt.Printf("\nRequirement ID: %s\n", generatedID)
+		fmt.Printf("Aspect: %s\n", aspect)
 		fmt.Printf("Feature: %s\n", featureDesc)
 		fmt.Println("\nNext steps:")
 		fmt.Printf("  1. Edit %s to complete the specification\n", specFile)
-		fmt.Printf("  2. Run: canary plan %s\n", reqID)
+		fmt.Printf("  2. Run: canary plan %s\n", generatedID)
 
 		return nil
 	},
@@ -1685,6 +1697,9 @@ func init() {
 	initCmd.Flags().StringSlice("agents", []string{}, "comma-separated list of agents to install for (claude,cursor,copilot,windsurf,kilocode,roo,opencode,codex,auggie,codebuddy,amazonq)")
 	initCmd.Flags().Bool("all-agents", false, "install commands for all supported agents")
 	initCmd.Flags().String("key", "", "project requirement ID prefix (e.g., CBIN, PROJ, ACME)")
+
+	// specifyCmd flags
+	specifyCmd.Flags().String("aspect", "Engine", "requirement aspect (API, CLI, Engine, Storage, Security, Docs, Wire, Planner, Decode, Encode, RoundTrip, Bench, FrontEnd, Dist)")
 
 	// createCmd flags
 	createCmd.Flags().String("aspect", "API", "requirement aspect/category")
