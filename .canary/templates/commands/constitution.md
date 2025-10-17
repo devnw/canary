@@ -2,7 +2,6 @@
 description: Create or update project governing principles and CANARY development guidelines
 ---
 
-# CANARY: REQ=CBIN-109; FEATURE="ConstitutionCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 
 ## User Input
 

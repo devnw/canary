@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# CANARY: REQ=CBIN-108; FEATURE="RequirementScript"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 # Create a new CANARY requirement specification directory and file
 
 set -euo pipefail

@@ -1,5 +1,4 @@
 # Implementation Guidance: {{.Feature}}
-<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="NextTemplate"; ASPECT=Docs; STATUS=TESTED; UPDATED=2025-10-16 -->
 
 **Requirement:** {{.ReqID}}
 **Feature:** {{.Feature}}
@@ -150,25 +149,17 @@ Before marking this requirement as complete:
 
 ## Next Steps After Completion
 
-1. **Check implementation status:**
-   ```bash
-   canary status {{.ReqID}}    # View progress summary
-   canary files {{.ReqID}}     # List implementation files
-   canary show {{.ReqID}}      # Display all tokens
-   ```
-   **Note:** Use these commands instead of grep or sqlite3!
-
-2. **Run full verification:**
+1. **Run verification:**
    ```bash
    canary scan --root . --project-only
    ```
 
-3. **Update GAP_ANALYSIS.md** (if STATUS reaches TESTED/BENCHED):
+2. **Update GAP_ANALYSIS.md** (if STATUS reaches TESTED/BENCHED):
    ```markdown
    ✅ {{.ReqID}} - {{.Feature}} ({{.Aspect}}, verified)
    ```
 
-4. **Proceed to next priority:**
+3. **Proceed to next priority:**
    ```bash
    /canary.next
    ```
