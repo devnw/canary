@@ -1755,6 +1755,12 @@ func init() {
 	rootCmd.AddCommand(detectCmd)
 	rootCmd.AddCommand(migrateFromCmd)
 	rootCmd.AddCommand(docCmd)
+	// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-16
+	rootCmd.AddCommand(showCmd)
+	// CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-16
+	rootCmd.AddCommand(filesCmd)
+	// CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-16
+	rootCmd.AddCommand(statusCmd)
 
 	// initCmd flags
 	initCmd.Flags().StringSlice("agents", []string{}, "comma-separated list of agents to install for (claude,cursor,copilot,windsurf,kilocode,roo,opencode,codex,auggie,codebuddy,amazonq)")

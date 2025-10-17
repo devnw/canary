@@ -375,6 +375,43 @@ func (db *DB) SearchTokens(keywords string) ([]*Token, error) {
 	return scanTokens(rows)
 }
 
+// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstraction"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
+// GetFilesByReqID groups tokens by file path for a requirement
+func (db *DB) GetFilesByReqID(reqID string, excludeSpecs bool) (map[string][]*Token, error) {
+	tokens, err := db.GetTokensByReqID(reqID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Group by file path, filter specs/templates if requested
+	fileGroups := make(map[string][]*Token)
+	for _, token := range tokens {
+		if excludeSpecs && shouldExcludeFile(token.FilePath) {
+			continue
+		}
+		fileGroups[token.FilePath] = append(fileGroups[token.FilePath], token)
+	}
+
+	return fileGroups, nil
+}
+
+// shouldExcludeFile checks if file is spec/template/plan
+func shouldExcludeFile(path string) bool {
+	excludePatterns := []string{
+		".canary/specs/",
+		".canary/templates/",
+		"base/",
+		"/plan.md",
+		"/spec.md",
+	}
+	for _, pattern := range excludePatterns {
+		if contains(path, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
 // UpdatePriority updates the priority of a token
 func (db *DB) UpdatePriority(reqID, feature string, priority int) error {
 	query := `UPDATE tokens SET priority = ? WHERE req_id = ? AND feature = ?`

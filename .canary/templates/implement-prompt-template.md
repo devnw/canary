@@ -1,4 +1,5 @@
 # Implementation Guidance: {{.FeatureName}}
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="ImplementTemplate"; ASPECT=Docs; STATUS=IMPL; UPDATED=2025-10-16 -->
 
 **Requirement ID:** {{.ReqID}}
 
@@ -101,8 +102,13 @@ Before marking complete:
 2. Create test files first (TDD Red)
 3. Implement features to pass tests (TDD Green)
 4. Add/update CANARY tokens as you go
-5. Run `canary scan` to verify token status
-6. Mark spec checklist items complete as you finish
+5. Query tokens using proper commands:
+   - `canary show {{.ReqID}}` - Display all tokens
+   - `canary files {{.ReqID}}` - List implementation files
+   - `canary status {{.ReqID}}` - Show progress summary
+   - **DO NOT use grep or sqlite3 directly!**
+6. Run `canary scan` to verify token status
+7. Mark spec checklist items complete as you finish
 
 ---
 

@@ -1,4 +1,4 @@
-# CANARY: REQ=CBIN-117; FEATURE="AgentContextDoc"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+# CANARY: REQ=CBIN-CLI-001; FEATURE="AgentContextDoc"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 # CANARY Agent Context
 
 **Last Updated:** 2025-10-16
@@ -17,6 +17,14 @@ This project uses CANARY requirement tracking with spec-kit-inspired workflows.
 - `/canary.scan` - Scan for CANARY tokens
 - `/canary.verify` - Verify GAP_ANALYSIS.md claims
 - `/canary.update-stale` - Update stale tokens
+
+### Token Query Commands
+
+- `canary show <REQ-ID>` - Display all CANARY tokens for a requirement
+- `canary files <REQ-ID>` - List implementation files for a requirement
+- `canary status <REQ-ID>` - Show implementation progress with visual progress bar
+
+**Use these instead of grep/sqlite3 for querying tokens!**
 
 ### Development Workflow
 
@@ -52,6 +60,13 @@ API, CLI, Engine, Storage, Security, Docs, Wire, Planner, Decode, Encode, RoundT
 5. **Documentation Currency**: Tokens kept current with UPDATED field
 
 ## Quick Reference
+
+**Query tokens for a requirement:**
+```bash
+canary show CBIN-133              # Display all tokens
+canary files CBIN-133             # List implementation files
+canary status CBIN-133            # Show progress summary
+```
 
 **Scan for tokens:**
 ```bash
@@ -102,3 +117,8 @@ status.csv                        # Scanner output (CSV)
 - Follow test-first approach (Article IV of constitution)
 - Update CANARY tokens as implementation progresses
 - Run `/canary.scan` after implementation to verify status
+- **IMPORTANT**: Use `canary show/files/status` commands instead of grep or sqlite3 for querying tokens
+  - ❌ DON'T: `grep -rn "CANARY.*CBIN-133" --include="*.go" .`
+  - ✅ DO: `canary show CBIN-133`
+  - ❌ DON'T: `sqlite3 .canary/canary.db "SELECT * FROM tokens WHERE req_id='CBIN-133'"`
+  - ✅ DO: `canary files CBIN-133` or `canary status CBIN-133`

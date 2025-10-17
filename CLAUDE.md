@@ -1,4 +1,5 @@
 # CANARY Development - AI Agent Guide
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="AgentInstructions"; ASPECT=Docs; STATUS=IMPL; UPDATED=2025-10-16 -->
 
 **Context File for AI Coding Agents**
 
@@ -61,6 +62,11 @@ See [.canary/memory/constitution.md](./.canary/memory/constitution.md) for full 
 ## CLI Commands
 
 ```bash
+# Query tokens for a requirement (USE THESE INSTEAD OF GREP/SQLITE3!)
+canary show CBIN-133              # Display all tokens
+canary files CBIN-133             # List implementation files
+canary status CBIN-133            # Show progress summary
+
 # Initialize new project
 canary init my-project
 
@@ -105,10 +111,17 @@ status.json                       # Scanner output
 2. Use `/canary.specify` to create structured requirements
 3. Follow test-first approach (Article IV)
 
-**After implementing:**
+**During implementation:**
 1. Update CANARY tokens as code evolves
-2. Run `/canary.scan` to verify status
-3. Run `/canary.verify` to confirm claims
+2. **Use `canary show/files/status` commands to query tokens** (NOT grep or sqlite3!)
+   - ❌ DON'T: `grep -rn "CANARY.*CBIN-133" --include="*.go" .`
+   - ✅ DO: `canary show CBIN-133`
+   - ❌ DON'T: `sqlite3 .canary/canary.db "SELECT * FROM tokens..."`
+   - ✅ DO: `canary files CBIN-133` or `canary status CBIN-133`
+
+**After implementing:**
+1. Run `/canary.scan` to verify status
+2. Run `/canary.verify` to confirm claims
 
 **Key Files:**
 - [.canary/AGENT_CONTEXT.md](./.canary/AGENT_CONTEXT.md) - Complete context for AI agents
