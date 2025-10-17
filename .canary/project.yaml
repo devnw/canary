@@ -3,26 +3,26 @@
 
 # Project identification
 project:
-  name: "{{PROJECT_NAME}}"
-  description: "{{PROJECT_DESCRIPTION}}"
+  name: "."
+  description: ". project with CANARY requirement tracking"
 
 # Requirement ID pattern for this project
 # This filters which CANARY tokens are considered "real" vs examples/tests
 requirements:
   # Regex pattern for valid requirement IDs in this project
   # Examples:
-  #   - "{{PROJECT_KEY}}-[1-9][0-9]{2,}" matches {{PROJECT_KEY}}-100 and above
-  #   - "{{PROJECT_KEY}}-.*" matches any {{PROJECT_KEY}}- prefix
-  #   - "{{PROJECT_KEY}}-(10[0-9]|1[1-5][0-9])" matches {{PROJECT_KEY}}-100 through {{PROJECT_KEY}}-159
-  id_pattern: "{{PROJECT_KEY}}-[1-9][0-9]{2,}"  # {{PROJECT_KEY}}-100 and above (excludes example IDs 001-099)
+  #   - "CBIN-[1-9][0-9]{2,}" matches CBIN-100 and above
+  #   - "CBIN-.*" matches any CBIN- prefix
+  #   - "CBIN-(10[0-9]|1[1-5][0-9])" matches CBIN-100 through CBIN-159
+  id_pattern: "CBIN-[1-9][0-9]{2,}"  # CBIN-100 and above (excludes example IDs 001-099)
 
   # Alternative: explicit ranges
   # id_ranges:
-  #   - "{{PROJECT_KEY}}-100:{{PROJECT_KEY}}-999"  # Inclusive range
+  #   - "CBIN-100:CBIN-999"  # Inclusive range
 
   # Alternative: exclude patterns (for examples/tests)
   # exclude_patterns:
-  #   - "{{PROJECT_KEY}}-0[0-9]{2}"  # Exclude {{PROJECT_KEY}}-001 through {{PROJECT_KEY}}-099 (examples)
+  #   - "CBIN-0[0-9]{2}"  # Exclude CBIN-001 through CBIN-099 (examples)
 
 # Scanner behavior
 scanner:

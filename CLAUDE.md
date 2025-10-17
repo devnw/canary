@@ -1,5 +1,4 @@
 # CANARY Development - AI Agent Guide
-<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="AgentInstructions"; ASPECT=Docs; STATUS=TESTED; UPDATED=2025-10-16 -->
 
 **Context File for AI Coding Agents**
 
@@ -9,11 +8,22 @@ This project uses CANARY requirement tracking with spec-kit-inspired workflows.
 
 See [.canary/AGENT_CONTEXT.md](./.canary/AGENT_CONTEXT.md) for detailed information.
 
-### Workflow Commands
+### Planning & Specification Commands
 
 - **/canary.constitution** - Create or update project governing principles
 - **/canary.specify** - Create a new requirement specification from feature description
 - **/canary.plan** - Generate technical implementation plan for a requirement
+
+### Query & Discovery Commands
+
+- **/canary.list** - List top priority requirements with filtering (--status, --aspect, --limit)
+- **/canary.show** - Display all CANARY tokens for a specific requirement ID
+- **/canary.files** - List implementation files containing tokens for a requirement
+- **/canary.status** - Show implementation progress summary for a requirement
+- **/canary.grep** - Search CANARY tokens by keyword or pattern
+
+### Analysis & Maintenance Commands
+
 - **/canary.scan** - Scan codebase for CANARY tokens and generate reports
 - **/canary.verify** - Verify GAP_ANALYSIS.md claims against actual implementation
 - **/canary.update-stale** - Auto-update UPDATED field for stale tokens (>30 days)
@@ -24,6 +34,11 @@ All slash commands are defined in:
 - `.canary/templates/commands/constitution.md`
 - `.canary/templates/commands/specify.md`
 - `.canary/templates/commands/plan.md`
+- `.canary/templates/commands/list.md`
+- `.canary/templates/commands/show.md`
+- `.canary/templates/commands/files.md`
+- `.canary/templates/commands/status.md`
+- `.canary/templates/commands/grep.md`
 - `.canary/templates/commands/scan.md`
 - `.canary/templates/commands/verify.md`
 - `.canary/templates/commands/update-stale.md`
@@ -62,16 +77,18 @@ See [.canary/memory/constitution.md](./.canary/memory/constitution.md) for full 
 ## CLI Commands
 
 ```bash
-# Query tokens for a requirement (USE THESE INSTEAD OF GREP/SQLITE3!)
-canary show CBIN-133              # Display all tokens
-canary files CBIN-133             # List implementation files
-canary status CBIN-133            # Show progress summary
-
 # Initialize new project
 canary init my-project
 
 # Create requirement token
 canary create CBIN-105 "FeatureName" --aspect API --status IMPL
+
+# Query and discover requirements
+canary list --status STUB --limit 10           # List top priority STUB items
+canary show CBIN-105                           # Show all tokens for a requirement
+canary files CBIN-105                          # List implementation files
+canary status CBIN-105                         # Show progress summary
+canary grep Authentication                     # Search by keyword
 
 # Scan for tokens
 canary scan --root . --out status.json --csv status.csv
@@ -111,17 +128,10 @@ status.json                       # Scanner output
 2. Use `/canary.specify` to create structured requirements
 3. Follow test-first approach (Article IV)
 
-**During implementation:**
-1. Update CANARY tokens as code evolves
-2. **Use `canary show/files/status` commands to query tokens** (NOT grep or sqlite3!)
-   - ❌ DON'T: `grep -rn "CANARY.*CBIN-133" --include="*.go" .`
-   - ✅ DO: `canary show CBIN-133`
-   - ❌ DON'T: `sqlite3 .canary/canary.db "SELECT * FROM tokens..."`
-   - ✅ DO: `canary files CBIN-133` or `canary status CBIN-133`
-
 **After implementing:**
-1. Run `/canary.scan` to verify status
-2. Run `/canary.verify` to confirm claims
+1. Update CANARY tokens as code evolves
+2. Run `/canary.scan` to verify status
+3. Run `/canary.verify` to confirm claims
 
 **Key Files:**
 - [.canary/AGENT_CONTEXT.md](./.canary/AGENT_CONTEXT.md) - Complete context for AI agents
