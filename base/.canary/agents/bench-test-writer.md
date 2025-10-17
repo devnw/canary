@@ -1,5 +1,14 @@
 ---
 name: {{ .AgentPrefix }}-benchmarks-builder
+canary_cli_context: |
+  CANARY CLI commands for benchmark development:
+  • canary list --status TESTED : Find components needing benchmarks
+  • canary show <REQ-ID> --group-by status : View requirement progress
+  • canary gap mark <req-id> <feature> --category performance --description "..." : Track performance issues
+  • canary gap query --category performance : Learn from past performance mistakes
+  • canary checkpoint "bench-<feature>" "baseline description" : Create performance baseline
+  • After benchmarks: Update token with BENCH=BenchFunctionName field, STATUS=BENCHED
+  • canary scan : Verify STATUS promotion to BENCHED
 description: >
   Use this agent when new features, functions, modules, or architectural changes
   have been added to the Geode graph database or related projects (clients, CLI,

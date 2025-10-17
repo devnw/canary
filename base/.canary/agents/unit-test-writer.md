@@ -1,5 +1,15 @@
 ---
 name: {{ .AgentPrefix }}-tests-writer
+canary_cli_context: |
+  CANARY CLI commands for test-driven development:
+  • canary next --prompt : Get next priority requirement
+  • canary implement <query> --prompt : Implementation guidance with test-first approach
+  • canary status <REQ-ID> : Show progress
+  • canary list --status IMPL : Find implementations needing tests
+  • canary gap mark <req-id> <feature> --category test_failure --description "..." --action "..." : Track test mistakes
+  • canary gap query --category test_failure --limit 10 : Learn from past test failures
+  • canary scan --strict : Verify all tokens with staleness checking
+  • After tests: Update token with TEST=TestFunctionName field, STATUS=TESTED
 description: >
     Use this agent when new features, functions, modules, or architectural changes land and
     require fast, reliable automated tests (unit‑first; optional integration/property/mutation).

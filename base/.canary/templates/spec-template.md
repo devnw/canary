@@ -224,7 +224,7 @@ After implementing each feature:
 1. Update the CANARY token in the spec from `STATUS=STUB` to `STATUS=IMPL`
 2. Add the same token to your source code at the implementation location
 3. Add `TEST=TestName` when tests are written
-4. Run `canary implement {{.ReqID}}-XXX` to see implementation progress
+4. Use CLI commands to track progress and verify implementation
 
 ---
 
@@ -240,7 +240,90 @@ After implementing each feature:
 // CANARY: REQ={{.ReqID}}-XXX; FEATURE="CoreFeature1"; ASPECT=API; STATUS=IMPL; TEST=TestCoreFeature1; UPDATED=YYYY-MM-DD
 ```
 
-**Use `canary implement {{.ReqID}}-XXX` to find:**
-- Which features are implemented vs. still TODO
-- Exact file locations and line numbers
-- Context around each implementation point
+---
+
+## CLI Commands for This Specification
+
+**Generate implementation plan:**
+```bash
+canary plan {{.ReqID}}-XXX [tech-stack]
+```
+
+**Get implementation guidance:**
+```bash
+canary implement {{.ReqID}}-XXX --prompt
+```
+
+**Check implementation progress:**
+```bash
+canary status {{.ReqID}}-XXX        # Summary of progress
+canary show {{.ReqID}}-XXX          # All tokens
+canary files {{.ReqID}}-XXX         # Implementation files
+```
+
+**Create CANARY tokens:**
+```bash
+canary create {{.ReqID}}-XXX "FeatureName" \
+  --aspect API|CLI|Engine|Storage|Security|Docs \
+  --status STUB|IMPL|TESTED|BENCHED \
+  --test TestFunctionName \
+  --owner team
+```
+
+**Track implementation:**
+```bash
+# Index tokens into database
+canary index --root .
+
+# List all tokens for this requirement
+canary show {{.ReqID}}-XXX --group-by status
+
+# Check what's left to do
+canary list --status STUB --aspect API
+```
+
+**Verify implementation:**
+```bash
+# Scan codebase
+canary scan --root . --out status.json
+
+# Strict staleness checking
+canary scan --strict
+
+# Verify GAP_ANALYSIS.md claims
+canary scan --verify GAP_ANALYSIS.md
+```
+
+**Documentation tracking:**
+```bash
+# Create documentation
+canary doc create {{.ReqID}}-XXX --type user|technical|feature|api|architecture --output <path>
+
+# Check documentation status
+canary doc status {{.ReqID}}-XXX
+
+# Update after editing docs
+canary doc update {{.ReqID}}-XXX
+```
+
+**Gap analysis (track mistakes):**
+```bash
+# Record implementation gaps
+canary gap mark {{.ReqID}}-XXX FeatureName \
+  --category logic_error|test_failure|performance|security|edge_case \
+  --description "what went wrong" \
+  --action "how it was fixed"
+
+# Query gaps for learning
+canary gap query --req-id {{.ReqID}}-XXX
+canary gap report {{.ReqID}}-XXX
+```
+
+**After completion:**
+```bash
+# Create checkpoint
+canary checkpoint "{{.ReqID}}-XXX-complete" "Description"
+
+# Find next work
+canary next --prompt
+```

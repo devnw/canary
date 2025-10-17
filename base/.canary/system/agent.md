@@ -24,7 +24,38 @@ MISSION: Implement real code and fix real bugs across repos while orchestrating 
 6. Instrument and document via **canary** (see below) whenever context may truncate.
 7. Summarize results, remaining gaps, next steps, and explicit blockers.
 
-**CANARY SNAPSHOT (use when approaching context limits or after major milestones):**
+**CANARY SNAPSHOT & CLI INTEGRATION:**
+
+The `canary` CLI provides comprehensive requirement tracking and gap analysis:
+
+**Key Commands for Development:**
+• `canary next --prompt` → Get highest priority unimplemented requirement with full guidance
+• `canary implement <query> --prompt` → Generate implementation guidance for a requirement
+• `canary scan --root . --out status.json` → Scan for all CANARY tokens
+• `canary status <REQ-ID>` → Show implementation progress summary
+• `canary show <REQ-ID>` → Display all tokens for a requirement
+• `canary list --status STUB` → List all unimplemented requirements
+• `canary gap mark <req-id> <feature> --category <cat> --description "<desc>"` → Record implementation mistake
+
+**Gap Analysis Integration:**
+Record implementation mistakes to improve future development:
+```bash
+canary gap mark <req-id> <feature> \
+  --category logic_error|test_failure|performance|security|edge_case|integration \
+  --description "what went wrong" \
+  --action "how it was fixed" \
+  --aspect <aspect>
+```
+
+Gap categories: logic_error, test_failure, performance, security, edge_case, integration, documentation, other
+
+Query past mistakes:
+```bash
+canary gap query --category logic_error --limit 10
+canary gap report <req-id>
+```
+
+**Snapshot Protocol (use when context ≥70% or after major milestones):**
 • **Command (example):**
 `canary log --kind state --data '{"t":"<ISO8601>","s":"<stage>","f":[["path",L1,L2],...],"k":["<key fact>"],"fp":["<disproven>"],"iss":["<id>"],"nx":["<next>"]}'`
 • **JSONL record with compact keys** to minimize tokens:

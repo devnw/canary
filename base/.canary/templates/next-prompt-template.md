@@ -151,7 +151,9 @@ Before marking this requirement as complete:
 
 1. **Run verification:**
    ```bash
-   canary scan --root . --project-only
+   canary scan --root . --out status.json
+   canary status {{.ReqID}}
+   canary show {{.ReqID}}
    ```
 
 2. **Update GAP_ANALYSIS.md** (if STATUS reaches TESTED/BENCHED):
@@ -159,10 +161,69 @@ Before marking this requirement as complete:
    ✅ {{.ReqID}} - {{.Feature}} ({{.Aspect}}, verified)
    ```
 
-3. **Proceed to next priority:**
+3. **Track any gaps encountered:**
    ```bash
+   canary gap mark {{.ReqID}} {{.Feature}} \
+     --category logic_error|test_failure|edge_case \
+     --description "what went wrong" \
+     --action "corrective action taken"
+   ```
+
+4. **Create checkpoint:**
+   ```bash
+   canary checkpoint "{{.ReqID}}-complete" "Completed {{.Feature}}"
+   ```
+
+5. **Proceed to next priority:**
+   ```bash
+   canary next --prompt
+   # Or use the slash command:
    /canary.next
    ```
+
+---
+
+## CLI Quick Reference for This Task
+
+**Track progress:**
+```bash
+canary status {{.ReqID}}              # Show summary
+canary show {{.ReqID}}                # Show all tokens
+canary files {{.ReqID}}               # List implementation files
+```
+
+**Create tokens:**
+```bash
+canary create {{.ReqID}} "{{.Feature}}" \
+  --aspect {{.Aspect}} \
+  --status IMPL \
+  --test TestCANARY_{{.ReqID}}_{{.Aspect}}_{{.Feature}}
+```
+
+**Verify implementation:**
+```bash
+canary scan --root . --out status.json
+canary scan --strict --verify GAP_ANALYSIS.md
+```
+
+**Document mistakes:**
+```bash
+canary gap mark {{.ReqID}} {{.Feature}} \
+  --category <category> \
+  --description "issue description" \
+  --action "how it was resolved"
+
+# View past gaps to learn from
+canary gap query --req-id {{.ReqID}}
+canary gap query --category logic_error --limit 10
+```
+
+**Documentation:**
+```bash
+canary doc create {{.ReqID}} --type technical --output docs/{{.Feature}}.md
+canary doc update {{.ReqID}}
+canary doc status {{.ReqID}}
+```
 
 ---
 

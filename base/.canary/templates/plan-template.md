@@ -261,3 +261,70 @@ STATUS=BENCHED
 2. Use `/canary.implement` to execute implementation
 3. Run `/canary.scan` after implementation to verify token status
 4. Run `/canary.verify` to confirm claim in GAP_ANALYSIS.md
+
+---
+
+## CLI Commands for This Implementation
+
+**Start implementation:**
+```bash
+canary implement {{.ReqID}} --prompt
+```
+
+**During development:**
+```bash
+# Check progress
+canary status {{.ReqID}}
+canary show {{.ReqID}} --group-by status
+
+# List implementation files
+canary files {{.ReqID}}
+
+# Create CANARY tokens as you implement
+canary create {{.ReqID}} "FeatureName" --aspect <ASPECT> --status IMPL
+```
+
+**Track mistakes (gap analysis):**
+```bash
+canary gap mark {{.ReqID}} <feature> \
+  --category logic_error|test_failure|performance|edge_case \
+  --description "what went wrong" \
+  --action "corrective action taken"
+```
+
+**Verify implementation:**
+```bash
+# Scan for all tokens
+canary scan --root . --out status.json --csv status.csv
+
+# Verify with strict staleness checks
+canary scan --strict
+
+# Verify GAP_ANALYSIS claims
+canary scan --verify GAP_ANALYSIS.md
+
+# Update stale tokens
+canary scan --update-stale
+```
+
+**Documentation:**
+```bash
+# Create documentation from template
+canary doc create {{.ReqID}} --type technical --output docs/<feature>.md
+
+# Update documentation hash after editing
+canary doc update {{.ReqID}}
+
+# Check documentation status
+canary doc status {{.ReqID}}
+```
+
+**After completion:**
+```bash
+# Create checkpoint
+canary checkpoint "{{.ReqID}}-complete" "Completed {{.ReqID}} implementation"
+
+# Find next work
+canary next --prompt
+canary list --status STUB --limit 10
+```

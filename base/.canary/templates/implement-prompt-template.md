@@ -106,4 +106,55 @@ Before marking complete:
 
 ---
 
+## 🛠️ Useful CLI Commands During Implementation
+
+**Check current progress:**
+```bash
+canary status {{.ReqID}}           # Show progress summary
+canary show {{.ReqID}}             # Show all tokens
+canary files {{.ReqID}}            # List implementation files
+```
+
+**Verify implementation:**
+```bash
+canary scan --root . --out status.json
+canary scan --verify GAP_ANALYSIS.md --strict
+```
+
+**Track mistakes (for learning):**
+```bash
+# If you make a mistake during implementation, record it:
+canary gap mark {{.ReqID}} <feature> \
+  --category logic_error|test_failure|edge_case \
+  --description "what went wrong" \
+  --action "how you fixed it"
+
+# Query past mistakes to avoid repeating them:
+canary gap query --req-id {{.ReqID}}
+canary gap query --category logic_error --limit 10
+```
+
+**Update documentation:**
+```bash
+# Create documentation
+canary doc create {{.ReqID}} --type technical --output docs/{{.FeatureName}}.md
+
+# Update doc hash after editing
+canary doc update {{.ReqID}}
+
+# Check doc status
+canary doc status {{.ReqID}}
+```
+
+**After completion:**
+```bash
+# Create checkpoint
+canary checkpoint "{{.FeatureName}}-complete" "Completed {{.FeatureName}} implementation"
+
+# Check what's next
+canary next --prompt
+```
+
+---
+
 **Remember:** Test-first, token-driven, evidence-based development!

@@ -189,7 +189,7 @@ Creates:
 
 The agent files support template variables that can be customized:
   --agent-prefix: Agent name prefix (default: project key)
-  --agent-model:  AI model to use (default: claude-3-5-sonnet-20241022)
+  --agent-model:  AI model to use (default: sonnet)
   --agent-color:  Agent color theme (default: blue)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := "."
@@ -468,7 +468,7 @@ func filterCanaryTokens(content []byte) []byte {
 
 	for _, line := range lines {
 		// Check if line contains a CANARY token with OWNER=canary
-		if (strings.Contains(line, "CANARY:") && strings.Contains(line, "OWNER=canary")) {
+		if strings.Contains(line, "CANARY:") && strings.Contains(line, "OWNER=canary") {
 			// Skip this line - it's a CANARY CLI internal token
 			continue
 		}
@@ -1997,7 +1997,7 @@ func init() {
 	initCmd.Flags().Bool("all-agents", false, "install commands for all supported agents")
 	initCmd.Flags().String("key", "", "project requirement ID prefix (e.g., CBIN, PROJ, ACME)")
 	initCmd.Flags().String("agent-prefix", "", "agent name prefix for CANARY agents (default: project key)")
-	initCmd.Flags().String("agent-model", "claude-3-5-sonnet-20241022", "AI model for CANARY agents")
+	initCmd.Flags().String("agent-model", "sonnet", "AI model for CANARY agents")
 	initCmd.Flags().String("agent-color", "blue", "color for CANARY agents")
 
 	// specifyCmd flags
