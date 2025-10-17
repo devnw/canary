@@ -2,7 +2,7 @@
 description: Show implementation progress summary for a requirement
 ---
 
-# CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 
 ## User Input
 
@@ -15,7 +15,7 @@ $ARGUMENTS
 Display implementation progress for a requirement with completion percentage and breakdown.
 
 1. **Parse requirement ID**:
-   - Extract REQ-ID from arguments (e.g., CBIN-102)
+   - Extract REQ-ID from arguments (e.g., {{.ReqID}}-<ASPECT>-102)
    - Validate format
 
 2. **Run canary status command**:
@@ -48,7 +48,7 @@ Display implementation progress for a requirement with completion percentage and
 ## Example Output
 
 ```markdown
-## Implementation Status for CBIN-102
+## Implementation Status for {{.ReqID}}-<ASPECT>-102
 
 Progress: [========================--------] 75%
 
@@ -78,7 +78,7 @@ STUB (not started):
 
 **Next Steps:**
 1. Add tests for 3 IMPL features
-2. Plan implementation for 2 STUB features using `/canary.plan CBIN-102`
+2. Plan implementation for 2 STUB features using `/canary.plan {{.ReqID}}-<ASPECT>-102`
 3. Consider adding benchmarks for performance-critical features
 ```
 

@@ -2,7 +2,7 @@
 description: List top priority CANARY requirements with filtering and sorting
 ---
 
-# CANARY: REQ=CBIN-135; FEATURE="ListCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-135; FEATURE="ListCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 
 ## User Input
 
@@ -89,35 +89,35 @@ List CANARY requirements with priority-based ordering and comprehensive filterin
 
 Found 10 requirements (showing top 10):
 
-📌 CBIN-134 - SpecModification
+📌 {{.ReqID}}-<ASPECT>-134 - SpecModification
    Status: STUB | Aspect: CLI | Priority: 1
-   Location: .canary/specs/CBIN-134-spec-modification/spec.md:1
+   Location: .canary/specs/{{.ReqID}}-<ASPECT>-134-spec-modification/spec.md:1
 
-📌 CBIN-140 - ValidationRules
+📌 {{.ReqID}}-<ASPECT>-140 - ValidationRules
    Status: STUB | Aspect: Engine | Priority: 1
-   Location: .canary/specs/CBIN-140-validation-rules/spec.md:1
+   Location: .canary/specs/{{.ReqID}}-<ASPECT>-140-validation-rules/spec.md:1
 
-📌 CBIN-105 - InitWorkflow
+📌 {{.ReqID}}-<ASPECT>-105 - InitWorkflow
    Status: IMPL | Aspect: CLI | Priority: 2
    Location: cmd/canary/init.go:356
 
-📌 CBIN-142 - AsyncQueue
+📌 {{.ReqID}}-<ASPECT>-142 - AsyncQueue
    Status: IMPL | Aspect: Engine | Priority: 2
    Location: internal/engine/queue.go:23
 
-📌 CBIN-115 - SecurityAudit
+📌 {{.ReqID}}-<ASPECT>-115 - SecurityAudit
    Status: TESTED | Aspect: Security | Priority: 3
    Location: internal/security/audit.go:45
-   Test: TestCANARY_CBIN_115_Security_Audit
+   Test: TestCANARY_{{.ReqID}}-<ASPECT>_115_Security_Audit
 
 **Analysis:**
-- **Highest Priority STUB**: CBIN-134 (SpecModification)
-- **Needs Tests**: CBIN-105, CBIN-142 (IMPL status)
+- **Highest Priority STUB**: {{.ReqID}}-<ASPECT>-134 (SpecModification)
+- **Needs Tests**: {{.ReqID}}-<ASPECT>-105, {{.ReqID}}-<ASPECT>-142 (IMPL status)
 - **Completed**: 1 of 10 shown
 
 **Recommendations:**
-1. Start with `/canary.plan CBIN-134` for highest priority STUB
-2. Add tests for CBIN-105 and CBIN-142
+1. Start with `/canary.plan {{.ReqID}}-<ASPECT>-134` for highest priority STUB
+2. Add tests for {{.ReqID}}-<ASPECT>-105 and {{.ReqID}}-<ASPECT>-142
 3. Use `/canary.next` to automatically select next priority work
 ```
 

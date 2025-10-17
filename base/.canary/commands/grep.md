@@ -2,7 +2,7 @@
 description: Search CANARY tokens by keyword or pattern across all fields
 ---
 
-# CANARY: REQ=CBIN-CLI-001; FEATURE="GrepCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="GrepCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 
 ## User Input
 
@@ -53,24 +53,24 @@ Search for CANARY tokens matching a keyword or pattern across features, files, t
 
 Found 8 matches:
 
-📌 CBIN-120 - UserAuthentication
+📌 {{.ReqID}}-<ASPECT>-120 - UserAuthentication
    Status: TESTED | Aspect: API | Priority: 1
    Location: internal/auth/user.go:45
-   Test: TestCANARY_CBIN_120_API_UserAuthentication
+   Test: TestCANARY_{{.ReqID}}-<ASPECT>_120_API_UserAuthentication
    Match: Feature name
 
-📌 CBIN-120 - AuthMiddleware
+📌 {{.ReqID}}-<ASPECT>-120 - AuthMiddleware
    Status: TESTED | Aspect: API | Priority: 2
    Location: internal/auth/middleware.go:23
-   Test: TestCANARY_CBIN_120_API_AuthMiddleware
+   Test: TestCANARY_{{.ReqID}}-<ASPECT>_120_API_AuthMiddleware
    Match: Feature name
 
-📌 CBIN-121 - OAuth2Integration
+📌 {{.ReqID}}-<ASPECT>-121 - OAuth2Integration
    Status: IMPL | Aspect: API | Priority: 1
    Location: internal/auth/oauth.go:67
    Match: File path
 
-📌 CBIN-134 - SessionValidation
+📌 {{.ReqID}}-<ASPECT>-134 - SessionValidation
    Status: TESTED | Aspect: Security | Priority: 1
    Location: internal/auth/session.go:89
    Test: TestAuthSession
@@ -78,14 +78,14 @@ Found 8 matches:
 
 **Summary:**
 - Total matches: 8
-- Requirements: 3 (CBIN-120, CBIN-121, CBIN-134)
+- Requirements: 3 ({{.ReqID}}-<ASPECT>-120, {{.ReqID}}-<ASPECT>-121, {{.ReqID}}-<ASPECT>-134)
 - Status: TESTED (5), IMPL (3)
 - Primary location: internal/auth/
 
 **Suggested refinements:**
 - `canary grep internal/auth` - Focus on auth directory
-- `canary grep CBIN-120` - See all tokens for CBIN-120
-- `canary show CBIN-121` - View details of OAuth2Integration
+- `canary grep {{.ReqID}}-<ASPECT>-120` - See all tokens for {{.ReqID}}-<ASPECT>-120
+- `canary show {{.ReqID}}-<ASPECT>-121` - View details of OAuth2Integration
 ```
 
 ## Use Cases
@@ -112,7 +112,7 @@ canary grep BenchParser       # Tokens with parser benchmarks
 
 **Find by Requirement:**
 ```bash
-canary grep CBIN-120          # All tokens for CBIN-120
+canary grep {{.ReqID}}-<ASPECT>-120          # All tokens for {{.ReqID}}-<ASPECT>-120
 ```
 
 ## Guidelines

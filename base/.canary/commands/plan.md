@@ -2,7 +2,7 @@
 description: Generate technical implementation plan from requirement specification
 ---
 
-# CANARY: REQ=CBIN-113; FEATURE="PlanCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-113; FEATURE="PlanCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 
 ## User Input
 
@@ -15,12 +15,12 @@ $ARGUMENTS
 Create a detailed technical implementation plan for a CANARY requirement.
 
 1. **Identify requirement**:
-   - If argument is REQ ID (CBIN-XXX): Load that spec
+   - If argument is REQ ID ({{.ReqID}}-<ASPECT>-XXX): Load that spec
    - If empty: Find most recent STUB requirement
    - Error if spec not found
 
 2. **Load and validate specification**:
-   - Read `.canary/specs/CBIN-XXX-name/spec.md`
+   - Read `.canary/specs/{{.ReqID}}-<ASPECT>-XXX-name/spec.md`
    - Verify no [NEEDS CLARIFICATION] markers remain
    - Confirm ready for planning
 
@@ -35,7 +35,7 @@ Create a detailed technical implementation plan for a CANARY requirement.
    - Performance requirements
    - Security requirements
 
-5. **Create implementation plan** at `.canary/specs/CBIN-XXX-name/plan.md`:
+5. **Create implementation plan** at `.canary/specs/{{.ReqID}}-<ASPECT>-XXX-name/plan.md`:
 
    **Required sections:**
    - **Tech Stack Decision**: Chosen technologies with rationale
@@ -47,7 +47,7 @@ Create a detailed technical implementation plan for a CANARY requirement.
 
    **Example structure:**
    ```markdown
-   # Implementation Plan: CBIN-XXX FeatureName
+   # Implementation Plan: {{.ReqID}}-<ASPECT>-XXX FeatureName
 
    ## Tech Stack Decision
    - Language: Go 1.25
@@ -58,7 +58,7 @@ Create a detailed technical implementation plan for a CANARY requirement.
    ## CANARY Token Placement
    ```go
    // File: internal/feature/feature.go
-   // CANARY: REQ=CBIN-XXX; FEATURE="FeatureName"; ASPECT=API; STATUS=IMPL; OWNER=team; UPDATED=2025-10-16
+   // CANARY: REQ={{.ReqID}}-<ASPECT>-XXX; FEATURE="FeatureName"; ASPECT=API; STATUS=IMPL; OWNER=team; UPDATED=2025-10-16
    package feature
 
    func ExecuteFeature() error {
@@ -111,7 +111,7 @@ Create a detailed technical implementation plan for a CANARY requirement.
 7. **Update requirement tracking**:
    - Update `.canary/requirements.md`:
      ```markdown
-     - [ ] CBIN-XXX - FeatureName (STATUS=STUB → ready for implementation)
+     - [ ] {{.ReqID}}-<ASPECT>-XXX - FeatureName (STATUS=STUB → ready for implementation)
      ```
 
 8. **Report completion**:

@@ -14,7 +14,7 @@ Create, update, and verify documentation associated with CANARY requirements. Th
 When you need to create documentation for a requirement:
 
 ```
-/canary.doc create CBIN-XXX --type user
+/canary.doc create {{.ReqID}}-<ASPECT>-XXX --type user
 ```
 
 This will:
@@ -29,7 +29,7 @@ After editing documentation files:
 
 ```
 # Update specific requirement
-/canary.doc update CBIN-XXX
+/canary.doc update {{.ReqID}}-<ASPECT>-XXX
 
 # Update all documentation (batch operation)
 /canary.doc update --all
@@ -52,7 +52,7 @@ Batch operations allow updating multiple requirements at once:
 To verify documentation freshness:
 
 ```
-/canary.doc status CBIN-XXX
+/canary.doc status {{.ReqID}}-<ASPECT>-XXX
 /canary.doc status --all
 /canary.doc status --all --stale-only
 ```
@@ -113,7 +113,7 @@ The system supports five documentation types:
 Documentation is linked to CANARY tokens using DOC= and DOC_HASH= fields:
 
 ```go
-// CANARY: REQ=CBIN-105; FEATURE="UserAuth"; ASPECT=API; STATUS=IMPL;
+// CANARY: REQ={{.ReqID}}-<ASPECT>-105; FEATURE="UserAuth"; ASPECT=API; STATUS=IMPL;
 //         DOC=user:docs/user/auth.md; DOC_HASH=8f434346648f6b96;
 //         UPDATED=2025-10-16
 ```
@@ -123,7 +123,7 @@ Documentation is linked to CANARY tokens using DOC= and DOC_HASH= fields:
 A single requirement can reference multiple documentation files:
 
 ```go
-// CANARY: REQ=CBIN-105; FEATURE="UserAuth"; ASPECT=API; STATUS=IMPL;
+// CANARY: REQ={{.ReqID}}-<ASPECT>-105; FEATURE="UserAuth"; ASPECT=API; STATUS=IMPL;
 //         DOC=user:docs/user/auth.md,api:docs/api/auth.md;
 //         DOC_HASH=8f434346,a1b2c3d4;
 //         UPDATED=2025-10-16
@@ -134,14 +134,14 @@ A single requirement can reference multiple documentation files:
 ### Example 1: Creating User Documentation
 
 ```
-/canary.doc create CBIN-105 --type user
+/canary.doc create {{.ReqID}}-<ASPECT>-105 --type user
 ```
 
 **Agent should:**
-1. Run `canary doc create CBIN-105 --type user --output docs/user/authentication.md`
+1. Run `canary doc create {{.ReqID}}-<ASPECT>-105 --type user --output docs/user/authentication.md`
 2. Edit the generated template with actual content
 3. Add DOC= field to CANARY token in source code
-4. Run `canary doc update CBIN-105` to register the hash
+4. Run `canary doc update {{.ReqID}}-<ASPECT>-105` to register the hash
 
 ### Example 2: Checking Stale Documentation
 
@@ -163,13 +163,13 @@ When implementing a feature:
 
 ```
 # After code changes
-/canary.doc update CBIN-105
+/canary.doc update {{.ReqID}}-<ASPECT>-105
 ```
 
 **Agent should:**
 1. Review what changed in the code
 2. Update corresponding documentation files
-3. Run `canary doc update CBIN-105` to recalculate hashes
+3. Run `canary doc update {{.ReqID}}-<ASPECT>-105` to recalculate hashes
 4. Verify documentation status shows DOC_CURRENT
 
 ## Constitutional Compliance
@@ -224,13 +224,13 @@ Documentation tracking extends this principle:
 **After /canary.specify:**
 ```
 /canary.specify "Add user authentication"
-/canary.doc create CBIN-XXX --type feature
+/canary.doc create {{.ReqID}}-<ASPECT>-XXX --type feature
 ```
 
 **After /canary.plan:**
 ```
-/canary.plan CBIN-XXX
-/canary.doc create CBIN-XXX --type technical
+/canary.plan {{.ReqID}}-<ASPECT>-XXX
+/canary.doc create {{.ReqID}}-<ASPECT>-XXX --type technical
 ```
 
 **Before /canary.verify:**
@@ -247,13 +247,13 @@ Documentation tracking extends this principle:
 **Syntax:** `canary doc create <REQ-ID> --type <type> --output <path>`
 
 **Arguments:**
-- `<REQ-ID>`: Requirement identifier (e.g., CBIN-105)
+- `<REQ-ID>`: Requirement identifier (e.g., {{.ReqID}}-<ASPECT>-105)
 - `--type`: Documentation type (user, api, technical, feature, architecture)
 - `--output`: Output file path
 
 **Example:**
 ```bash
-canary doc create CBIN-105 --type user --output docs/user/auth.md
+canary doc create {{.ReqID}}-<ASPECT>-105 --type user --output docs/user/auth.md
 ```
 
 ### canary doc update
@@ -268,7 +268,7 @@ canary doc create CBIN-105 --type user --output docs/user/auth.md
 **Examples:**
 ```bash
 # Update specific requirement
-canary doc update CBIN-105
+canary doc update {{.ReqID}}-<ASPECT>-105
 
 # Update all documentation
 canary doc update --all
@@ -288,7 +288,7 @@ canary doc update --all --stale-only
 
 **Examples:**
 ```bash
-canary doc status CBIN-105
+canary doc status {{.ReqID}}-<ASPECT>-105
 canary doc status --all
 canary doc status --all --stale-only
 ```
@@ -392,12 +392,12 @@ When you complete implementation of a feature with STATUS=IMPL or STATUS=TESTED:
 
 3. **Example workflow:**
    ```bash
-   # After implementing CBIN-105
-   canary doc create CBIN-105 --type user --output docs/user/auth.md
+   # After implementing {{.ReqID}}-<ASPECT>-105
+   canary doc create {{.ReqID}}-<ASPECT>-105 --type user --output docs/user/auth.md
    # Edit the documentation
-   canary doc update CBIN-105
+   canary doc update {{.ReqID}}-<ASPECT>-105
    # Verify
-   canary doc status CBIN-105
+   canary doc status {{.ReqID}}-<ASPECT>-105
    ```
 
 ### Pattern 2: Documentation-Driven Development
@@ -407,18 +407,18 @@ Before implementing a feature:
 1. **Create feature specification:**
    ```bash
    /canary.specify "Add user authentication"
-   # Creates CBIN-XXX
+   # Creates {{.ReqID}}-<ASPECT>-XXX
    ```
 
 2. **Create feature documentation:**
    ```bash
-   canary doc create CBIN-XXX --type feature --output docs/features/auth.md
+   canary doc create {{.ReqID}}-<ASPECT>-XXX --type feature --output docs/features/auth.md
    # Fill in user stories and acceptance criteria
    ```
 
 3. **Create technical design:**
    ```bash
-   canary doc create CBIN-XXX --type technical --output docs/technical/auth-impl.md
+   canary doc create {{.ReqID}}-<ASPECT>-XXX --type technical --output docs/technical/auth-impl.md
    # Document architecture and implementation approach
    ```
 
@@ -475,14 +475,14 @@ For complex features requiring multiple documentation types:
 
 1. **Create all documentation:**
    ```bash
-   canary doc create CBIN-200 --type user --output docs/user/api-usage.md
-   canary doc create CBIN-200 --type api --output docs/api/endpoints.md
-   canary doc create CBIN-200 --type technical --output docs/technical/api-design.md
+   canary doc create {{.ReqID}}-<ASPECT>-200 --type user --output docs/user/api-usage.md
+   canary doc create {{.ReqID}}-<ASPECT>-200 --type api --output docs/api/endpoints.md
+   canary doc create {{.ReqID}}-<ASPECT>-200 --type technical --output docs/technical/api-design.md
    ```
 
 2. **Update CANARY token with multiple references:**
    ```go
-   // CANARY: REQ=CBIN-200; FEATURE="RestAPI"; ASPECT=API; STATUS=IMPL;
+   // CANARY: REQ={{.ReqID}}-<ASPECT>-200; FEATURE="RestAPI"; ASPECT=API; STATUS=IMPL;
    //         DOC=user:docs/user/api-usage.md,api:docs/api/endpoints.md,technical:docs/technical/api-design.md;
    //         DOC_HASH=hash1,hash2,hash3;
    //         UPDATED=2025-10-16
@@ -490,7 +490,7 @@ For complex features requiring multiple documentation types:
 
 3. **Update all hashes together:**
    ```bash
-   canary doc update CBIN-200
+   canary doc update {{.ReqID}}-<ASPECT>-200
    ```
 
 ## Agent Decision Tree

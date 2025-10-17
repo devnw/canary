@@ -2,7 +2,7 @@
 description: Automatically update UPDATED field for stale CANARY tokens
 ---
 
-# CANARY: REQ=CBIN-114; FEATURE="UpdateStaleCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-114; FEATURE="UpdateStaleCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 
 ## User Input
 
@@ -32,12 +32,12 @@ Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days 
 
    The following CANARY tokens need updating:
 
-   - CBIN-001: UserAuth (288 days old)
+   - {{.ReqID}}-<ASPECT>-001: UserAuth (288 days old)
      - File: internal/auth/auth.go:10
      - Current: UPDATED=2024-01-01
      - New: UPDATED=2025-10-16
 
-   - CBIN-004: CacheOptimization (288 days old)
+   - {{.ReqID}}-<ASPECT>-004: CacheOptimization (288 days old)
      - File: internal/cache/cache.go:15
      - Current: UPDATED=2024-01-01
      - New: UPDATED=2025-10-16
@@ -71,8 +71,8 @@ Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days 
    **Tokens Updated:** N
 
    ### Updated Tokens
-   - ✅ CBIN-001: internal/auth/auth.go (2024-01-01 → 2025-10-16)
-   - ✅ CBIN-004: internal/cache/cache.go (2024-01-01 → 2025-10-16)
+   - ✅ {{.ReqID}}-<ASPECT>-001: internal/auth/auth.go (2024-01-01 → 2025-10-16)
+   - ✅ {{.ReqID}}-<ASPECT>-004: internal/cache/cache.go (2024-01-01 → 2025-10-16)
 
    ### Files Modified
    - internal/auth/auth.go
@@ -92,8 +92,8 @@ Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days 
    git commit -m "chore: update stale CANARY tokens
 
    Updated UPDATED field for N stale tokens:
-   - CBIN-001: UserAuth
-   - CBIN-004: CacheOptimization
+   - {{.ReqID}}-<ASPECT>-001: UserAuth
+   - {{.ReqID}}-<ASPECT>-004: CacheOptimization
 
    All TESTED/BENCHED requirements now current (within 30 days).
    "
@@ -109,12 +109,12 @@ Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days 
 
 ### Before Update
 ```go
-// CANARY: REQ=CBIN-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2024-01-01
+// CANARY: REQ={{.ReqID}}-<ASPECT>-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2024-01-01
 ```
 
 ### After Update
 ```go
-// CANARY: REQ=CBIN-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2025-10-16
+// CANARY: REQ={{.ReqID}}-<ASPECT>-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2025-10-16
 ```
 
 ### Files Modified

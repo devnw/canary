@@ -28,7 +28,7 @@ This command generates a complete implementation prompt that includes:
 
 ### Exact ID Match
 ```
-/canary.implement CBIN-105
+/canary.implement {{.ReqID}}-<ASPECT>-105
 ```
 Finds specification by exact requirement ID.
 
@@ -82,7 +82,7 @@ The prompt contains everything you need:
 ### 3. Add CANARY Tokens
 Place tokens above each implementation point:
 ```go
-// CANARY: REQ=CBIN-XXX; FEATURE="Name"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD
+// CANARY: REQ={{.ReqID}}-<ASPECT>-XXX; FEATURE="Name"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD
 func ImplementFeature() {
     // implementation
 }
@@ -106,11 +106,11 @@ canary implement <REQ-ID>  # Check progress
 
 ### Example 1: Implement by Exact ID
 ```
-User: /canary.implement CBIN-105
+User: /canary.implement {{.ReqID}}-<ASPECT>-105
 
 Agent Response:
 [Generates full implementation prompt with:
- - Spec for CBIN-105
+ - Spec for {{.ReqID}}-<ASPECT>-105
  - Plan details
  - Checklist
  - Progress (0/8 features completed)
@@ -125,7 +125,7 @@ Agent: I'll implement this following the Test-First approach...
 ```
 User: /canary.implement "user auth"
 
-Agent: Found strong match (score: 92%): CBIN-105 - UserAuthentication
+Agent: Found strong match (score: 92%): {{.ReqID}}-<ASPECT>-105 - UserAuthentication
 [Auto-selects and generates prompt]
 ```
 
@@ -134,14 +134,14 @@ Agent: Found strong match (score: 92%): CBIN-105 - UserAuthentication
 User: /canary.implement "auth"
 
 Agent: Multiple matches found:
-1. CBIN-105 - UserAuthentication (Score: 85%)
-2. CBIN-110 - OAuthIntegration (Score: 80%)
-3. CBIN-115 - AuthorizationRules (Score: 75%)
+1. {{.ReqID}}-<ASPECT>-105 - UserAuthentication (Score: 85%)
+2. {{.ReqID}}-<ASPECT>-110 - OAuthIntegration (Score: 80%)
+3. {{.ReqID}}-<ASPECT>-115 - AuthorizationRules (Score: 75%)
 
 Select a requirement (1-3):
 User: 1
 
-[Generates prompt for CBIN-105]
+[Generates prompt for {{.ReqID}}-<ASPECT>-105]
 ```
 
 ### Example 4: List All Unimplemented
@@ -151,13 +151,13 @@ User: /canary.implement --list
 Agent Response:
 Requirements with incomplete implementation:
 
-CBIN-105 - UserAuthentication [25% complete]
+{{.ReqID}}-<ASPECT>-105 - UserAuthentication [25% complete]
   Total: 8 | Tested: 2 | Impl: 3 | Stub: 3
 
-CBIN-110 - OAuthIntegration [0% complete]
+{{.ReqID}}-<ASPECT>-110 - OAuthIntegration [0% complete]
   Total: 5 | Tested: 0 | Impl: 0 | Stub: 5
 
-CBIN-112 - DataValidation [60% complete]
+{{.ReqID}}-<ASPECT>-112 - DataValidation [60% complete]
   Total: 10 | Tested: 6 | Impl: 2 | Stub: 2
 ```
 
@@ -187,10 +187,10 @@ CBIN-112 - DataValidation [60% complete]
 1. /canary.specify "feature description"
    → Creates spec.md
 
-2. /canary.plan CBIN-XXX
+2. /canary.plan {{.ReqID}}-<ASPECT>-XXX
    → Creates plan.md
 
-3. /canary.implement CBIN-XXX
+3. /canary.implement {{.ReqID}}-<ASPECT>-XXX
    → Generates implementation prompt
    → Agent implements following TDD
 
@@ -242,7 +242,7 @@ Uses Go `text/template` for prompt generation. Template variables:
 ```
 .canary/
 ├── specs/
-│   └── CBIN-XXX-FeatureName/
+│   └── {{.ReqID}}-<ASPECT>-XXX-FeatureName/
 │       ├── spec.md              # Required
 │       └── plan.md              # Optional (included if exists)
 ├── templates/
@@ -270,7 +270,7 @@ Error: no matches found for query: "xyz"
 Make sure:
 1. Specification exists in .canary/specs/
 2. Query matches requirement ID or feature name
-3. Directory format: CBIN-XXX-FeatureName
+3. Directory format: {{.ReqID}}-<ASPECT>-XXX-FeatureName
 ```
 
 ### Missing Template

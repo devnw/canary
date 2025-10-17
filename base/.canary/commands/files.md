@@ -2,7 +2,7 @@
 description: List all implementation files containing tokens for a requirement
 ---
 
-# CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 
 ## User Input
 
@@ -15,7 +15,7 @@ $ARGUMENTS
 List all implementation files for a requirement, grouped by aspect with token counts.
 
 1. **Parse requirement ID**:
-   - Extract REQ-ID from arguments (e.g., CBIN-105)
+   - Extract REQ-ID from arguments (e.g., {{.ReqID}}-<ASPECT>-XXX)
    - Validate format
 
 2. **Run canary files command**:
@@ -45,7 +45,7 @@ List all implementation files for a requirement, grouped by aspect with token co
 ## Example Output
 
 ```markdown
-## Implementation Files for CBIN-105
+## Implementation Files for {{.ReqID}}-<ASPECT>-105
 
 ### CLI
 - cmd/canary/init.go (4 tokens)

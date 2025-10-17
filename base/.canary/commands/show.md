@@ -2,7 +2,7 @@
 description: Display all CANARY tokens for a specific requirement ID
 ---
 
-# CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 
 ## User Input
 
@@ -15,7 +15,7 @@ $ARGUMENTS
 Display all CANARY tokens for a specific requirement, organized by aspect or status.
 
 1. **Parse requirement ID**:
-   - Extract REQ-ID from arguments (e.g., CBIN-133)
+   - Extract REQ-ID from arguments (e.g., {{.ReqID}}-<ASPECT>-133)
    - Validate format (should match XXXX-NNN pattern)
 
 2. **Run canary show command**:
@@ -51,27 +51,27 @@ Display all CANARY tokens for a specific requirement, organized by aspect or sta
 ## Example Output
 
 ```markdown
-## Tokens for CBIN-133
+## Tokens for {{.ReqID}}-<ASPECT>-133
 
 ### CLI Aspect
 
-📌 CBIN-133 - CreateCommand
+📌 {{.ReqID}}-<ASPECT>-133 - CreateCommand
    Status: TESTED | Aspect: CLI | Priority: 1
    Location: cmd/canary/create.go:25
-   Test: TestCANARY_CBIN_133_CLI_CreateCommand
+   Test: TestCANARY_{{.ReqID}}-<ASPECT>_133_CLI_CreateCommand
    Owner: canary-team
 
-📌 CBIN-133 - CreateCommandHelp
+📌 {{.ReqID}}-<ASPECT>-133 - CreateCommandHelp
    Status: IMPL | Aspect: CLI | Priority: 2
    Location: cmd/canary/create.go:112
 
 ### Engine Aspect
 
-📌 CBIN-133 - TokenGeneration
+📌 {{.ReqID}}-<ASPECT>-133 - TokenGeneration
    Status: BENCHED | Aspect: Engine | Priority: 1
    Location: internal/engine/generate.go:45
-   Test: TestCANARY_CBIN_133_Engine_TokenGeneration
-   Bench: BenchCANARY_CBIN_133_Engine_TokenGeneration
+   Test: TestCANARY_{{.ReqID}}-<ASPECT>_133_Engine_TokenGeneration
+   Bench: BenchCANARY_{{.ReqID}}-<ASPECT>_133_Engine_TokenGeneration
    Owner: core-team
 
 **Summary:**
@@ -81,7 +81,7 @@ Display all CANARY tokens for a specific requirement, organized by aspect or sta
 - IMPL: 1 (33%)
 
 **Recommendations:**
-- CBIN-133/CreateCommandHelp: Add tests for IMPL status token
+- {{.ReqID}}-<ASPECT>-133/CreateCommandHelp: Add tests for IMPL status token
 ```
 
 ## Guidelines
