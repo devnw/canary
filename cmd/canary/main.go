@@ -304,6 +304,11 @@ The agent files support template variables that can be customized:
 			return fmt.Errorf("install slash commands: %w", err)
 		}
 
+		// Install agent files to each agent system's directory
+		if err := installAgentFilesToSystems(projectName, agentsList, allAgents, agentPrefix, agentModel, agentColor); err != nil {
+			return fmt.Errorf("install agent files to systems: %w", err)
+		}
+
 		// Rebuild canary binary if we're updating
 		if isUpdate {
 			fmt.Println("\n🔧 Rebuilding canary binary...")
@@ -408,6 +413,7 @@ The agent files support template variables that can be customized:
 		fmt.Println("     ├── scripts/ - Automation scripts")
 		fmt.Println("     ├── templates/ - Spec/plan templates")
 		fmt.Println("     └── templates/commands/ - Slash commands for AI agents")
+		fmt.Println("  ✅ Agent Files - Installed to detected AI agent systems")
 
 		// Show which agents had commands installed
 		agentDirs := map[string]string{
@@ -432,9 +438,9 @@ The agent files support template variables that can be customized:
 		}
 
 		if len(installedAgents) > 0 {
-			fmt.Printf("  ✅ AI Agent Commands Installed (%d detected):\n", len(installedAgents))
+			fmt.Printf("  ✅ AI Agent Integration (%d systems detected):\n", len(installedAgents))
 			for _, agent := range installedAgents {
-				fmt.Printf("     • %s\n", agent)
+				fmt.Printf("     • %s (commands + agent files)\n", agent)
 			}
 		}
 
@@ -672,10 +678,11 @@ func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag b
 }
 
 // CANARY: REQ=CBIN-105; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17
-// copyAndProcessAgentFiles copies agent files from base/.canary/agents/ to .canary/agents/
+// copyAndProcessAgentFiles copies agent files from embedded/.canary/agents/ to .canary/agents/
 // and performs template variable substitution for {{ .AgentPrefix }}, {{ .AgentModel }}, {{ .AgentColor }}
 func copyAndProcessAgentFiles(targetDir, agentPrefix, agentModel, agentColor string) error {
-	sourceAgentsDir := "base/.canary/agents"
+	// Try new path first, fall back to old path
+	sourceAgentsDir := ".canary/agents"
 	targetAgentsDir := filepath.Join(targetDir, ".canary", "agents")
 
 	// Create target agents directory
@@ -686,7 +693,12 @@ func copyAndProcessAgentFiles(targetDir, agentPrefix, agentModel, agentColor str
 	// Read agent files from embedded FS
 	entries, err := embedded.CanaryFS.ReadDir(sourceAgentsDir)
 	if err != nil {
-		return fmt.Errorf("read agents directory: %w", err)
+		// Fall back to base path
+		sourceAgentsDir = "base/.canary/agents"
+		entries, err = embedded.CanaryFS.ReadDir(sourceAgentsDir)
+		if err != nil {
+			return fmt.Errorf("read agents directory: %w", err)
+		}
 	}
 
 	// Process each agent file
@@ -716,6 +728,123 @@ func copyAndProcessAgentFiles(targetDir, agentPrefix, agentModel, agentColor str
 		// Write processed content to target
 		if err := os.WriteFile(targetPath, []byte(processedContent), 0644); err != nil {
 			return fmt.Errorf("write agent file %s: %w", entry.Name(), err)
+		}
+	}
+
+	return nil
+}
+
+// CANARY: REQ=CBIN-105; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17
+// installAgentFilesToSystems copies agent files from embedded/.canary/agents/ to each agent system's agents directory
+// This ensures agent definitions are available in each AI agent system (Claude, Cursor, etc.)
+func installAgentFilesToSystems(targetDir string, agentsList []string, allAgentsFlag bool, agentPrefix, agentModel, agentColor string) error {
+	// Try new path first, fall back to old path
+	sourceAgentsDir := ".canary/agents"
+	entries, err := embedded.CanaryFS.ReadDir(sourceAgentsDir)
+	if err != nil {
+		// Fall back to base path
+		sourceAgentsDir = "base/.canary/agents"
+		entries, err = embedded.CanaryFS.ReadDir(sourceAgentsDir)
+		if err != nil {
+			return fmt.Errorf("read agents directory: %w", err)
+		}
+	}
+
+	// Agent configurations with agents subdirectory paths
+	allAgents := map[string]string{
+		"claude":    filepath.Join(targetDir, ".claude", "agents"),
+		"cursor":    filepath.Join(targetDir, ".cursor", "agents"),
+		"copilot":   filepath.Join(targetDir, ".github", "copilot", "agents"),
+		"windsurf":  filepath.Join(targetDir, ".windsurf", "agents"),
+		"kilocode":  filepath.Join(targetDir, ".kilocode", "agents"),
+		"roo":       filepath.Join(targetDir, ".roo", "agents"),
+		"opencode":  filepath.Join(targetDir, ".opencode", "agents"),
+		"codex":     filepath.Join(targetDir, ".codex", "agents"),
+		"auggie":    filepath.Join(targetDir, ".augment", "agents"),
+		"codebuddy": filepath.Join(targetDir, ".codebuddy", "agents"),
+		"amazonq":   filepath.Join(targetDir, ".amazonq", "agents"),
+	}
+
+	agentRootDirs := map[string]string{
+		"claude":    filepath.Join(targetDir, ".claude"),
+		"cursor":    filepath.Join(targetDir, ".cursor"),
+		"copilot":   filepath.Join(targetDir, ".github"),
+		"windsurf":  filepath.Join(targetDir, ".windsurf"),
+		"kilocode":  filepath.Join(targetDir, ".kilocode"),
+		"roo":       filepath.Join(targetDir, ".roo"),
+		"opencode":  filepath.Join(targetDir, ".opencode"),
+		"codex":     filepath.Join(targetDir, ".codex"),
+		"auggie":    filepath.Join(targetDir, ".augment"),
+		"codebuddy": filepath.Join(targetDir, ".codebuddy"),
+		"amazonq":   filepath.Join(targetDir, ".amazonq"),
+	}
+
+	// Determine which agents to install for
+	var selectedAgents map[string]string
+
+	if allAgentsFlag {
+		// Install for all agents
+		selectedAgents = allAgents
+	} else if len(agentsList) > 0 {
+		// Install for specific agents
+		selectedAgents = make(map[string]string)
+		for _, agentName := range agentsList {
+			if agentDir, ok := allAgents[agentName]; ok {
+				selectedAgents[agentName] = agentDir
+			} else {
+				return fmt.Errorf("unknown agent: %s (valid: claude, cursor, copilot, windsurf, kilocode, roo, opencode, codex, auggie, codebuddy, amazonq)", agentName)
+			}
+		}
+	} else {
+		// Auto-detect existing agent directories
+		selectedAgents = make(map[string]string)
+		for agentName, rootDir := range agentRootDirs {
+			if _, err := os.Stat(rootDir); err == nil {
+				selectedAgents[agentName] = allAgents[agentName]
+			}
+		}
+	}
+
+	// If no agents selected, nothing to install
+	if len(selectedAgents) == 0 {
+		return nil
+	}
+
+	// Install agent files for selected agents
+	for agentName, agentDir := range selectedAgents {
+		// Create agents directory
+		if err := os.MkdirAll(agentDir, 0755); err != nil {
+			return fmt.Errorf("create %s agents directory: %w", agentName, err)
+		}
+
+		// Copy each agent file with template substitution
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+
+			sourcePath := filepath.Join(sourceAgentsDir, entry.Name())
+			targetPath := filepath.Join(agentDir, entry.Name())
+
+			// Read the agent file
+			content, err := embedded.CanaryFS.ReadFile(sourcePath)
+			if err != nil {
+				return fmt.Errorf("read agent file %s: %w", entry.Name(), err)
+			}
+
+			// Perform template substitution
+			processedContent := string(content)
+			processedContent = strings.ReplaceAll(processedContent, "{{ .AgentPrefix }}", agentPrefix)
+			processedContent = strings.ReplaceAll(processedContent, "{{ .AgentModel }}", agentModel)
+			processedContent = strings.ReplaceAll(processedContent, "{{ .AgentColor }}", agentColor)
+
+			// Filter out CANARY CLI internal tokens (OWNER=canary)
+			processedContent = string(filterCanaryTokens([]byte(processedContent)))
+
+			// Write to target
+			if err := os.WriteFile(targetPath, []byte(processedContent), 0644); err != nil {
+				return fmt.Errorf("write agent file %s for %s: %w", entry.Name(), agentName, err)
+			}
 		}
 	}
 
