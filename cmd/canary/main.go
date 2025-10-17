@@ -181,10 +181,16 @@ var initCmd = &cobra.Command{
 	Long: `Bootstrap a new project with CANARY spec-kit-inspired workflow.
 
 Creates:
-- .canary/ directory with templates, scripts, and slash commands
+- .canary/ directory with templates, scripts, agents, and slash commands
+- .canary/agents/ directory with pre-configured CANARY agent definitions
 - README.md with CANARY token format specification
 - GAP_ANALYSIS.md template for tracking requirements
-- CLAUDE.md for AI agent integration (slash commands)`,
+- CLAUDE.md for AI agent integration (slash commands)
+
+The agent files support template variables that can be customized:
+  --agent-prefix: Agent name prefix (default: project key)
+  --agent-model:  AI model to use (default: claude-3-5-sonnet-20241022)
+  --agent-color:  Agent color theme (default: blue)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := "."
 		if len(args) > 0 {
@@ -271,6 +277,27 @@ Creates:
 		// Get agent selection flags
 		agentsList, _ := cmd.Flags().GetStringSlice("agents")
 		allAgents, _ := cmd.Flags().GetBool("all-agents")
+
+		// Get agent configuration flags
+		agentPrefix, _ := cmd.Flags().GetString("agent-prefix")
+		agentModel, _ := cmd.Flags().GetString("agent-model")
+		agentColor, _ := cmd.Flags().GetString("agent-color")
+
+		// Set defaults if not provided
+		if agentPrefix == "" {
+			agentPrefix = projectKey // Use project key as default agent prefix
+		}
+		if agentModel == "" {
+			agentModel = "claude-3-5-sonnet-20241022"
+		}
+		if agentColor == "" {
+			agentColor = "blue"
+		}
+
+		// Copy and process agent files to .canary/agents/ with template substitution
+		if err := copyAndProcessAgentFiles(projectName, agentPrefix, agentModel, agentColor); err != nil {
+			return fmt.Errorf("copy agent files: %w", err)
+		}
 
 		// Install/update slash commands to agent directories
 		if err := installSlashCommands(projectName, agentsList, allAgents); err != nil {
@@ -376,6 +403,7 @@ Creates:
 			fmt.Println("Created:")
 		}
 		fmt.Println("  ✅ .canary/ - Full workflow structure")
+		fmt.Println("     ├── agents/ - Pre-configured CANARY agent definitions")
 		fmt.Println("     ├── memory/constitution.md - Project principles")
 		fmt.Println("     ├── scripts/ - Automation scripts")
 		fmt.Println("     ├── templates/ - Spec/plan templates")
@@ -637,6 +665,57 @@ func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag b
 			if err := os.WriteFile(targetPath, content, 0644); err != nil {
 				return fmt.Errorf("write command file %s for %s: %w", targetName, agentName, err)
 			}
+		}
+	}
+
+	return nil
+}
+
+// CANARY: REQ=CBIN-105; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17
+// copyAndProcessAgentFiles copies agent files from base/.canary/agents/ to .canary/agents/
+// and performs template variable substitution for {{ .AgentPrefix }}, {{ .AgentModel }}, {{ .AgentColor }}
+func copyAndProcessAgentFiles(targetDir, agentPrefix, agentModel, agentColor string) error {
+	sourceAgentsDir := "base/.canary/agents"
+	targetAgentsDir := filepath.Join(targetDir, ".canary", "agents")
+
+	// Create target agents directory
+	if err := os.MkdirAll(targetAgentsDir, 0755); err != nil {
+		return fmt.Errorf("create agents directory: %w", err)
+	}
+
+	// Read agent files from embedded FS
+	entries, err := embedded.CanaryFS.ReadDir(sourceAgentsDir)
+	if err != nil {
+		return fmt.Errorf("read agents directory: %w", err)
+	}
+
+	// Process each agent file
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		sourcePath := filepath.Join(sourceAgentsDir, entry.Name())
+		targetPath := filepath.Join(targetAgentsDir, entry.Name())
+
+		// Read the agent file
+		content, err := embedded.CanaryFS.ReadFile(sourcePath)
+		if err != nil {
+			return fmt.Errorf("read agent file %s: %w", entry.Name(), err)
+		}
+
+		// Perform template substitution
+		processedContent := string(content)
+		processedContent = strings.ReplaceAll(processedContent, "{{ .AgentPrefix }}", agentPrefix)
+		processedContent = strings.ReplaceAll(processedContent, "{{ .AgentModel }}", agentModel)
+		processedContent = strings.ReplaceAll(processedContent, "{{ .AgentColor }}", agentColor)
+
+		// Filter out CANARY CLI internal tokens (OWNER=canary)
+		processedContent = string(filterCanaryTokens([]byte(processedContent)))
+
+		// Write processed content to target
+		if err := os.WriteFile(targetPath, []byte(processedContent), 0644); err != nil {
+			return fmt.Errorf("write agent file %s: %w", entry.Name(), err)
 		}
 	}
 
@@ -929,6 +1008,7 @@ creates a spec directory, and populates it with a specification template.`,
 		content = strings.ReplaceAll(content, "CBIN-XXX", generatedID)
 		content = strings.ReplaceAll(content, "[FEATURE NAME]", featureDesc)
 		content = strings.ReplaceAll(content, "YYYY-MM-DD", time.Now().UTC().Format("2006-01-02"))
+		content = strings.ReplaceAll(content, "<ASPECT>", aspect)
 
 		if err := os.WriteFile(specFile, []byte(content), 0644); err != nil {
 			return fmt.Errorf("write spec file: %w", err)
@@ -1049,6 +1129,9 @@ tech stack decisions, and CANARY token placement instructions.`,
 			techStack = strings.Join(args[1:], " ")
 		}
 
+		// Get aspect flag
+		aspect, _ := cmd.Flags().GetString("aspect")
+
 		// Find spec directory
 		specsDir := ".canary/specs"
 		entries, err := os.ReadDir(specsDir)
@@ -1079,27 +1162,57 @@ tech stack decisions, and CANARY token placement instructions.`,
 			return fmt.Errorf("read plan template: %w", err)
 		}
 
-		// Read spec to get feature name
+		// Read spec to get feature name and aspect if not provided
 		specFile := filepath.Join(specDir, "spec.md")
 		specContent, err := os.ReadFile(specFile)
 		if err != nil {
 			return fmt.Errorf("read spec file: %w", err)
 		}
 
-		// Extract feature name from spec
+		// Extract feature name and aspect from spec
 		featureName := "Feature"
+		specAspect := ""
 		for _, line := range strings.Split(string(specContent), "\n") {
 			if strings.HasPrefix(line, "# Feature Specification:") {
 				featureName = strings.TrimPrefix(line, "# Feature Specification: ")
 				featureName = strings.TrimSpace(featureName)
-				break
+			}
+			if strings.HasPrefix(line, "**Aspect:**") {
+				// Extract aspect from markdown like "**Aspect:** API" or "**Aspect:** [API|CLI|...]"
+				parts := strings.SplitN(line, ":", 2)
+				if len(parts) == 2 {
+					aspectVal := strings.TrimSpace(parts[1])
+					// Remove brackets and extract first option if it's a list
+					aspectVal = strings.TrimPrefix(aspectVal, "[")
+					aspectVal = strings.Split(aspectVal, "|")[0]
+					aspectVal = strings.TrimSpace(aspectVal)
+					if aspectVal != "" {
+						specAspect = aspectVal
+					}
+				}
 			}
 		}
+
+		// Use aspect from flag, or fall back to spec, or default to "Engine"
+		if aspect == "" {
+			if specAspect != "" {
+				aspect = specAspect
+			} else {
+				aspect = "Engine"
+			}
+		}
+
+		// Validate and normalize aspect
+		if err := reqid.ValidateAspect(aspect); err != nil {
+			return fmt.Errorf("invalid aspect: %w", err)
+		}
+		aspect = reqid.NormalizeAspect(aspect)
 
 		content := string(templateContent)
 		content = strings.ReplaceAll(content, "CBIN-XXX", reqID)
 		content = strings.ReplaceAll(content, "[FEATURE NAME]", featureName)
 		content = strings.ReplaceAll(content, "YYYY-MM-DD", time.Now().UTC().Format("2006-01-02"))
+		content = strings.ReplaceAll(content, "<ASPECT>", aspect)
 
 		if techStack != "" {
 			content = strings.ReplaceAll(content, "[Go/Python/JavaScript/etc.]", techStack)
@@ -1883,9 +1996,15 @@ func init() {
 	initCmd.Flags().StringSlice("agents", []string{}, "comma-separated list of agents to install for (claude,cursor,copilot,windsurf,kilocode,roo,opencode,codex,auggie,codebuddy,amazonq)")
 	initCmd.Flags().Bool("all-agents", false, "install commands for all supported agents")
 	initCmd.Flags().String("key", "", "project requirement ID prefix (e.g., CBIN, PROJ, ACME)")
+	initCmd.Flags().String("agent-prefix", "", "agent name prefix for CANARY agents (default: project key)")
+	initCmd.Flags().String("agent-model", "claude-3-5-sonnet-20241022", "AI model for CANARY agents")
+	initCmd.Flags().String("agent-color", "blue", "color for CANARY agents")
 
 	// specifyCmd flags
 	specifyCmd.Flags().String("aspect", "Engine", "requirement aspect (API, CLI, Engine, Storage, Security, Docs, Wire, Planner, Decode, Encode, RoundTrip, Bench, FrontEnd, Dist)")
+
+	// planCmd flags
+	planCmd.Flags().String("aspect", "", "requirement aspect for template substitution (API, CLI, Engine, Storage, Security, Docs, Wire, Planner, Decode, Encode, RoundTrip, Bench, FrontEnd, Dist)")
 
 	// createCmd flags
 	createCmd.Flags().String("aspect", "API", "requirement aspect/category")

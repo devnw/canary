@@ -37,6 +37,9 @@ type ProjectConfig struct {
 		RequireBenchField bool `yaml:"require_bench_field"`
 		StalenessDays     int  `yaml:"staleness_days"`
 	} `yaml:"verification"`
+	Agent struct {
+		DefaultModel string `yaml:"default_model"`
+	} `yaml:"agent"`
 }
 
 // Load reads and parses the project.yaml configuration file
