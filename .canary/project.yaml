@@ -49,9 +49,3 @@ verification:
 
   # Staleness threshold in days (for --strict mode)
   staleness_days: 30
-
-# Agent/AI configuration
-agent:
-  # Default model to use for AI-assisted operations
-  # Options: sonnet, opus, haiku
-  default_model: "sonnet"
