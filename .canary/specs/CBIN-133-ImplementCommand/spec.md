@@ -493,12 +493,12 @@ None - requirement is fully specified.
 
 **Main requirement token** (add to primary implementation file):
 ```
-// CANARY: REQ=CBIN-133; FEATURE="ImplementCommand"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="ImplementCommand"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16
 ```
 
 **Example sub-feature token**:
 ```
-// CANARY: REQ=CBIN-133; FEATURE="FuzzyMatcher"; ASPECT=Engine; STATUS=IMPL; TEST=TestCANARY_CBIN_133_Engine_FuzzyMatching; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="FuzzyMatcher"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_133_Engine_FuzzyMatching; UPDATED=2025-10-16
 ```
 
 ---

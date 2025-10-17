@@ -375,12 +375,12 @@ After implementing each feature:
 
 **Main requirement token** (add to primary implementation file):
 ```
-// CANARY: REQ=CBIN-CLI-001; FEATURE="FeatureName"; ASPECT=API; STATUS=IMPL; UPDATED=2025-10-17
+// CANARY: REQ=CBIN-CLI-001; FEATURE="FeatureName"; ASPECT=API; STATUS=TESTED; UPDATED=2025-10-16
 ```
 
 **Sub-feature tokens** (use the specific feature names from Implementation Checklist):
 ```
-// CANARY: REQ=CBIN-CLI-001; FEATURE="CoreFeature1"; ASPECT=API; STATUS=IMPL; TEST=TestCoreFeature1; UPDATED=2025-10-17
+// CANARY: REQ=CBIN-CLI-001; FEATURE="CoreFeature1"; ASPECT=API; STATUS=TESTED; TEST=TestCoreFeature1; UPDATED=2025-10-16
 ```
 
 **Use `canary implement CBIN-CLI-001` to find:**

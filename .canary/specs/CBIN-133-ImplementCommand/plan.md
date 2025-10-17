@@ -13,7 +13,7 @@
 Before proceeding with implementation, validate against all constitutional articles:
 
 ### Article I: Requirement-First Development ✅
-- **Token Format**: `// CANARY: REQ=CBIN-133; FEATURE="ImplementCommand"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16`
+- **Token Format**: `// CANARY: REQ=CBIN-133; FEATURE="ImplementCommand"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16`
 - **Evidence-Based Promotion**: Plan includes explicit status progression (STUB → IMPL → TESTED)
 - **Staleness Management**: UPDATED field will be maintained
 
@@ -161,7 +161,7 @@ Before proceeding with implementation, validate against all constitutional artic
 ### Main Command Token
 ```go
 // File: cmd/canary/main.go (around line 1650, after nextCmd)
-// CANARY: REQ=CBIN-133; FEATURE="ImplementCmd"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="ImplementCmd"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16
 var implementCmd = &cobra.Command{
 	Use:   "implement <query> [flags]",
 	Short: "Generate implementation guidance for a requirement",
@@ -177,7 +177,7 @@ var implementCmd = &cobra.Command{
 **Requirement Lookup:**
 ```go
 // File: cmd/canary/implement.go (new file)
-// CANARY: REQ=CBIN-133; FEATURE="RequirementLookup"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="RequirementLookup"; ASPECT=API; STATUS=TESTED; UPDATED=2025-10-16
 func findRequirement(query string) (*RequirementSpec, error) {
 	// Lookup logic
 }
@@ -186,7 +186,7 @@ func findRequirement(query string) (*RequirementSpec, error) {
 **Fuzzy Matcher:**
 ```go
 // File: internal/matcher/fuzzy.go (new file)
-// CANARY: REQ=CBIN-133; FEATURE="FuzzyMatcher"; ASPECT=Engine; STATUS=STUB; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="FuzzyMatcher"; ASPECT=Engine; STATUS=TESTED; UPDATED=2025-10-16
 func CalculateLevenshtein(s1, s2 string) int {
 	// Levenshtein distance algorithm
 }
@@ -195,7 +195,7 @@ func CalculateLevenshtein(s1, s2 string) int {
 **Prompt Renderer:**
 ```go
 // File: cmd/canary/implement.go
-// CANARY: REQ=CBIN-133; FEATURE="PromptRenderer"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="PromptRenderer"; ASPECT=API; STATUS=TESTED; UPDATED=2025-10-16
 func renderImplementPrompt(spec *RequirementSpec, flags *ImplementFlags) (string, error) {
 	// Template rendering
 }
@@ -232,7 +232,7 @@ touch internal/matcher/fuzzy_test.go
 
 ```go
 // File: internal/matcher/fuzzy_test.go
-// CANARY: REQ=CBIN-133; FEATURE="FuzzyMatcherTests"; ASPECT=Engine; STATUS=STUB; TEST=TestCANARY_CBIN_133_Engine_Levenshtein; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="FuzzyMatcherTests"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_133_Engine_Levenshtein; UPDATED=2025-10-16
 package matcher_test
 
 import "testing"
@@ -282,7 +282,7 @@ func TestCANARY_CBIN_133_Engine_FuzzyScoring(t *testing.T) {
 
 ```go
 // File: cmd/canary/implement_test.go
-// CANARY: REQ=CBIN-133; FEATURE="ImplementCmdTests"; ASPECT=CLI; STATUS=STUB; TEST=TestCANARY_CBIN_133_CLI_ExactMatch; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="ImplementCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_ExactMatch; UPDATED=2025-10-16
 package main
 
 import (
@@ -430,7 +430,7 @@ Now implement ONLY enough code to make tests pass.
 
 ```go
 // File: internal/matcher/fuzzy.go (new)
-// CANARY: REQ=CBIN-133; FEATURE="FuzzyMatcher"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="FuzzyMatcher"; ASPECT=Engine; STATUS=TESTED; UPDATED=2025-10-16
 package matcher
 
 import (
@@ -608,7 +608,7 @@ func FindBestMatches(query string, specsDir string, limit int) ([]Match, error) 
 
 ```go
 // File: cmd/canary/implement.go (new)
-// CANARY: REQ=CBIN-133; FEATURE="RequirementLookup"; ASPECT=API; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="RequirementLookup"; ASPECT=API; STATUS=TESTED; UPDATED=2025-10-16
 package main
 
 import (
@@ -787,7 +787,7 @@ func getSpecDescription(specPath string) string {
 
 ```go
 // File: cmd/canary/implement.go (continued)
-// CANARY: REQ=CBIN-133; FEATURE="PromptRenderer"; ASPECT=API; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="PromptRenderer"; ASPECT=API; STATUS=TESTED; UPDATED=2025-10-16
 
 // ImplementFlags holds command flags
 type ImplementFlags struct {
@@ -916,11 +916,11 @@ func extractImplementationChecklist(specContent string) string {
 }
 ```
 
-**Update CANARY Tokens to STATUS=IMPL:**
+**Update CANARY Tokens to STATUS=TESTED:**
 ```go
-// CANARY: REQ=CBIN-133; FEATURE="FuzzyMatcher"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-10-16
-// CANARY: REQ=CBIN-133; FEATURE="RequirementLookup"; ASPECT=API; STATUS=IMPL; UPDATED=2025-10-16
-// CANARY: REQ=CBIN-133; FEATURE="PromptRenderer"; ASPECT=API; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="FuzzyMatcher"; ASPECT=Engine; STATUS=TESTED; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="RequirementLookup"; ASPECT=API; STATUS=TESTED; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="PromptRenderer"; ASPECT=API; STATUS=TESTED; UPDATED=2025-10-16
 ```
 
 **Run Tests (Expect Success):**
@@ -938,7 +938,7 @@ go test ./internal/matcher -v -run TestCANARY_CBIN_133
 
 ```go
 // File: cmd/canary/main.go (around line 1650, after nextCmd)
-// CANARY: REQ=CBIN-133; FEATURE="ImplementCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="ImplementCmd"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16
 var implementCmd = &cobra.Command{
 	Use:   "implement <query> [flags]",
 	Short: "Generate implementation guidance for a requirement",
@@ -1063,7 +1063,7 @@ func init() {
 
 ```markdown
 <!-- File: .canary/templates/implement-prompt-template.md (new) -->
-<!-- CANARY: REQ=CBIN-133; FEATURE="PromptGenerator"; ASPECT=API; STATUS=IMPL; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-133; FEATURE="PromptGenerator"; ASPECT=API; STATUS=TESTED; UPDATED=2025-10-16 -->
 
 # Implementation Guidance: {{.FeatureName}}
 
@@ -1214,7 +1214,7 @@ Before marking this requirement as complete:
 
 ```markdown
 <!-- File: .canary/templates/commands/implement.md (new) -->
-<!-- CANARY: REQ=CBIN-133; FEATURE="ImplementSlashCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-133; FEATURE="ImplementSlashCmd"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16 -->
 
 Generate comprehensive implementation guidance for a CANARY requirement.
 

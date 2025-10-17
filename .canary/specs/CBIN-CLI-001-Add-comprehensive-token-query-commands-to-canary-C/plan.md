@@ -13,7 +13,7 @@
 ## Constitutional Compliance Review
 
 ### Article I: Requirement-First Development ✅
-- **Token Format**: `// CANARY: REQ=CBIN-CLI-001; FEATURE="TokenQueryCommands"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16`
+- **Token Format**: `// CANARY: REQ=CBIN-CLI-001; FEATURE="TokenQueryCommands"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16`
 - **Evidence-Based Promotion**: Plan includes explicit status progression (STUB → IMPL → TESTED)
 - **Staleness Management**: UPDATED field will be maintained
 
@@ -142,7 +142,7 @@
 **Show Command:**
 ```go
 // File: cmd/canary/show.go (new file)
-// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmd"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmd"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16
 var showCmd = &cobra.Command{
 	Use:   "show <REQ-ID>",
 	Short: "Display all CANARY tokens for a requirement",
@@ -155,7 +155,7 @@ var showCmd = &cobra.Command{
 **Files Command:**
 ```go
 // File: cmd/canary/files.go (new file)
-// CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmd"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmd"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16
 var filesCmd = &cobra.Command{
 	Use:   "files <REQ-ID>",
 	Short: "List implementation files for a requirement",
@@ -168,7 +168,7 @@ var filesCmd = &cobra.Command{
 **Status Command:**
 ```go
 // File: cmd/canary/status.go (new file)
-// CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmd"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmd"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16
 var statusCmd = &cobra.Command{
 	Use:   "status <REQ-ID>",
 	Short: "Show implementation progress for a requirement",
@@ -181,7 +181,7 @@ var statusCmd = &cobra.Command{
 **Grep Command:**
 ```go
 // File: cmd/canary/grep.go (new file)
-// CANARY: REQ=CBIN-CLI-001; FEATURE="GrepCmd"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="GrepCmd"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16
 var grepCmd = &cobra.Command{
 	Use:   "grep <pattern>",
 	Short: "Search CANARY tokens by pattern",
@@ -195,7 +195,7 @@ var grepCmd = &cobra.Command{
 
 ```go
 // File: internal/storage/queries.go (new file)
-// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstraction"; ASPECT=Storage; STATUS=STUB; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstraction"; ASPECT=Storage; STATUS=TESTED; UPDATED=2025-10-16
 
 // GetTokensByReqID retrieves all tokens for a requirement ID
 func (db *DB) GetTokensByReqID(reqID string) ([]*Token, error) {
@@ -240,7 +240,7 @@ touch internal/storage/queries_test.go
 
 ```go
 // File: internal/storage/queries_test.go
-// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstractionTests"; ASPECT=Storage; STATUS=STUB; TEST=TestCANARY_CBIN_CLI_001_Storage_GetTokensByReqID; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstractionTests"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_Storage_GetTokensByReqID; UPDATED=2025-10-16
 package storage_test
 
 import "testing"
@@ -287,7 +287,7 @@ go test ./internal/storage -v -run TestCANARY_CBIN_CLI_001
 
 ```go
 // File: internal/storage/queries.go (new)
-// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstraction"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstraction"; ASPECT=Storage; STATUS=TESTED; UPDATED=2025-10-16
 package storage
 
 // GetTokensByReqID retrieves all tokens matching requirement ID
@@ -401,7 +401,7 @@ func (db *DB) SearchTokens(pattern string, fields []string, regex bool) ([]*Toke
 
 ```go
 // File: cmd/canary/show_test.go (new)
-// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmdTests"; ASPECT=CLI; STATUS=STUB; TEST=TestCANARY_CBIN_CLI_001_ShowCmd; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_ShowCmd; UPDATED=2025-10-16
 package main
 
 func TestCANARY_CBIN_CLI_001_ShowCmd_ExactMatch(t *testing.T) {
@@ -437,7 +437,7 @@ func TestCANARY_CBIN_CLI_001_ShowCmd_JSONOutput(t *testing.T) {
 
 ```go
 // File: cmd/canary/show.go (new)
-// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmd"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16
 package main
 
 var showCmd = &cobra.Command{
@@ -515,7 +515,7 @@ Similar TDD approach for remaining commands:
 
 ```go
 // File: cmd/canary/format.go (new)
-// CANARY: REQ=CBIN-CLI-001; FEATURE="OutputFormatting"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="OutputFormatting"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16
 
 func formatTokensTable(tokens []*Token, groupBy string) string {
 	var buf strings.Builder
