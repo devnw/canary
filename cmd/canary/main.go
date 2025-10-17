@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1737,6 +1738,13 @@ Use --dry-run to preview changes before applying them.`,
 }
 
 func init() {
+	// Configure slog to use ERROR level by default to reduce noise
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}
+	handler := slog.NewTextHandler(os.Stderr, opts)
+	slog.SetDefault(slog.New(handler))
+
 	rootCmd.AddCommand(scanCmd)
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(createCmd)
