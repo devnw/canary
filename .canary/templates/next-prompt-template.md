@@ -1,5 +1,5 @@
 # Implementation Guidance: {{.Feature}}
-<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="NextTemplate"; ASPECT=Docs; STATUS=IMPL; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="NextTemplate"; ASPECT=Docs; STATUS=TESTED; UPDATED=2025-10-16 -->
 
 **Requirement:** {{.ReqID}}
 **Feature:** {{.Feature}}

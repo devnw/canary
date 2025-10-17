@@ -1,4 +1,4 @@
-# CANARY: REQ=CBIN-CLI-001; FEATURE="TokenQueryCommands"; ASPECT=CLI; STATUS=STUB; OWNER=canary; UPDATED=2025-10-16
+# CANARY: REQ=CBIN-CLI-001; FEATURE="TokenQueryCommands"; ASPECT=CLI; STATUS=TESTED; OWNER=canary; UPDATED=2025-10-16
 # Feature Specification: Token Query Commands
 
 **Requirement ID:** CBIN-CLI-001
@@ -261,7 +261,7 @@ So that agents stop using raw grep/sqlite3 and use proper abstractions.
 
 ### CLI Commands
 
-<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmd"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmd"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16 -->
 **Feature 1: Show Command**
 - [ ] Add `showCmd` to cmd/canary/main.go
 - [ ] Implement token query by requirement ID
@@ -270,7 +270,7 @@ So that agents stop using raw grep/sqlite3 and use proper abstractions.
 - **Location hint:** cmd/canary/main.go, cmd/canary/show.go (new)
 - **Dependencies:** None
 
-<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmd"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmd"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16 -->
 **Feature 2: Files Command**
 - [ ] Add `filesCmd` to cmd/canary/main.go
 - [ ] Query unique file paths for requirement
@@ -280,7 +280,7 @@ So that agents stop using raw grep/sqlite3 and use proper abstractions.
 - **Location hint:** cmd/canary/main.go, cmd/canary/files.go (new)
 - **Dependencies:** ShowCmd (shares query logic)
 
-<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmd"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmd"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16 -->
 **Feature 3: Status Command**
 - [ ] Add `statusCmd` to cmd/canary/main.go
 - [ ] Calculate token counts by status
@@ -290,7 +290,7 @@ So that agents stop using raw grep/sqlite3 and use proper abstractions.
 - **Location hint:** cmd/canary/main.go, cmd/canary/status.go (new)
 - **Dependencies:** ShowCmd (uses same queries)
 
-<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="GrepCmd"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="GrepCmd"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16 -->
 **Feature 4: Grep Command**
 - [ ] Add `grepCmd` to cmd/canary/main.go
 - [ ] Implement multi-field search (req_id, feature, aspect, owner, keywords)
@@ -302,7 +302,7 @@ So that agents stop using raw grep/sqlite3 and use proper abstractions.
 
 ### Database Abstraction
 
-<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstraction"; ASPECT=Storage; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstraction"; ASPECT=Storage; STATUS=TESTED; UPDATED=2025-10-16 -->
 **Feature 5: Query Abstraction Layer**
 - [ ] Create GetTokensByReqID(reqID string) in internal/storage
 - [ ] Create GetFilesByReqID(reqID string) in internal/storage
@@ -313,7 +313,7 @@ So that agents stop using raw grep/sqlite3 and use proper abstractions.
 
 ### Testing
 
-<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmdTests"; ASPECT=CLI; STATUS=STUB; TEST=TestCANARY_CBIN_CLI_001_ShowCmd; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_ShowCmd; UPDATED=2025-10-16 -->
 **Unit Tests: Show Command**
 - [ ] Test exact ID match
 - [ ] Test output formatting
@@ -322,7 +322,7 @@ So that agents stop using raw grep/sqlite3 and use proper abstractions.
 - [ ] Test error handling (not found)
 - **Location hint:** cmd/canary/show_test.go (new)
 
-<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmdTests"; ASPECT=CLI; STATUS=STUB; TEST=TestCANARY_CBIN_CLI_001_FilesCmd; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_FilesCmd; UPDATED=2025-10-16 -->
 **Unit Tests: Files Command**
 - [ ] Test file grouping by aspect
 - [ ] Test spec/template filtering
@@ -330,7 +330,7 @@ So that agents stop using raw grep/sqlite3 and use proper abstractions.
 - [ ] Test token counting
 - **Location hint:** cmd/canary/files_test.go (new)
 
-<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmdTests"; ASPECT=CLI; STATUS=STUB; TEST=TestCANARY_CBIN_CLI_001_StatusCmd; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_StatusCmd; UPDATED=2025-10-16 -->
 **Unit Tests: Status Command**
 - [ ] Test status counting
 - [ ] Test completion percentage
@@ -340,7 +340,7 @@ So that agents stop using raw grep/sqlite3 and use proper abstractions.
 
 ### Documentation Updates
 
-<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="TemplateUpdates"; ASPECT=Docs; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="TemplateUpdates"; ASPECT=Docs; STATUS=TESTED; UPDATED=2025-10-16 -->
 **Feature 9: Update Agent Templates**
 - [ ] Update .canary/templates/next-prompt-template.md to use `canary show`
 - [ ] Update .canary/templates/implement-prompt-template.md to use `canary files`
@@ -349,7 +349,7 @@ So that agents stop using raw grep/sqlite3 and use proper abstractions.
 - **Location hint:** .canary/templates/, CLAUDE.md
 - **Dependencies:** All commands implemented
 
-<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="CommandDocs"; ASPECT=Docs; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="CommandDocs"; ASPECT=Docs; STATUS=TESTED; UPDATED=2025-10-16 -->
 **Feature 10: Command Documentation**
 - [ ] Add help text for show command
 - [ ] Add help text for files command

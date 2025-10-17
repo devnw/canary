@@ -1,5 +1,5 @@
 # CANARY Development - AI Agent Guide
-<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="AgentInstructions"; ASPECT=Docs; STATUS=IMPL; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="AgentInstructions"; ASPECT=Docs; STATUS=TESTED; UPDATED=2025-10-16 -->
 
 **Context File for AI Coding Agents**
 
