@@ -1,16 +1,6 @@
 exclude: '^$'
 fail_fast: true
 repos:
-  # License header enforcement
-  - repo: local
-    hooks:
-      - id: license
-        name: add license headers
-        entry: bash -lc 'license'
-        language: system
-        pass_filenames: false
-        stages: [pre-commit]
-
   - repo: https://github.com/mrtazz/checkmake.git
     rev: 0.2.2
     hooks:
