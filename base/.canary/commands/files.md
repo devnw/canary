@@ -24,7 +24,7 @@ defaults:
 ### 1) Inputs
 
 * **User Arguments (raw):** `$ARGUMENTS`
-  Parse into: `req_id` (e.g., `CBIN-123-API-105`), flags `--all` (include specs/templates), `--db <path>`.
+  Parse into: `req_id` (e.g., `{{.ReqID}}-<ASPECT>-123-API-105`), flags `--all` (include specs/templates), `--db <path>`.
 * **Repository assumptions:**
 
   * DB at `.canary/canary.db` unless `--db` provided.
@@ -32,7 +32,7 @@ defaults:
 
 ### 2) Preconditions & Resolution
 
-1. **REQ‑ID format gate:** must match `CBIN-[A-Z]+-[0-9]+` (or your canonical pattern). On mismatch → `ERROR_REQ_FORMAT(req_id)`.
+1. **REQ‑ID format gate:** must match `{{.ReqID}}-<ASPECT>-[A-Z]+-[0-9]+` (or your canonical pattern). On mismatch → `ERROR_REQ_FORMAT(req_id)`.
 2. **Database availability:** if DB missing/unreadable, return `ERROR_DB_MISSING(path)` with remediation: `canary index`.
 3. **Scope selection:**
 
@@ -94,7 +94,7 @@ End with: `=== HUMAN_TEXT END ===`
 ```json
 {
   "ok": true,
-  "req_id": "CBIN-API-105",
+  "req_id": "{{.ReqID}}-<ASPECT>-API-105",
   "db_path": ".canary/canary.db",
   "included_non_impl": false,
   "totals": { "files": 0, "tokens": 0, "aspects": 0, "one_token_files": 0 },
@@ -163,7 +163,7 @@ Start/end markers as specified:
 
 ```
 === HUMAN_TEXT BEGIN ===
-## Implementation Files for CBIN-API-105
+## Implementation Files for {{.ReqID}}-<ASPECT>-API-105
 
 ### API
 - src/api/user.go (4 tokens)

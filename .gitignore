@@ -41,3 +41,15 @@ vendor/
 
 # ignore mac files
 .DS_Store
+
+.canary/
+.windsurf/
+.crush/
+.amazonq/                
+.claude/                 
+.kilocode/               
+.augment/                
+.codebuddy/              
+.cursor/                 
+.opencode/               
+.roo/

@@ -1,165 +1,225 @@
+## ListCmd (Priority Listing with Filters & Sorting)
+
+```yaml
 ---
-description: List top priority CANARY requirements with filtering and sorting
+description: List CANARY requirements with priority-first ordering, filtering, safe sorting, and machine-readable summaries (strict, verifiable, no-mock/no-simulate)
+command: ListCmd
+version: 2.3
+outputs:
+  - human_text: STDOUT (concise operator view; optional unless explicitly requested)
+  - summary_json: STDOUT (unwrapped JSON; strict schema below)
+runtime_guarantees:
+  no_mock_data: true
+  no_simulation_of_results: true
+  canary_logging: required_when(context_usage>=0.7 || on_milestones)
+defaults:
+  db_path: .canary/canary.db
+  limit: 10                # 0 = unlimited
+  order_by: "priority ASC, updated_at DESC"
+  include_hidden: false    # hide tests/templates/examples/agent dirs
+  hidden_globs: ["**/test/**","**/templates/**",".canary/agents/**","**/examples/**"]
+  format: text             # or json (mirrors --json)
+safe_order_by_columns: ["priority","updated_at","status","aspect","phase","owner","req_id"]
+safe_order_by_directions: ["ASC","DESC"]
 ---
-
-<!-- CANARY: REQ=CBIN-135; FEATURE="ListCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
-
-## User Input
-
-```text
-$ARGUMENTS
 ```
 
-## Outline
+<!-- CANARY: REQ=CBIN-135; FEATURE="ListCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17 -->
 
-List CANARY requirements with priority-based ordering and comprehensive filtering options.
+### 1) Inputs
 
-1. **Parse arguments**:
-   - Check for filtering flags (--status, --aspect, --phase, --owner)
-   - Check for limit (--limit N)
-   - Check for custom ordering (--order-by)
-   - Check for output format (--json)
+* **User Arguments (raw):** `$ARGUMENTS`
+  Parse into filters/controls:
 
-2. **Run canary list command**:
-   ```bash
-   canary list [flags]
-   ```
+  * Filters: `--status <STUB|IMPL|TESTED|BENCHED|REMOVED>`, `--aspect <CLI|API|Engine|Storage|Security|Docs|…>`, `--phase <Phase0|Phase1|Phase2|Phase3>`, `--owner <name>`, `--spec-status <draft|approved|in-progress|completed|archived>`.
+  * Output control: `--limit N` (int; 0=unlimited), `--order-by <clause>`, `--json` (sets `format=json`), `--include-hidden`, `--db <path>`.
 
-   **Filtering flags:**
-   - `--status <value>`: Filter by status (STUB, IMPL, TESTED, BENCHED, REMOVED)
-   - `--aspect <value>`: Filter by aspect (CLI, API, Engine, Storage, Security, Docs, etc.)
-   - `--phase <value>`: Filter by phase (Phase0, Phase1, Phase2, Phase3)
-   - `--owner <name>`: Filter by owner
-   - `--spec-status <value>`: Filter by spec status (draft, approved, in-progress, completed, archived)
+### 2) Preconditions & Resolution
 
-   **Output control:**
-   - `--limit N`: Maximum results (0 = unlimited, default: 10 for agent context)
-   - `--order-by <clause>`: Custom SQL ORDER BY clause
-   - `--json`: Output as JSON for parsing
-   - `--include-hidden`: Show test files, templates, and examples (hidden by default)
+1. **DB gate:** `.canary/canary.db` (or `--db`) must exist/readable; else `ERROR_DB_MISSING(path)` with remediation `canary index`.
+2. **Flag validation:** unknown flags or invalid enums → `ERROR_FLAG_INVALID(flag,value)`.
+3. **Limit gate:** `--limit` must be `N ≥ 0`; non‑numeric → `ERROR_LIMIT_INVALID(value)`.
+4. **Order‑by safety:** allow only comma‑separated clauses of **`<column> <direction>`** where `<column>` ∈ `safe_order_by_columns` and `<direction>` ∈ `safe_order_by_directions`; otherwise `ERROR_ORDER_BY_UNSAFE(clause)`.
+5. **Hidden scope:** default excludes `hidden_globs`; `--include-hidden` flips inclusion and marks it in output.
 
-   **Default behavior:**
-   - Hides test files, templates, and AI agent directories
-   - Orders by: priority ASC, updated_at DESC
-   - Limit: unlimited (use --limit 10 for typical agent queries)
+### 3) Planning & Parallelism
 
-3. **Display results**:
-   - Show requirement ID and feature name
-   - Include status, aspect, priority
-   - Display file location with line number
-   - Total count of matching requirements
+Create a **Work DAG** with **Concurrency Groups (CG)**; **join** before final aggregation. If true parallelism isn’t available, interleave non‑blocking steps while preserving joins. 
 
-4. **Common usage patterns**:
+* **CG‑1 Query:**
 
-   **Find new work:**
-   ```bash
-   canary list --status STUB --limit 5
-   ```
+  ```bash
+  canary list [resolved flags]
+  ```
 
-   **Find work needing tests:**
-   ```bash
-   canary list --status IMPL --limit 10
-   ```
+  Return rows: `req_id, feature, status, aspect, phase, owner, priority, updated_at, file, line, spec_status`.
+* **CG‑2 Enrich:** (optional) fetch first test name or doc path if present (non‑blocking lookups).
+* **CG‑3 Aggregate:** apply grouping/filters, compute counts, produce analysis/recommendations.
 
-   **Focus on specific aspect:**
-   ```bash
-   canary list --aspect CLI --status STUB
-   ```
+### 4) Behavior (must do; never simulate)
 
-   **Find stale requirements:**
-   ```bash
-   canary list --order-by "updated_at ASC" --limit 20
-   ```
+* **Run the real command**; do **not** fabricate rows or totals.
+* Apply default ordering `priority ASC, updated_at DESC` unless `--order-by` passes the safety gate.
+* Respect `--limit` at the **row level** (post‑filter, post‑sort).
+* Exclude hidden paths unless `--include-hidden`.
+* Compute **analysis**:
 
-   **View all work for an aspect:**
-   ```bash
-   canary list --aspect CLI --limit 0
-   ```
+  * `highest_priority_stub` (first STUB by order)
+  * `needs_tests` = items with `status=IMPL`
+  * `stale` = items with lowest `updated_at` within result set
+* Emit **recommendations**: `/canary.plan <req>` for STUB, `/canary.next` for auto‑selection, and test‑adding notes for IMPL.
 
-5. **Analyze and recommend**:
-   - Identify highest priority STUB items for planning
-   - Note IMPL items needing tests
-   - Suggest using `/canary.next` for automatic priority selection
-   - Recommend `/canary.plan` for STUB requirements
+### 5) CANARY Snapshot Protocol (compact; low‑token)
 
-## Example Output
+Emit when **context ≥70%**, after **query**, and after **aggregation**:
 
-```markdown
-## Top Priority Requirements
+```bash
+canary log --kind state --data '{
+  "t":"<ISO8601>","s":"list|query|aggregate",
+  "f":[["<db_path>",1,1]],
+  "k":["filters:<status/aspect/phase/owner>","limit:<N>","order:\"<clause>\"","rows:<M>"],
+  "fp":["<disproven assumption>"],
+  "iss":["<tracker-ids-or-n/a>"],
+  "nx":["present results","offer next-actions"]
+}'
+```
 
-Found 10 requirements (showing top 10):
+*Compact keys capture filenames, key facts, false‑positives, and next steps with minimal tokens.* 
 
-📌 {{.ReqID}}-API-134 - UserOnboarding
+### 6) Output Contract (strict)
+
+Return artifacts in this order. **Do not wrap JSON in code fences.** 
+
+**A. HUMAN_TEXT (optional)**
+Begin with: `=== HUMAN_TEXT BEGIN ===` … end with `=== HUMAN_TEXT END ===`
+Recommended contents: title, total count, top N rows (with file:line), short analysis, recommendations.
+
+**B. SUMMARY_JSON (unwrapped JSON)** — schema:
+
+```json
+{
+  "ok": true,
+  "filters": {
+    "status": ["STUB"],
+    "aspect": ["API"],
+    "phase": [],
+    "owner": [],
+    "spec_status": []
+  },
+  "db_path": ".canary/canary.db",
+  "include_hidden": false,
+  "order_by": "priority ASC, updated_at DESC",
+  "limit": 10,
+  "totals": { "returned": 0, "matched": 0, "stub": 0, "impl": 0, "tested": 0, "benched": 0, "removed": 0 },
+  "items": [
+    {
+      "req_id": "{{.ReqID}}-<ASPECT>-API-134",
+      "feature": "UserOnboarding",
+      "status": "STUB",
+      "aspect": "API",
+      "phase": "Phase0",
+      "owner": "team-core",
+      "priority": 1,
+      "updated_at": "2025-10-16T12:00:00Z",
+      "spec_status": "approved",
+      "location": { "file": ".canary/specs/{{.ReqID}}-<ASPECT>-API-134-user-onboarding/spec.md", "line": 1 }
+    }
+  ],
+  "analysis": {
+    "highest_priority_stub": "{{.ReqID}}-<ASPECT>-API-134",
+    "needs_tests": ["{{.ReqID}}-<ASPECT>-API-105","{{.ReqID}}-<ASPECT>-Engine-142"],
+    "stale_candidates": ["{{.ReqID}}-<ASPECT>-API-099","{{.ReqID}}-<ASPECT>-CLI-088"]
+  },
+  "recommendations": [
+    "/canary.plan {{.ReqID}}-<ASPECT>-API-134",
+    "Add tests for {{.ReqID}}-<ASPECT>-API-105, {{.ReqID}}-<ASPECT>-Engine-142",
+    "/canary.next"
+  ],
+  "canary": { "emitted": true, "last_id": "<id-or-n/a>" }
+}
+```
+
+### 7) Validation Gates (compute & report)
+
+* **DB Gate:** DB reachable at `db_path`.
+* **Filter Gate:** all filter values within allowed enums.
+* **Order‑by Safety Gate:** clause strictly within `safe_order_by_*` allowlists.
+* **Limit Gate:** numeric and ≥0.
+* **Counting Gate:** `totals.returned == len(items)`; status tallies equal counts in `items`.
+* **Schema Gate:** JSON conforms; field names/types exact.
+* **Hidden Gate:** hidden items excluded unless `include_hidden=true`.
+
+### 8) Failure Modes (return one with reason + remediation)
+
+* `ERROR_DB_MISSING(path)` → suggest `canary index`
+* `ERROR_FLAG_INVALID(flag,value)`
+* `ERROR_LIMIT_INVALID(value)`
+* `ERROR_ORDER_BY_UNSAFE(clause)`
+* `ERROR_CANARY_LIST_UNAVAILABLE()`
+* `ERROR_CANARY_LIST_FAILED(exit_code,stderr_excerpt)`
+* `ERROR_NO_MATCHES(filters)`
+* `ERROR_PARSE_OUTPUT(reason)`
+
+### 9) Quality Checklist (auto‑verify before output)
+
+* Real command executed; **no simulated/mocked** results.
+* Filters applied; ordering safe; limit enforced.
+* Hidden files/templates/tests excluded by default.
+* HUMAN_TEXT (if produced) is concise and consistent with JSON.
+* CANARY snapshot(s) emitted when required.
+* JSON returned **without** code fences; schema exact. 
+
+### 10) Example HUMAN_TEXT (operator‑friendly)
+
+```
+=== HUMAN_TEXT BEGIN ===
+## Top Priority Requirements (filters: status=STUB; limit=5)
+
+Found 12 matching • Showing top 5 (priority ASC, updated_at DESC)
+
+📌 {{.ReqID}}-<ASPECT>-API-134 — UserOnboarding
    Status: STUB | Aspect: API | Priority: 1
-   Location: .canary/specs/{{.ReqID}}-API-134-user-onboarding/spec.md:1
+   Location: .canary/specs/{{.ReqID}}-<ASPECT>-API-134-user-onboarding/spec.md:1
 
-📌 {{.ReqID}}-Engine-140 - ValidationRules
+📌 {{.ReqID}}-<ASPECT>-Engine-140 — ValidationRules
    Status: STUB | Aspect: Engine | Priority: 1
-   Location: .canary/specs/{{.ReqID}}-Engine-140-validation-rules/spec.md:1
+   Location: .canary/specs/{{.ReqID}}-<ASPECT>-Engine-140-validation-rules/spec.md:1
 
-📌 {{.ReqID}}-API-105 - RegistrationFlow
-   Status: IMPL | Aspect: API | Priority: 2
-   Location: src/api/registration.go:45
+📌 {{.ReqID}}-<ASPECT>-CLI-155 — FlagUX
+   Status: STUB | Aspect: CLI | Priority: 2
+   Location: cmd/canin/flags.go:77
 
-📌 {{.ReqID}}-Engine-142 - AsyncQueue
-   Status: IMPL | Aspect: Engine | Priority: 2
-   Location: internal/queue/processor.go:78
+**Analysis**
+- Highest Priority STUB: {{.ReqID}}-<ASPECT>-API-134
+- Items needing tests (IMPL): {{.ReqID}}-<ASPECT>-API-105, {{.ReqID}}-<ASPECT>-Engine-142
+- Stale candidates: {{.ReqID}}-<ASPECT>-API-099, {{.ReqID}}-<ASPECT>-CLI-088
 
-📌 {{.ReqID}}-Security-115 - SecurityAudit
-   Status: TESTED | Aspect: Security | Priority: 3
-   Location: internal/security/audit.go:34
-   Test: TestCANARY_{{.ReqID}}_Security_115_Audit
-
-**Analysis:**
-- **Highest Priority STUB**: {{.ReqID}}-API-134 (UserOnboarding)
-- **Needs Tests**: {{.ReqID}}-API-105, {{.ReqID}}-Engine-142 (IMPL status)
-- **Completed**: 1 of 10 shown
-
-**Recommendations:**
-1. Start with `/canary.plan {{.ReqID}}-API-134` for highest priority STUB
-2. Add tests for {{.ReqID}}-API-105 and {{.ReqID}}-Engine-142
-3. Use `/canary.next` to automatically select next priority work
+**Recommendations**
+1) /canary.plan {{.ReqID}}-<ASPECT>-API-134
+2) Add tests for {{.ReqID}}-<ASPECT>-API-105, {{.ReqID}}-<ASPECT>-Engine-142
+3) /canary.next
+=== HUMAN_TEXT END ===
 ```
 
-## Use Cases
+---
 
-**AI Agent Context Management:**
-```bash
-# Minimal context (ultra-low token usage ~500 tokens)
-canary list --status STUB --limit 3
+### What changed & why (brief)
 
-# Standard context (~1500-2000 tokens)
-canary list --limit 10
+* **Deterministic outputs:** strict **SUMMARY_JSON** + optional HUMAN_TEXT with begin/end markers enable reliable parsing and downstream checks. 
+* **Section delimiting & structure:** clearer inputs → gates → behavior → outputs improve maintainability and UX. 
+* **Parallel pipeline:** explicit Work DAG + concurrency groups + join points for fast list/aggregate flows. 
+* **Security:** **order‑by allowlist** prevents SQL‑injection via sort clauses while preserving flexibility.
+* **No‑mock/no‑simulate:** runtime guarantees ensure real DB queries and counts.
 
-# Comprehensive view (higher token usage)
-canary list --limit 0
-```
+### Assumptions & Risks
 
-**Workflow Queries:**
-```bash
-# What should I work on next?
-canary list --status STUB --limit 5
+* `canary list` returns row fields listed in **CG‑1**; if some fields are unavailable (e.g., `phase`), set to `null` (do **not** invent).
+* Hidden glob patterns may need tuning per repo; expose via `hidden_globs` in defaults.
+* Very large `--limit 0` results may be truncated by the model context; prefer `/canary.next` for agent‑driven selection.
 
-# What needs tests?
-canary list --status IMPL --limit 10
+### Targeted questions (for fit)
 
-# What's in Phase1?
-canary list --phase Phase1
-
-# What's my team's work?
-canary list --owner my-team
-
-# What CLI work is pending?
-canary list --aspect CLI --status STUB
-```
-
-## Guidelines
-
-- **Default Filtering**: Hide test files, templates, examples for cleaner output
-- **Priority First**: Order by priority to surface most important work
-- **Context Awareness**: Use --limit to control token usage in agent queries
-- **JSON Support**: Enable programmatic parsing with --json
-- **Clear Output**: Use emoji indicators and structured formatting
-- **Actionable**: Provide specific next steps based on results
-- **Database Required**: Suggest `canary index` if database missing
-- **Empty Results**: Suggest alternative filters if no matches
+1. Confirm canonical enums for **status**, **aspect**, **phase**, and **spec_status**.
+2. Any additional **order‑by** columns to allowlist (e.g., `priority_bucket`, `owner`)?
+3. Should HUMAN_TEXT always be returned, or only when `--json` isn’t used?
+4. Include **age buckets** (e.g., days since `updated_at`) in `SUMMARY_JSON`?

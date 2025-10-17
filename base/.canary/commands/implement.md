@@ -1,301 +1,240 @@
-# /canary.implement - Generate Implementation Guidance
+## ImplementCmd (Generate Implementation Guidance)
 
-**Purpose:** Generate comprehensive implementation guidance for a CANARY requirement specification.
-
-**Usage:**
-```
-/canary.implement <query>
-/canary.implement --list
-```
-
+```yaml
 ---
-
-## Command Behavior
-
-This command generates a complete implementation prompt that includes:
-
-1. **Specification Details** - Full requirement specification
-2. **Implementation Plan** - Technical plan with architecture and phases
-3. **Implementation Checklist** - Step-by-step feature checklist
-4. **Progress Tracking** - Current status of all tokens
-5. **Constitutional Principles** - Project governance and best practices
-6. **Test-First Guidance** - TDD workflow instructions
-7. **CANARY Token Examples** - Proper token placement and format
-
+description: Generate comprehensive, test-first implementation guidance for a CANARY requirement with strict, verifiable outputs (no-mock/no-simulate)
+command: ImplementCmd
+version: 2.4
+subcommands: [implement, list]
+outputs:
+  - implementation_prompt: STDOUT (bounded markdown, see Output Contract)
+  - summary_json: STDOUT (unwrapped JSON; strict schema below)
+runtime_guarantees:
+  no_mock_data: true
+  no_simulation_of_results: true
+  test_first_required: true
+  canary_logging: required_when(context_usage>=0.7 || on_milestones)
+defaults:
+  db_path: .canary/canary.db
+  specs_root: .canary/specs
+  constitution_path: .canary/memory/constitution.md
+  template_path: .canary/templates/implement-prompt-template.md
+  fuzzy: {min_score: 60, auto_select_score: 80, min_lead: 20}
+  include_plan_if_missing: false    # if plan.md missing, flag; do not fabricate
+  max_prompt_kb: 200                # guardrail for context size
 ---
-
-## Query Modes
-
-### Exact ID Match
-```
-/canary.implement {{.ReqID}}-<ASPECT>-105
-```
-Finds specification by exact requirement ID.
-
-### Fuzzy Search
-```
-/canary.implement "user auth"
-/canary.implement authentication
-```
-Uses fuzzy matching with:
-- Levenshtein distance for typo tolerance
-- Substring matching
-- Abbreviation matching (e.g., "ua" → "UserAuthentication")
-
-**Auto-selection:** If top match scores >80% and is >20 points ahead of the second match, automatically selects it.
-
-**Interactive selection:** For ambiguous matches, displays numbered list for user to select.
-
-### Feature Name Match
-```
-/canary.implement UserAuthentication
-```
-Searches by feature name in spec directory names.
-
-### List All Unimplemented
-```
-/canary.implement --list
-```
-Shows all requirements with incomplete implementation (STUB or IMPL status).
-
----
-
-## Implementation Workflow
-
-After running `/canary.implement <query>`:
-
-### 1. Review Generated Prompt
-The prompt contains everything you need:
-- Complete specification
-- Technical plan
-- Implementation checklist
-- Constitutional principles
-
-### 2. Follow Test-First Approach (Article IV)
-```
-1. Create test file (*_test.go or equivalent)
-2. Write tests (they should fail - TDD Red)
-3. Implement features to pass tests (TDD Green)
-4. Refactor while keeping tests green
 ```
 
-### 3. Add CANARY Tokens
-Place tokens above each implementation point:
-```go
-// CANARY: REQ={{.ReqID}}-<ASPECT>-XXX; FEATURE="Name"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD
-func ImplementFeature() {
-    // implementation
+<!-- CANARY: REQ=CBIN-133; FEATURE="ImplementCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17 -->
+
+### 1) Inputs
+
+* **User Arguments (raw):** `$ARGUMENTS`
+  Modes:
+
+  * **Exact ID**: `<REQ-ID>` (e.g., `{{.ReqID}}-<ASPECT>-API-105`)
+  * **Feature name**: `UserAuthentication`
+  * **Fuzzy**: `"user auth"` (Levenshtein + substring + abbreviation)
+  * **List**: `--list` (unimplemented only: STUB|IMPL)
+
+### 2) Preconditions & Resolution
+
+1. **DB gate:** ensure DB at `db_path` readable; else `ERROR_DB_MISSING(path)` → suggest `canary index`.
+2. **Template gate:** `template_path` must exist; else `ERROR_TEMPLATE_MISSING(path)`.
+3. **Spec/plan/constitution gates:**
+
+   * Spec directory: `${specs_root}/<REQ-ID>-<slug>/spec.md` required; else `ERROR_SPEC_MISSING(path)`.
+   * Plan optional: include only if file exists; **never invent**; else set `plan_included=false`.
+   * Constitution optional: include only if file exists.
+4. **Fuzzy selection policy:**
+
+   * Compute score ∈ [0,100]. If `top.score ≥ 80` **and** `top.score - second.score ≥ 20` → auto‑select.
+   * If `score ≥ 60` but ambiguous → return **CHOICE_SET** (non‑interactive) with ranked options.
+   * If `< 60` → `ERROR_NO_MATCH(query)` with remediation.
+5. **Exact & feature modes:** resolve to a single spec or fail with `ERROR_AMBIGUOUS(results)`.
+
+### 3) Planning & Parallelism
+
+Construct a **Work DAG** and run independent steps concurrently; **join** before assembly. If true parallelism isn’t available, interleave non‑blocking tasks while preserving joins. 
+
+* **CG‑1 Resolve**: identify candidate REQ(s) (exact/feature/fuzzy) and rank.
+* **CG‑2 Load**: read `spec.md`, `plan.md?`, `constitution.md?`, and compute **Progress** from tokens.
+* **CG‑3 Assemble**: render implementation prompt from template with real contents (no placeholders), then size‑check.
+* **CG‑4 Validate**: run gates (below) and produce machine‑readable `summary_json`.
+
+### 4) Behavior (must do; never simulate)
+
+* **Never fabricate** spec/plan/constitution/progress. If missing, **report** and set flags; do not “mock” content.
+* **Test‑First bias:** include concrete TDD steps; ensure tests precede implementation.
+* **Token discipline:** include exact token examples and update guidance; provide file:line for examples only if available.
+* **Context guard:** if combined prompt > `max_prompt_kb`, return `ERROR_PROMPT_TOO_LARGE(kb)` with reduction advice (e.g., omit images, include plan summary only).
+
+### 5) Implementation Prompt — Required Sections (exact headings)
+
+When generating the **implementation prompt**, render these sections **in order** (delimited for reliability). 
+
+1. **Specification Details** — verbatim `spec.md` (no edits).
+2. **Implementation Plan** — full `plan.md` **if present**; else a one‑line notice: “Plan not found; run `/canary.plan <REQ-ID>`.”
+3. **Implementation Checklist** — extract from plan/spec if present; else omit (do not fabricate).
+4. **Progress Tracking** — computed token counts by `STATUS` (STUB/IMPL/TESTED/BENCHED), with file:line where available.
+5. **Constitutional Principles** — verbatim `constitution.md` **if present**.
+6. **Test‑First Guidance (Article IV)** — concise TDD steps (red→green→refactor) and CI hints.
+7. **CANARY Token Examples** — real examples from repo or canonical template snippets (template‑based, clearly labeled).
+
+> Section delimiting and explicit output formats improve reliability and downstream parsing. 
+
+### 6) Validation Gates (compute & report)
+
+* **Article I Gate:** Spec present and REQ token references valid.
+* **Article IV Gate:** Test‑first steps present; checklist starts with tests.
+* **Article VII Gate:** UPDATED fields present in shown tokens; docs currency mentioned.
+* **Spec Clarity Gate:** Spec contains **no** `[NEEDS CLARIFICATION]`.
+* **Consistency Gate:** Progress tallies equal totals; IDs consistent across sections.
+* **Size Gate:** Output ≤ `max_prompt_kb`; else fail with guidance.
+
+### 7) CANARY Snapshot Protocol (compact; low‑token)
+
+Emit when **context ≥70%**, after **load**, and after **assembly**:
+
+```bash
+canary log --kind state --data '{
+  "t":"<ISO8601>","s":"implement|load|assemble|verify",
+  "f":[["<spec_path>",1,999],["<plan_path?>",1,999],["<constitution_path?>",1,999]],
+  "k":["req:<REQ-ID>","mode:<exact|feature|fuzzy|list>","score:<N?>","prompt_kb:<N>"],
+  "fp":["<disproven assumption>"],
+  "iss":["<tracker-ids-or-n/a>"],
+  "nx":["emit prompt","follow TDD","update tokens"]
+}'
+```
+
+*Compact keys minimize tokens while preserving filenames, line spans, key facts, false‑positives, issues, and next steps.* 
+
+### 8) Output Contract (strict)
+
+Return artifacts in this order. **Do not wrap JSON in code fences.** 
+
+**A. IMPLEMENTATION_PROMPT (Markdown)**
+Begin with: `=== IMPLEMENTATION_PROMPT BEGIN ===`
+Required sub‑markers (include only when content exists):
+
+* `<<< SPEC BEGIN >>>` … `<<< SPEC END >>>`
+* `<<< PLAN BEGIN >>>` … `<<< PLAN END >>>`
+* `<<< CHECKLIST BEGIN >>>` … `<<< CHECKLIST END >>>`
+* `<<< PROGRESS BEGIN >>>` … `<<< PROGRESS END >>>`
+* `<<< CONSTITUTION BEGIN >>>` … `<<< CONSTITUTION END >>>`
+* `<<< TDD BEGIN >>>` … `<<< TDD END >>>`
+* `<<< TOKENS BEGIN >>>` … `<<< TOKENS END >>>`
+  End with: `=== IMPLEMENTATION_PROMPT END ===`
+
+**B. SUMMARY_JSON (unwrapped JSON)** — schema:
+
+```json
+{
+  "ok": true,
+  "mode": "exact|feature|fuzzy|list",
+  "selection": {
+    "query": "<raw>",
+    "req_id": "{{.ReqID}}-<ASPECT>-API-105",
+    "feature": "UserAuthentication",
+    "score": 92,
+    "auto_selected": true,
+    "choices": [
+      {"req_id":"{{.ReqID}}-<ASPECT>-API-110","feature":"OAuthIntegration","score":80}
+    ]
+  },
+  "paths": {
+    "spec": ".canary/specs/{{.ReqID}}-<ASPECT>-API-105-user-auth/spec.md",
+    "plan": ".canary/specs/{{.ReqID}}-<ASPECT>-API-105-user-auth/plan.md",
+    "constitution": ".canary/memory/constitution.md"
+  },
+  "included": {"spec": true, "plan": true, "checklist": true, "constitution": false},
+  "progress": {"total": 0, "stub": 0, "impl": 0, "tested": 0, "benched": 0},
+  "gates": {
+    "article_I": "pass|fail",
+    "article_IV": "pass|fail",
+    "article_VII": "pass|fail",
+    "spec_clarity": "pass|fail",
+    "consistency": "pass|fail",
+    "size": "pass|fail"
+  },
+  "prompt_kb": 0,
+  "canary": {"emitted": true, "last_id": "<id-or-n/a>"}
 }
 ```
 
-### 4. Update Token Status as You Progress
-- `STATUS=STUB` - Placeholder, not yet implemented
-- `STATUS=IMPL` - Implemented but needs tests
-- `STATUS=TESTED; TEST=TestName` - Implemented with passing tests
-- `STATUS=BENCHED; BENCH=BenchName` - Tested with benchmarks
+### 9) Subcommand: `--list` (unimplemented only)
 
-### 5. Verify Progress
-```bash
-canary scan --root .
-canary implement <REQ-ID>  # Check progress
+* **Behavior:** List requirements with `status ∈ {STUB, IMPL}` (priority‑first, updated_at desc).
+* **Output:** same **SUMMARY_JSON** envelope but with `mode="list"` and `items:[{req_id,feature,status,priority,updated_at}]`.
+* **HUMAN_TEXT** (optional): present top N with next‑actions (`/canary.plan` for STUB; add tests for IMPL).
+* **Never simulate** counts; query real DB.
+
+### 10) Failure Modes (return one with reason + remediation)
+
+* `ERROR_DB_MISSING(path)` → run `canary index`
+* `ERROR_TEMPLATE_MISSING(path)`
+* `ERROR_NO_MATCH(query)`
+* `ERROR_AMBIGUOUS(results=[...])`
+* `ERROR_SPEC_MISSING(path)`
+* `ERROR_PROMPT_TOO_LARGE(kb)`
+* `ERROR_FILE_IO(path,reason)`
+* `ERROR_PARSE_OUTPUT(reason)`
+
+### 11) Quality Checklist (auto‑verify before output)
+
+* Real files read; **no mocks/simulations**.
+* Fuzzy policy applied; ambiguity surfaced via `choices`.
+* All section markers present/ordered; JSON schema exact.
+* TDD steps present; token examples real or template‑labeled.
+* Progress tallies consistent; gates computed.
+* CANARY snapshots emitted when required. 
+
+### 12) Example HUMAN_TEXT (operator‑friendly)
+
+`````
+=== IMPLEMENTATION_PROMPT BEGIN ===
+<<< SPEC BEGIN >>>
+# {{.ReqID}}-<ASPECT>-API-105 — UserAuthentication
+…(verbatim spec.md)…
+<<< SPEC END >>>
+<<< PLAN BEGIN >>>
+…(plan.md if present; otherwise single-line notice to create plan)…
+<<< PLAN END >>>
+<<< CHECKLIST BEGIN >>>
+- [ ] Write TestUserAuthentication (red)
+- [ ] Implement login flow (green)
+- [ ] Refactor & add docs
+<<< CHECKLIST END >>>
+<<< PROGRESS BEGIN >>>
+Total: 8 • TESTED: 2 • IMPL: 3 • STUB: 3
+Top files: src/api/auth/user.go:45, src/api/auth/middleware.go:23
+<<< PROGRESS END >>>
+<<< TDD BEGIN >>>
+1) Create failing tests → 2) Implement minimal code → 3) Refactor w/ tests green
+<<< TDD END >>>
+<<< TOKENS BEGIN >>>
+```go
+// CANARY: REQ={{.ReqID}}-<ASPECT>-API-105; FEATURE="UserAuthentication"; ASPECT=API; STATUS=IMPL; UPDATED=2025-10-17
 ```
+<<< TOKENS END >>>
+=== IMPLEMENTATION_PROMPT END ===
+`````
 
 ---
 
-## Examples
+### What changed & why (brief)
+- **Deterministic outputs:** begin/end markers + strict **SUMMARY_JSON** enable robust parsing and CI checks. :contentReference[oaicite:9]{index=9}  
+- **Parallel pipeline:** explicit **DAG + concurrency groups** for resolve/load/assemble/validate improves speed and reliability. :contentReference[oaicite:10]{index=10}  
+- **No‑mock/no‑simulate:** codified as **runtime_guarantees**; missing artifacts are reported—not fabricated.  
+- **Section delimiting & structure:** improves maintainability and minimizes ambiguity, consistent with prompt‑quality guidance. :contentReference[oaicite:11]{index=11}
 
-### Example 1: Implement by Exact ID
-```
-User: /canary.implement {{.ReqID}}-<ASPECT>-105
+### Assumptions & Risks
+- Token progress comes from real scans/DB; line numbers may be absent—if so, set `null` (never invent).  
+- Very large specs may exceed `max_prompt_kb`; caller should prefer linking or chunked flows.  
+- Fuzzy thresholds can be tuned per repo; defaults provided.
 
-Agent Response:
-[Generates full implementation prompt with:
- - Spec for {{.ReqID}}-<ASPECT>-105
- - Plan details
- - Checklist
- - Progress (0/8 features completed)
- - Constitutional principles
- - TDD instructions]
-
-Agent: I'll implement this following the Test-First approach...
-[Creates test files first, then implementation]
-```
-
-### Example 2: Fuzzy Search with Auto-Selection
-```
-User: /canary.implement "user auth"
-
-Agent: Found strong match (score: 92%): {{.ReqID}}-<ASPECT>-105 - UserAuthentication
-[Auto-selects and generates prompt]
-```
-
-### Example 3: Ambiguous Search (Interactive Selection)
-```
-User: /canary.implement "auth"
-
-Agent: Multiple matches found:
-1. {{.ReqID}}-<ASPECT>-105 - UserAuthentication (Score: 85%)
-2. {{.ReqID}}-<ASPECT>-110 - OAuthIntegration (Score: 80%)
-3. {{.ReqID}}-<ASPECT>-115 - AuthorizationRules (Score: 75%)
-
-Select a requirement (1-3):
-User: 1
-
-[Generates prompt for {{.ReqID}}-<ASPECT>-105]
-```
-
-### Example 4: List All Unimplemented
-```
-User: /canary.implement --list
-
-Agent Response:
-Requirements with incomplete implementation:
-
-{{.ReqID}}-<ASPECT>-105 - UserAuthentication [25% complete]
-  Total: 8 | Tested: 2 | Impl: 3 | Stub: 3
-
-{{.ReqID}}-<ASPECT>-110 - OAuthIntegration [0% complete]
-  Total: 5 | Tested: 0 | Impl: 0 | Stub: 5
-
-{{.ReqID}}-<ASPECT>-112 - DataValidation [60% complete]
-  Total: 10 | Tested: 6 | Impl: 2 | Stub: 2
-```
-
----
-
-## When to Use This Command
-
-✅ **Use when:**
-- Starting implementation of a new requirement
-- Resuming work on an incomplete requirement
-- Need full context on what to implement
-- Want to see progress on a requirement
-- Need reminder of test-first workflow
-
-❌ **Don't use when:**
-- Just want to see token locations (use `canary implement <REQ-ID>` CLI instead)
-- Scanning for all tokens (use `/canary.scan`)
-- Creating new specifications (use `/canary.specify`)
-- Planning architecture (use `/canary.plan`)
-
----
-
-## Integration with Other Commands
-
-### Workflow Sequence
-```
-1. /canary.specify "feature description"
-   → Creates spec.md
-
-2. /canary.plan {{.ReqID}}-<ASPECT>-XXX
-   → Creates plan.md
-
-3. /canary.implement {{.ReqID}}-<ASPECT>-XXX
-   → Generates implementation prompt
-   → Agent implements following TDD
-
-4. /canary.scan
-   → Verifies token status
-
-5. /canary.verify
-   → Confirms completion claims
-```
-
----
-
-## CLI Equivalent
-
-This slash command wraps the CLI command:
-```bash
-canary implement <query>
-canary implement --list
-```
-
-The slash command is designed for AI agents to automatically generate implementation prompts during development sessions.
-
----
-
-## Technical Details
-
-### Fuzzy Matching Algorithm
-- **Levenshtein Distance** - Calculates edit distance between strings
-- **Substring Matching** - Detects partial matches
-- **Abbreviation Matching** - Matches first letters of words
-- **Scoring:** 0-100 scale (100 = exact match)
-- **Threshold:** Minimum 60% similarity to show in results
-- **Auto-select:** >80% score AND >20 points ahead of second match
-
-### Template Engine
-Uses Go `text/template` for prompt generation. Template variables:
-- `{{.ReqID}}` - Requirement ID
-- `{{.FeatureName}}` - Feature name
-- `{{.SpecContent}}` - Full specification markdown
-- `{{.PlanContent}}` - Full plan markdown
-- `{{.Checklist}}` - Extracted implementation checklist
-- `{{.Progress.Total}}` - Total token count
-- `{{.Progress.Tested}}` - Tested token count
-- `{{.Progress.Impl}}` - Implemented (not tested) count
-- `{{.Progress.Stub}}` - Stub token count
-- `{{.Constitution}}` - Constitutional principles markdown
-
-### Directory Structure
-```
-.canary/
-├── specs/
-│   └── {{.ReqID}}-<ASPECT>-XXX-FeatureName/
-│       ├── spec.md              # Required
-│       └── plan.md              # Optional (included if exists)
-├── templates/
-│   └── implement-prompt-template.md  # Prompt template
-└── memory/
-    └── constitution.md          # Optional (included if exists)
-```
-
----
-
-## Performance
-
-- **Lookup:** <1 second (fuzzy search across <1000 specs)
-- **Prompt Generation:** <2 seconds (template rendering)
-- **Context Size:** Varies by spec (typically 2-10KB)
-
----
-
-## Error Handling
-
-### No Match Found
-```
-Error: no matches found for query: "xyz"
-
-Make sure:
-1. Specification exists in .canary/specs/
-2. Query matches requirement ID or feature name
-3. Directory format: {{.ReqID}}-<ASPECT>-XXX-FeatureName
-```
-
-### Missing Template
-```
-Error: failed to read template: implement-prompt-template.md not found
-
-Fix: Run `canary init` to restore missing templates
-```
-
-### Missing Spec File
-```
-Error: failed to read spec.md
-
-Fix: Create spec.md in the requirement directory or use /canary.specify
-```
-
----
-
-## Constitutional Compliance
-
-This command enforces:
-- **Article I** - Requirement-First (requires spec before implementation)
-- **Article IV** - Test-First (includes TDD instructions in prompt)
-- **Article VII** - Documentation Currency (requires UPDATED field)
-
----
-
-**Ready to implement? Run `/canary.implement <query>` and follow the generated guidance!**
+### Targeted questions (for fit)
+1) Confirm canonical **REQ‑ID** pattern and slug naming.  
+2) Should we **always** inline `plan.md`, or just include a summary when prompt size is tight?  
+3) Do we include **doc excerpts** from `/canary.doc report` into PROGRESS when docs are stale?  
+4) Keep CANARY snapshot threshold at **70%** context usage?

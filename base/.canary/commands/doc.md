@@ -106,7 +106,7 @@ Begin with: `=== HUMAN_TEXT BEGIN ===` … `=== HUMAN_TEXT END ===`
 {
   "cmd": "create|update|status|report",
   "ok": true,
-  "req_id": "CBIN-XXX",
+  "req_id": "{{.ReqID}}-<ASPECT>-XXX",
   "metrics": { "processed": 0, "current": 0, "stale": 0, "missing": 0, "unhashed": 0 },
   "canary": { "emitted": true, "last_id": "<id-or-n/a>" },
   "items": []
@@ -142,7 +142,7 @@ Begin with: `=== HUMAN_TEXT BEGIN ===` … `=== HUMAN_TEXT END ===`
 {
   "coverage_pct": 0.0,
   "by_type": { "user": {"current":0,"stale":0,"missing":0,"unhashed":0}, "api": {...} },
-  "undocumented": ["CBIN-123","CBIN-200"]
+  "undocumented": ["{{.ReqID}}-<ASPECT>-123","{{.ReqID}}-<ASPECT>-200"]
 }
 ```
 
