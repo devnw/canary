@@ -5,6 +5,7 @@
 project:
   name: "{{PROJECT_NAME}}"
   description: "{{PROJECT_DESCRIPTION}}"
+  key: "{{PROJECT_KEY}}"
 
 # Requirement ID pattern for this project
 # This filters which CANARY tokens are considered "real" vs examples/tests

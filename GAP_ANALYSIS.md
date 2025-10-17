@@ -1,20 +1,18 @@
-# Requirements Gap Analysis (Self)
+# Requirements Gap Analysis
 
 ## Claimed Requirements
 
 List requirements that are fully implemented and verified:
 
-✅ CBIN-101
-✅ CBIN-102
+✅ CBIN-101 - ScannerCore Engine fully benchmarked
+✅ CBIN-102 - VerifyGate CLI fully benchmarked
 
 ## Gaps
 
 List requirements that are planned or in progress:
 
-- [ ] CBIN-111 - ScanCmd (STATUS=IMPL, needs tests)
-- [ ] CBIN-124 - IndexCmd (STATUS=IMPL, needs tests)
-- [ ] CBIN-125 - ListCmd (STATUS=IMPL, needs tests)
-- [ ] CBIN-134 - SpecModification (STATUS=IMPL, needs integration tests)
+- [ ] CBIN-103 - StatusJSON (STATUS=BENCHED, needs more coverage)
+- [ ] CBIN-132 - NextCmd (STATUS=BENCHED, needs more coverage)
 
 ## Verification
 

@@ -8,22 +8,11 @@ This project uses CANARY requirement tracking with spec-kit-inspired workflows.
 
 See [.canary/AGENT_CONTEXT.md](./.canary/AGENT_CONTEXT.md) for detailed information.
 
-### Planning & Specification Commands
+### Workflow Commands
 
 - **/canary.constitution** - Create or update project governing principles
 - **/canary.specify** - Create a new requirement specification from feature description
 - **/canary.plan** - Generate technical implementation plan for a requirement
-
-### Query & Discovery Commands
-
-- **/canary.list** - List top priority requirements with filtering (--status, --aspect, --limit)
-- **/canary.show** - Display all CANARY tokens for a specific requirement ID
-- **/canary.files** - List implementation files containing tokens for a requirement
-- **/canary.status** - Show implementation progress summary for a requirement
-- **/canary.grep** - Search CANARY tokens by keyword or pattern
-
-### Analysis & Maintenance Commands
-
 - **/canary.scan** - Scan codebase for CANARY tokens and generate reports
 - **/canary.verify** - Verify GAP_ANALYSIS.md claims against actual implementation
 - **/canary.update-stale** - Auto-update UPDATED field for stale tokens (>30 days)
@@ -34,11 +23,6 @@ All slash commands are defined in:
 - `.canary/templates/commands/constitution.md`
 - `.canary/templates/commands/specify.md`
 - `.canary/templates/commands/plan.md`
-- `.canary/templates/commands/list.md`
-- `.canary/templates/commands/show.md`
-- `.canary/templates/commands/files.md`
-- `.canary/templates/commands/status.md`
-- `.canary/templates/commands/grep.md`
 - `.canary/templates/commands/scan.md`
 - `.canary/templates/commands/verify.md`
 - `.canary/templates/commands/update-stale.md`
@@ -82,13 +66,6 @@ canary init my-project
 
 # Create requirement token
 canary create CBIN-105 "FeatureName" --aspect API --status IMPL
-
-# Query and discover requirements
-canary list --status STUB --limit 10           # List top priority STUB items
-canary show CBIN-105                           # Show all tokens for a requirement
-canary files CBIN-105                          # List implementation files
-canary status CBIN-105                         # Show progress summary
-canary grep Authentication                     # Search by keyword
 
 # Scan for tokens
 canary scan --root . --out status.json --csv status.csv

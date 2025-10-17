@@ -5,6 +5,7 @@
 project:
   name: "."
   description: ". project with CANARY requirement tracking"
+  key: "CBIN"
 
 # Requirement ID pattern for this project
 # This filters which CANARY tokens are considered "real" vs examples/tests

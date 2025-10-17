@@ -205,41 +205,31 @@ Creates:
 			}
 		}
 
-		// Copy .canary/ structure from base/
-		if err := copyCanaryStructure(projectName); err != nil {
-			return fmt.Errorf("copy .canary structure: %w", err)
-		}
-
-		// Copy .canaryignore template
-		canaryignoreContent, err := embedded.CanaryFS.ReadFile("base/.canaryignore")
-		if err == nil {
-			canaryignorePath := filepath.Join(projectName, ".canaryignore")
-			if err := os.WriteFile(canaryignorePath, canaryignoreContent, 0644); err != nil {
-				return fmt.Errorf("write .canaryignore: %w", err)
-			}
-		}
-
-		// Get project key and customize project.yaml
+		// Get project key and check for existing key BEFORE copying structure
 		projectKey, _ := cmd.Flags().GetString("key")
 		projectYamlPath := filepath.Join(projectName, ".canary", "project.yaml")
 
-		// If updating existing project, try to read existing key from project.yaml
+		// If updating existing project, try to read existing key from project.yaml BEFORE overwriting
 		if isUpdate && projectKey == "" {
 			if existingContent, err := os.ReadFile(projectYamlPath); err == nil {
-				// Extract existing key from project.yaml
+				// Extract existing key from project.yaml (handles both "key:" and indented "  key:")
 				for _, line := range strings.Split(string(existingContent), "\n") {
-					if strings.HasPrefix(strings.TrimSpace(line), "key:") {
-						parts := strings.SplitN(line, ":", 2)
+					trimmed := strings.TrimSpace(line)
+					if strings.HasPrefix(trimmed, "key:") {
+						parts := strings.SplitN(trimmed, ":", 2)
 						if len(parts) == 2 {
 							existingKey := strings.TrimSpace(parts[1])
 							existingKey = strings.Trim(existingKey, "\"' ")
 							if existingKey != "" && existingKey != "{{PROJECT_KEY}}" {
 								projectKey = existingKey
+								fmt.Printf("📦 Using existing project key: %s\n", projectKey)
 								break
 							}
 						}
 					}
 				}
+			} else {
+				fmt.Printf("⚠️  Warning: Could not read project.yaml: %v\n", err)
 			}
 		}
 
@@ -256,6 +246,20 @@ Creates:
 		}
 		if projectKey == "" {
 			projectKey = "PROJ" // Default
+		}
+
+		// Copy .canary/ structure from base/ (after extracting existing key)
+		if err := copyCanaryStructure(projectName); err != nil {
+			return fmt.Errorf("copy .canary structure: %w", err)
+		}
+
+		// Copy .canaryignore template
+		canaryignoreContent, err := embedded.CanaryFS.ReadFile("base/.canaryignore")
+		if err == nil {
+			canaryignorePath := filepath.Join(projectName, ".canaryignore")
+			if err := os.WriteFile(canaryignorePath, canaryignoreContent, 0644); err != nil {
+				return fmt.Errorf("write .canaryignore: %w", err)
+			}
 		}
 
 		// Customize project.yaml with the project key
@@ -275,7 +279,7 @@ Creates:
 		// Rebuild canary binary if we're updating
 		if isUpdate {
 			fmt.Println("\n🔧 Rebuilding canary binary...")
-			buildCmd := exec.Command("go", "build", "-ldflags=-s -w", "-o", "./bin/canary", "./cmd/canary/main.go")
+			buildCmd := exec.Command("go", "build", "-ldflags=-s -w", "-o", "./bin/canary", "./cmd/canary")
 			buildCmd.Stdout = os.Stdout
 			buildCmd.Stderr = os.Stderr
 			if err := buildCmd.Run(); err != nil {

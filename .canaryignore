@@ -28,16 +28,11 @@
 # Documentation directories (often contain example tokens)
 docs/
 specs/
-prompts/
-SLICE_*.md
-CRUSH.md
 
 # Build artifacts
 bin/
 dist/
 build/
-canary
-result
 *.exe
 *.dll
 *.so
@@ -54,6 +49,7 @@ __pycache__/
 testdata/
 fixtures/
 test-fixtures/
+*_test.go
 
 # Version control
 .git/
