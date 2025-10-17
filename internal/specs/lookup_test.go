@@ -3,11 +3,28 @@ package specs
 
 import (
 	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 )
 
+// getRepoRoot returns the repository root directory
+func getRepoRoot() string {
+	_, thisFile, _, _ := runtime.Caller(0)
+	// From internal/specs/lookup_test.go, go up two levels to repo root
+	return filepath.Clean(filepath.Join(filepath.Dir(thisFile), "../.."))
+}
+
 // TestCANARY_CBIN_134_Engine_ExactIDLookup verifies FindSpecByID locates spec files
 func TestCANARY_CBIN_134_Engine_ExactIDLookup(t *testing.T) {
+	// Change to repo root for .canary/specs access
+	repoRoot := getRepoRoot()
+	oldDir, _ := os.Getwd()
+	defer os.Chdir(oldDir)
+	if err := os.Chdir(repoRoot); err != nil {
+		t.Fatalf("failed to change to repo root: %v", err)
+	}
+
 	tests := []struct {
 		name      string
 		reqID     string
@@ -52,6 +69,14 @@ func TestCANARY_CBIN_134_Engine_ExactIDLookup(t *testing.T) {
 
 // TestCANARY_CBIN_134_Engine_FuzzySpecSearch verifies FindSpecBySearch returns ranked results
 func TestCANARY_CBIN_134_Engine_FuzzySpecSearch(t *testing.T) {
+	// Change to repo root for .canary/specs access
+	repoRoot := getRepoRoot()
+	oldDir, _ := os.Getwd()
+	defer os.Chdir(oldDir)
+	if err := os.Chdir(repoRoot); err != nil {
+		t.Fatalf("failed to change to repo root: %v", err)
+	}
+
 	// Execute: Fuzzy search
 	results, err := FindSpecBySearch("spec modification", 5)
 	if err != nil {

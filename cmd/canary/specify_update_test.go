@@ -9,7 +9,7 @@ import (
 func TestCANARY_CBIN_134_CLI_UpdateSubcommand(t *testing.T) {
 	// This test verifies that the updateCmd can be executed
 	// We test that it exists and is properly wired into specifyCmd
-	
+
 	// For now, just verify the command structure
 	if updateCmd == nil {
 		t.Fatal("updateCmd is nil - command not initialized")

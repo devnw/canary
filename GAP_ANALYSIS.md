@@ -1,18 +1,20 @@
-# Requirements Gap Analysis
+# Requirements Gap Analysis (Self)
 
 ## Claimed Requirements
 
 List requirements that are fully implemented and verified:
 
-✅ CBIN-001 - UserAuth API fully tested
-✅ CBIN-002 - DataValidation with benchmarks
+✅ CBIN-101
+✅ CBIN-102
 
 ## Gaps
 
 List requirements that are planned or in progress:
 
-- [ ] CBIN-003 - ReportGeneration (STATUS=IMPL, needs tests)
-- [ ] CBIN-004 - CacheOptimization (STATUS=STUB)
+- [ ] CBIN-111 - ScanCmd (STATUS=IMPL, needs tests)
+- [ ] CBIN-124 - IndexCmd (STATUS=IMPL, needs tests)
+- [ ] CBIN-125 - ListCmd (STATUS=IMPL, needs tests)
+- [ ] CBIN-134 - SpecModification (STATUS=IMPL, needs integration tests)
 
 ## Verification
 
