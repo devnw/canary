@@ -413,7 +413,7 @@ Categories help classify the type of implementation mistake.`,
 			return fmt.Errorf("get categories: %w", err)
 		}
 
-		fmt.Println("Available gap categories:\n")
+		fmt.Println("Available gap categories:")
 		for _, cat := range categories {
 			fmt.Printf("  %-20s %s\n", cat.Name, cat.Description)
 		}

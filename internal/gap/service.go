@@ -241,10 +241,10 @@ func (s *Service) UpdateConfig(maxGapInjection, minHelpfulThreshold int, ranking
 	}
 
 	config := &storage.GapConfig{
-		MaxGapInjection:      maxGapInjection,
-		MinHelpfulThreshold:  minHelpfulThreshold,
-		RankingStrategy:      rankingStrategy,
-		UpdatedAt:            time.Now(),
+		MaxGapInjection:     maxGapInjection,
+		MinHelpfulThreshold: minHelpfulThreshold,
+		RankingStrategy:     rankingStrategy,
+		UpdatedAt:           time.Now(),
 	}
 
 	if err := s.repo.UpdateConfig(config); err != nil {

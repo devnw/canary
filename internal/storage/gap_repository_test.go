@@ -362,9 +362,9 @@ func TestGapRepository_GetTopGaps(t *testing.T) {
 
 	// Query top 2 gaps
 	config := &GapConfig{
-		MaxGapInjection:      2,
-		MinHelpfulThreshold:  0,
-		RankingStrategy:      "helpful_desc",
+		MaxGapInjection:     2,
+		MinHelpfulThreshold: 0,
+		RankingStrategy:     "helpful_desc",
 	}
 
 	results, err := repo.GetTopGaps("CBIN-140", config)
@@ -490,10 +490,10 @@ func TestGapRepository_UpdateConfig(t *testing.T) {
 
 	// Update configuration
 	newConfig := &GapConfig{
-		MaxGapInjection:      20,
-		MinHelpfulThreshold:  2,
-		RankingStrategy:      "recency_desc",
-		UpdatedAt:            time.Now(),
+		MaxGapInjection:     20,
+		MinHelpfulThreshold: 2,
+		RankingStrategy:     "recency_desc",
+		UpdatedAt:           time.Now(),
 	}
 
 	if err := repo.UpdateConfig(newConfig); err != nil {
