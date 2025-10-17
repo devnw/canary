@@ -206,10 +206,10 @@ func TestCANARY_CBIN_134_Engine_ListSections(t *testing.T) {
 **Step 1.4: Update CANARY tokens with TEST= fields**
 ```
 // In spec.md:
-<!-- CANARY: REQ=CBIN-134; FEATURE="UpdateSubcommand"; ASPECT=CLI; STATUS=STUB; TEST=TestCANARY_CBIN_134_CLI_UpdateSubcommand; UPDATED=2025-10-16 -->
-<!-- CANARY: REQ=CBIN-134; FEATURE="ExactIDLookup"; ASPECT=Engine; STATUS=STUB; TEST=TestCANARY_CBIN_134_Engine_ExactIDLookup; UPDATED=2025-10-16 -->
-<!-- CANARY: REQ=CBIN-134; FEATURE="FuzzySpecSearch"; ASPECT=Engine; STATUS=STUB; TEST=TestCANARY_CBIN_134_Engine_FuzzySpecSearch; UPDATED=2025-10-16 -->
-<!-- CANARY: REQ=CBIN-134; FEATURE="SectionLoader"; ASPECT=Engine; STATUS=STUB; TEST=TestCANARY_CBIN_134_Engine_SectionParser; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-134; FEATURE="UpdateSubcommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_134_CLI_UpdateSubcommand; UPDATED=2025-10-17 -->
+<!-- CANARY: REQ=CBIN-134; FEATURE="ExactIDLookup"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_134_Engine_ExactIDLookup; UPDATED=2025-10-17 -->
+<!-- CANARY: REQ=CBIN-134; FEATURE="FuzzySpecSearch"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_134_Engine_FuzzySpecSearch; UPDATED=2025-10-17 -->
+<!-- CANARY: REQ=CBIN-134; FEATURE="SectionLoader"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_134_Engine_SectionParser; UPDATED=2025-10-17 -->
 ```
 
 **Step 1.5: Verify all tests fail**

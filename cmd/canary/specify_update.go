@@ -9,7 +9,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact CodePros at info@codepros.org.
 
-// CANARY: REQ=CBIN-134; FEATURE="SpecModification"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-134; FEATURE="SpecModification"; ASPECT=CLI; STATUS=IMPL; DOC=user:docs/user/spec-modification-guide.md; DOC_HASH=676eb2a18c9d002a; UPDATED=2025-10-17
 package main
 
 import (
