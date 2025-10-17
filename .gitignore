@@ -42,6 +42,8 @@ vendor/
 # ignore mac files
 .DS_Store
 
+.claude/
+.codex/
 .canary/
 .windsurf/
 .crush/
