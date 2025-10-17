@@ -28,6 +28,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.spyder.org/canary/embedded"
 	"go.spyder.org/canary/internal/config"
+	"go.spyder.org/canary/internal/gap"
 	"go.spyder.org/canary/internal/migrate"
 	"go.spyder.org/canary/internal/reqid"
 	"go.spyder.org/canary/internal/storage"
@@ -1081,6 +1082,23 @@ tech stack decisions, and CANARY token placement instructions.`,
 			content = strings.ReplaceAll(content, "[Go/Python/JavaScript/etc.]", techStack)
 		}
 
+		// CANARY: REQ=CBIN-140; FEATURE="PlanGapInjection"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
+		// Inject gap analysis if available
+		dbPath := ".canary/canary.db"
+		if _, err := os.Stat(dbPath); err == nil {
+			db, err := storage.Open(dbPath)
+			if err == nil {
+				defer db.Close()
+				repo := storage.NewGapRepository(db)
+				service := gap.NewService(repo)
+				gapContent, err := service.FormatGapsForInjection(reqID)
+				if err == nil && gapContent != "" {
+					// Inject gaps at the end of the plan content
+					content += "\n" + gapContent
+				}
+			}
+		}
+
 		if err := os.WriteFile(planFile, []byte(content), 0644); err != nil {
 			return fmt.Errorf("write plan file: %w", err)
 		}
@@ -1835,6 +1853,8 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 	// CANARY: REQ=CBIN-CLI-001; FEATURE="GrepCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_GrepCmd; UPDATED=2025-10-16
 	rootCmd.AddCommand(grepCmd)
+	// CANARY: REQ=CBIN-140; FEATURE="GapCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
+	rootCmd.AddCommand(gapCmd)
 
 	// initCmd flags
 	initCmd.Flags().StringSlice("agents", []string{}, "comma-separated list of agents to install for (claude,cursor,copilot,windsurf,kilocode,roo,opencode,codex,auggie,codebuddy,amazonq)")

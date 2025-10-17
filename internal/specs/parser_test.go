@@ -1,3 +1,8 @@
+// Copyright (c) 2024 by Developer Network.
+//
+// For more details, see the LICENSE file in the root directory of this
+// source code repository or contact Developer Network at info@devnw.com.
+
 // CANARY: REQ=CBIN-134; FEATURE="SectionLoader"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_134_Engine_SectionParser; UPDATED=2025-10-17
 package specs
 

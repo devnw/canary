@@ -1,3 +1,8 @@
+// Copyright (c) 2024 by Developer Network.
+//
+// For more details, see the LICENSE file in the root directory of this
+// source code repository or contact Developer Network at info@devnw.com.
+
 package test
 // CANARY: REQ=CBIN-001; FEATURE="StaleToken"; ASPECT=API; STATUS=TESTED; TEST=Test1; UPDATED=2025-10-17
 // CANARY: REQ=CBIN-002; FEATURE="FreshToken"; ASPECT=CLI; STATUS=TESTED; TEST=Test2; UPDATED=2025-10-15
