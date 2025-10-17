@@ -2,7 +2,7 @@
 description: Verify GAP_ANALYSIS.md claims against actual CANARY token status
 ---
 
-# CANARY: REQ=CBIN-112; FEATURE="VerifyCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-112; FEATURE="VerifyCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 
 ## User Input
 

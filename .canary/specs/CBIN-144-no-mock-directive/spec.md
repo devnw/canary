@@ -1,4 +1,4 @@
-# CANARY: REQ=CBIN-144; FEATURE="NoMockDirective"; ASPECT=Planner; STATUS=STUB; UPDATED=2025-10-17
+<!-- CANARY: REQ=CBIN-144; FEATURE="NoMockDirective"; ASPECT=Planner; STATUS=STUB; UPDATED=2025-10-17 -->
 # Feature Specification: No Mock Data Implementation Directive
 
 **Requirement ID:** CBIN-144

@@ -2,7 +2,7 @@
 description: Show implementation progress summary for a requirement
 ---
 
-# CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 
 ## User Input
 

@@ -93,12 +93,12 @@ The integration tracks **46 distinct features** across 10 categories:
 Add tokens to `specs/spec-kit/src/specify_cli/__init__.py`:
 
 ```python
-# CANARY: REQ=REQ-SK-201; FEATURE="SpecifyCLIInit"; ASPECT=CLI; STATUS=IMPL; TEST=test_init_basic; OWNER=specify; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-201; FEATURE="SpecifyCLIInit"; ASPECT=CLI; STATUS=IMPL; TEST=test_init_basic; OWNER=specify; UPDATED=2025-10-15 -->
 def init(...):
     """Bootstrap new project"""
     pass
 
-# CANARY: REQ=REQ-SK-202; FEATURE="SpecifyCLICheck"; ASPECT=CLI; STATUS=IMPL; TEST=test_check_tools; OWNER=specify; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-202; FEATURE="SpecifyCLICheck"; ASPECT=CLI; STATUS=IMPL; TEST=test_check_tools; OWNER=specify; UPDATED=2025-10-15 -->
 def check():
     """Verify installed tools"""
     pass
@@ -110,7 +110,7 @@ Add tokens to `specs/spec-kit/scripts/bash/*.sh`:
 
 ```bash
 #!/usr/bin/env bash
-# CANARY: REQ=REQ-SK-501; FEATURE="FeatureCreationScript"; ASPECT=Automation; STATUS=IMPL; OWNER=scripts; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-501; FEATURE="FeatureCreationScript"; ASPECT=Automation; STATUS=IMPL; OWNER=scripts; UPDATED=2025-10-15 -->
 
 create_feature() {
     # Implementation
@@ -149,7 +149,7 @@ Add test files with CANARY markers:
 ```python
 # tests/spec_kit/test_specify_command.py
 
-# CANARY: REQ=REQ-SK-102; FEATURE="SpecifyCommand"; ASPECT=Testing; STATUS=TESTED; TEST=TestCANARY_REQ_SK_102_SpecifyBasic; OWNER=tests; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-102; FEATURE="SpecifyCommand"; ASPECT=Testing; STATUS=TESTED; TEST=TestCANARY_REQ_SK_102_SpecifyBasic; OWNER=tests; UPDATED=2025-10-15 -->
 
 def test_specify_command_basic():
     """Test basic specify command execution"""
@@ -166,7 +166,7 @@ Create benchmark files:
 ```python
 # benchmarks/spec_kit/bench_init.py
 
-# CANARY: REQ=REQ-SK-201; FEATURE="SpecifyCLIInit"; ASPECT=Benchmarking; STATUS=BENCHED; BENCH=BenchmarkCANARY_REQ_SK_201_Init; OWNER=benchmarks; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-201; FEATURE="SpecifyCLIInit"; ASPECT=Benchmarking; STATUS=BENCHED; BENCH=BenchmarkCANARY_REQ_SK_201_Init; OWNER=benchmarks; UPDATED=2025-10-15 -->
 
 import time
 import pytest

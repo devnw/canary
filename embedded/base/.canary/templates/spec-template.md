@@ -1,7 +1,8 @@
-# CANARY: REQ=CBIN-115; FEATURE="SpecTemplate"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-Docs-115; FEATURE="SpecTemplate"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 # Feature Specification: [FEATURE NAME]
 
-**Requirement ID:** CBIN-XXX
+**Requirement ID:** {{.ReqID}}-XXX (will be generated as {{.ReqID}}-<ASPECT>-XXX)
+**Aspect:** [API|CLI|Engine|Storage|Security|Docs|Wire|Planner|Decode|Encode|RoundTrip|Bench|FrontEnd|Dist]
 **Status:** STUB
 **Created:** YYYY-MM-DD
 **Last Updated:** YYYY-MM-DD
@@ -172,13 +173,13 @@ Break down this requirement into specific implementation points. Each point gets
 
 ### Core Features
 
-<!-- CANARY: REQ=CBIN-XXX; FEATURE="CoreFeature1"; ASPECT=API; STATUS=STUB; UPDATED=YYYY-MM-DD -->
+<!-- CANARY: REQ={{.ReqID}}-XXX; FEATURE="CoreFeature1"; ASPECT=API; STATUS=STUB; UPDATED=YYYY-MM-DD -->
 **Feature 1: [Component Name]**
 - [ ] Implement [specific functionality]
 - **Location hint:** [e.g., "auth.go", "handlers/", "services/auth/"]
 - **Dependencies:** [other features this depends on]
 
-<!-- CANARY: REQ=CBIN-XXX; FEATURE="CoreFeature2"; ASPECT=API; STATUS=STUB; UPDATED=YYYY-MM-DD -->
+<!-- CANARY: REQ={{.ReqID}}-XXX; FEATURE="CoreFeature2"; ASPECT=API; STATUS=STUB; UPDATED=YYYY-MM-DD -->
 **Feature 2: [Component Name]**
 - [ ] Implement [specific functionality]
 - **Location hint:** [e.g., "validation.go", "middleware/"]
@@ -186,31 +187,31 @@ Break down this requirement into specific implementation points. Each point gets
 
 ### Data Layer (if applicable)
 
-<!-- CANARY: REQ=CBIN-XXX; FEATURE="DataModel"; ASPECT=Storage; STATUS=STUB; UPDATED=YYYY-MM-DD -->
+<!-- CANARY: REQ={{.ReqID}}-XXX; FEATURE="DataModel"; ASPECT=Storage; STATUS=STUB; UPDATED=YYYY-MM-DD -->
 **Data Model:**
 - [ ] Define schema/structure
 - **Location hint:** [e.g., "models/", "schema/"]
 
-<!-- CANARY: REQ=CBIN-XXX; FEATURE="DataAccess"; ASPECT=Storage; STATUS=STUB; UPDATED=YYYY-MM-DD -->
+<!-- CANARY: REQ={{.ReqID}}-XXX; FEATURE="DataAccess"; ASPECT=Storage; STATUS=STUB; UPDATED=YYYY-MM-DD -->
 **Data Access:**
 - [ ] Implement CRUD operations
 - **Location hint:** [e.g., "repository/", "dao/"]
 
 ### Testing Requirements
 
-<!-- CANARY: REQ=CBIN-XXX; FEATURE="UnitTests"; ASPECT=API; STATUS=STUB; TEST=TestCBINXXX; UPDATED=YYYY-MM-DD -->
+<!-- CANARY: REQ={{.ReqID}}-XXX; FEATURE="UnitTests"; ASPECT=API; STATUS=STUB; TEST=TestREQXXX; UPDATED=YYYY-MM-DD -->
 **Unit Tests:**
 - [ ] Test core functionality
 - **Location hint:** [e.g., "*_test.go files"]
 
-<!-- CANARY: REQ=CBIN-XXX; FEATURE="IntegrationTests"; ASPECT=API; STATUS=STUB; TEST=TestCBINXXXIntegration; UPDATED=YYYY-MM-DD -->
+<!-- CANARY: REQ={{.ReqID}}-XXX; FEATURE="IntegrationTests"; ASPECT=API; STATUS=STUB; TEST=TestREQXXXIntegration; UPDATED=YYYY-MM-DD -->
 **Integration Tests:**
 - [ ] Test end-to-end flows
 - **Location hint:** [e.g., "integration/", "*_integration_test.go"]
 
 ### Documentation
 
-<!-- CANARY: REQ=CBIN-XXX; FEATURE="APIDocs"; ASPECT=Docs; STATUS=STUB; UPDATED=YYYY-MM-DD -->
+<!-- CANARY: REQ={{.ReqID}}-XXX; FEATURE="APIDocs"; ASPECT=Docs; STATUS=STUB; UPDATED=YYYY-MM-DD -->
 **API Documentation:**
 - [ ] Document public interfaces
 - **Location hint:** [e.g., "docs/api/", "README.md"]
@@ -223,7 +224,7 @@ After implementing each feature:
 1. Update the CANARY token in the spec from `STATUS=STUB` to `STATUS=IMPL`
 2. Add the same token to your source code at the implementation location
 3. Add `TEST=TestName` when tests are written
-4. Run `canary implement CBIN-XXX` to see implementation progress
+4. Run `canary implement {{.ReqID}}-XXX` to see implementation progress
 
 ---
 
@@ -231,15 +232,15 @@ After implementing each feature:
 
 **Main requirement token** (add to primary implementation file):
 ```
-// CANARY: REQ=CBIN-XXX; FEATURE="FeatureName"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD
+// CANARY: REQ={{.ReqID}}-XXX; FEATURE="FeatureName"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD
 ```
 
 **Sub-feature tokens** (use the specific feature names from Implementation Checklist):
 ```
-// CANARY: REQ=CBIN-XXX; FEATURE="CoreFeature1"; ASPECT=API; STATUS=IMPL; TEST=TestCoreFeature1; UPDATED=YYYY-MM-DD
+// CANARY: REQ={{.ReqID}}-XXX; FEATURE="CoreFeature1"; ASPECT=API; STATUS=IMPL; TEST=TestCoreFeature1; UPDATED=YYYY-MM-DD
 ```
 
-**Use `canary implement CBIN-XXX` to find:**
+**Use `canary implement {{.ReqID}}-XXX` to find:**
 - Which features are implemented vs. still TODO
 - Exact file locations and line numbers
 - Context around each implementation point

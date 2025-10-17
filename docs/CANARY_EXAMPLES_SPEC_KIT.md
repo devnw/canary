@@ -28,7 +28,7 @@ Valid STATUS values: MISSING, STUB, IMPL, TESTED, BENCHED, REMOVED
 ```python
 # In src/specify_cli/__init__.py or command file
 
-# CANARY: REQ=REQ-SK-101; FEATURE="ConstitutionCommand"; ASPECT=CLI; STATUS=IMPL; TEST=test_constitution_command; OWNER=specify; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-101; FEATURE="ConstitutionCommand"; ASPECT=CLI; STATUS=IMPL; TEST=test_constitution_command; OWNER=specify; UPDATED=2025-10-15 -->
 def constitution_command(args: str):
     """
     Create or update project governing principles.
@@ -43,7 +43,7 @@ def constitution_command(args: str):
 ```python
 # In src/specify_cli/commands/specify.py
 
-# CANARY: REQ=REQ-SK-102; FEATURE="SpecifyCommand"; ASPECT=CLI; STATUS=TESTED; TEST=test_specify_command_basic,test_specify_command_clarification; OWNER=specify; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-102; FEATURE="SpecifyCommand"; ASPECT=CLI; STATUS=TESTED; TEST=test_specify_command_basic,test_specify_command_clarification; OWNER=specify; UPDATED=2025-10-15 -->
 def specify_command(description: str):
     """
     Define feature requirements from user description.
@@ -58,7 +58,7 @@ def specify_command(description: str):
 ```python
 # In src/specify_cli/__init__.py
 
-# CANARY: REQ=REQ-SK-201; FEATURE="SpecifyCLIInit"; ASPECT=CLI; STATUS=BENCHED; TEST=test_init_new_project,test_init_existing_dir; BENCH=bench_init_performance; OWNER=specify; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-201; FEATURE="SpecifyCLIInit"; ASPECT=CLI; STATUS=BENCHED; TEST=test_init_new_project,test_init_existing_dir; BENCH=bench_init_performance; OWNER=specify; UPDATED=2025-10-15 -->
 def init(project_name: str, ai_assistant: str = None):
     """
     Bootstrap new project with spec-kit framework.
@@ -75,7 +75,7 @@ def init(project_name: str, ai_assistant: str = None):
 #!/usr/bin/env bash
 # scripts/bash/create-new-feature.sh
 
-# CANARY: REQ=REQ-SK-501; FEATURE="FeatureCreationScript"; ASPECT=Automation; STATUS=TESTED; TEST=test_create_feature_script; OWNER=scripts; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-501; FEATURE="FeatureCreationScript"; ASPECT=Automation; STATUS=TESTED; TEST=test_create_feature_script; OWNER=scripts; UPDATED=2025-10-15 -->
 
 set -e
 
@@ -91,7 +91,7 @@ create_feature() {
 #!/usr/bin/env bash
 # scripts/bash/update-agent-context.sh
 
-# CANARY: REQ=REQ-SK-503; FEATURE="AgentContextUpdate"; ASPECT=Automation; STATUS=IMPL; OWNER=scripts; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-503; FEATURE="AgentContextUpdate"; ASPECT=Automation; STATUS=IMPL; OWNER=scripts; UPDATED=2025-10-15 -->
 
 update_agent_file() {
     # Implementation here
@@ -132,7 +132,7 @@ update_agent_file() {
 ```toml
 # .gemini/commands/specify.toml
 
-# CANARY: REQ=REQ-SK-602; FEATURE="GeminiSupport"; ASPECT=Agent; STATUS=IMPL; OWNER=agents; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-602; FEATURE="GeminiSupport"; ASPECT=Agent; STATUS=IMPL; OWNER=agents; UPDATED=2025-10-15 -->
 
 description = "Create feature specification"
 
@@ -148,17 +148,17 @@ prompt = """
 ```python
 # In constitution validator file
 
-# CANARY: REQ=REQ-SK-401; FEATURE="LibraryFirstPrinciple"; ASPECT=Constitution; STATUS=TESTED; TEST=test_library_first_validation; OWNER=constitution; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-401; FEATURE="LibraryFirstPrinciple"; ASPECT=Constitution; STATUS=TESTED; TEST=test_library_first_validation; OWNER=constitution; UPDATED=2025-10-15 -->
 def validate_library_first(plan):
     """Enforce Article I: Library-First Principle"""
     pass
 
-# CANARY: REQ=REQ-SK-402; FEATURE="CLIInterfaceMandate"; ASPECT=Constitution; STATUS=TESTED; TEST=test_cli_interface_validation; OWNER=constitution; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-402; FEATURE="CLIInterfaceMandate"; ASPECT=Constitution; STATUS=TESTED; TEST=test_cli_interface_validation; OWNER=constitution; UPDATED=2025-10-15 -->
 def validate_cli_interface(library):
     """Enforce Article II: CLI Interface Mandate"""
     pass
 
-# CANARY: REQ=REQ-SK-403; FEATURE="TestFirstImperative"; ASPECT=Constitution; STATUS=TESTED; TEST=test_tdd_enforcement; OWNER=constitution; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-403; FEATURE="TestFirstImperative"; ASPECT=Constitution; STATUS=TESTED; TEST=test_tdd_enforcement; OWNER=constitution; UPDATED=2025-10-15 -->
 def validate_test_first(implementation):
     """Enforce Article III: Test-First Imperative"""
     pass
@@ -171,7 +171,7 @@ def validate_test_first(implementation):
 ```python
 # tests/test_constitution_command.py
 
-# CANARY: REQ=REQ-SK-101; FEATURE="ConstitutionCommand"; ASPECT=Testing; STATUS=TESTED; TEST=TestCANARY_REQ_SK_101_ConstitutionBasic; OWNER=tests; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-101; FEATURE="ConstitutionCommand"; ASPECT=Testing; STATUS=TESTED; TEST=TestCANARY_REQ_SK_101_ConstitutionBasic; OWNER=tests; UPDATED=2025-10-15 -->
 
 import pytest
 
@@ -187,7 +187,7 @@ def test_constitution_command_basic():
 ```python
 # tests/test_agent_detection.py
 
-# CANARY: REQ=REQ-SK-203; FEATURE="AgentDetection"; ASPECT=Testing; STATUS=TESTED; TEST=TestCANARY_REQ_SK_203_AgentDetection; OWNER=tests; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-203; FEATURE="AgentDetection"; ASPECT=Testing; STATUS=TESTED; TEST=TestCANARY_REQ_SK_203_AgentDetection; OWNER=tests; UPDATED=2025-10-15 -->
 
 def test_agent_detection_claude():
     """Test Claude Code agent detection"""
@@ -209,7 +209,7 @@ def test_agent_detection_multi():
 ```python
 # benchmarks/bench_init.py
 
-# CANARY: REQ=REQ-SK-201; FEATURE="SpecifyCLIInit"; ASPECT=Benchmarking; STATUS=BENCHED; BENCH=BenchmarkCANARY_REQ_SK_201_InitPerformance; OWNER=benchmarks; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-201; FEATURE="SpecifyCLIInit"; ASPECT=Benchmarking; STATUS=BENCHED; BENCH=BenchmarkCANARY_REQ_SK_201_InitPerformance; OWNER=benchmarks; UPDATED=2025-10-15 -->
 
 import time
 
@@ -229,16 +229,16 @@ def bench_init_performance(tmpdir):
 # In various files tracking the same requirement
 
 # File: src/specify_cli/commands/plan.py
-# CANARY: REQ=REQ-SK-104; FEATURE="PlanCommand"; ASPECT=CLI; STATUS=IMPL; OWNER=commands; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-104; FEATURE="PlanCommand"; ASPECT=CLI; STATUS=IMPL; OWNER=commands; UPDATED=2025-10-15 -->
 
 # File: templates/plan-template.md
-# CANARY: REQ=REQ-SK-104; FEATURE="PlanCommand"; ASPECT=Templates; STATUS=IMPL; OWNER=templates; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-104; FEATURE="PlanCommand"; ASPECT=Templates; STATUS=IMPL; OWNER=templates; UPDATED=2025-10-15 -->
 
 # File: tests/test_plan_command.py
-# CANARY: REQ=REQ-SK-104; FEATURE="PlanCommand"; ASPECT=Testing; STATUS=TESTED; TEST=test_plan_generation; OWNER=tests; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-104; FEATURE="PlanCommand"; ASPECT=Testing; STATUS=TESTED; TEST=test_plan_generation; OWNER=tests; UPDATED=2025-10-15 -->
 
 # File: docs/plan-command.md
-# CANARY: REQ=REQ-SK-104; FEATURE="PlanCommand"; ASPECT=Documentation; STATUS=IMPL; OWNER=docs; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-104; FEATURE="PlanCommand"; ASPECT=Documentation; STATUS=IMPL; OWNER=docs; UPDATED=2025-10-15 -->
 ```
 
 This creates multiple tracking points for the same requirement across different aspects:
@@ -254,7 +254,7 @@ This creates multiple tracking points for the same requirement across different 
 ```python
 # In quality module
 
-# CANARY: REQ=REQ-SK-801; FEATURE="AmbiguityDetection"; ASPECT=Quality; STATUS=TESTED; TEST=test_ambiguity_detection; BENCH=bench_ambiguity_scan; OWNER=quality; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-801; FEATURE="AmbiguityDetection"; ASPECT=Quality; STATUS=TESTED; TEST=test_ambiguity_detection; BENCH=bench_ambiguity_scan; OWNER=quality; UPDATED=2025-10-15 -->
 def detect_ambiguities(spec_text: str) -> List[Ambiguity]:
     """
     Scan specification for ambiguous requirements.
@@ -268,7 +268,7 @@ def detect_ambiguities(spec_text: str) -> List[Ambiguity]:
 ```python
 # In coverage module
 
-# CANARY: REQ=REQ-SK-803; FEATURE="CoverageAnalysis"; ASPECT=Quality; STATUS=TESTED; TEST=test_coverage_analysis; OWNER=quality; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-803; FEATURE="CoverageAnalysis"; ASPECT=Quality; STATUS=TESTED; TEST=test_coverage_analysis; OWNER=quality; UPDATED=2025-10-15 -->
 def analyze_feature_coverage(spec_dir: Path) -> CoverageReport:
     """
     Analyze test and implementation coverage for feature.

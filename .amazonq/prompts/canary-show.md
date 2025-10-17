@@ -2,7 +2,7 @@
 description: Display all CANARY tokens for a specific requirement ID
 ---
 
-# CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 
 ## User Input
 

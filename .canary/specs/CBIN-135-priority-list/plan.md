@@ -1,4 +1,4 @@
-# CANARY: REQ=CBIN-116; FEATURE="PlanTemplate"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-116; FEATURE="PlanTemplate"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 # Implementation Plan: CBIN-135 Priority List Command
 
 **Requirement:** CBIN-135
@@ -744,7 +744,7 @@ func TestCANARY_CBIN_135_Integration_AgentWorkflow(t *testing.T) {
 **Step 3.2: Create agent slash command template**
 ```markdown
 <!-- File: .claude/commands/canary.list.md -->
-# CANARY: REQ=CBIN-135; FEATURE="AgentSlashCommand"; ASPECT=Docs; STATUS=IMPL; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-135; FEATURE="AgentSlashCommand"; ASPECT=Docs; STATUS=IMPL; UPDATED=2025-10-16 -->
 
 ## Slash Command: /canary.list
 

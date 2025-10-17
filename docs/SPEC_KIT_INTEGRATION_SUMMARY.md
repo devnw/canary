@@ -139,7 +139,7 @@ REQ-SK-501,FeatureCreationScript,Automation,IMPL,specs/spec-kit/scripts/bash/cre
 ### Python Files
 
 ```python
-# CANARY: REQ=REQ-SK-201; FEATURE="SpecifyCLIInit"; ASPECT=CLI; STATUS=IMPL; OWNER=specify; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-201; FEATURE="SpecifyCLIInit"; ASPECT=CLI; STATUS=IMPL; OWNER=specify; UPDATED=2025-10-15 -->
 def init(project_name: str):
     """Bootstrap new project with spec-kit"""
     pass
@@ -149,7 +149,7 @@ def init(project_name: str):
 
 ```bash
 #!/usr/bin/env bash
-# CANARY: REQ=REQ-SK-501; FEATURE="FeatureCreationScript"; ASPECT=Automation; STATUS=IMPL; OWNER=scripts; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-501; FEATURE="FeatureCreationScript"; ASPECT=Automation; STATUS=IMPL; OWNER=scripts; UPDATED=2025-10-15 -->
 
 create_feature() {
     # Implementation

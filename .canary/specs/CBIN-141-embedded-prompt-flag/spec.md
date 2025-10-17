@@ -1,4 +1,4 @@
-# CANARY: REQ=CBIN-141; FEATURE="EmbeddedPromptFlag"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-17
+<!-- CANARY: REQ=CBIN-141; FEATURE="EmbeddedPromptFlag"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-17 -->
 # Feature Specification: Embedded Prompt Flag
 
 **Requirement ID:** CBIN-141

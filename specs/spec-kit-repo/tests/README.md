@@ -117,7 +117,7 @@ Following spec-kit's Constitutional Article IX (Integration-First Testing), thes
 ```python
 # Test function name must match the TEST= field in CANARY token
 # Example CANARY format (not a real token):
-# CANARY: REQ=REQ-XXX-000; FEATURE="ExampleFeature"; ASPECT=Example; STATUS=IMPL; TEST=test_my_feature_exists; OWNER=tests; UPDATED=YYYY-MM-DD
+<!-- CANARY: REQ=REQ-XXX-000; FEATURE="ExampleFeature"; ASPECT=Example; STATUS=IMPL; TEST=test_my_feature_exists; OWNER=tests; UPDATED=YYYY-MM-DD -->
 def test_my_feature_exists():
     """Test that my feature exists and is properly configured."""
     # Test implementation

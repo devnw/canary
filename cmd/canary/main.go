@@ -432,6 +432,24 @@ Creates:
 	},
 }
 
+// filterCanaryTokens removes CANARY tokens with OWNER=canary from file content
+// This strips out CANARY CLI internal tracking tokens when copying templates to user projects
+func filterCanaryTokens(content []byte) []byte {
+	lines := strings.Split(string(content), "\n")
+	filtered := make([]string, 0, len(lines))
+
+	for _, line := range lines {
+		// Check if line contains a CANARY token with OWNER=canary
+		if (strings.Contains(line, "CANARY:") && strings.Contains(line, "OWNER=canary")) {
+			// Skip this line - it's a CANARY CLI internal token
+			continue
+		}
+		filtered = append(filtered, line)
+	}
+
+	return []byte(strings.Join(filtered, "\n"))
+}
+
 // CANARY: REQ=CBIN-105; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 // copyCanaryStructure copies the embedded .canary/ directory structure to the target project
 func copyCanaryStructure(targetDir string) error {
@@ -470,6 +488,11 @@ func copyCanaryStructure(targetDir string) error {
 		content, err := embedded.CanaryFS.ReadFile(path)
 		if err != nil {
 			return err
+		}
+
+		// Filter out CANARY CLI internal tokens (OWNER=canary) for markdown, Go, and shell script files
+		if strings.HasSuffix(path, ".md") || strings.HasSuffix(path, ".go") || strings.HasSuffix(path, ".sh") {
+			content = filterCanaryTokens(content)
 		}
 
 		// Write to target with appropriate permissions

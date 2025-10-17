@@ -195,7 +195,7 @@ Releases, GitHub, Versioning
 
 ```python
 # tests/spec_kit/test_specify_command.py
-# CANARY: REQ=REQ-SK-102; FEATURE="SpecifyCommand"; ASPECT=Testing; STATUS=TESTED; TEST=TestCANARY_REQ_SK_102_Specify; OWNER=tests; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-102; FEATURE="SpecifyCommand"; ASPECT=Testing; STATUS=TESTED; TEST=TestCANARY_REQ_SK_102_Specify; OWNER=tests; UPDATED=2025-10-15 -->
 
 def test_specify_command_basic():
     """Test basic specify command execution"""

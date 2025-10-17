@@ -1,4 +1,4 @@
-# CANARY: REQ=CBIN-143; FEATURE="EvidenceField"; ASPECT=Storage; STATUS=STUB; UPDATED=2025-10-17
+<!-- CANARY: REQ=CBIN-143; FEATURE="EvidenceField"; ASPECT=Storage; STATUS=STUB; UPDATED=2025-10-17 -->
 # Feature Specification: Evidence Field in CANARY Tokens
 
 **Requirement ID:** CBIN-143

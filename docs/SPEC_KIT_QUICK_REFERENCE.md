@@ -27,12 +27,12 @@ cat spec-kit-status.csv | column -t -s,
 
 ### Python
 ```python
-# CANARY: REQ=REQ-SK-###; FEATURE="Name"; ASPECT=CLI; STATUS=IMPL; OWNER=team; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-###; FEATURE="Name"; ASPECT=CLI; STATUS=IMPL; OWNER=team; UPDATED=2025-10-15 -->
 ```
 
 ### Bash
 ```bash
-# CANARY: REQ=REQ-SK-###; FEATURE="Name"; ASPECT=Automation; STATUS=IMPL; OWNER=team; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-###; FEATURE="Name"; ASPECT=Automation; STATUS=IMPL; OWNER=team; UPDATED=2025-10-15 -->
 ```
 
 ### Markdown/HTML
@@ -42,7 +42,7 @@ cat spec-kit-status.csv | column -t -s,
 
 ### TOML
 ```toml
-# CANARY: REQ=REQ-SK-###; FEATURE="Name"; ASPECT=Agent; STATUS=IMPL; OWNER=team; UPDATED=2025-10-15
+<!-- CANARY: REQ=REQ-SK-###; FEATURE="Name"; ASPECT=Agent; STATUS=IMPL; OWNER=team; UPDATED=2025-10-15 -->
 ```
 
 ## Required Fields

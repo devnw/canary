@@ -2,7 +2,7 @@
 description: List all implementation files containing tokens for a requirement
 ---
 
-# CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 
 ## User Input
 

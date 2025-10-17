@@ -1,4 +1,4 @@
-# CANARY: REQ=CBIN-115; FEATURE="SpecTemplate"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-115; FEATURE="SpecTemplate"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 # Feature Specification: Multi-Line CANARY Tokens
 
 **Requirement ID:** CBIN-138
@@ -162,8 +162,8 @@ So that code reviews are easier and diffs are clean.
 
 **Example:**
 ```python
-# CANARY: REQ=CBIN-138; FEATURE="PythonToken"; ASPECT=API;
-# CANARY:> STATUS=IMPL; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-138; FEATURE="PythonToken"; ASPECT=API; -->
+<!-- CANARY:> STATUS=IMPL; UPDATED=2025-10-16 -->
 ```
 
 ### Scenario 5: Markdown Multi-Line Token

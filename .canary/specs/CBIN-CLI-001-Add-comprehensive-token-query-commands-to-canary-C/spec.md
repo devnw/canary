@@ -1,4 +1,4 @@
-# CANARY: REQ=CBIN-CLI-001; FEATURE="TokenQueryCommands"; ASPECT=CLI; STATUS=TESTED; OWNER=canary; DOC=user:docs/user/query-commands-guide.md; DOC_HASH=8eb4be8db164a0cf; UPDATED=2025-10-17
+<!-- CANARY: REQ=CBIN-CLI-001; FEATURE="TokenQueryCommands"; ASPECT=CLI; STATUS=TESTED; OWNER=canary; DOC=user:docs/user/query-commands-guide.md; DOC_HASH=8eb4be8db164a0cf; UPDATED=2025-10-17 -->
 # Feature Specification: Token Query Commands
 
 **Requirement ID:** CBIN-CLI-001

@@ -2,7 +2,7 @@
 description: Automatically update UPDATED field for stale CANARY tokens
 ---
 
-# CANARY: REQ=CBIN-114; FEATURE="UpdateStaleCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-114; FEATURE="UpdateStaleCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 
 ## User Input
 

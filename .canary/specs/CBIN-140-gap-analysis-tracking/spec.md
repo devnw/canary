@@ -1,4 +1,4 @@
-# CANARY: REQ=CBIN-140; FEATURE="GapAnalysisTracking"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-17
+<!-- CANARY: REQ=CBIN-140; FEATURE="GapAnalysisTracking"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-17 -->
 # Feature Specification: Gap Analysis Tracking
 
 **Requirement ID:** CBIN-140

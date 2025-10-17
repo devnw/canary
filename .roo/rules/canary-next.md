@@ -1,4 +1,4 @@
-# CANARY: REQ=CBIN-132; FEATURE="NextCmd"; ASPECT=CLI; STATUS=STUB; OWNER=canary; UPDATED=2025-10-16
+<!-- CANARY: REQ=CBIN-132; FEATURE="NextCmd"; ASPECT=CLI; STATUS=STUB; OWNER=canary; UPDATED=2025-10-16 -->
 
 Identify and implement the next highest priority CANARY requirement.
 

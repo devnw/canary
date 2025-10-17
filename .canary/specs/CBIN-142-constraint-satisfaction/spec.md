@@ -1,4 +1,4 @@
-# CANARY: REQ=CBIN-142; FEATURE="ConstraintSatisfaction"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-17
+<!-- CANARY: REQ=CBIN-142; FEATURE="ConstraintSatisfaction"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-17 -->
 # Feature Specification: Constraint Satisfaction System
 
 **Requirement ID:** CBIN-142

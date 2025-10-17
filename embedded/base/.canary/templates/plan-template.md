@@ -1,7 +1,7 @@
-# CANARY: REQ=CBIN-116; FEATURE="PlanTemplate"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
-# Implementation Plan: CBIN-XXX [FEATURE NAME]
+<!-- CANARY: REQ=CBIN-Docs-116; FEATURE="PlanTemplate"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
+# Implementation Plan: {{.ReqID}}-<ASPECT>-XXX [FEATURE NAME]
 
-**Requirement:** CBIN-XXX
+**Requirement:** {{.ReqID}}-<ASPECT>-XXX (e.g., {{.ReqID}}-CLI-001, {{.ReqID}}-API-042)
 **Specification:** [Link to spec.md]
 **Status:** STUB → IMPL
 **Created:** YYYY-MM-DD
@@ -26,7 +26,8 @@
 ### Token Definition
 ```go
 // File: [path/to/file.go]
-// CANARY: REQ=CBIN-XXX; FEATURE="FeatureName"; ASPECT=API; STATUS=IMPL; OWNER=team; UPDATED=YYYY-MM-DD
+// CANARY: REQ={{.ReqID}}-<ASPECT>-XXX; FEATURE="FeatureName"; ASPECT=API; STATUS=IMPL; OWNER=team; UPDATED=YYYY-MM-DD
+// Example: REQ={{.ReqID}}-API-105; FEATURE="UserAuth"; ASPECT=API; STATUS=IMPL; OWNER=team; UPDATED=2025-10-16
 
 package [package]
 
@@ -98,7 +99,8 @@ package [package]
 
 import "testing"
 
-func TestCANARY_CBIN_XXX_[Aspect]_[FeatureName](t *testing.T) {
+func TestCANARY_REQ_[Aspect]_XXX_[FeatureName](t *testing.T) {
+    // Example: TestCANARY_REQ_API_105_UserAuth(t *testing.T)
     // Test implementation
     // Expected to FAIL initially
 }
@@ -107,7 +109,8 @@ func TestCANARY_CBIN_XXX_[Aspect]_[FeatureName](t *testing.T) {
 **Step 1.2: Update CANARY token**
 ```
 // Add TEST= field
-TEST=TestCANARY_CBIN_XXX_[Aspect]_[FeatureName]
+TEST=TestCANARY_REQ_[Aspect]_XXX_[FeatureName]
+// Example: TEST=TestCANARY_REQ_API_105_UserAuth
 ```
 
 **Step 1.3: Verify test fails**
@@ -145,7 +148,8 @@ package [package]
 
 import "testing"
 
-func BenchmarkCANARY_CBIN_XXX_[Aspect]_[FeatureName](b *testing.B) {
+func BenchmarkCANARY_REQ_[Aspect]_XXX_[FeatureName](b *testing.B) {
+    // Example: BenchmarkCANARY_REQ_API_105_UserAuth(b *testing.B)
     // Benchmark implementation
 }
 ```
@@ -153,7 +157,8 @@ func BenchmarkCANARY_CBIN_XXX_[Aspect]_[FeatureName](b *testing.B) {
 **Step 3.2: Update CANARY token**
 ```
 // Add BENCH= field
-BENCH=BenchmarkCANARY_CBIN_XXX_[Aspect]_[FeatureName]
+BENCH=BenchmarkCANARY_REQ_[Aspect]_XXX_[FeatureName]
+// Example: BENCH=BenchmarkCANARY_REQ_API_105_UserAuth
 // Update STATUS
 STATUS=BENCHED
 ```
@@ -166,7 +171,8 @@ STATUS=BENCHED
 ## Testing Strategy
 
 ### Unit Tests
-**Test:** `TestCANARY_CBIN_XXX_[Aspect]_[FeatureName]`
+**Test:** `TestCANARY_REQ_[Aspect]_XXX_[FeatureName]`
+**Example:** `TestCANARY_REQ_API_105_UserAuth`
 **Coverage:** [What functionality is tested]
 **Test Cases:**
 - [ ] Happy path
@@ -185,7 +191,8 @@ STATUS=BENCHED
 - [ ] [Criterion 3 from spec]
 
 ### Performance Benchmarks (if applicable)
-**Benchmark:** `BenchmarkCANARY_CBIN_XXX_[Aspect]_[FeatureName]`
+**Benchmark:** `BenchmarkCANARY_REQ_[Aspect]_XXX_[FeatureName]`
+**Example:** `BenchmarkCANARY_REQ_API_105_UserAuth`
 **Baseline:** [target performance]
 **Metrics:** [ns/op, memory, allocations]
 
