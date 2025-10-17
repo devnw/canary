@@ -1,4 +1,4 @@
-all: build tidy lint fmt test
+all: build tidy lint fmt test canary-build
 
 #-------------------------------------------------------------------------
 # Variables
@@ -21,7 +21,7 @@ GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 
 deps:
-	mkdir -p out
+	mkdir -p out bin
 
 pre-commit: deps upgrade tidy fmt lint build test
 
@@ -315,4 +315,4 @@ FORCE:
 # Phony targets
 #-------------------------------------------------------------------------
 
-.PHONY: build test test-live test-integration pcapdump pcapdump-static lint fuzz all clean guards FORCE
+.PHONY: build test test-live test-integration pcapdump pcapdump-static lint fuzz all clean guards canary-build canary-install FORCE
