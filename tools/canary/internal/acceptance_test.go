@@ -48,6 +48,8 @@ func run(exe string, args ...string) runResult {
 	var stdout, stderr strings.Builder
 	c.Stdout = &stdout
 	c.Stderr = &stderr
+	// Set fixed timestamp for deterministic test output
+	c.Env = append(os.Environ(), "CANARY_TEST_TIMESTAMP=2025-10-16T00:00:00Z")
 	err := c.Run()
 	code := 0
 	if err != nil {

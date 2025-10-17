@@ -330,8 +330,16 @@ func scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 		reqs = append(reqs, Requirement{ID: id, Features: feats})
 	}
 	sort.Slice(reqs, func(i, j int) bool { return reqs[i].ID < reqs[j].ID })
-	rep := Report{GeneratedAt: time.Now().UTC().Format(time.RFC3339), Requirements: reqs, Summary: Summary{ByStatus: byStatus, ByAspect: byAspect, TotalTokens: total, UniqueRequirements: len(reqs)}}
+	rep := Report{GeneratedAt: getTimestamp(), Requirements: reqs, Summary: Summary{ByStatus: byStatus, ByAspect: byAspect, TotalTokens: total, UniqueRequirements: len(reqs)}}
 	return rep, nil
+}
+
+// getTimestamp returns current UTC timestamp in RFC3339 format, or a fixed timestamp if CANARY_TEST_TIMESTAMP is set
+func getTimestamp() string {
+	if testTS := os.Getenv("CANARY_TEST_TIMESTAMP"); testTS != "" {
+		return testTS
+	}
+	return time.Now().UTC().Format(time.RFC3339)
 }
 func promote(status string, hasTests, hasBenches bool) string {
 	if status == "IMPL" && hasTests {

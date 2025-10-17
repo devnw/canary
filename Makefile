@@ -156,16 +156,16 @@ release:
 
 # Canary targets
 canary:
-	go build -o ./bin/canary ./main.go && ./bin/canary --root . --out status.json --csv status.csv
+	go build -o ./bin/canary ./cmd/canary && ./bin/canary --root . --out status.json --csv status.csv
 
 canary-verify:
 	./bin/canary --root . --verify GAP_ANALYSIS.md --strict
 
 canary-build:
-	go build -ldflags="-s -w" -o ./bin/canary ./main.go
+	go build -ldflags="-s -w" -o ./bin/canary ./cmd/canary
 
 canary-install:
-	go install ./main.go
+	go install ./cmd/canary
 
 acceptance:
 	go test ./tools/canary/... -run TestAcceptance -v
