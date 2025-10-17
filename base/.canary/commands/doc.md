@@ -1,598 +1,200 @@
-# Documentation Management Command
+## DocCmd (Documentation Management)
 
-**Command:** `/canary.doc`
-**Purpose:** Manage documentation tracking, creation, and verification for CANARY requirements
-
-## Description
-
-Create, update, and verify documentation associated with CANARY requirements. The documentation tracking system uses SHA256 hashing to detect when documentation becomes stale and needs updating.
-
-## Usage Patterns
-
-### Create Documentation
-
-When you need to create documentation for a requirement:
-
-```
-/canary.doc create {{.ReqID}}-<ASPECT>-XXX --type user
-```
-
-This will:
-1. Identify the requirement specification
-2. Create documentation from the appropriate template
-3. Calculate the initial SHA256 hash
-4. Provide instructions for adding DOC= field to CANARY tokens
-
-### Update Documentation Hash
-
-After editing documentation files:
-
-```
-# Update specific requirement
-/canary.doc update {{.ReqID}}-<ASPECT>-XXX
-
-# Update all documentation (batch operation)
-/canary.doc update --all
-
-# Update only stale documentation (batch operation)
-/canary.doc update --all --stale-only
+```yaml
+---
+description: Manage documentation tracking, creation, and verification for CANARY requirements (strict, verifiable, no-mock/no-simulate)
+command: DocCmd
+version: 2.2
+subcommands: [create, update, status, report]
+outputs:
+  - summary_json: STDOUT (unwrapped JSON; strict schema per subcommand below)
+  - human_text: STDOUT (concise table/metrics for operator UX; optional unless report --format text)
+runtime_guarantees:
+  no_mock_data: true
+  no_simulation_of_results: true
+  canary_logging: required_when(context_usage>=0.7 || on_milestones)
+---
 ```
 
-This will:
-1. Recalculate SHA256 hashes for all documentation files
-2. Update the database with new hashes
-3. Mark documentation as DOC_CURRENT
+<!-- CANARY: REQ=CBIN-136; FEATURE="DocCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17 -->
 
-Batch operations allow updating multiple requirements at once:
-- `--all`: Update all documentation in the database
-- `--stale-only`: Only update documentation that has changed (requires `--all`)
+### 1) Inputs
 
-### Check Documentation Status
+* **Raw args:** subcommand + flags (e.g., `create <REQ-ID> --type user --output <path>`, `update [<REQ-ID>|--all [--stale-only]]`, `status [<REQ-ID>|--all [--stale-only]]`, `report [--format json] [--show-undocumented]`).
+* **Repository layout (assumed):**
 
-To verify documentation freshness:
+  * Templates: `.canary/templates/docs/`
+  * Constitution: `.canary/memory/constitution.md`
+  * Tokens live in source; requirement specs under `.canary/specs/`
+  * Tracking DB (implementation-defined) storing DocPath/DocHash/DocType/DocCheckedAt/DocStatus.
 
-```
-/canary.doc status {{.ReqID}}-<ASPECT>-XXX
-/canary.doc status --all
-/canary.doc status --all --stale-only
-```
+### 2) Preconditions & Resolution
 
-This will:
-1. Check all documentation files for staleness
-2. Report DOC_CURRENT, DOC_STALE, DOC_MISSING, or DOC_UNHASHED status
-3. Provide summary statistics
+1. **Resolve REQ** (if required): exact `<REQ-ID>` or fail with `ERROR_REQ_NOT_FOUND`.
+2. **Validate template by `--type`** ∈ {user, api, technical, feature, architecture}; else `ERROR_UNSUPPORTED_TYPE`.
+3. **Line endings policy:** normalize CRLF→LF before hashing. Abbreviate SHA256 to first 16 hex chars (64 bits).
+4. **Token linkage:** DOC= uses `type:path` pairs; DOC_HASH= is a comma‑aligned list matching DOC order. If counts mismatch → `ERROR_DOC_HASH_MISMATCH`.
 
-### Generate Documentation Report
+### 3) Hashing & Status Model (authoritative)
 
-To get comprehensive coverage and health metrics:
+* **Algorithm:** SHA256 over normalized bytes; **Abbrev:** 16 hex chars.
+* **Statuses:** `DOC_CURRENT`, `DOC_STALE`, `DOC_MISSING`, `DOC_UNHASHED`.
+* **Staleness detection:** content hash changes or missing DOC_HASH for a referenced doc ⇒ not current.
+* **Performance target:** hashing ≈ `<0.01ms/KB` (guideline). Batch ops may process in parallel.
 
-```
-/canary.doc report
-/canary.doc report --format json
-/canary.doc report --show-undocumented
-```
+### 4) Planning & Parallelism
 
-This will:
-1. Calculate documentation coverage percentage
-2. Breakdown documentation by type (user, api, technical, etc.)
-3. Show staleness statistics (current, stale, missing, unhashed)
-4. List undocumented requirements (with --show-undocumented flag)
-5. Provide recommendations for improvement
+* For `--all` batches, build a **Work DAG** with **Concurrency Groups (CG)**:
 
-## Documentation Types
+  * **CG‑1 Enumerate**: Scan tokens/specs to collect `(req_id, type, path, prior_hash)`.
+  * **CG‑2 Hash**: Compute hashes for all candidate files in parallel (I/O bound; no shared writes).
+  * **CG‑3 Update**: Apply DB writes and token updates; **join** before any shared file edits.
+* If platform lacks true parallelism, interleave non‑blocking tasks preserving join points. 
 
-The system supports five documentation types:
+### 5) Subcommand Behaviors (must do; never simulate)
 
-1. **user** - User-facing documentation
-   - How to use features
-   - Quick start guides
-   - Troubleshooting
+**create `<REQ-ID>` --type <type> [--output <path>]**
 
-2. **api** - API reference documentation
-   - Function signatures
-   - Parameters and return values
-   - Code examples
+* Generate from template; write file; **do not** invent content beyond template placeholders.
+* Compute initial hash; update DB; instruct to add/merge `DOC=` & `DOC_HASH=` into the **actual source token(s)** (paths + line numbers in evidence).
+* Output both UX text and JSON summary.
 
-3. **technical** - Technical design documentation
-   - Architecture
-   - Implementation details
-   - Performance considerations
+**update [<REQ-ID>] [--all [--stale-only]]**
 
-4. **feature** - Feature specifications
-   - User stories
-   - Acceptance criteria
-   - Functional requirements
+* Recompute hashes for the target set; update DB and token `DOC_HASH=` in place; mark `DOC_CURRENT`.
+* With `--stale-only`, limit to files where computed hash ≠ stored.
+* Output counts and per‑doc change details.
 
-5. **architecture** - Architecture Decision Records (ADR)
-   - Context and decision
-   - Alternatives considered
-   - Consequences
+**status [<REQ-ID>] [--all [--stale-only]]**
 
-## CANARY Token Integration
+* Evaluate each referenced doc; return status per file + roll‑up metrics.
 
-Documentation is linked to CANARY tokens using DOC= and DOC_HASH= fields:
+**report [--format <text|json>] [--show-undocumented]**
 
-```go
-// CANARY: REQ={{.ReqID}}-<ASPECT>-105; FEATURE="UserAuth"; ASPECT=API; STATUS=IMPL;
-//         DOC=user:docs/user/auth.md; DOC_HASH=8f434346648f6b96;
-//         UPDATED=2025-10-16
-```
+* Compute coverage, breakdown by type, staleness stats, and recommendations.
+* If `--show-undocumented`, list REQs lacking DOC fields.
 
-### Multiple Documentation Files
+### 6) CANARY Snapshot Protocol (compact; low‑token)
 
-A single requirement can reference multiple documentation files:
+Emit when **context ≥70%**, after **batch enumeration**, and after **writes**:
 
-```go
-// CANARY: REQ={{.ReqID}}-<ASPECT>-105; FEATURE="UserAuth"; ASPECT=API; STATUS=IMPL;
-//         DOC=user:docs/user/auth.md,api:docs/api/auth.md;
-//         DOC_HASH=8f434346,a1b2c3d4;
-//         UPDATED=2025-10-16
-```
-
-## Workflow Examples
-
-### Example 1: Creating User Documentation
-
-```
-/canary.doc create {{.ReqID}}-<ASPECT>-105 --type user
-```
-
-**Agent should:**
-1. Run `canary doc create {{.ReqID}}-<ASPECT>-105 --type user --output docs/user/authentication.md`
-2. Edit the generated template with actual content
-3. Add DOC= field to CANARY token in source code
-4. Run `canary doc update {{.ReqID}}-<ASPECT>-105` to register the hash
-
-### Example 2: Checking Stale Documentation
-
-```
-/canary.doc status --all --stale-only
-```
-
-**Agent should:**
-1. Run `canary doc status --all --stale-only`
-2. Review list of stale documentation
-3. For each stale doc:
-   - Open and update the file
-   - Run `canary doc update REQ-ID` to update hash
-4. Verify all documentation is current
-
-### Example 3: Updating After Code Changes
-
-When implementing a feature:
-
-```
-# After code changes
-/canary.doc update {{.ReqID}}-<ASPECT>-105
-```
-
-**Agent should:**
-1. Review what changed in the code
-2. Update corresponding documentation files
-3. Run `canary doc update {{.ReqID}}-<ASPECT>-105` to recalculate hashes
-4. Verify documentation status shows DOC_CURRENT
-
-## Constitutional Compliance
-
-**Article VII - Documentation Currency:**
-
-> "CANARY tokens must maintain current UPDATED fields when implementation
-> changes. Stale tokens (>30 days) should be flagged and updated."
-
-Documentation tracking extends this principle:
-- Documentation files are hashed when created
-- Hashes are stored in DOC_HASH= field
-- Staleness is automatically detected when file changes
-- Regular verification prevents documentation drift
-
-## Implementation Notes
-
-**Hash Calculation:**
-- SHA256 algorithm
-- Line endings normalized (CRLF → LF)
-- Abbreviated to first 16 characters (64 bits)
-- Sufficient collision resistance for documentation tracking
-
-**Performance:**
-- Hash calculation: <0.01ms per KB
-- Suitable for large documentation sets
-- Batch operations supported
-
-**Database Storage:**
-- DocPath: Comma-separated paths with type prefixes
-- DocHash: Comma-separated abbreviated SHA256 hashes
-- DocType: Documentation type (user, api, technical, etc.)
-- DocCheckedAt: ISO 8601 timestamp of last check
-- DocStatus: Current status (CURRENT, STALE, MISSING, UNHASHED)
-
-## Error Handling
-
-**Missing Files:**
-- Status: DOC_MISSING
-- Agent should: Create documentation or update token to remove reference
-
-**Unhashed Documentation:**
-- Status: DOC_UNHASHED
-- Agent should: Calculate hash and add DOC_HASH= field
-
-**Stale Documentation:**
-- Status: DOC_STALE
-- Agent should: Update documentation content, then run `canary doc update`
-
-## Integration with Other Commands
-
-**After /canary.specify:**
-```
-/canary.specify "Add user authentication"
-/canary.doc create {{.ReqID}}-<ASPECT>-XXX --type feature
-```
-
-**After /canary.plan:**
-```
-/canary.plan {{.ReqID}}-<ASPECT>-XXX
-/canary.doc create {{.ReqID}}-<ASPECT>-XXX --type technical
-```
-
-**Before /canary.verify:**
-```
-/canary.doc status --all
-# Fix any stale documentation
-/canary.verify
-```
-
-## Command Reference
-
-### canary doc create
-
-**Syntax:** `canary doc create <REQ-ID> --type <type> --output <path>`
-
-**Arguments:**
-- `<REQ-ID>`: Requirement identifier (e.g., {{.ReqID}}-<ASPECT>-105)
-- `--type`: Documentation type (user, api, technical, feature, architecture)
-- `--output`: Output file path
-
-**Example:**
 ```bash
-canary doc create {{.ReqID}}-<ASPECT>-105 --type user --output docs/user/auth.md
+canary log --kind state --data '{
+  "t":"<ISO8601>","s":"doc|verify|update",
+  "f":[["<docpath1>",1,999],["<tokenfile>",L1,L2]],
+  "k":["req:<REQ-ID>","op:<create|update|status|report>","n:<affected-count>"],
+  "fp":["<disproven assumption>"],
+  "iss":["<tracker-ids-or-n/a>"],
+  "nx":["<next actions>"]
+}'
 ```
 
-### canary doc update
+Keys: `t` time • `s` stage • `f` file+line spans • `k` key facts • `fp` false‑positives • `iss` issues • `nx` next steps.
 
-**Syntax:** `canary doc update [REQ-ID] [--all] [--stale-only]`
+### 7) Output Contract (strict; schema per subcommand)
 
-**Arguments:**
-- `[REQ-ID]`: Optional requirement identifier (required if not using --all)
-- `--all`: Update all documentation in database
-- `--stale-only`: Only update stale documentation (requires --all)
+Return artifacts in this order. **Do not wrap JSON in code fences.** 
 
-**Examples:**
-```bash
-# Update specific requirement
-canary doc update {{.ReqID}}-<ASPECT>-105
+**A. HUMAN_TEXT (optional unless report text)**
+Begin with: `=== HUMAN_TEXT BEGIN ===` … `=== HUMAN_TEXT END ===`
 
-# Update all documentation
-canary doc update --all
+**B. SUMMARY_JSON (unwrapped JSON)** — envelopes:
 
-# Update only stale documentation
-canary doc update --all --stale-only
+**Common envelope**
+
+```json
+{
+  "cmd": "create|update|status|report",
+  "ok": true,
+  "req_id": "CBIN-XXX",
+  "metrics": { "processed": 0, "current": 0, "stale": 0, "missing": 0, "unhashed": 0 },
+  "canary": { "emitted": true, "last_id": "<id-or-n/a>" },
+  "items": []
+}
 ```
 
-### canary doc status
+**items.create** element
 
-**Syntax:** `canary doc status [REQ-ID] [--all] [--stale-only]`
-
-**Arguments:**
-- `[REQ-ID]`: Optional requirement identifier
-- `--all`: Check all requirements
-- `--stale-only`: Show only stale documentation
-
-**Examples:**
-```bash
-canary doc status {{.ReqID}}-<ASPECT>-105
-canary doc status --all
-canary doc status --all --stale-only
+```json
+{
+  "type": "user|api|technical|feature|architecture",
+  "path": "docs/.../file.md",
+  "hash": "8f434346648f6b96",
+  "token_updates": [{ "file": "path/to/code.go", "line": 123, "action": "add|merge" }]
+}
 ```
 
-### canary doc report
+**items.update/status** element
 
-**Syntax:** `canary doc report [--format <format>] [--show-undocumented]`
-
-**Arguments:**
-- `--format`: Output format (text or json), defaults to text
-- `--show-undocumented`: Show list of undocumented requirements
-
-**Examples:**
-```bash
-# Generate text report
-canary doc report
-
-# Generate JSON report for scripting
-canary doc report --format json
-
-# Show undocumented requirements
-canary doc report --show-undocumented
+```json
+{
+  "type": "user|api|technical|feature|architecture",
+  "path": "docs/.../file.md",
+  "status": "DOC_CURRENT|DOC_STALE|DOC_MISSING|DOC_UNHASHED",
+  "old_hash": "aaaaaaaaaaaaaaaa",
+  "new_hash": "bbbbbbbbbbbbbbbb"
+}
 ```
 
-**Sample Output:**
-```
-📊 Documentation Report
+**report** adds:
 
-Coverage: 6/125 requirements (4.8%)
-Total Tokens: 971 (9 with docs, 119 without)
-
-📋 Documentation Status:
-  ✅ Current:  2 (50.0%)
-  ⚠️  Stale:    1 (25.0%)
-  ❌ Missing:  1 (25.0%)
-
-💡 119 requirements without documentation (use --show-undocumented to list)
-
-💡 Recommendations:
-  Run 'canary doc update --all --stale-only' to update stale documentation
+```json
+{
+  "coverage_pct": 0.0,
+  "by_type": { "user": {"current":0,"stale":0,"missing":0,"unhashed":0}, "api": {...} },
+  "undocumented": ["CBIN-123","CBIN-200"]
+}
 ```
 
-## Best Practices
+### 8) Validation Gates (compute and report)
 
-1. **Create Documentation Early**
-   - Create feature docs during specification
-   - Create technical docs during planning
-   - Create API docs before implementation
+* **Article VII (Documentation Currency):** UPDATED fields and DOC_HASH reflect current content.
+* **Security Gate:** No secrets in docs or tokens; paths are relative.
+* **Integrity Gate:** DOC & DOC_HASH lists index‑aligned; counts match; hashes are 16‑hex.
+* **Performance Gate:** Batch hashing parallelized or interleaved; avoid blocking joins.
 
-2. **Keep Documentation Current**
-   - Update docs when code changes
-   - Run `canary doc status --all` regularly
-   - Fix stale documentation immediately
+### 9) Failure Modes (return one, with reason + remediation)
 
-3. **Use Appropriate Types**
-   - User documentation for end-users
-   - API documentation for developers
-   - Technical documentation for maintainers
-   - Architecture documentation for decisions
+* `ERROR_REQ_NOT_FOUND(req_id)`
+* `ERROR_UNSUPPORTED_TYPE(type)`
+* `ERROR_TEMPLATE_MISSING(type)`
+* `ERROR_DOC_HASH_MISMATCH(doc_count, hash_count)`
+* `ERROR_FILE_IO(path,reason)`
+* `ERROR_DB_WRITE(reason)`
+* `ERROR_TOKEN_UPDATE(path,line,reason)`
 
-4. **Link Documentation to Code**
-   - Always include DOC= in CANARY tokens
-   - Reference multiple docs when needed
-   - Keep paths relative to project root
+### 10) Quality Checklist (auto‑verify before output)
 
-5. **Verify Before Release**
-   - Check documentation status before commits
-   - Include documentation in code review
-   - Verify all documentation is DOC_CURRENT
+* Hash normalization (CRLF→LF) applied; 16‑hex SHA256 abbrev computed.
+* All referenced docs exist (or flagged MISSING).
+* Token DOC/DOC_HASH updated where applicable; line numbers recorded.
+* Batch ops produced **Work DAG & CGs**; joins prior to shared writes.
+* JSON envelope valid; **no code‑fence wrapping**; human text (if any) concise. 
+* CANARY snapshot emitted when required.
 
-## Troubleshooting
+### 11) Example HUMAN_TEXT (report, text mode)
 
-**Problem:** Documentation shows as DOC_STALE but hasn't changed
+Begin/End markers as above; include: coverage %, counts per status/type, top recommendations (e.g., “Run `canary doc update --all --stale-only` to refresh stale docs”), and N undocumented REQs listing (if `--show-undocumented`).
 
-**Solution:** Line endings may differ. The hash normalizes CRLF→LF automatically, but git autocrlf settings can cause issues. Ensure consistent line endings.
+---
 
-**Problem:** Can't find documentation template
+### What changed & why (brief)
 
-**Solution:** Templates are in `.canary/templates/docs/`. If missing, run `canary init` to regenerate templates.
+* **Deterministic outputs:** unified **SUMMARY_JSON** envelopes per subcommand enable tooling to parse and assert success. 
+* **Section delimiting & structure:** clearer inputs → gates → behavior → outputs for maintainability. 
+* **Parallel batch handling:** explicit Work DAG + CGs + join points for `--all` and `--stale-only`. 
+* **No‑mock/no‑simulate:** runtime guarantees make it explicit that hashing/tokens/DB writes must be real operations. 
 
-**Problem:** Database doesn't have doc fields
+---
 
-**Solution:** Run database migration: `canary migrate all` or rebuild: `canary index`
+### Assumptions & Risks
 
-## Agent Workflow Patterns
+* Assumes `canary` CLI is available and writable paths exist; DB interface is callable.
+* If your platform lacks true concurrency, interleave I/O and compute safely at join barriers. 
 
-### Pattern 1: Proactive Documentation After Implementation
+### Targeted questions (for fit)
 
-When you complete implementation of a feature with STATUS=IMPL or STATUS=TESTED:
-
-1. **Check if documentation exists:**
-   ```bash
-   canary doc status REQ-ID
-   ```
-
-2. **If DOC_UNHASHED or no documentation:**
-   - Create appropriate documentation type
-   - For user-facing features: create user docs
-   - For APIs: create API docs
-   - For technical decisions: create architecture docs
-
-3. **Example workflow:**
-   ```bash
-   # After implementing {{.ReqID}}-<ASPECT>-105
-   canary doc create {{.ReqID}}-<ASPECT>-105 --type user --output docs/user/auth.md
-   # Edit the documentation
-   canary doc update {{.ReqID}}-<ASPECT>-105
-   # Verify
-   canary doc status {{.ReqID}}-<ASPECT>-105
-   ```
-
-### Pattern 2: Documentation-Driven Development
-
-Before implementing a feature:
-
-1. **Create feature specification:**
-   ```bash
-   /canary.specify "Add user authentication"
-   # Creates {{.ReqID}}-<ASPECT>-XXX
-   ```
-
-2. **Create feature documentation:**
-   ```bash
-   canary doc create {{.ReqID}}-<ASPECT>-XXX --type feature --output docs/features/auth.md
-   # Fill in user stories and acceptance criteria
-   ```
-
-3. **Create technical design:**
-   ```bash
-   canary doc create {{.ReqID}}-<ASPECT>-XXX --type technical --output docs/technical/auth-impl.md
-   # Document architecture and implementation approach
-   ```
-
-4. **Implement with references:**
-   - Add DOC fields to CANARY tokens pointing to both docs
-   - Keep documentation updated as implementation evolves
-
-### Pattern 3: Regular Documentation Maintenance
-
-Include in your regular workflow:
-
-1. **Before starting new work:**
-   ```bash
-   canary doc status --all --stale-only
-   ```
-   - Fix any stale documentation before adding new features
-
-2. **After completing work:**
-   ```bash
-   canary doc update --all --stale-only
-   ```
-   - Update hashes for any documentation you modified
-
-3. **Before commits:**
-   ```bash
-   canary doc status --all
-   ```
-   - Ensure no stale or missing documentation
-
-### Pattern 4: Documentation Coverage Improvement
-
-When working to improve documentation coverage:
-
-1. **Generate report:**
-   ```bash
-   canary doc report --show-undocumented
-   ```
-
-2. **For each undocumented requirement:**
-   - Determine appropriate documentation type
-   - Create documentation from template
-   - Add DOC field to CANARY token
-   - Update hash
-
-3. **Track progress:**
-   ```bash
-   canary doc report
-   # Monitor coverage percentage improvement
-   ```
-
-### Pattern 5: Multi-Document Features
-
-For complex features requiring multiple documentation types:
-
-1. **Create all documentation:**
-   ```bash
-   canary doc create {{.ReqID}}-<ASPECT>-200 --type user --output docs/user/api-usage.md
-   canary doc create {{.ReqID}}-<ASPECT>-200 --type api --output docs/api/endpoints.md
-   canary doc create {{.ReqID}}-<ASPECT>-200 --type technical --output docs/technical/api-design.md
-   ```
-
-2. **Update CANARY token with multiple references:**
-   ```go
-   // CANARY: REQ={{.ReqID}}-<ASPECT>-200; FEATURE="RestAPI"; ASPECT=API; STATUS=IMPL;
-   //         DOC=user:docs/user/api-usage.md,api:docs/api/endpoints.md,technical:docs/technical/api-design.md;
-   //         DOC_HASH=hash1,hash2,hash3;
-   //         UPDATED=2025-10-16
-   ```
-
-3. **Update all hashes together:**
-   ```bash
-   canary doc update {{.ReqID}}-<ASPECT>-200
-   ```
-
-## Agent Decision Tree
-
-```
-┌─────────────────────────────────────┐
-│ Completing feature implementation?  │
-└──────────────┬──────────────────────┘
-               │
-               ▼
-         ┌──────────┐
-         │ Check    │
-         │ doc      │
-         │ status   │
-         └────┬─────┘
-              │
-      ┌───────┴────────┐
-      │                │
-    DOC_CURRENT   DOC_STALE/MISSING
-      │                │
-      ▼                ▼
-   Done         ┌──────────────┐
-                │ What type    │
-                │ of feature?  │
-                └───┬──────────┘
-                    │
-      ┌─────────────┼─────────────┐
-      │             │             │
-  User-facing    API/Library  Design Decision
-      │             │             │
-      ▼             ▼             ▼
-  Create user   Create API   Create arch
-  docs          docs         docs (ADR)
-      │             │             │
-      └─────────────┼─────────────┘
-                    │
-                    ▼
-              ┌──────────┐
-              │ Update   │
-              │ hash     │
-              └──────────┘
-```
-
-## Proactive Agent Behavior
-
-**When to automatically create documentation (without user asking):**
-
-1. **After STATUS changes to TESTED:**
-   - If no documentation exists
-   - Feature is user-facing or API
-   - Create user or API documentation
-
-2. **After implementing major architectural decision:**
-   - Create architecture documentation (ADR)
-   - Document context, decision, alternatives
-
-3. **When you notice stale documentation:**
-   - Proactively update if changes are minor
-   - Ask user if changes are significant
-
-**When to ask user first:**
-
-1. **Documentation type unclear:**
-   - Multiple types might apply
-   - User preference needed
-
-2. **Large documentation changes:**
-   - Significant rewrites needed
-   - User should review scope
-
-3. **Missing critical information:**
-   - You don't have enough context
-   - User input required for accuracy
-
-## Common Mistakes to Avoid
-
-1. **Forgetting to update hash after editing:**
-   - Always run `canary doc update` after editing documentation
-   - Hash must match file content
-
-2. **Using wrong documentation type:**
-   - User docs should be user-focused, not technical
-   - API docs should document interfaces, not implementations
-   - Keep types distinct
-
-3. **Not linking documentation to code:**
-   - Always add DOC= field to CANARY tokens
-   - Missing link defeats the tracking system
-
-4. **Letting documentation go stale:**
-   - Check status regularly
-   - Update when code changes
-   - Don't accumulate stale docs
-
-5. **Creating documentation without context:**
-   - Read the code first
-   - Understand the feature
-   - Provide accurate, helpful content
-
-## See Also
-
-- `/canary.specify` - Create requirement specifications
-- `/canary.plan` - Generate implementation plans
-- `/canary.verify` - Verify GAP_ANALYSIS.md claims
-- `/canary.scan` - Scan for CANARY tokens
+1. Confirm canonical storage for the docs DB (file vs. service) and write API.
+2. Are additional doc types needed or type aliases expected?
+3. Should `report --format json` include per‑REQ deltas since last check?
+4. Default threshold for CANARY snapshots (keep 70%)?
