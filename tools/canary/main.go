@@ -266,7 +266,8 @@ func scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 			}
 			for _, k := range []string{"REQ", "FEATURE", "ASPECT", "STATUS", "UPDATED"} {
 				if fields[k] == "" {
-					return fmt.Errorf("%s: missing %s", path, k)
+					absPath, _ := filepath.Abs(path)
+					return fmt.Errorf("%s (abs: %s): missing %s in token: %s", path, absPath, k, m[0])
 				}
 			}
 			req := normalizeREQ(fields["REQ"])

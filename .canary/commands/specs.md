@@ -2,7 +2,6 @@
 description: List all requirement specification directories
 ---
 
-<!-- CANARY: REQ=CBIN-145; FEATURE="SpecsCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17 -->
 
 ## User Input
 

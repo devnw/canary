@@ -12,22 +12,33 @@
 # - Patterns are relative to the root directory
 
 # Template and AI agent configuration directories
-.canary/
-.claude/
-.cursor/
-.github/
-.windsurf/
-.kilocode/
-.roo/
-.opencode/
-.codex/
-.augment/
-.codebuddy/
-.amazonq/
+**/.canary/
+**/.claude/
+**/.cursor/
+**/.github/
+**/.windsurf/
+**/.kilocode/
+**/.roo/
+**/.opencode/
+**/.codex/
+**/.augment/
+**/.codebuddy/
+**/.amazonq/
+**/claude/
 
 # Documentation directories (often contain example tokens)
-docs/
-specs/
+**/docs/
+**/specs/
+
+# Files with template/example tokens
+FINAL_SUMMARY.md
+**/README_CANARY.md
+**/CLAUDE.md
+
+# Exclude embedded templates and base directories
+embedded/
+**/templates/
+**/base/
 
 # Build artifacts
 bin/

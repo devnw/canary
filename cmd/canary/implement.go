@@ -48,9 +48,15 @@ type ProgressStats struct {
 
 // findRequirement locates a requirement by ID or fuzzy match
 func findRequirement(query string) (*RequirementSpec, error) {
-	// Attempt 1: Exact ID match
-	if strings.HasPrefix(strings.ToUpper(query), "CBIN-") {
-		spec, err := findByExactID(query)
+	query = strings.TrimSpace(query)
+	queryUpper := strings.ToUpper(query)
+
+	// Extract REQ-ID if query is in format "CBIN-101-feature-name" or "CBIN-101"
+	reqID := extractReqID(queryUpper)
+
+	// Attempt 1: Exact ID match using extracted REQ-ID
+	if reqID != "" {
+		spec, err := findByExactID(reqID)
 		if err == nil {
 			return spec, nil
 		}
@@ -82,6 +88,35 @@ func findRequirement(query string) (*RequirementSpec, error) {
 	// For test purposes, return best match
 	// In production, this would trigger interactive selection
 	return loadSpecFromDir(fuzzyMatches[0].SpecPath)
+}
+
+// extractReqID extracts the requirement ID from a query
+// Examples:
+//   - "CBIN-101" -> "CBIN-101"
+//   - "CBIN-101-engine" -> "CBIN-101"
+//   - "CBIN-101-feature-name" -> "CBIN-101"
+//   - "engine" -> ""
+func extractReqID(query string) string {
+	// Match pattern: PROJECT-###
+	// Where PROJECT is alphanumeric (CBIN, REQ, etc.) and ### is 1-4 digits
+	parts := strings.SplitN(query, "-", 3)
+	if len(parts) >= 2 {
+		// Check if first part is alphabetic and second part is numeric
+		if len(parts[0]) > 0 && len(parts[1]) > 0 {
+			// Validate that second part is all digits
+			allDigits := true
+			for _, ch := range parts[1] {
+				if ch < '0' || ch > '9' {
+					allDigits = false
+					break
+				}
+			}
+			if allDigits {
+				return parts[0] + "-" + parts[1]
+			}
+		}
+	}
+	return ""
 }
 
 // findByExactID finds spec by exact requirement ID

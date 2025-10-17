@@ -4,14 +4,15 @@
 
 List requirements that are fully implemented and verified:
 
-✅ CBIN-101 - Scanner basic functionality
-✅ CBIN-102 - Verify command with strict mode
+✅ CBIN-001 - UserAuth API fully tested
+✅ CBIN-002 - DataValidation with benchmarks
 
 ## Gaps
 
 List requirements that are planned or in progress:
 
-(None currently - see .canary/specs/ for in-progress work)
+- [ ] CBIN-003 - ReportGeneration (STATUS=IMPL, needs tests)
+- [ ] CBIN-004 - CacheOptimization (STATUS=STUB)
 
 ## Verification
 

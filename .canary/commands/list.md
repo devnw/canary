@@ -2,7 +2,6 @@
 description: List top priority CANARY requirements with filtering and sorting
 ---
 
-<!-- CANARY: REQ=CBIN-135; FEATURE="ListCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 
 ## User Input
 
