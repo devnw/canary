@@ -1,4 +1,4 @@
-// Copyright (c) 2024 by Developer Network.
+// Copyright (c) 2025 by Developer Network.
 //
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
@@ -2111,6 +2111,7 @@ func init() {
 	rootCmd.AddCommand(rollbackCmd)
 	rootCmd.AddCommand(detectCmd)
 	rootCmd.AddCommand(migrateFromCmd)
+	rootCmd.AddCommand(orphanCmd)
 	rootCmd.AddCommand(docCmd)
 	// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_ShowCmd; UPDATED=2025-10-16
 	rootCmd.AddCommand(showCmd)

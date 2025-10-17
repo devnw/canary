@@ -29,6 +29,7 @@
 # Documentation directories (often contain example tokens)
 **/docs/
 **/specs/
+**/prompts/
 
 # Files with template/example tokens
 FINAL_SUMMARY.md
@@ -44,6 +45,8 @@ embedded/
 bin/
 dist/
 build/
+canary
+result
 *.exe
 *.dll
 *.so

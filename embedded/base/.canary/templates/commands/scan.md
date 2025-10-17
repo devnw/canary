@@ -2,8 +2,6 @@
 description: Scan codebase for CANARY tokens and generate status reports
 ---
 
-<!-- CANARY: REQ=CBIN-111; FEATURE="ScanCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
-
 ## User Input
 
 ```text

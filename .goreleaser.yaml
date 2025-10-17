@@ -17,47 +17,42 @@ builds:
       - linux
       - darwin
       - windows
+      - freebsd
+      - openbsd
+      - netbsd
     goarch:
       - amd64
       - arm64
       - arm
+      - "386"
     goarm:
-      - "7"
+      - "7"            # only relevant when GOARCH=arm
     ignore:
-      - goos: windows
-        goarch: arm64
-      - goos: windows
+      # Unsupported or pointless targets
+      - goos: darwin   # 32-bit/ARM darwin is not supported
+        goarch: arm
+      - goos: darwin
+        goarch: "386"
+      - goos: windows  # 32-bit ARM Windows is effectively dead; keep arm64
+        goarch: arm
+      - goos: freebsd
+        goarch: arm    # drop 32-bit arm on BSDs to avoid toolchain breakage
+      - goos: openbsd
+        goarch: arm
+      - goos: netbsd
         goarch: arm
     ldflags:
-      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
-    mod_timestamp: '{{ .CommitTimestamp }}'
-
-  - id: canary-cli
-    main: ./cmd/canary/main.go
-    binary: canary-cli
-    env:
-      - CGO_ENABLED=0
-    goos:
-      - linux
-      - darwin
-      - windows
-    goarch:
-      - amd64
-      - arm64
-      - arm
-    goarm:
-      - "7"
-    ignore:
-      - goos: windows
-        goarch: arm64
-      - goos: windows
-        goarch: arm
-    ldflags:
-      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
-    mod_timestamp: '{{ .CommitTimestamp }}'
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+    mod_timestamp: "{{ .CommitTimestamp }}"
 
 archives:
-  - id: canary
+  # One archive definition per build id so both binaries are packaged
+  - id: canary-archives
+    builds:
+      - canary
     name_template: >-
       canary_
       {{- title .Os }}_
@@ -73,8 +68,26 @@ archives:
       - LICENSE
       - docs/CANARY_POLICY.md
 
+  - id: canary-cli-archives
+    builds:
+      - canary-cli
+    name_template: >-
+      canary-cli_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+      - docs/CANARY_POLICY.md
+
 checksum:
-  name_template: 'checksums.txt'
+  name_template: "checksums.txt"
 
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
@@ -82,37 +95,37 @@ snapshot:
 changelog:
   sort: asc
   groups:
-    - title: 'Features'
-      regexp: "^.*feat[(\\w)]*:+.*$"
+    - title: "Features"
+      regexp: '^.*feat(\(.*\))?:.*$'
       order: 0
-    - title: 'Bug Fixes'
-      regexp: "^.*fix[(\\w)]*:+.*$"
+    - title: "Bug Fixes"
+      regexp: '^.*fix(\(.*\))?:.*$'
       order: 1
-    - title: 'Documentation'
-      regexp: "^.*docs[(\\w)]*:+.*$"
+    - title: "Documentation"
+      regexp: '^.*docs(\(.*\))?:.*$'
       order: 2
-    - title: 'Performance'
-      regexp: "^.*perf[(\\w)]*:+.*$"
+    - title: "Performance"
+      regexp: '^.*perf(\(.*\))?:.*$'
       order: 3
-    - title: 'Refactor'
-      regexp: "^.*refactor[(\\w)]*:+.*$"
+    - title: "Refactor"
+      regexp: '^.*refactor(\(.*\))?:.*$'
       order: 4
-    - title: 'Tests'
-      regexp: "^.*test[(\\w)]*:+.*$"
+    - title: "Tests"
+      regexp: '^.*test(\(.*\))?:.*$'
       order: 5
-    - title: 'CI/CD'
-      regexp: "^.*ci[(\\w)]*:+.*$"
+    - title: "CI/CD"
+      regexp: '^.*ci(\(.*\))?:.*$'
       order: 6
     - title: Other
       order: 999
   filters:
     exclude:
-      - '^docs:'
-      - '^test:'
-      - '^chore:'
-      - '^style:'
-      - 'Merge pull request'
-      - 'Merge branch'
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^style:"
+      - "Merge pull request"
+      - "Merge branch"
 
 dockers:
   - id: canary
@@ -138,7 +151,7 @@ release:
     name: canary
   prerelease: auto
   draft: false
-  name_template: "{{.ProjectName}}-v{{.Version}}"
+  name_template: "{{ .ProjectName }}-v{{ .Version }}"
   disable: false
 
 brews:
@@ -151,7 +164,7 @@ brews:
       name: goreleaserbot
       email: bot@goreleaser.com
     commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
-    folder: Formula
+    directory: Formula 
     homepage: "https://github.com/devnw/canary"
     description: "CANARY token scanner for requirement verification"
     license: "MIT"
@@ -165,6 +178,8 @@ brews:
 
 nfpms:
   - id: packages
+    builds:
+      - canary        # package the main binary; skip CLI here unless you want both
     package_name: canary
     file_name_template: >-
       {{ .ProjectName }}_

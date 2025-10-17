@@ -346,7 +346,7 @@ C) Configurable via flag (default: auto-update)
 
 ### Core Features
 
-<!-- CANARY: REQ=CBIN-136; FEATURE="TokenDocField"; ASPECT=Engine; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-136; FEATURE="TokenDocField"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-10-17 -->
 **Feature 1: CANARY Token DOC Field Parsing**
 - [ ] Extend token parser to recognize DOC= field
 - [ ] Support comma-separated multiple docs
@@ -355,7 +355,7 @@ C) Configurable via flag (default: auto-update)
 - **Location hint:** `tools/canary/main.go` (scanner) or `internal/scanner/parser.go`
 - **Dependencies:** None
 
-<!-- CANARY: REQ=CBIN-136; FEATURE="TokenDocHashField"; ASPECT=Engine; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-136; FEATURE="TokenDocHashField"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-10-17 -->
 **Feature 2: CANARY Token DOC_HASH Field Parsing**
 - [ ] Extend token parser to recognize DOC_HASH= field
 - [ ] Validate hash format (hex string, 64 chars for SHA256)
@@ -363,7 +363,7 @@ C) Configurable via flag (default: auto-update)
 - **Location hint:** `tools/canary/main.go` (scanner) or `internal/scanner/parser.go`
 - **Dependencies:** None
 
-<!-- CANARY: REQ=CBIN-136; FEATURE="DocHashCalculation"; ASPECT=Engine; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-136; FEATURE="DocHashCalculation"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_136_Engine_HashCalculation; UPDATED=2025-10-17 -->
 **Feature 3: Documentation Hash Calculation**
 - [ ] Read documentation file content
 - [ ] Normalize line endings (LF)
@@ -372,7 +372,7 @@ C) Configurable via flag (default: auto-update)
 - **Location hint:** `internal/docs/hash.go` (new file)
 - **Dependencies:** Standard library crypto/sha256
 
-<!-- CANARY: REQ=CBIN-136; FEATURE="DocStalenessDetection"; ASPECT=Engine; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-136; FEATURE="DocStalenessDetection"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_136_Engine_StalenessDetection; UPDATED=2025-10-17 -->
 **Feature 4: Documentation Staleness Detection**
 - [ ] Compare DOC_HASH field to calculated file hash
 - [ ] Flag mismatches as DOCS_STALE
@@ -383,7 +383,7 @@ C) Configurable via flag (default: auto-update)
 
 ### Documentation Templates
 
-<!-- CANARY: REQ=CBIN-136; FEATURE="DocTemplates"; ASPECT=Docs; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-136; FEATURE="DocTemplates"; ASPECT=Docs; STATUS=IMPL; UPDATED=2025-10-17 -->
 **Documentation Templates:**
 - [ ] Create user guide template
 - [ ] Create technical doc template
@@ -395,7 +395,7 @@ C) Configurable via flag (default: auto-update)
 
 ### CLI Commands
 
-<!-- CANARY: REQ=CBIN-136; FEATURE="DocCreateCommand"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-136; FEATURE="DocCreateCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_136_CLI_DocWorkflow; UPDATED=2025-10-17 -->
 **Doc Create Command:**
 - [ ] Add `canary doc-create <REQ-ID> --type <type> --output <path>` command
 - [ ] Copy template to output path
@@ -404,7 +404,7 @@ C) Configurable via flag (default: auto-update)
 - **Location hint:** `cmd/canary/doc_commands.go` (new file)
 - **Dependencies:** Feature 5 (DocTemplates)
 
-<!-- CANARY: REQ=CBIN-136; FEATURE="DocUpdateCommand"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-136; FEATURE="DocUpdateCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_136_CLI_BatchUpdate; UPDATED=2025-10-17 -->
 **Doc Update Command:**
 - [ ] Add `canary doc-update <REQ-ID> <doc-path>` command
 - [ ] Recalculate documentation file hash
@@ -414,7 +414,7 @@ C) Configurable via flag (default: auto-update)
 - **Location hint:** `cmd/canary/doc_commands.go`
 - **Dependencies:** Feature 3 (DocHashCalculation)
 
-<!-- CANARY: REQ=CBIN-136; FEATURE="DocStatusCommand"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-136; FEATURE="DocStatusCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_136_CLI_DocReport; UPDATED=2025-10-17 -->
 **Doc Status Command:**
 - [ ] Add `canary doc-status [--stale] [--missing]` command
 - [ ] Query database for tokens with DOC= field
@@ -426,7 +426,7 @@ C) Configurable via flag (default: auto-update)
 
 ### Database Schema
 
-<!-- CANARY: REQ=CBIN-136; FEATURE="DocDatabaseSchema"; ASPECT=Storage; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-136; FEATURE="DocDatabaseSchema"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-17 -->
 **Database Schema Extension:**
 - [ ] Add `doc_path` column to tokens table (TEXT)
 - [ ] Add `doc_hash` column to tokens table (TEXT)
@@ -439,7 +439,7 @@ C) Configurable via flag (default: auto-update)
 
 ### Scan Integration
 
-<!-- CANARY: REQ=CBIN-136; FEATURE="ScanDocumentation"; ASPECT=CLI; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-136; FEATURE="ScanDocumentation"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17 -->
 **Scan Command Integration:**
 - [ ] Extend scan command to check documentation
 - [ ] Report documentation coverage metrics
@@ -451,7 +451,7 @@ C) Configurable via flag (default: auto-update)
 
 ### Agent Integration
 
-<!-- CANARY: REQ=CBIN-136; FEATURE="AgentDocCommands"; ASPECT=Docs; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-136; FEATURE="AgentDocCommands"; ASPECT=Docs; STATUS=IMPL; UPDATED=2025-10-17 -->
 **Agent Slash Commands:**
 - [ ] Create `/canary.doc-create` slash command
 - [ ] Create `/canary.doc-update` slash command
@@ -462,7 +462,7 @@ C) Configurable via flag (default: auto-update)
 
 ### Testing Requirements
 
-<!-- CANARY: REQ=CBIN-136; FEATURE="DocUnitTests"; ASPECT=Engine; STATUS=STUB; TEST=TestCANARY_CBIN_136_HashCalculation; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-136; FEATURE="DocUnitTests"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_136_Engine_HashCalculation; UPDATED=2025-10-17 -->
 **Unit Tests:**
 - [ ] Test hash calculation determinism
 - [ ] Test line ending normalization
@@ -470,7 +470,7 @@ C) Configurable via flag (default: auto-update)
 - [ ] Test staleness detection logic
 - **Location hint:** `internal/docs/hash_test.go`, `internal/scanner/parser_test.go`
 
-<!-- CANARY: REQ=CBIN-136; FEATURE="DocIntegrationTests"; ASPECT=CLI; STATUS=STUB; TEST=TestCANARY_CBIN_136_DocWorkflow; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-136; FEATURE="DocIntegrationTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_136_CLI_DocWorkflow; UPDATED=2025-10-17 -->
 **Integration Tests:**
 - [ ] Test end-to-end doc-create workflow
 - [ ] Test end-to-end doc-update workflow
@@ -480,7 +480,7 @@ C) Configurable via flag (default: auto-update)
 
 ### Documentation
 
-<!-- CANARY: REQ=CBIN-136; FEATURE="DocSystemDocs"; ASPECT=Docs; STATUS=STUB; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-136; FEATURE="DocSystemDocs"; ASPECT=Docs; STATUS=IMPL; UPDATED=2025-10-17 -->
 **Documentation System Documentation:**
 - [ ] Update README with DOC=/DOC_HASH= field documentation
 - [ ] Create docs/documentation-tracking.md guide
