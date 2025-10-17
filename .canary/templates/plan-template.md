@@ -1,4 +1,4 @@
-<!-- CANARY: REQ=CBIN-116; FEATURE="PlanTemplate"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
+# CANARY: REQ=CBIN-116; FEATURE="PlanTemplate"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 # Implementation Plan: CBIN-XXX [FEATURE NAME]
 
 **Requirement:** CBIN-XXX

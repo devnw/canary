@@ -2,7 +2,7 @@
 description: Generate technical implementation plan from requirement specification
 ---
 
-<!-- CANARY: REQ=CBIN-113; FEATURE="PlanCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
+# CANARY: REQ=CBIN-113; FEATURE="PlanCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 
 ## User Input
 
@@ -28,12 +28,6 @@ Create a detailed technical implementation plan for a CANARY requirement.
    - Load `.canary/memory/constitution.md`
    - Note applicable principles (test-first, simplicity, etc.)
    - Will enforce these in plan validation gates
-
-3.5. **Retrieve gap analysis (if available)**:
-   - Run `canary gap query --req-id <REQ-ID> --limit 10`
-   - Identify past implementation mistakes for this requirement
-   - Include lessons learned in planning considerations
-   - If gaps exist, add "Past Implementation Gaps" section to plan
 
 4. **Analyze user's technical requirements** (from arguments):
    - Tech stack preferences (languages, frameworks)
@@ -106,23 +100,6 @@ Create a detailed technical implementation plan for a CANARY requirement.
    - ✅ Article IV: Test-first approach
    - ✅ Article V: Simplicity (using standard library)
    - ✅ Article VI: Integration tests planned
-
-   ## Past Implementation Gaps (if applicable)
-
-   **Previous mistakes to avoid:**
-
-   1. **GAP-CBIN-XXX-001** (category: logic_error)
-      - **Problem**: [Description of what went wrong]
-      - **Solution**: [How it was corrected]
-      - **Impact**: Helpful: X, Unhelpful: Y
-
-   2. **GAP-CBIN-XXX-002** (category: test_failure)
-      - **Problem**: [Description]
-      - **Solution**: [Correction]
-
-   **Preventive measures for this implementation:**
-   - [Specific actions to avoid repeating gaps]
-   - [Testing strategies to catch similar issues early]
    ```
 
 6. **Validate plan** against constitution:

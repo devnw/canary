@@ -1,4 +1,4 @@
-<!-- CANARY: REQ=CBIN-107; FEATURE="Constitution"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
+# CANARY: REQ=CBIN-107; FEATURE="Constitution"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 # CANARY Development Constitution
 
 **Version:** 1.0

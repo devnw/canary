@@ -4,7 +4,7 @@ scripts:
   sh: .canary/scripts/create-new-requirement.sh "$ARGUMENTS"
 ---
 
-<!-- CANARY: REQ=CBIN-110; FEATURE="SpecifyCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
+# CANARY: REQ=CBIN-110; FEATURE="SpecifyCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 
 ## User Input
 
