@@ -465,15 +465,15 @@ The report includes:
 
 		// Statistics
 		stats := struct {
-			TotalTokens          int
-			TokensWithDocs       int
-			TokensWithoutDocs    int
-			ByType               map[string]int
-			ByStatus             map[string]int
+			TotalTokens              int
+			TokensWithDocs           int
+			TokensWithoutDocs        int
+			ByType                   map[string]int
+			ByStatus                 map[string]int
 			UndocumentedRequirements []string
 		}{
-			ByType:   make(map[string]int),
-			ByStatus: make(map[string]int),
+			ByType:                   make(map[string]int),
+			ByStatus:                 make(map[string]int),
 			UndocumentedRequirements: []string{},
 		}
 
@@ -524,13 +524,13 @@ The report includes:
 		if format == "json" {
 			// JSON format output
 			report := map[string]interface{}{
-				"total_tokens":       stats.TotalTokens,
-				"tokens_with_docs":   stats.TokensWithDocs,
+				"total_tokens":        stats.TotalTokens,
+				"tokens_with_docs":    stats.TokensWithDocs,
 				"tokens_without_docs": stats.TokensWithoutDocs,
-				"coverage_percent":   float64(stats.TokensWithDocs) / float64(stats.TotalTokens) * 100,
-				"by_type":            stats.ByType,
-				"by_status":          stats.ByStatus,
-				"undocumented_count": len(stats.UndocumentedRequirements),
+				"coverage_percent":    float64(stats.TokensWithDocs) / float64(stats.TotalTokens) * 100,
+				"by_type":             stats.ByType,
+				"by_status":           stats.ByStatus,
+				"undocumented_count":  len(stats.UndocumentedRequirements),
 			}
 			if showUndocumented {
 				report["undocumented_requirements"] = stats.UndocumentedRequirements

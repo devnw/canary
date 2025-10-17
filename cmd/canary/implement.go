@@ -129,7 +129,7 @@ func loadSpecFromDir(dirPath string) (*RequirementSpec, error) {
 
 	spec := &RequirementSpec{
 		ReqID:       parts[0] + "-" + parts[1], // CBIN-XXX
-		FeatureName: parts[2],                   // feature-name
+		FeatureName: parts[2],                  // feature-name
 		SpecPath:    specPath,
 		SpecContent: string(specContent),
 	}
@@ -172,17 +172,17 @@ func renderImplementPrompt(spec *RequirementSpec, flags *ImplementFlags) (string
 
 	// Populate template data
 	data := map[string]interface{}{
-		"ReqID":         spec.ReqID,
-		"FeatureName":   spec.FeatureName,
-		"SpecPath":      spec.SpecPath,
-		"SpecContent":   spec.SpecContent,
-		"PlanPath":      spec.PlanPath,
-		"PlanContent":   spec.PlanContent,
-		"HasPlan":       spec.HasPlan,
-		"Constitution":  string(constitutionContent),
-		"Checklist":     checklist,
-		"Progress":      progress,
-		"Today":         time.Now().UTC().Format("2006-01-02"),
+		"ReqID":        spec.ReqID,
+		"FeatureName":  spec.FeatureName,
+		"SpecPath":     spec.SpecPath,
+		"SpecContent":  spec.SpecContent,
+		"PlanPath":     spec.PlanPath,
+		"PlanContent":  spec.PlanContent,
+		"HasPlan":      spec.HasPlan,
+		"Constitution": string(constitutionContent),
+		"Checklist":    checklist,
+		"Progress":     progress,
+		"Today":        time.Now().UTC().Format("2006-01-02"),
 	}
 
 	// Render

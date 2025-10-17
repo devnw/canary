@@ -54,17 +54,17 @@ func TestCANARY_CBIN_136_CLI_DocWorkflow(t *testing.T) {
 
 	// Step 3: Create token with documentation reference
 	token := &storage.Token{
-		ReqID:    "CBIN-TEST",
-		Feature:  "TestFeature",
-		Aspect:   "Engine",
-		Status:   "IMPL",
-		FilePath: "test.go",
+		ReqID:      "CBIN-TEST",
+		Feature:    "TestFeature",
+		Aspect:     "Engine",
+		Status:     "IMPL",
+		FilePath:   "test.go",
 		LineNumber: 10,
-		UpdatedAt: "2025-10-16",
-		DocPath:  docPath,
-		DocHash:  initialHash,
-		DocType:  "user",
-		DocStatus: "DOC_CURRENT",
+		UpdatedAt:  "2025-10-16",
+		DocPath:    docPath,
+		DocHash:    initialHash,
+		DocType:    "user",
+		DocStatus:  "DOC_CURRENT",
 	}
 
 	if err := db.UpsertToken(token); err != nil {
@@ -128,10 +128,10 @@ func TestCANARY_CBIN_136_CLI_DocMissingFile(t *testing.T) {
 	nonexistentPath := filepath.Join(tmpDir, "nonexistent.md")
 
 	token := &storage.Token{
-		ReqID:    "CBIN-TEST",
-		Feature:  "TestFeature",
-		DocPath:  nonexistentPath,
-		DocHash:  "abc123",
+		ReqID:   "CBIN-TEST",
+		Feature: "TestFeature",
+		DocPath: nonexistentPath,
+		DocHash: "abc123",
 	}
 
 	status, err := docs.CheckStaleness(token)

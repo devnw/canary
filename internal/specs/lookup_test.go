@@ -94,39 +94,39 @@ func TestCANARY_CBIN_134_Engine_FuzzySpecSearch(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		query         string
-		limit         int
+		name           string
+		query          string
+		limit          int
 		wantMinMatches int
-		wantErr       bool
+		wantErr        bool
 	}{
 		{
-			name:          "search for 'specification'",
-			query:         "specification",
-			limit:         5,
+			name:           "search for 'specification'",
+			query:          "specification",
+			limit:          5,
 			wantMinMatches: 1,
-			wantErr:       false,
+			wantErr:        false,
 		},
 		{
-			name:          "search for 'priority list'",
-			query:         "priority list",
-			limit:         5,
+			name:           "search for 'priority list'",
+			query:          "priority list",
+			limit:          5,
 			wantMinMatches: 1,
-			wantErr:       false,
+			wantErr:        false,
 		},
 		{
-			name:          "search for non-existent",
-			query:         "xyznonexistent123",
-			limit:         5,
+			name:           "search for non-existent",
+			query:          "xyznonexistent123",
+			limit:          5,
 			wantMinMatches: 0,
-			wantErr:       false, // No error, just empty results
+			wantErr:        false, // No error, just empty results
 		},
 		{
-			name:          "limit to 3 results",
-			query:         "canary",
-			limit:         3,
+			name:           "limit to 3 results",
+			query:          "canary",
+			limit:          3,
 			wantMinMatches: 0,
-			wantErr:       false,
+			wantErr:        false,
 		},
 	}
 

@@ -118,7 +118,7 @@ func TestCANARY_CBIN_133_CLI_FuzzyMatch(t *testing.T) {
 func TestCANARY_CBIN_133_CLI_PromptGeneration(t *testing.T) {
 	// Setup: Create spec with plan and constitution
 	tmpDir := t.TempDir()
-	
+
 	// Create spec
 	specDir := filepath.Join(tmpDir, ".canary", "specs", "CBIN-105-test-feature")
 	if err := os.MkdirAll(specDir, 0755); err != nil {
@@ -222,7 +222,7 @@ Tests must be written before implementation.
 func TestCANARY_CBIN_133_CLI_ProgressTracking(t *testing.T) {
 	// Setup: Create files with CANARY tokens
 	tmpDir := t.TempDir()
-	
+
 	// Create test files with tokens
 	files := []struct {
 		name    string

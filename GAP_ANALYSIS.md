@@ -4,15 +4,14 @@
 
 List requirements that are fully implemented and verified:
 
-✅ CBIN-001 - UserAuth API fully tested
-✅ CBIN-002 - DataValidation with benchmarks
+✅ CBIN-101 - ScannerCore engine (BENCHED)
+✅ CBIN-102 - VerifyGate CLI (BENCHED)
 
 ## Gaps
 
 List requirements that are planned or in progress:
 
-- [ ] CBIN-003 - ReportGeneration (STATUS=IMPL, needs tests)
-- [ ] CBIN-004 - CacheOptimization (STATUS=STUB)
+- [ ] CBIN-103 - Status schema and JSON output
 
 ## Verification
 

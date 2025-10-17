@@ -23,9 +23,17 @@ func TestCANARY_CBIN_134_CLI_UpdateSubcommand(t *testing.T) {
 	// Test that `canary specify update CBIN-134` locates spec
 	// Expected to FAIL initially (command doesn't exist)
 
-	// Setup: Ensure we're in the project root
-	if _, err := os.Stat(".canary"); err != nil {
-		t.Skip("Skipping test: not in project root directory")
+	// Setup: Change to project root (two levels up from cmd/canary)
+	originalDir, _ := os.Getwd()
+	projectRoot := filepath.Join(originalDir, "../..")
+	if err := os.Chdir(projectRoot); err != nil {
+		t.Fatalf("Failed to change to project root: %v", err)
+	}
+	defer os.Chdir(originalDir) // Restore original directory after test
+
+	// Ensure we're in the project root with specs
+	if _, err := os.Stat(".canary/specs"); err != nil {
+		t.Skip("Skipping test: not in project root directory with specs")
 	}
 
 	// Test exact ID lookup
@@ -53,13 +61,20 @@ func TestCANARY_CBIN_134_CLI_UpdateSubcommand(t *testing.T) {
 				t.Fatal("updateCmd not defined")
 			}
 
-			// Set up command args
-			updateCmd.SetArgs([]string{tt.reqID})
+			// Reset flags to ensure clean state
+			updateCmd.Flags().Set("search", "false")
+			updateCmd.Flags().Set("sections", "")
 
-			err := updateCmd.Execute()
+			// Execute through root command with full command path
+			rootCmd.SetArgs([]string{"specify", "update", tt.reqID})
+
+			err := rootCmd.Execute()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("updateCmd.Execute() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("rootCmd.Execute() error = %v, wantErr %v", err, tt.wantErr)
 			}
+
+			// Reset command for next test
+			rootCmd.SetArgs(nil)
 		})
 	}
 }
@@ -68,8 +83,16 @@ func TestCANARY_CBIN_134_CLI_SearchFlag(t *testing.T) {
 	// Test that `canary specify update --search "spec mod"` returns matches
 	// Expected to FAIL initially (flag not implemented)
 
-	if _, err := os.Stat(".canary"); err != nil {
-		t.Skip("Skipping test: not in project root directory")
+	// Setup: Change to project root
+	originalDir, _ := os.Getwd()
+	projectRoot := filepath.Join(originalDir, "../..")
+	if err := os.Chdir(projectRoot); err != nil {
+		t.Fatalf("Failed to change to project root: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	if _, err := os.Stat(".canary/specs"); err != nil {
+		t.Skip("Skipping test: not in project root directory with specs")
 	}
 
 	tests := []struct {
@@ -96,13 +119,20 @@ func TestCANARY_CBIN_134_CLI_SearchFlag(t *testing.T) {
 				t.Fatal("updateCmd not defined")
 			}
 
-			// Set up command args with --search flag
-			updateCmd.SetArgs([]string{"--search", tt.query})
+			// Reset flags to ensure clean state
+			updateCmd.Flags().Set("search", "false")
+			updateCmd.Flags().Set("sections", "")
 
-			err := updateCmd.Execute()
+			// Execute through root command with full command path
+			rootCmd.SetArgs([]string{"specify", "update", "--search", tt.query})
+
+			err := rootCmd.Execute()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("updateCmd.Execute() with --search error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("rootCmd.Execute() with --search error = %v, wantErr %v", err, tt.wantErr)
 			}
+
+			// Reset command for next test
+			rootCmd.SetArgs(nil)
 		})
 	}
 }
@@ -111,8 +141,16 @@ func TestCANARY_CBIN_134_CLI_SectionsFlag(t *testing.T) {
 	// Test that `canary specify update CBIN-134 --sections overview` returns subset
 	// Expected to FAIL initially (parser doesn't exist)
 
-	if _, err := os.Stat(".canary"); err != nil {
-		t.Skip("Skipping test: not in project root directory")
+	// Setup: Change to project root
+	originalDir, _ := os.Getwd()
+	projectRoot := filepath.Join(originalDir, "../..")
+	if err := os.Chdir(projectRoot); err != nil {
+		t.Fatalf("Failed to change to project root: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	if _, err := os.Stat(".canary/specs"); err != nil {
+		t.Skip("Skipping test: not in project root directory with specs")
 	}
 
 	// This will fail because updateCmd and sections flag don't exist yet
@@ -120,21 +158,36 @@ func TestCANARY_CBIN_134_CLI_SectionsFlag(t *testing.T) {
 		t.Fatal("updateCmd not defined")
 	}
 
-	// Set up command args with --sections flag
-	updateCmd.SetArgs([]string{"CBIN-134", "--sections", "overview"})
+	// Reset flags to ensure clean state
+	updateCmd.Flags().Set("search", "false")
+	updateCmd.Flags().Set("sections", "")
 
-	err := updateCmd.Execute()
+	// Execute through root command with full command path
+	rootCmd.SetArgs([]string{"specify", "update", "CBIN-134", "--sections", "overview"})
+
+	err := rootCmd.Execute()
 	if err != nil {
 		// We expect this to work once implemented
-		t.Errorf("updateCmd.Execute() with --sections error = %v", err)
+		t.Errorf("rootCmd.Execute() with --sections error = %v", err)
 	}
+
+	// Reset command
+	rootCmd.SetArgs(nil)
 }
 
 func TestCANARY_CBIN_134_CLI_InvalidReqID(t *testing.T) {
 	// Test that invalid REQ-ID returns helpful error
 
-	if _, err := os.Stat(".canary"); err != nil {
-		t.Skip("Skipping test: not in project root directory")
+	// Setup: Change to project root
+	originalDir, _ := os.Getwd()
+	projectRoot := filepath.Join(originalDir, "../..")
+	if err := os.Chdir(projectRoot); err != nil {
+		t.Fatalf("Failed to change to project root: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	if _, err := os.Stat(".canary/specs"); err != nil {
+		t.Skip("Skipping test: not in project root directory with specs")
 	}
 
 	// This will fail because updateCmd doesn't exist yet
@@ -142,20 +195,35 @@ func TestCANARY_CBIN_134_CLI_InvalidReqID(t *testing.T) {
 		t.Fatal("updateCmd not defined")
 	}
 
-	// Set up command args with invalid ID
-	updateCmd.SetArgs([]string{"INVALID-ID"})
+	// Reset flags to ensure clean state
+	updateCmd.Flags().Set("search", "false")
+	updateCmd.Flags().Set("sections", "")
 
-	err := updateCmd.Execute()
+	// Execute through root command with full command path
+	rootCmd.SetArgs([]string{"specify", "update", "INVALID-ID"})
+
+	err := rootCmd.Execute()
 	if err == nil {
 		t.Error("Expected error for invalid REQ-ID, got nil")
 	}
+
+	// Reset command
+	rootCmd.SetArgs(nil)
 }
 
 func TestCANARY_CBIN_134_CLI_PlanDetection(t *testing.T) {
 	// Test that plan.md is detected when it exists
 
-	if _, err := os.Stat(".canary"); err != nil {
-		t.Skip("Skipping test: not in project root directory")
+	// Setup: Change to project root
+	originalDir, _ := os.Getwd()
+	projectRoot := filepath.Join(originalDir, "../..")
+	if err := os.Chdir(projectRoot); err != nil {
+		t.Fatalf("Failed to change to project root: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	if _, err := os.Stat(".canary/specs"); err != nil {
+		t.Skip("Skipping test: not in project root directory with specs")
 	}
 
 	// Create a temporary spec directory with plan.md for testing
