@@ -2,6 +2,7 @@
 description: List top priority CANARY requirements with filtering and sorting
 ---
 
+<!-- CANARY: REQ=CBIN-135; FEATURE="ListCmd"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 
 ## User Input
 
@@ -30,6 +31,8 @@ List CANARY requirements with priority-based ordering and comprehensive filterin
    - `--phase <value>`: Filter by phase (Phase0, Phase1, Phase2, Phase3)
    - `--owner <name>`: Filter by owner
    - `--spec-status <value>`: Filter by spec status (draft, approved, in-progress, completed, archived)
+   - `--priority-min <N>`: Filter by minimum priority (1=highest, 0=no minimum)
+   - `--priority-max <N>`: Filter by maximum priority (0=no maximum)
 
    **Output control:**
    - `--limit N`: Maximum results (0 = unlimited, default: 10 for agent context)
@@ -73,6 +76,11 @@ List CANARY requirements with priority-based ordering and comprehensive filterin
    **View all work for an aspect:**
    ```bash
    canary list --aspect CLI --limit 0
+   ```
+
+   **Filter by priority range:**
+   ```bash
+   canary list --status STUB --priority-min 1 --priority-max 3
    ```
 
 5. **Analyze and recommend**:
@@ -150,6 +158,9 @@ canary list --owner my-team
 
 # What CLI work is pending?
 canary list --aspect CLI --status STUB
+
+# What are the highest priority items?
+canary list --priority-min 1 --priority-max 3 --limit 10
 ```
 
 ## Guidelines

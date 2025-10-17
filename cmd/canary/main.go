@@ -1,13 +1,8 @@
-// Copyright (c) 2024 by CodePros.
-//
-// This software is proprietary information of CodePros.
-// Unauthorized use, copying, modification, distribution, and/or
-// disclosure is strictly prohibited, except as provided under the terms
-// of the commercial license agreement you have entered into with
-// CodePros.
+// Copyright (c) 2024 by Developer Network.
 //
 // For more details, see the LICENSE file in the root directory of this
-// source code repository or contact CodePros at info@codepros.org.
+// source code repository or contact Developer Network at info@devnw.com.
+
 
 // CANARY: REQ=CBIN-CLI-104; FEATURE="CanaryCLI"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 package main
@@ -1569,6 +1564,8 @@ Use --include-hidden to show all requirements including hidden ones.`,
 		filterPhase, _ := cmd.Flags().GetString("phase")
 		filterOwner, _ := cmd.Flags().GetString("owner")
 		filterSpecStatus, _ := cmd.Flags().GetString("spec-status")
+		priorityMin, _ := cmd.Flags().GetInt("priority-min")
+		priorityMax, _ := cmd.Flags().GetInt("priority-max")
 		orderBy, _ := cmd.Flags().GetString("order-by")
 		limit, _ := cmd.Flags().GetInt("limit")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
@@ -1607,6 +1604,12 @@ Use --include-hidden to show all requirements including hidden ones.`,
 		}
 		if filterSpecStatus != "" {
 			filters["spec_status"] = filterSpecStatus
+		}
+		if priorityMin > 0 {
+			filters["priority_min"] = strconv.Itoa(priorityMin)
+		}
+		if priorityMax > 0 {
+			filters["priority_max"] = strconv.Itoa(priorityMax)
 		}
 		if includeHidden {
 			filters["include_hidden"] = "true"
@@ -2120,6 +2123,8 @@ func init() {
 	rootCmd.AddCommand(grepCmd)
 	// CANARY: REQ=CBIN-140; FEATURE="GapCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 	rootCmd.AddCommand(gapCmd)
+	// CANARY: REQ=CBIN-145; FEATURE="SpecsCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_145_CLI_SpecsCmd; UPDATED=2025-10-17
+	rootCmd.AddCommand(specsCmd)
 
 	// initCmd flags
 	initCmd.Flags().StringSlice("agents", []string{}, "comma-separated list of agents to install for (claude,cursor,copilot,windsurf,kilocode,roo,opencode,codex,auggie,codebuddy,amazonq)")
@@ -2157,6 +2162,8 @@ func init() {
 	listCmd.Flags().String("phase", "", "filter by phase (Phase0, Phase1, Phase2, Phase3)")
 	listCmd.Flags().String("owner", "", "filter by owner")
 	listCmd.Flags().String("spec-status", "", "filter by spec status (draft, approved, in-progress, completed, archived)")
+	listCmd.Flags().Int("priority-min", 0, "filter by minimum priority (0 = no minimum)")
+	listCmd.Flags().Int("priority-max", 0, "filter by maximum priority (0 = no maximum)")
 	listCmd.Flags().String("order-by", "", "custom ORDER BY clause (default: priority ASC, updated_at DESC)")
 	listCmd.Flags().Int("limit", 0, "maximum number of results (0 = no limit)")
 	listCmd.Flags().Bool("json", false, "output as JSON")

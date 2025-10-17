@@ -1,8 +1,8 @@
-<!-- CANARY: REQ=CBIN-117; FEATURE="AgentContextDoc"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
+<!-- CANARY: REQ=CBIN-117; FEATURE="AgentContextDoc"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17 -->
 # CANARY Agent Context
 
-**Last Updated:** 2025-10-16
-**Version:** 1.0
+**Last Updated:** 2025-10-17
+**Version:** 1.1
 
 ## Project Overview
 
@@ -17,6 +17,14 @@ This project uses CANARY requirement tracking with spec-kit-inspired workflows.
 - `/canary.scan` - Scan for CANARY tokens
 - `/canary.verify` - Verify GAP_ANALYSIS.md claims
 - `/canary.update-stale` - Update stale tokens
+
+### Query Commands
+- `/canary.list` - List requirements with filtering and priority ordering
+- `/canary.specs` - List specification directories
+- `/canary.show` - Show all tokens for a requirement
+- `/canary.files` - List implementation files for a requirement
+- `/canary.status` - Show completion status for a requirement
+- `/canary.grep` - Search tokens by keyword
 
 ### Development Workflow
 
@@ -71,6 +79,21 @@ canary scan --root . --update-stale
 **Create token:**
 ```bash
 canary create CBIN-105 "FeatureName" --aspect API --status IMPL
+```
+
+**Query requirements:**
+```bash
+# List specifications
+canary specs
+
+# List high-priority items
+canary list --status STUB --priority-min 1 --priority-max 3
+
+# Show all tokens for a requirement
+canary show CBIN-105
+
+# List implementation files
+canary files CBIN-105
 ```
 
 ## Project Structure

@@ -31,6 +31,8 @@ List CANARY requirements with priority-based ordering and comprehensive filterin
    - `--phase <value>`: Filter by phase (Phase0, Phase1, Phase2, Phase3)
    - `--owner <name>`: Filter by owner
    - `--spec-status <value>`: Filter by spec status (draft, approved, in-progress, completed, archived)
+   - `--priority-min <N>`: Filter by minimum priority (1=highest, 0=no minimum)
+   - `--priority-max <N>`: Filter by maximum priority (0=no maximum)
 
    **Output control:**
    - `--limit N`: Maximum results (0 = unlimited, default: 10 for agent context)
@@ -76,6 +78,11 @@ List CANARY requirements with priority-based ordering and comprehensive filterin
    canary list --aspect CLI --limit 0
    ```
 
+   **Filter by priority range:**
+   ```bash
+   canary list --status STUB --priority-min 1 --priority-max 3
+   ```
+
 5. **Analyze and recommend**:
    - Identify highest priority STUB items for planning
    - Note IMPL items needing tests
@@ -89,35 +96,35 @@ List CANARY requirements with priority-based ordering and comprehensive filterin
 
 Found 10 requirements (showing top 10):
 
-📌 CBIN-134 - SpecModification
-   Status: STUB | Aspect: CLI | Priority: 1
-   Location: .canary/specs/CBIN-134-spec-modification/spec.md:1
+📌 {{.ReqID}}-API-134 - UserOnboarding
+   Status: STUB | Aspect: API | Priority: 1
+   Location: .canary/specs/{{.ReqID}}-API-134-user-onboarding/spec.md:1
 
-📌 CBIN-140 - ValidationRules
+📌 {{.ReqID}}-Engine-140 - ValidationRules
    Status: STUB | Aspect: Engine | Priority: 1
-   Location: .canary/specs/CBIN-140-validation-rules/spec.md:1
+   Location: .canary/specs/{{.ReqID}}-Engine-140-validation-rules/spec.md:1
 
-📌 CBIN-105 - InitWorkflow
-   Status: IMPL | Aspect: CLI | Priority: 2
-   Location: cmd/canary/init.go:356
+📌 {{.ReqID}}-API-105 - RegistrationFlow
+   Status: IMPL | Aspect: API | Priority: 2
+   Location: src/api/registration.go:45
 
-📌 CBIN-142 - AsyncQueue
+📌 {{.ReqID}}-Engine-142 - AsyncQueue
    Status: IMPL | Aspect: Engine | Priority: 2
-   Location: internal/engine/queue.go:23
+   Location: internal/queue/processor.go:78
 
-📌 CBIN-115 - SecurityAudit
+📌 {{.ReqID}}-Security-115 - SecurityAudit
    Status: TESTED | Aspect: Security | Priority: 3
-   Location: internal/security/audit.go:45
-   Test: TestCANARY_CBIN_115_Security_Audit
+   Location: internal/security/audit.go:34
+   Test: TestCANARY_{{.ReqID}}_Security_115_Audit
 
 **Analysis:**
-- **Highest Priority STUB**: CBIN-134 (SpecModification)
-- **Needs Tests**: CBIN-105, CBIN-142 (IMPL status)
+- **Highest Priority STUB**: {{.ReqID}}-API-134 (UserOnboarding)
+- **Needs Tests**: {{.ReqID}}-API-105, {{.ReqID}}-Engine-142 (IMPL status)
 - **Completed**: 1 of 10 shown
 
 **Recommendations:**
-1. Start with `/canary.plan CBIN-134` for highest priority STUB
-2. Add tests for CBIN-105 and CBIN-142
+1. Start with `/canary.plan {{.ReqID}}-API-134` for highest priority STUB
+2. Add tests for {{.ReqID}}-API-105 and {{.ReqID}}-Engine-142
 3. Use `/canary.next` to automatically select next priority work
 ```
 
@@ -151,6 +158,9 @@ canary list --owner my-team
 
 # What CLI work is pending?
 canary list --aspect CLI --status STUB
+
+# What are the highest priority items?
+canary list --priority-min 1 --priority-max 3 --limit 10
 ```
 
 ## Guidelines

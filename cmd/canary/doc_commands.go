@@ -1,13 +1,8 @@
-// Copyright (c) 2024 by CodePros.
-//
-// This software is proprietary information of CodePros.
-// Unauthorized use, copying, modification, distribution, and/or
-// disclosure is strictly prohibited, except as provided under the terms
-// of the commercial license agreement you have entered into with
-// CodePros.
+// Copyright (c) 2024 by Developer Network.
 //
 // For more details, see the LICENSE file in the root directory of this
-// source code repository or contact CodePros at info@codepros.org.
+// source code repository or contact Developer Network at info@devnw.com.
+
 
 // CANARY: REQ=CBIN-136; FEATURE="DocCLICommands"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_136_CLI_DocWorkflow; DOC=user:docs/user/documentation-tracking-guide.md; DOC_HASH=1e32f44252c80284; UPDATED=2025-10-16
 

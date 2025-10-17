@@ -1,13 +1,8 @@
-// Copyright (c) 2024 by CodePros.
-//
-// This software is proprietary information of CodePros.
-// Unauthorized use, copying, modification, distribution, and/or
-// disclosure is strictly prohibited, except as provided under the terms
-// of the commercial license agreement you have entered into with
-// CodePros.
+// Copyright (c) 2024 by Developer Network.
 //
 // For more details, see the LICENSE file in the root directory of this
-// source code repository or contact CodePros at info@codepros.org.
+// source code repository or contact Developer Network at info@devnw.com.
+
 
 // CANARY: REQ=CBIN-123; FEATURE="TokenStorage"; ASPECT=Storage; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 package storage
@@ -241,6 +236,7 @@ func indexOfSubstring(s, substr string) int {
 	return -1
 }
 
+// CANARY: REQ=CBIN-145; FEATURE="PriorityFiltering"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-17
 // ListTokens retrieves tokens with filters and ordering
 // idPattern is a regex pattern for filtering requirement IDs (e.g., "CBIN-[1-9][0-9]{2,}")
 func (db *DB) ListTokens(filters map[string]string, idPattern string, orderBy string, limit int) ([]*Token, error) {
@@ -325,6 +321,14 @@ func (db *DB) ListTokens(filters map[string]string, idPattern string, orderBy st
 	}
 	if v, ok := filters["owner"]; ok {
 		query += " AND owner = ?"
+		args = append(args, v)
+	}
+	if v, ok := filters["priority_min"]; ok {
+		query += " AND priority >= ?"
+		args = append(args, v)
+	}
+	if v, ok := filters["priority_max"]; ok {
+		query += " AND priority <= ?"
 		args = append(args, v)
 	}
 

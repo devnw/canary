@@ -131,13 +131,13 @@ go build -o bin/canary ./cmd/canary
 Deleted broken skeleton code that referenced non-existent packages:
 
 ```
-cmd/canary/      - Skeleton CLI referencing go.codepros.org/canary/*
+cmd/canary/      - Skeleton CLI referencing go.devnw.com/canary/*
 cmd/tmp/         - Empty placeholder
 sub/             - Subcommand stubs (create, init, report, scan, update, verify, docs)
 internal/        - Core logic stubs (core, acceptance, cli, gen, fixtures)
 ```
 
-All referenced non-existent packages from `go.codepros.org/canary`, causing build failures.
+All referenced non-existent packages from `go.devnw.com/canary`, causing build failures.
 
 ## Benefits
 
