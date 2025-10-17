@@ -3,7 +3,6 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-
 // CANARY: REQ=CBIN-132; FEATURE="NextPriorityCommand"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; UPDATED=2025-10-16
 package main
 

@@ -3,7 +3,6 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-
 // CANARY: REQ=CBIN-133; FEATURE="ImplementCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_ExactMatch; UPDATED=2025-10-16
 package main
 

@@ -3,7 +3,6 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-
 // CANARY: REQ=CBIN-133; FEATURE="RequirementLookup"; ASPECT=API; STATUS=TESTED; UPDATED=2025-10-16
 package main
 

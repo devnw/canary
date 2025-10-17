@@ -3,7 +3,6 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-
 // CANARY: REQ=CBIN-140; FEATURE="GapCLI"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 package main
 

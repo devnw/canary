@@ -3,7 +3,6 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-
 // CANARY: REQ=CBIN-136; FEATURE="DocStalenessDetection"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_136_Engine_StalenessDetection; DOC=architecture:docs/architecture/adr-001-documentation-tracking.md; DOC_HASH=9c40f77ae6604be5; UPDATED=2025-10-16
 
 package docs
