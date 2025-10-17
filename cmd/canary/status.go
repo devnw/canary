@@ -20,7 +20,7 @@ import (
 	"go.spyder.org/canary/internal/storage"
 )
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_StatusCmd; UPDATED=2025-10-16
 var statusCmd = &cobra.Command{
 	Use:   "status <REQ-ID>",
 	Short: "Show implementation progress for a requirement",

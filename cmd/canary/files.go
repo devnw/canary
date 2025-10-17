@@ -20,7 +20,7 @@ import (
 	"go.spyder.org/canary/internal/storage"
 )
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_FilesCmd; UPDATED=2025-10-16
 var filesCmd = &cobra.Command{
 	Use:   "files <REQ-ID>",
 	Short: "List implementation files for a requirement",

@@ -21,7 +21,7 @@ import (
 	"go.spyder.org/canary/internal/storage"
 )
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_ShowCmd; UPDATED=2025-10-16
 var showCmd = &cobra.Command{
 	Use:   "show <REQ-ID>",
 	Short: "Display all CANARY tokens for a requirement",
