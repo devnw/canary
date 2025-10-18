@@ -18,9 +18,9 @@ import (
 // TestCANARY_CBIN_145_Engine_PathFilter verifies path filtering logic
 func TestCANARY_CBIN_145_Engine_PathFilter(t *testing.T) {
 	testCases := []struct {
-		name        string
-		filePath    string
-		excludePaths []string
+		name          string
+		filePath      string
+		excludePaths  []string
 		shouldExclude bool
 	}{
 		{"Include regular file", "pkg/api/handler.go", []string{"/docs/"}, false},

@@ -3,7 +3,7 @@ all: build tidy lint fmt test canary-build
 #-------------------------------------------------------------------------
 # Variables
 # ------------------------------------------------------------------------
-env=CGO_ENABLED=1
+env=CGO_ENABLED=1 DOCKERFILE=Dockerfile GOOS=$(GOOS) GOARCH=$(GOARCH)
 SHELL := $(shell which bash)
 
 # Allow passing interface via environment (e.g., IFACE=eth0 make sanity)

@@ -105,12 +105,12 @@ func TestCANARY_CBIN_145_Engine_PlanTestReferences(t *testing.T) {
 		ReqID: "CBIN-1500",
 		Features: []*storage.Token{
 			{
-				ReqID:    "CBIN-1500",
-				Feature:  "Cache",
-				Aspect:   "Engine",
-				Status:   "TESTED",
-				Test:     "TestCANARY_CBIN_1500_Engine_Cache",
-				FilePath: "cache_test.go",
+				ReqID:     "CBIN-1500",
+				Feature:   "Cache",
+				Aspect:    "Engine",
+				Status:    "TESTED",
+				Test:      "TestCANARY_CBIN_1500_Engine_Cache",
+				FilePath:  "cache_test.go",
 				UpdatedAt: "2025-10-17",
 			},
 		},

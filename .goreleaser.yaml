@@ -5,11 +5,11 @@ project_name: canary
 before:
   hooks:
     - go mod tidy
-    - go generate ./...
+
 
 builds:
   - id: canary
-    main: ./main.go
+    main: ./cmd/canary
     binary: canary
     env:
       - CGO_ENABLED=0
@@ -17,29 +17,19 @@ builds:
       - linux
       - darwin
       - windows
-      - freebsd
-      - openbsd
-      - netbsd
     goarch:
       - amd64
       - arm64
       - arm
       - "386"
     goarm:
-      - "7"            # only relevant when GOARCH=arm
+      - "7"
     ignore:
-      # Unsupported or pointless targets
-      - goos: darwin   # 32-bit/ARM darwin is not supported
+      - goos: darwin
         goarch: arm
       - goos: darwin
         goarch: "386"
-      - goos: windows  # 32-bit ARM Windows is effectively dead; keep arm64
-        goarch: arm
-      - goos: freebsd
-        goarch: arm    # drop 32-bit arm on BSDs to avoid toolchain breakage
-      - goos: openbsd
-        goarch: arm
-      - goos: netbsd
+      - goos: windows
         goarch: arm
     ldflags:
       - -s -w
@@ -49,10 +39,7 @@ builds:
     mod_timestamp: "{{ .CommitTimestamp }}"
 
 archives:
-  # One archive definition per build id so both binaries are packaged
   - id: canary-archives
-    builds:
-      - canary
     name_template: >-
       canary_
       {{- title .Os }}_
@@ -60,31 +47,17 @@ archives:
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
+    # New syntax: per-OS format control
+    formats:
+      - tar.gz
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
     files:
       - README.md
       - LICENSE
       - docs/CANARY_POLICY.md
 
-  - id: canary-cli-archives
-    builds:
-      - canary-cli
-    name_template: >-
-      canary-cli_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
-    format_overrides:
-      - goos: windows
-        format: zip
-    files:
-      - README.md
-      - LICENSE
-      - docs/CANARY_POLICY.md
 
 checksum:
   name_template: "checksums.txt"
@@ -127,23 +100,92 @@ changelog:
       - "Merge pull request"
       - "Merge branch"
 
-dockers:
-  - id: canary
-    image_templates:
-      - "ghcr.io/devnw/canary:{{ .Tag }}"
-      - "ghcr.io/devnw/canary:v{{ .Major }}"
-      - "ghcr.io/devnw/canary:v{{ .Major }}.{{ .Minor }}"
-      - "ghcr.io/devnw/canary:latest"
-    dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/amd64,linux/arm64"
+dockers_v2:
+  # You can have multiple Docker images.
+  - #
+    # ID of the image, needed if you want to filter by it later on (e.g. on custom publishers).
+    # Default: project name
+    id: canary
+
+    # Path to the Dockerfile (from the project root).
+    #
+    # Default: 'Dockerfile'.
+    # Templates: allowed.
+    dockerfile: "{{ .Env.DOCKERFILE }}"
+
+    # IDs to filter the binaries/packages.
+    #
+    # Make sure to only include the IDs of binaries you want to `COPY` in your
+    # Dockerfile.
+    #
+    # If you include IDs that don't exist or are not available for the current
+    # architecture being built, the build of the image will be skipped.
+    ids:
+      - canary
+
+    # Image names.
+    #
+    # Empty image names are ignored.
+    #
+    # Templates: allowed.
+    images:
+      - "devnw/canary"
+      - "gcr.io/devnw/canary"
+
+    # Tag names.
+    #
+    # Empty tags are ignored.
+    #
+    # Templates: allowed.
+    tags:
+      - "v{{ .Version }}"
+      - "{{ if .IsNightly }}nightly{{ end }}"
+      - "{{ if not .IsNightly }}latest{{ end }}"
+
+
+    # Labels to be added to the image.
+    #
+    # Items with empty keys or values will be ignored.
+    #
+    # Templates: allowed.
+    labels:
+      "org.opencontainers.image.created": "{{.Date}}"
+      "org.opencontainers.image.name": "{{.ProjectName}}"
+      "org.opencontainers.image.revision": "{{.FullCommit}}"
+      "org.opencontainers.image.version": "{{.Version}}"
+      "org.opencontainers.image.source": "{{.GitURL}}"
+
+    # Annotations to be added to the image.
+    #
+    # Items with empty keys or values will be ignored.
+    #
+    # Templates: allowed.
+    annotations:
+      "project": "{{.ProjectName}}"
+
+    # Platforms to build.
+    #
+    # Default: [ linux/amd64 linux/arm64 ]
+    platforms:
+      - linux/amd64
+      - linux/arm64
+
+    # Retry configuration.
+    retry:
+      # Attempts of retry.
+      #
+      # Default: 10.
+      attempts: 5
+
+      # Delay between retry attempts.
+      #
+      # Default: 10s.
+      delay: 5s
+
+      # Maximum delay between retry attempts.
+      #
+      # Default: 5m.
+      max_delay: 2m
 
 release:
   github:
@@ -154,32 +196,143 @@ release:
   name_template: "{{ .ProjectName }}-v{{ .Version }}"
   disable: false
 
-brews:
-  - repository:
+homebrew_casks:
+  -
+    # Name of the cask
+    #
+    # Default: the project name.
+    # Templates: allowed.
+    name: canary
+
+
+    # IDs of the archives to use.
+    # Empty means all IDs.
+    ids:
+      - canary-archives
+
+    # Binary name inside the cask
+    #
+    # Default: the cask name.
+    # Templates: allowed.
+    binary: canary
+
+    repository:
+      # The repository owner.
+      #
+      # Templates: allowed.
       owner: devnw
-      name: homebrew-tap
-      branch: main
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
-    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
-    directory: Formula 
+
+      # The repository name.
+      #
+      # Templates: allowed.
+      name: canary
+
+    # This information will be used to build the URL section of your Cask.
+    #
+    # You can set the template, as well as additional parameters.
+    # These parameters can be used to provide extra headers, cookies, or other
+    # download requirements for your application.
+    # See https://docs.brew.sh/Cask-Cookbook#additional-url-parameters for more details.
+    #
+    # All fields are optional.
+    url:
+      # URL which is determined by the given Token (github, gitlab or gitea).
+      #
+      # Default depends on the client.
+      # Templates: allowed.
+      template: "https://github.com/devnw/canary/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+
+      # Used when the domains of `url` and `homepage` differ.
+      # Templates: allowed.
+      verified: "github.com/devnw/canary/"
+
+      # Download strategy or format specification
+      # See official Cask Cookbook for allowed values.
+      # Templates: allowed.
+      using: ":homebrew_curl"
+
+      # HTTP cookies to send with the download request
+      # Templates: allowed.
+      cookies:
+        license: "accept-backup"
+
+      # HTTP referer header
+      # Templates: allowed.
+      referer: "https://github.com/devnw/canary/"
+
+      # Additional HTTP headers
+      # Templates: allowed.
+      headers:
+        - "X-Version: {{ .Version }}"
+
+      # Custom User-Agent header
+      # Templates: allowed.
+      user_agent: "canary/1.0 (macOS)"
+
+      # Custom body when using POST request
+      # Templates: allowed.
+      data:
+        format: "dmg"
+        platform: "mac"
+
+    # The project name and current git tag are used in the format string.
+    #
+    # Templates: allowed.
+    commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
+
+    # Directory inside the repository to put the cask.
+    # Default: Casks
+    directory: Casks
+
+    # Your app's homepage.
+    #
+    # Default: inferred from global metadata.
     homepage: "https://github.com/devnw/canary"
-    description: "CANARY token scanner for requirement verification"
-    license: "MIT"
-    test: |
-      system "#{bin}/canary", "--version"
-    dependencies:
-      - name: go
-        type: optional
-    install: |-
-      bin.install "canary"
+
+    description: "Canary token scanner for requirement verification."
+
+    # Git author used to commit to the repository.
+    #
+    # Since: v2.11
+    # Default: inferred from global metadata (Since v2.12).
+    commit_author:
+      # Git author name.
+      #
+      # Templates: allowed.
+      name: goreleaserbot
+
+      # Git author email.
+      #
+      # Templates: allowed.
+      email: bot@goreleaser.com
+
+      # Git commit signing configuration.
+      # Only useful if repository is of type 'git'.
+      #
+      # Since: v2.11.
+      signing:
+        # Enable commit signing.
+        enabled: true
+
+        # The signing key to use.
+        # Can be a key ID, fingerprint, email address, or path to a key file.
+        #
+        # Templates: allowed.
+        key: "{{ .Env.GPG_SIGNING_KEY }}"
+
+        # The GPG program to use for signing.
+        #
+        # Templates: allowed.
+        program: gpg2
+
+        # The signature format to use.
+        #
+        # Valid options: openpgp, x509, ssh.
+        # Default: openpgp.
+        format: openpgp
 
 nfpms:
   - id: packages
-    builds:
-      - canary        # package the main binary; skip CLI here unless you want both
     package_name: canary
     file_name_template: >-
       {{ .ProjectName }}_
@@ -193,7 +346,7 @@ nfpms:
       CANARY token scanner for requirement verification.
       Scans repositories for CANARY tokens and verifies requirement claims.
     maintainer: devnw <info@devnw.com>
-    license: MIT
+    license: Apache-2.0
     vendor: devnw
     formats:
       - deb

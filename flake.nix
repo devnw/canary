@@ -114,9 +114,7 @@
               [
                 goPackages
                 commonPackages
-              ]
-              # Add the canary binary to the development environment
-              ++ [ packages.canary ];
+              ];
           };
 
           packages = {
