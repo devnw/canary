@@ -266,7 +266,7 @@ Examples:
 		}
 
 		// Copy .canaryignore template
-		canaryignoreContent, err := embedded.CanaryFS.ReadFile("base/.canaryignore")
+		canaryignoreContent, err := readEmbeddedFile("base/.canaryignore")
 		if err == nil {
 			canaryignorePath := filepath.Join(projectName, ".canaryignore")
 			if err := os.WriteFile(canaryignorePath, canaryignoreContent, 0644); err != nil {
@@ -511,8 +511,35 @@ func filterCanaryTokens(content []byte) []byte {
 	return []byte(strings.Join(filtered, "\n"))
 }
 
+// readEmbeddedFile safely reads a file from the embedded filesystem
+// It tries with and without the "base/" prefix to handle different embed scenarios
+func readEmbeddedFile(path string) ([]byte, error) {
+	// Try the path as-is
+	if content, err := embedded.CanaryFS.ReadFile(path); err == nil {
+		return content, nil
+	}
+
+	// If the path starts with "base/", try without it
+	if strings.HasPrefix(path, "base/") {
+		trimmed := strings.TrimPrefix(path, "base/")
+		if content, err := embedded.CanaryFS.ReadFile(trimmed); err == nil {
+			return content, nil
+		}
+	}
+
+	// If the path doesn't start with "base/", try with it
+	if !strings.HasPrefix(path, "base/") {
+		withBase := "base/" + path
+		if content, err := embedded.CanaryFS.ReadFile(withBase); err == nil {
+			return content, nil
+		}
+	}
+
+	return nil, fmt.Errorf("file not found in embedded filesystem: %s", path)
+}
+
 // CANARY: REQ=CBIN-105; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
-// copyCanaryStructure copies the embedded .canary/ directory structure to the target project
+// copyCanaryStructure copies the embedded base/ directory structure to the target .canary/ project directory
 func copyCanaryStructure(targetDir string) error {
 	targetCanary := filepath.Join(targetDir, ".canary")
 
@@ -521,17 +548,27 @@ func copyCanaryStructure(targetDir string) error {
 		return err
 	}
 
-	// Walk embedded filesystem
-	return fs.WalkDir(embedded.CanaryFS, "base/.canary", func(path string, d fs.DirEntry, err error) error {
+	// The embedded files are in "base/" and should be copied to ".canary/"
+	// Walk the embedded base directory
+	return fs.WalkDir(embedded.CanaryFS, "base", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// Get relative path from base/.canary
-		relPath := strings.TrimPrefix(path, "base/.canary")
-		relPath = strings.TrimPrefix(relPath, "/")
+		// Skip the base directory itself
+		if path == "base" {
+			return nil
+		}
+
+		// Skip certain files that are handled separately
+		if strings.HasSuffix(path, ".canaryignore") {
+			return nil // This is handled separately in the init command
+		}
+
+		// Get relative path from base/
+		relPath := strings.TrimPrefix(path, "base/")
 		if relPath == "" {
-			return nil // Skip root
+			return nil
 		}
 
 		targetPath := filepath.Join(targetCanary, relPath)
@@ -725,8 +762,8 @@ func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag b
 // copyAndProcessAgentFiles copies agent files from embedded/.canary/agents/ to .canary/agents/
 // and performs template variable substitution for {{ .AgentPrefix }}, {{ .AgentModel }}, {{ .AgentColor }}
 func copyAndProcessAgentFiles(targetDir, agentPrefix, agentModel, agentColor string) error {
-	// Try new path first, fall back to old path
-	sourceAgentsDir := ".canary/agents"
+	// Agent files are in base/agents/
+	sourceAgentsDir := "base/agents"
 	targetAgentsDir := filepath.Join(targetDir, ".canary", "agents")
 
 	// Create target agents directory
@@ -737,12 +774,7 @@ func copyAndProcessAgentFiles(targetDir, agentPrefix, agentModel, agentColor str
 	// Read agent files from embedded FS
 	entries, err := embedded.CanaryFS.ReadDir(sourceAgentsDir)
 	if err != nil {
-		// Fall back to base path
-		sourceAgentsDir = "base/.canary/agents"
-		entries, err = embedded.CanaryFS.ReadDir(sourceAgentsDir)
-		if err != nil {
-			return fmt.Errorf("read agents directory: %w", err)
-		}
+		return fmt.Errorf("read agents directory: %w", err)
 	}
 
 	// Process each agent file
@@ -782,16 +814,11 @@ func copyAndProcessAgentFiles(targetDir, agentPrefix, agentModel, agentColor str
 // installAgentFilesToSystems copies agent files from embedded/.canary/agents/ to each agent system's agents directory
 // This ensures agent definitions are available in each AI agent system (Claude, Cursor, etc.)
 func installAgentFilesToSystems(targetDir string, agentsList []string, allAgentsFlag bool, agentPrefix, agentModel, agentColor string, localInstall bool) error {
-	// Try new path first, fall back to old path
-	sourceAgentsDir := ".canary/agents"
+	// Agent files are in base/agents/
+	sourceAgentsDir := "base/agents"
 	entries, err := embedded.CanaryFS.ReadDir(sourceAgentsDir)
 	if err != nil {
-		// Fall back to base path
-		sourceAgentsDir = "base/.canary/agents"
-		entries, err = embedded.CanaryFS.ReadDir(sourceAgentsDir)
-		if err != nil {
-			return fmt.Errorf("read agents directory: %w", err)
-		}
+		return fmt.Errorf("read agents directory: %w", err)
 	}
 
 	// Determine base directory for installation
@@ -1100,7 +1127,7 @@ If arguments are provided, updates or adds specific principles.`,
 
 		if _, err := os.Stat(constitutionPath); os.IsNotExist(err) {
 			// Read template from embedded FS
-			content, err := embedded.CanaryFS.ReadFile("base/.canary/memory/constitution.md")
+			content, err := readEmbeddedFile("base/memory/constitution.md")
 			if err != nil {
 				return fmt.Errorf("read constitution template: %w", err)
 			}
@@ -1186,7 +1213,7 @@ creates a spec directory, and populates it with a specification template.`,
 		}
 
 		// Read and populate template
-		templateContent, err := embedded.CanaryFS.ReadFile("base/.canary/templates/spec-template.md")
+		templateContent, err := readEmbeddedFile("base/templates/spec-template.md")
 		if err != nil {
 			return fmt.Errorf("read spec template: %w", err)
 		}
@@ -1344,7 +1371,7 @@ tech stack decisions, and CANARY token placement instructions.`,
 		}
 
 		// Read template
-		templateContent, err := embedded.CanaryFS.ReadFile("base/.canary/templates/plan-template.md")
+		templateContent, err := readEmbeddedFile("base/templates/plan-template.md")
 		if err != nil {
 			return fmt.Errorf("read plan template: %w", err)
 		}

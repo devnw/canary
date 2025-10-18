@@ -254,7 +254,9 @@ func (db *DB) ListTokens(filters map[string]string, idPattern string, orderBy st
 	// Apply ID pattern filter using GLOB (SQLite pattern matching)
 	// Convert regex pattern to GLOB pattern for common cases
 	if idPattern != "" {
+		// Support both CBIN and BUG patterns
 		// For pattern like "CBIN-[1-9][0-9]{2,}", match CBIN-100 and above
+		// For BUG patterns, match BUG-ASPECT-NNN format
 		// Use GLOB which supports ? (any char) and * (any chars)
 		// Since we can't easily convert regex to GLOB, we'll use a SQL filter
 		// that excludes common placeholder patterns
@@ -262,9 +264,12 @@ func (db *DB) ListTokens(filters map[string]string, idPattern string, orderBy st
 		query += " AND req_id NOT LIKE 'CBIN-###%'"
 		query += " AND req_id NOT LIKE '{{%'"
 		query += " AND req_id NOT LIKE 'REQ-XXX%'"
-		// Match 3+ digit CBIN IDs (CBIN-100 and above)
-		query += " AND req_id GLOB 'CBIN-[0-9][0-9][0-9]*'"
-		query += " AND req_id NOT GLOB 'CBIN-0[0-9][0-9]*'" // Exclude CBIN-001 through CBIN-099
+		// Match both CBIN and BUG patterns
+		// Match 3+ digit CBIN IDs (CBIN-100 and above) OR BUG-ASPECT-NNN format
+		query += " AND ("
+		query += "  (req_id GLOB 'CBIN-[0-9][0-9][0-9]*' AND req_id NOT GLOB 'CBIN-0[0-9][0-9]*')" // CBIN-100 and above
+		query += "  OR req_id GLOB 'BUG-*-[0-9][0-9][0-9]*'" // BUG-ASPECT-NNN format
+		query += " )"
 	}
 
 	// Filter hidden paths by default (unless include_hidden is set)
