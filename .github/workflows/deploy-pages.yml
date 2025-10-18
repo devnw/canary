@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -54,7 +54,7 @@ jobs:
           nav_order: home,reference,coverage,metrics,security,bench,docs
           embed_coverage_html: true
       - name: Upload doc-pages artifacts
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           name: github-pages
           path: ${{ steps.docs.outputs.site_dir }}
