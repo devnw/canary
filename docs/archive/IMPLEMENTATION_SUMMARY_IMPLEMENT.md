@@ -289,7 +289,7 @@ canary implement CBIN-104 --context --context-lines 2
 
 **Modified:**
 - `base/.canary/templates/spec-template.md` - Added Implementation Checklist
-- `embedded/base/.canary/templates/spec-template.md` - Synced
+- `embedded/base/templates/spec-template.md` - Synced
 - `cmd/canary/main.go` - Added implement command + extractField helper
 - `CLI_COMMANDS.md` - Added documentation
 - `AGENT_INTEGRATION.md` - Added documentation

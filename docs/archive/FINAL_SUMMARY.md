@@ -296,7 +296,7 @@ canary specify "New feature"
 **Modified:**
 - `cmd/canary/main.go` - Added implement command
 - `base/.canary/templates/spec-template.md` - Added Implementation Checklist
-- `embedded/base/.canary/templates/spec-template.md` - Synced
+- `embedded/base/templates/spec-template.md` - Synced
 - `CLI_COMMANDS.md` - Added implement documentation
 - `AGENT_INTEGRATION.md` - Updated workflows
 - `README.md` - Added implement to quick reference

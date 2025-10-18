@@ -21,7 +21,7 @@ func TestIsHiddenPath(t *testing.T) {
 
 		// Template files should be hidden
 		{"canary templates", ".canary/templates/spec-template.md", true},
-		{"base templates", "base/.canary/templates/plan.md", true},
+		{"base templates", "base/templates/plan.md", true},
 		{"embedded base", "embedded/base/template.md", true},
 
 		// Documentation examples should be hidden
