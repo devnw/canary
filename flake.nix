@@ -7,6 +7,7 @@
     # Shared development environment (provides pinned Go + Zig 0.15.1 + common tools)
     dev-env.url = "github:spyderorg/dev-env";
     gomod2nix.url = "github:nix-community/gomod2nix";
+    canary.url = "github:devnw/canary";
   };
 
   outputs =
@@ -14,6 +15,7 @@
       self,
       nixpkgs,
       dev-env,
+      canary,
       flake-utils,
       gomod2nix,
       ...
@@ -23,6 +25,7 @@
         nixpkgs: system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          canaryPkg = canary.packages.${system}.canary;
           # Pull toolchains / common tooling from centralized dev-env flake
           inherit (dev-env.packages.${system}) zigPackages goPackages commonPackages;
           buildGoApp = gomod2nix.legacyPackages.${system}.buildGoApplication;
@@ -114,6 +117,8 @@
               [
                 goPackages
                 commonPackages
+              ] ++ [
+                canaryPkg
               ];
           };
 

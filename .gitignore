@@ -10,8 +10,9 @@ out/
 .direnv/
 result
 bin_canary
-canary
+# Only ignore the canary binary at root, not the cmd/canary directory
 /canary
+!/cmd/canary/
 
 # build folders
 bin/
