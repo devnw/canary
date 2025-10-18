@@ -1,0 +1,11 @@
+name: Auto-merge Dependabot
+on: pull_request
+
+permissions:
+  pull-requests: write
+  contents: write
+
+jobs:
+  build:
+    uses: spyderorg/workflows/.github/workflows/dependabot.yml@main
+    secrets: inherit # pragma: allowlist secret

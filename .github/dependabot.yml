@@ -1,0 +1,32 @@
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: '/'
+    schedule:
+      interval: daily
+    labels:
+      - 'go'
+      - 'deps'
+    groups:
+      production-dependencies:
+        dependency-type: 'production'
+      development-dependencies:
+        dependency-type: 'development'
+
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'daily'
+    labels:
+      - 'github-actions'
+      - 'deps'
+      - 'gen'
+      - 'i18n'
+      - 'opt'
+      - 'ds'
+      - 'errs'
+    groups:
+      production-dependencies:
+        dependency-type: 'production'
+      development-dependencies:
+        dependency-type: 'development'

@@ -1,0 +1,105 @@
+name: Canary CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Canary Binary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.0'
+
+      - name: Build canary
+        run: go build -o ./bin/canary ./tools/canary
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: canary-binary
+          path: ./bin/canary
+          retention-days: 1
+
+  test-unit:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.0'
+
+      - name: Run TestCANARY_* tests
+        run: go test ./tools/canary -v -run TestCANARY
+
+  test-acceptance:
+    name: Run Acceptance Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.0'
+
+      - name: Run acceptance tests
+        run: go test ./tools/canary/internal -v -run TestAcceptance
+
+  benchmark:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.0'
+
+      - name: Run BenchmarkCANARY_* benchmarks
+        run: go test ./tools/canary -bench BenchmarkCANARY -run ^$ -benchmem
+
+  verify-self:
+    name: Self-Verification Gate
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.0'
+
+      - name: Download canary binary
+        uses: actions/download-artifact@v4
+        with:
+          name: canary-binary
+          path: ./bin
+
+      - name: Make binary executable
+        run: chmod +x ./bin/canary
+
+      - name: Run canary verify gate
+        run: |
+          ./bin/canary --root tools/canary --verify GAP_SELF.md --strict --skip '(^|/)(.git|.direnv|node_modules|vendor|bin|dist|build|zig-out|.zig-cache|.crush)(/|$)'
+          echo "Verify exit code: $?"

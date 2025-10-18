@@ -1,0 +1,8 @@
+# Binary capture artifacts (unreadable by prettier / permission restricted)
+datasets/captures/**/*.pcap
+datasets/captures/**/*.pcapng
+*.pcap
+*.pcapng
+
+# Large generated JSON block listing (newline-delimited JSON, not a single JSON doc)
+test_1_mac_24_02_08.json

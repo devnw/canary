@@ -1,0 +1,28 @@
+name: Lint and Guards
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run guard checks (import allowlist, doc comments)
+        run: |
+          go run ./tools/importguard
+          go run ./tools/doccheck
+
+      - name: go vet
+        run: go vet ./...

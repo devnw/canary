@@ -1,0 +1,84 @@
+# .canaryignore - Gitignore-style patterns for CANARY token scanning
+#
+# This file specifies files and directories that should be ignored when
+# scanning for CANARY tokens. Patterns follow gitignore syntax.
+#
+# Common patterns:
+# - Use # for comments
+# - Use / for directory separators
+# - Use * for wildcards
+# - Use ** for recursive wildcards
+# - Use ! to negate patterns (whitelist)
+# - Patterns are relative to the root directory
+
+# Template and AI agent configuration directories
+**/.canary/
+**/.claude/
+**/.cursor/
+**/.github/
+**/.windsurf/
+**/.kilocode/
+**/.roo/
+**/.opencode/
+**/.codex/
+**/.augment/
+**/.codebuddy/
+**/.amazonq/
+**/claude/
+
+# Documentation directories (often contain example tokens)
+**/docs/
+**/specs/
+**/prompts/
+
+# Files with template/example tokens
+FINAL_SUMMARY.md
+**/README_CANARY.md
+**/CLAUDE.md
+
+# Exclude embedded templates and base directories
+embedded/
+**/templates/
+**/base/
+
+# Build artifacts
+bin/
+dist/
+build/
+canary
+result
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Dependencies and caches
+node_modules/
+vendor/
+__pycache__/
+*.pyc
+.cache/
+
+# Test data (may contain fixture tokens)
+testdata/
+fixtures/
+test-fixtures/
+*_test.go
+
+# Version control
+.git/
+.direnv/
+
+# Generated files
+status.json
+status.csv
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

@@ -1,0 +1,383 @@
+# canary
+
+Scan, update, create, verify and manage **CANARY** tokens across
+repositories, emit `status.json` / `status.csv`, and **verify** GAP claims.
+
+**Now with full spec-kit integration!** Initialize projects with `.canary/` workflow structure including slash commands, constitutional principles, and AI agent integration.
+
+## Build
+
+```bash
+go build -o ./bin/canary ./cmd/canary
+
+# Install system-wide (optional)
+sudo cp ./bin/canary /usr/local/bin/
+
+# The binary is self-contained with embedded templates
+# No additional files needed for installation
+```
+
+## CLI Commands
+
+Canary provides spec-kit-inspired commands for managing CANARY tokens.
+
+**Quick Reference:**
+```bash
+canary init <project>      # Initialize with full workflow
+canary constitution        # Create/view project principles
+canary specify "feature"   # Create requirement spec
+canary plan RKEY-<ASPECT>-XXX       # Generate implementation plan
+canary implement RKEY-<ASPECT>-XXX  # Show implementation locations (reduces context!)
+canary create RKEY-<ASPECT>-XXX     # Generate CANARY token
+canary scan               # Scan for tokens and generate reports
+
+# Migration from spec-kit or legacy canary
+canary detect             # Detect existing system type
+canary migrate-from spec-kit --dry-run  # Preview migration
+canary migrate-from spec-kit            # Execute migration
+
+# Advanced: Structured Storage & Priority Management
+canary migrate all        # Run database migrations
+canary index              # Build SQLite database from tokens
+canary list --status STUB  # List tokens with filtering
+canary search "keyword"    # Search by keywords
+canary prioritize RKEY-<ASPECT>-XXX Feature 1  # Set priority (1=highest)
+canary checkpoint "name"   # Create state snapshot
+canary rollback 1         # Roll back last migration
+```
+
+**Key Features:**
+- `canary implement` shows exact file:line locations, reducing agent context by ~95%
+- `canary index` + `list/search` enable priority-driven development with SQLite storage
+
+See [CLI_COMMANDS.md](./CLI_COMMANDS.md) for complete agent reference documentation.
+
+## Migrating from spec-kit or Legacy CANARY
+
+Already have a spec-kit or legacy CANARY project? Migrate it easily:
+
+```bash
+# 1. Detect what system you have
+canary detect
+# Detects: spec-kit, legacy-canary, migrated, or unknown
+
+# 2. Preview migration (no changes)
+canary migrate-from spec-kit --dry-run
+
+# 3. Execute migration
+canary migrate-from spec-kit
+# Creates .canary/ structure with templates and slash commands
+
+# 4. Start using the unified system
+canary index
+canary list
+```
+
+**Features:**
+- Auto-detects spec-kit, legacy CANARY, or already-migrated systems
+- Prevents double-migration (detects if already using unified system)
+- Creates files from embedded templates (constitution, slash commands)
+- Preserves existing files (status.json, GAP_ANALYSIS.md)
+- Dry-run mode for safe preview
+
+See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) for complete migration instructions.
+
+### Initialize a New Project
+
+```bash
+canary init <project-name>
+# Creates:
+# - .canary/ directory with full workflow structure
+# - .canary/memory/constitution.md - Project governing principles
+# - .canary/templates/commands/ - Slash commands for AI agents
+# - .canary/templates/ - Spec and plan templates
+# - .canary/scripts/ - Automation scripts
+# - README_CANARY.md - Token format specification
+# - GAP_ANALYSIS.md - Requirements tracking template
+# - CLAUDE.md - AI agent integration guide
+```
+
+### Create a New Requirement Token
+
+```bash
+canary create RKEY-<ASPECT>-105 "FeatureName" --aspect API --status IMPL --owner team
+# Outputs a properly formatted CANARY token ready to paste
+```
+
+### Scan for Tokens
+
+```bash
+canary scan --root . --out status.json --csv status.csv
+canary scan --root . --verify GAP_ANALYSIS.md --strict
+canary scan --root . --update-stale  # Auto-update stale TESTED/BENCHED tokens
+```
+
+### Filtering Scanned Files
+
+The scanner supports two methods for excluding files from scans:
+
+**1. .canaryignore file (gitignore-style patterns)**
+
+Create a `.canaryignore` file in your project root to exclude template files, documentation, test fixtures, and generated content:
+
+```gitignore
+# Template directories
+base/
+embedded/
+.canary/
+.claude/
+
+# Documentation with example tokens
+docs/
+*_SUMMARY*.md
+IMPLEMENTATION_*.md
+
+# Test data
+testdata/
+*_test.go
+
+# Build artifacts
+dist/
+*.db
+```
+
+The `.canaryignore` file uses standard gitignore syntax:
+- `#` for comments
+- `/` for directory separators
+- `*` for wildcards, `**` for recursive wildcards
+- `!` to negate patterns (whitelist)
+- Patterns are relative to the project root
+
+**2. --skip regex flag**
+
+For one-off exclusions, use the `--skip` flag with a regex pattern:
+
+```bash
+canary scan --root . --skip '(^|/)(.git|node_modules|vendor)(/|$)'
+```
+
+**When to use each:**
+- `.canaryignore`: Permanent project-specific exclusions (templates, docs, test fixtures)
+- `--skip`: Temporary or command-specific exclusions (build artifacts, directories)
+
+### Exit Codes
+
+- **Exit 0**: OK
+- **Exit 2**: Verification/staleness failed
+- **Exit 3**: Parse or IO error
+
+### Legacy Usage
+
+The standalone scanner is still available at `tools/canary`:
+
+```bash
+go run ./tools/canary --root . --out status.json
+```
+
+**Token format**
+
+```text
+Example template (replace with actual values):
+CANARY: REQ=RKEY-<ASPECT>-101; FEATURE="MyFeature"; ASPECT=API; STATUS=IMPL; TEST=TestCANARY_RKEY-<ASPECT>_101_API_MyFeature; BENCH=BenchmarkCANARY_RKEY-<ASPECT>_101_API_MyFeature; OWNER=team; UPDATED=2025-10-15
+
+Valid ASPECT values: API, CLI, Engine, Planner, Storage, Wire, Security, Docs, Encode, Decode, RoundTrip, Bench, FrontEnd, Dist
+Valid STATUS values: MISSING, STUB, IMPL, TESTED, BENCHED, REMOVED
+```
+
+**Supported comment styles**: `//`, `#`, `--`, `<!--` (Python, Go, Bash, SQL, Markdown, etc.)
+
+## Status Auto-Promotion
+
+The scanner auto-promotes statuses based on evidence references:
+
+| From        | Evidence Condition    | To      |
+| ----------- | --------------------- | ------- |
+| IMPL        | ≥1 test (TEST=)       | TESTED  |
+| IMPL/TESTED | ≥1 benchmark (BENCH=) | BENCHED |
+
+Notes:
+
+- Promotion is applied in-memory; original source comments remain unchanged.
+- BENCHED dominates TESTED in summary counts.
+- `--strict` still validates staleness on TESTED/BENCHED after promotion.
+- A future `--no-promote` flag may allow raw status reporting.
+
+Example: if a feature is marked `STATUS=IMPL` and has a `TEST=TestCANARY_REQ_GQL_030_TxnCommit`, the report will show it as `TESTED`.
+
+## Testing
+
+```bash
+cd tools/canary
+go test -v
+```
+
+## CANARY at a glance
+
+Policy excerpt (see `docs/CANARY_POLICY.md`). Example tokens:
+
+`CANARY: REQ=RKEY-<ASPECT>-101; FEATURE="ScannerCore"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_RKEY-<ASPECT>_101_Engine_ScanBasic; BENCH=BenchmarkCANARY_RKEY-<ASPECT>_101_Engine_Scan; OWNER=canary; UPDATED=2025-09-20`
+
+`CANARY: REQ=RKEY-<ASPECT>-102; FEATURE="VerifyGate"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_RKEY-<ASPECT>_102_CLI_Verify; BENCH=BenchmarkCANARY_RKEY-<ASPECT>_102_CLI_Verify; OWNER=canary; UPDATED=2025-09-20`
+
+## Structured Storage & Priority Management
+
+Canary now includes SQLite-based structured storage with proper migrations for advanced token management.
+
+### Database Migrations
+
+**Automatic migration:** All database commands automatically detect and run migrations when needed. You don't need to manually migrate!
+
+```bash
+# Database commands auto-migrate before running
+canary index       # Detects DB version, migrates if needed, then indexes
+canary list        # Auto-migrates, then lists
+canary search      # Auto-migrates, then searches
+
+# Manual migration (rarely needed)
+canary migrate all       # Force migration
+canary rollback 1        # Roll back 1 migration
+```
+
+**Migration system:**
+- **Automatic detection:** Checks database version on startup
+- **Auto-upgrade:** Migrates from old versions automatically
+- **User feedback:** Shows migration progress (e.g., "🔄 Migrating database from version 0 to 1...")
+- Uses `golang-migrate/migrate` for version control
+- Pure Go SQLite driver (`modernc.org/sqlite`) - no CGO required
+- Migration files in `internal/storage/migrations/`
+- Cross-platform compatible (Linux, macOS, Windows)
+
+**Example auto-migration:**
+```bash
+$ canary list
+🔄 Migrating database from version 0 to 1...
+✅ Database migrated to version 1
+Found 10 tokens:
+...
+```
+
+### Index and Query Tokens
+
+```bash
+# Build/rebuild database from codebase (auto-runs migrations)
+canary index --root . --db .canary/canary.db
+
+# List tokens with filtering and priority ordering
+canary list --status STUB --limit 10
+canary list --phase Phase1 --owner backend
+canary list --order-by "priority ASC, updated_at DESC"
+
+# Search by keywords
+canary search "authentication"
+canary search "oauth jwt"
+
+# Update priorities (1=highest, 10=lowest)
+canary prioritize RKEY-<ASPECT>-001 JWTGeneration 1
+```
+
+### Extended Metadata
+
+Tokens can now include:
+- **PRIORITY**: 1-10 (affects ordering)
+- **PHASE**: Phase0, Phase1, Phase2, Phase3
+- **KEYWORDS**: Comma-separated tags for search
+- **SPEC_STATUS**: draft, approved, in-progress, completed, archived
+- **DEPENDS_ON**: Comma-separated requirement IDs
+- **BLOCKS**: Requirement IDs this blocks
+- **RELATED_TO**: Related requirement IDs
+- **Git Integration**: Automatic commit hash and branch tracking
+
+### Checkpoints
+
+Create state snapshots for tracking progress:
+
+```bash
+canary checkpoint "phase1-complete" "All Phase 1 features implemented"
+canary checkpoint "v1.0.0" "Release 1.0.0 snapshot"
+```
+
+Checkpoints capture:
+- Token counts by status (STUB, IMPL, TESTED, BENCHED)
+- Git commit hash and timestamp
+- Full JSON snapshot of all tokens
+
+## Spec-Kit Integration
+
+Canary includes a full spec-kit-inspired workflow for requirement-driven development:
+
+### AI Agent Integration
+
+After running `canary init`, AI agents can use slash commands:
+
+- `/canary.constitution` - Create/update project governing principles
+- `/canary.specify` - Create requirement specification from feature description
+- `/canary.plan` - Generate technical implementation plan for a requirement
+- `/canary.scan` - Scan codebase for CANARY tokens and generate reports
+- `/canary.verify` - Verify GAP_ANALYSIS.md claims against actual implementation
+- `/canary.update-stale` - Auto-update UPDATED field for stale tokens (>30 days)
+
+### Constitutional Governance
+
+Projects initialized with `canary init` include a constitution (`.canary/memory/constitution.md`) with 9 articles:
+
+1. **Requirement-First Development** - Every feature starts with a CANARY token
+2. **Specification Discipline** - Focus on WHAT before HOW
+3. **Token-Driven Planning** - Trackable, verifiable units of work
+4. **Test-First Imperative** - Non-negotiable TDD approach
+5. **Simplicity and Anti-Abstraction** - Minimal complexity, prefer standard library
+6. **Integration-First Testing** - Real environments over mocks
+7. **Documentation Currency** - CANARY tokens ARE the documentation
+8. **Continuous Improvement** - Metrics-driven development
+9. **Amendment Process** - How to evolve the constitution
+
+### Workflow Example
+
+```bash
+# Initialize project with full workflow
+canary init my-project
+cd my-project
+
+# Use AI agent slash commands (in Claude Code, Cursor, etc.)
+# /canary.constitution
+# /canary.specify "Add user authentication with OAuth2"
+# /canary.plan RKEY-<ASPECT>-001 "Use Go standard library"
+
+# Find implementation points (reduces context!)
+canary implement RKEY-<ASPECT>-001 --status STUB
+# Shows exact locations of unimplemented features
+
+# Get context for specific feature
+canary implement RKEY-<ASPECT>-001 --feature JWTGeneration --context
+# Shows file:line with surrounding code
+
+# Track progress
+canary implement RKEY-<ASPECT>-001
+# Shows: Progress: 67% (2/3)
+
+# Scan and verify
+canary scan --root . --out status.json --csv status.csv
+canary scan --root . --verify GAP_ANALYSIS.md --strict
+```
+
+### Project Structure
+
+```
+.canary/
+├── memory/
+│   └── constitution.md          # Project principles
+├── scripts/
+│   └── create-new-requirement.sh # Automation
+├── templates/
+│   ├── commands/                # Slash command definitions
+│   ├── spec-template.md         # Requirement template
+│   └── plan-template.md         # Implementation plan template
+└── specs/
+    └── RKEY-<ASPECT>-XXX-feature/        # Individual requirements
+        ├── spec.md
+        └── plan.md
+
+GAP_ANALYSIS.md                   # Requirement tracking
+CLAUDE.md                         # AI agent integration guide
+README_CANARY.md                  # Token specification
+status.json                       # Scanner output
+```

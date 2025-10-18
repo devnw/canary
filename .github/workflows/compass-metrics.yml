@@ -1,0 +1,1046 @@
+name: Push Metrics to Compass
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run daily at 8 AM UTC
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  collect-and-push-metrics:
+    name: Collect metrics and push to Compass
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: de-vri-es/setup-git-credentials@v2
+        with:
+          credentials: ${{secrets.GIT_CREDENTIALS}}
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          upstream-cache: https://spyder.cachix.org
+      - uses: DeterminateSystems/flake-checker-action@main
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v16
+        with:
+          name: spyder
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      - name: Install additional tools for metrics
+        run: |
+          # Install gocyclo for complexity analysis
+          go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
+
+          # Install bc for calculations
+          sudo apt-get update && sudo apt-get install -y bc
+
+          # Install yq for YAML parsing
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Extract Compass Component ID
+        id: compass-config
+        run: |
+          set -euo pipefail
+
+          # Find compass.yml file in the repository
+          compass_file=""
+          if [ -f ".github/compass.yml" ]; then
+            compass_file=".github/compass.yml"
+          elif [ -f "compass.yml" ]; then
+            compass_file="compass.yml"
+          elif [ -f ".compass.yml" ]; then
+            compass_file=".compass.yml"
+          else
+            echo "Error: compass.yml file not found in repository"
+            exit 1
+          fi
+
+          echo "Found compass config file: $compass_file"
+
+          # Extract component ID using yq
+          component_id=$(yq eval '.id' "$compass_file")
+
+          if [ "$component_id" = "null" ] || [ -z "$component_id" ]; then
+            echo "Error: No component ID found in $compass_file"
+            exit 1
+          fi
+
+          echo "Extracted component ID: $component_id"
+          echo "compass_component_id=$component_id" >> $GITHUB_OUTPUT
+
+      - name: Load Compass Metrics Configuration
+        id: load-config
+        run: |
+          set -euo pipefail
+
+          # Find compass-metrics.yml configuration file
+          config_file=""
+          if [ -f ".github/compass-metrics.yml" ]; then
+            config_file=".github/compass-metrics.yml"
+          elif [ -f "compass-metrics.yml" ]; then
+            config_file="compass-metrics.yml"
+          elif [ -f ".compass-metrics.yml" ]; then
+            config_file=".compass-metrics.yml"
+          else
+            echo "Error: compass-metrics.yml configuration file not found"
+            echo "Please create one of the following files:"
+            echo "  - .github/compass-metrics.yml (recommended)"
+            echo "  - compass-metrics.yml (root of repository)"
+            echo "  - .compass-metrics.yml (hidden file in root)"
+            exit 1
+          fi
+
+          echo "Found metrics config file: $config_file"
+
+          # Validate the configuration file
+          if ! yq eval '.compass.url' "$config_file" >/dev/null 2>&1; then
+            echo "Error: Invalid compass-metrics.yml - missing compass.url"
+            exit 1
+          fi
+
+          if ! yq eval '.compass.base_arn' "$config_file" >/dev/null 2>&1; then
+            echo "Error: Invalid compass-metrics.yml - missing compass.base_arn"
+            exit 1
+          fi
+
+          if ! yq eval '.metrics' "$config_file" >/dev/null 2>&1; then
+            echo "Error: Invalid compass-metrics.yml - missing metrics section"
+            exit 1
+          fi
+
+          # Extract Compass URL
+          compass_url=$(yq eval '.compass.url' "$config_file")
+          if [ "$compass_url" = "null" ] || [ -z "$compass_url" ]; then
+            echo "Error: No Compass URL found in $config_file"
+            exit 1
+          fi
+
+          # Extract base ARN
+          base_arn=$(yq eval '.compass.base_arn' "$config_file")
+          if [ "$base_arn" = "null" ] || [ -z "$base_arn" ]; then
+            echo "Error: No base ARN found in $config_file"
+            exit 1
+          fi
+
+          # Extract component UUID from compass.yml component ID
+          # Component ID format: ari:cloud:compass:...:component/UUID1/UUID2
+          # We only need the first UUID (UUID1) after 'component/'
+          component_uuid=$(echo "${{ steps.compass-config.outputs.compass_component_id }}" | sed 's/.*:component\/\([^\/]*\).*/\1/')
+          if [ -z "$component_uuid" ]; then
+            echo "Error: Could not extract component UUID from compass.yml"
+            exit 1
+          fi
+
+          # Validate component UUID format
+          if [[ ! "$component_uuid" =~ ^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$ ]]; then
+            echo "❌ Error: Invalid component UUID format extracted: $component_uuid"
+            echo "Expected UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            echo "Component ID: ${{ steps.compass-config.outputs.compass_component_id }}"
+            exit 1
+          fi
+
+          # Check if component_uuid is manually specified in config
+          manual_component_uuid=$(yq eval '.compass.component_uuid' "$config_file")
+          if [ "$manual_component_uuid" != "null" ] && [ -n "$manual_component_uuid" ]; then
+            component_uuid="$manual_component_uuid"
+            echo "Using manually specified component UUID: $component_uuid"
+          else
+            echo "Extracted component UUID: $component_uuid"
+          fi
+
+          echo "Compass URL: $compass_url"
+          echo "Base ARN: $base_arn"
+          echo "Component UUID: $component_uuid"
+
+          echo "compass_url=$compass_url" >> $GITHUB_OUTPUT
+          echo "base_arn=$base_arn" >> $GITHUB_OUTPUT
+          echo "component_uuid=$component_uuid" >> $GITHUB_OUTPUT
+          echo "config_file=$config_file" >> $GITHUB_OUTPUT
+
+          # Count available metrics
+          metric_count=$(yq eval '.metrics | keys | length' "$config_file")
+          echo "Found $metric_count configured metrics"
+          echo "metric_count=$metric_count" >> $GITHUB_OUTPUT
+
+      - name: Run tests and collect metrics
+        run: |
+          set -euo pipefail
+
+          # Run tests with coverage first (without JSON to avoid redirect issues)
+          echo "Running tests with coverage..."
+          go test ./... -coverprofile=coverage.out -covermode=atomic -v
+
+          # Run tests with JSON output separately
+          echo "Running tests with JSON output..."
+          go test ./... -json > test_results.json || {
+            echo "JSON test output failed, trying without JSON..."
+            go test ./... -v > test_results.txt 2>&1
+          }
+
+          # Run benchmarks
+          echo "Running benchmarks..."
+          go test -bench=. -benchmem -run=^$ ./... > bench_results.txt
+
+          # Run benchmarks with JSON output for detailed parsing
+          echo "Running benchmarks with JSON output..."
+          go test -bench=. -benchmem -run=^$ -json ./... > bench_results.json 2>/dev/null || {
+            echo "JSON benchmark output failed, continuing..."
+            touch bench_results.json
+          }
+
+          # Get basic repository metrics
+          echo "Collecting repository metrics..."
+
+      - name: Calculate and push metrics to Compass
+        env:
+          COMPASS_USER_EMAIL: ${{ secrets.COMPASS_USER_EMAIL }}
+          COMPASS_API_KEY: ${{ secrets.COMPASS_API_KEY }}
+          COMPASS_COMPONENT_ID: ${{ steps.compass-config.outputs.compass_component_id }}
+          CONFIG_FILE: ${{ steps.load-config.outputs.config_file }}
+          COMPASS_URL: ${{ steps.load-config.outputs.compass_url }}
+          BASE_ARN: ${{ steps.load-config.outputs.base_arn }}
+          COMPONENT_UUID: ${{ steps.load-config.outputs.component_uuid }}
+        run: |
+          set -euo pipefail
+
+          echo "🔍 DEBUG: Starting Calculate and push metrics step" >&2
+          echo "🔍 DEBUG: Environment variables:" >&2
+          echo "  COMPASS_USER_EMAIL: ${COMPASS_USER_EMAIL:0:5}***"
+          echo "  COMPASS_API_KEY: ${COMPASS_API_KEY:0:5}***"
+          echo "  COMPASS_COMPONENT_ID: $COMPASS_COMPONENT_ID"
+          echo "  CONFIG_FILE: $CONFIG_FILE"
+          echo "  COMPASS_URL: $COMPASS_URL"
+          echo "  BASE_ARN: $BASE_ARN"
+          echo "  COMPONENT_UUID: $COMPONENT_UUID"
+          echo ""
+
+          # Function to get metric UUID from configuration
+          get_metric_uuid() {
+            local metric_name="$1"
+            echo "🔍 DEBUG: get_metric_uuid called with metric_name='$metric_name'" >&2
+            local uuid=$(yq eval ".metrics.${metric_name}.uuid" "$CONFIG_FILE")
+            echo "🔍 DEBUG: yq returned uuid='$uuid' for metric '$metric_name'" >&2
+            if [ "$uuid" = "null" ] || [ -z "$uuid" ]; then
+              echo "🔍 DEBUG: UUID is null or empty, returning empty string" >&2
+              echo ""
+            else
+              echo "🔍 DEBUG: Returning UUID: $uuid" >&2
+              echo "$uuid"
+            fi
+          }
+
+          # Function to construct full metric ARN
+          construct_metric_arn() {
+            local metric_uuid="$1"
+            echo "🔍 DEBUG: construct_metric_arn called with metric_uuid='$metric_uuid'" >&2
+            local arn="${BASE_ARN}:metric-source/${COMPONENT_UUID}/${metric_uuid}"
+            echo "🔍 DEBUG: Constructed ARN: $arn" >&2
+            echo "$arn"
+          }
+
+          # Function to check if metric is configured
+          is_metric_configured() {
+            local metric_name="$1"
+            echo "🔍 DEBUG: is_metric_configured called with metric_name='$metric_name'" >&2
+            local uuid=$(get_metric_uuid "$metric_name")
+            local result=""
+            if [ -n "$uuid" ]; then
+              result="true"
+            else
+              result="false"
+            fi
+            echo "🔍 DEBUG: is_metric_configured returning: $result" >&2
+            [ -n "$uuid" ]
+          }
+
+          # Function to push metric to Compass
+          push_metric() {
+            local metric_name="$1"
+            local metric_value="$2"
+            local timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            
+            echo "🔍 DEBUG: push_metric called with metric_name='$metric_name', metric_value='$metric_value'" >&2
+            
+            # Get the metric UUID from configuration
+            local metric_uuid=$(get_metric_uuid "$metric_name")
+            
+            if [ -z "$metric_uuid" ]; then
+              echo "⚠️  Skipping metric '$metric_name' - not configured in compass-metrics.yml"
+              echo "🔍 DEBUG: Metric UUID was empty for '$metric_name'" >&2
+              return 0
+            fi
+            
+            echo "🔍 DEBUG: Got metric UUID: '$metric_uuid' for metric '$metric_name'" >&2
+            
+            # Construct the full ARN
+            local metric_arn=$(construct_metric_arn "$metric_uuid")
+            
+            echo "Pushing metric: $metric_name = $metric_value"
+            echo "Using metric UUID: $metric_uuid"
+            echo "Constructed ARN: $metric_arn"
+            echo "🔍 DEBUG: About to validate ARN format..." >&2
+            
+            # Validate metric ARN format
+            if [[ ! "$metric_arn" =~ ^ari:cloud:compass:.*:metric-source/.*/.*$ ]]; then
+              echo "❌ Warning: Constructed metric ARN format may be invalid for '$metric_name'"
+              echo "   Expected format: ari:cloud:compass:...:metric-source/.../...."
+              echo "   Constructed format: $metric_arn"
+              echo "   Base ARN: $BASE_ARN"
+              echo "   Component UUID: $COMPONENT_UUID"
+              echo "   Metric UUID: $metric_uuid"
+              
+              # Check settings to see if we should continue on error
+              continue_on_error=$(yq eval '.settings.continue_on_error // true' "$CONFIG_FILE")
+              echo "🔍 DEBUG: continue_on_error setting: $continue_on_error" >&2
+              if [ "$continue_on_error" = "false" ]; then
+                echo "🔍 DEBUG: continue_on_error is false, returning 1" >&2
+                return 1
+              fi
+            else
+              echo "🔍 DEBUG: ARN format validation passed" >&2
+              echo "🔍 DEBUG: ARN format validation passed"
+            fi
+            
+            echo "🔍 DEBUG: About to make curl request to: ${COMPASS_URL}/gateway/api/compass/v1/metrics" >&2
+            echo "🔍 DEBUG: Request timestamp: $timestamp" >&2
+            echo "🔍 DEBUG: Request payload will be:" >&2
+            echo "🔍 DEBUG: {\"metricSourceId\": \"$metric_arn\", \"value\": $metric_value, \"timestamp\": \"$timestamp\"}" >&2
+            
+            # Use proper timeout from configuration
+            request_timeout=$(yq eval '.settings.request_timeout // 30' "$CONFIG_FILE")
+            echo "🔍 DEBUG: Using request timeout: ${request_timeout}s" >&2
+            
+            # Create JSON payload
+            json_payload="{\"metricSourceId\": \"$metric_arn\", \"value\": $metric_value, \"timestamp\": \"$timestamp\"}"
+            
+            response=$(curl --request POST \
+              --url "${COMPASS_URL}/gateway/api/compass/v1/metrics" \
+              --user "$COMPASS_USER_EMAIL:$COMPASS_API_KEY" \
+              --header "Accept: application/json" \
+              --header "Content-Type: application/json" \
+              --data "$json_payload" \
+              --write-out "%{http_code}" \
+              --silent \
+              --show-error \
+              --fail-with-body \
+              --output "/tmp/compass_response_${metric_name}.json" \
+              --max-time "$request_timeout" \
+              --connect-timeout 10)
+            
+            local curl_exit_code=$?
+            echo "🔍 DEBUG: curl exit code: $curl_exit_code" >&2
+            echo "🔍 DEBUG: curl completed with HTTP status: $response" >&2
+            echo "🔍 DEBUG: Response file: /tmp/compass_response_${metric_name}.json" >&2
+            if [ -f "/tmp/compass_response_${metric_name}.json" ]; then
+              local file_size=$(wc -c < "/tmp/compass_response_${metric_name}.json")
+              echo "🔍 DEBUG: Response file size: $file_size bytes" >&2
+              if [ "$file_size" -gt 0 ]; then
+                echo "🔍 DEBUG: Response content preview:" >&2
+                head -c 500 "/tmp/compass_response_${metric_name}.json"
+                echo ""
+              fi
+            else
+              echo "🔍 DEBUG: Response file does not exist" >&2
+            fi
+            
+            if [ "$response" -eq 200 ] || [ "$response" -eq 201 ]; then
+              echo "✅ Successfully pushed metric: $metric_name"
+              echo "🔍 DEBUG: Success path taken for metric '$metric_name'" >&2
+            else
+              echo "❌ Failed to push metric: $metric_name (HTTP $response)"
+              echo "🔍 DEBUG: Error path taken for metric '$metric_name'" >&2
+              
+              # Parse specific error codes from OpenAPI spec
+              case $response in
+                400)
+                  echo "🔍 DEBUG: HTTP 400 - Request is not valid (bad request format)" >&2
+                  ;;
+                403)
+                  echo "🔍 DEBUG: HTTP 403 - User does not have permission to insert metrics" >&2
+                  ;;
+                404)
+                  echo "🔍 DEBUG: HTTP 404 - Metric source, metric definition or component not found" >&2
+                  ;;
+                429)
+                  echo "🔍 DEBUG: HTTP 429 - Rate limit exceeded (100 requests per user per minute)" >&2
+                  ;;
+                *)
+                  echo "🔍 DEBUG: HTTP $response - Unexpected response code" >&2
+                  ;;
+              esac
+              
+              # Check if verbose logging is enabled
+              verbose_logging=$(yq eval '.settings.verbose_logging // true' "$CONFIG_FILE")
+              echo "🔍 DEBUG: verbose_logging setting: $verbose_logging"
+              if [ "$verbose_logging" = "true" ] && [ -f "/tmp/compass_response_${metric_name}.json" ]; then
+                echo "Response body:"
+                cat "/tmp/compass_response_${metric_name}.json"
+                echo "🔍 DEBUG: Response body displayed above"
+              fi
+              
+              # Check settings to see if we should continue on error
+              continue_on_error=$(yq eval '.settings.continue_on_error // true' "$CONFIG_FILE")
+              echo "🔍 DEBUG: continue_on_error setting: $continue_on_error"
+              if [ "$continue_on_error" = "false" ]; then
+                echo "🔍 DEBUG: continue_on_error is false, returning 1"
+                return 1
+              fi
+            fi
+          }
+
+          echo "🔍 DEBUG: Function definitions complete, validating configuration..."
+
+          # Validate configuration file structure
+          echo "🔍 DEBUG: Checking configuration file structure..."
+          if ! yq eval '.compass' "$CONFIG_FILE" >/dev/null 2>&1; then
+            echo "❌ ERROR: compass section missing from config file"
+            exit 1
+          fi
+
+          if ! yq eval '.metrics' "$CONFIG_FILE" >/dev/null 2>&1; then
+            echo "❌ ERROR: metrics section missing from config file"
+            exit 1
+          fi
+
+          # Test one metric lookup to ensure the structure is correct
+          echo "🔍 DEBUG: Testing metric configuration lookup..."
+          test_metric="test_coverage_percentage"
+          test_uuid=$(yq eval ".metrics.${test_metric}.uuid" "$CONFIG_FILE")
+          echo "🔍 DEBUG: Test lookup for $test_metric returned: '$test_uuid'"
+
+          if [ "$test_uuid" = "null" ] || [ -z "$test_uuid" ]; then
+            echo "❌ ERROR: Unable to read metric UUIDs from configuration file"
+            echo "❌ Check that metrics.$test_metric.uuid exists in $CONFIG_FILE"
+            exit 1
+          fi
+
+          echo "🔍 DEBUG: Configuration validation complete"
+          echo ""
+
+          # Extract test coverage percentage
+          echo "🔍 DEBUG: Starting test coverage extraction..."
+          if [ -f coverage.out ]; then
+            echo "🔍 DEBUG: coverage.out file exists"
+            coverage_percent=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+            echo "🔍 DEBUG: Extracted coverage percentage: '$coverage_percent'"
+            if [ -n "$coverage_percent" ]; then
+              echo "🔍 DEBUG: About to push test_coverage_percentage metric"
+              push_metric "test_coverage_percentage" "$coverage_percent"
+            else
+              echo "🔍 DEBUG: Coverage percentage is empty, skipping"
+            fi
+          else
+            echo "🔍 DEBUG: coverage.out file does not exist"
+          fi
+
+          # Count total tests
+          echo "🔍 DEBUG: Starting test results parsing..." >&2
+          if [ -f test_results.json ]; then
+            echo "🔍 DEBUG: test_results.json file exists" >&2
+            echo "Parsing JSON test results..."
+            
+            # Temporarily disable exit-on-error for robust parsing
+            set +e
+            
+            # Add error handling for grep commands
+            echo "🔍 DEBUG: Running grep for total tests..." >&2
+            total_tests=$(grep '"Action":"pass"\|"Action":"fail"\|"Action":"skip"' test_results.json | wc -l 2>/dev/null)
+            total_tests_exit_code=$?
+            echo "🔍 DEBUG: Total tests grep exit code: $total_tests_exit_code" >&2
+            
+            echo "🔍 DEBUG: Running grep for failed tests..." >&2
+            failed_tests=$(grep '"Action":"fail"' test_results.json | wc -l 2>/dev/null)
+            failed_tests_exit_code=$?
+            echo "🔍 DEBUG: Failed tests grep exit code: $failed_tests_exit_code" >&2
+            
+            echo "🔍 DEBUG: Running grep for passed tests..." >&2
+            passed_tests=$(grep '"Action":"pass"' test_results.json | wc -l 2>/dev/null)
+            passed_tests_exit_code=$?
+            echo "🔍 DEBUG: Passed tests grep exit code: $passed_tests_exit_code" >&2
+            
+            # Re-enable exit-on-error
+            set -e
+            
+            # Set defaults if any grep failed
+            total_tests=${total_tests:-0}
+            failed_tests=${failed_tests:-0}
+            passed_tests=${passed_tests:-0}
+            
+            echo "🔍 DEBUG: Test counts - total: $total_tests, failed: $failed_tests, passed: $passed_tests" >&2
+            
+            echo "🔍 DEBUG: About to push total_tests metric" >&2
+            push_metric "total_tests" "$total_tests"
+            echo "🔍 DEBUG: About to push failed_tests metric" >&2
+            push_metric "failed_tests" "$failed_tests"
+            echo "🔍 DEBUG: About to push passed_tests metric" >&2
+            push_metric "passed_tests" "$passed_tests"
+            
+            # Calculate test success rate
+            if [ "$total_tests" -gt 0 ]; then
+              success_rate=$(awk "BEGIN {printf \"%.2f\", $passed_tests * 100 / $total_tests}")
+              echo "🔍 DEBUG: Calculated success rate: $success_rate" >&2
+              echo "🔍 DEBUG: About to push test_success_rate metric" >&2
+              push_metric "test_success_rate" "$success_rate"
+            else
+              echo "🔍 DEBUG: Total tests is 0, skipping success rate calculation" >&2
+            fi
+          elif [ -f test_results.txt ]; then
+            echo "🔍 DEBUG: test_results.txt file exists (fallback)" >&2
+            echo "Parsing text test results..."
+            # Parse text output for basic test counts with error handling
+            total_tests=$(grep -c "PASS\|FAIL" test_results.txt 2>/dev/null || echo "0")
+            failed_tests=$(grep -c "FAIL" test_results.txt 2>/dev/null || echo "0")
+            passed_tests=$(grep -c "PASS" test_results.txt 2>/dev/null || echo "0")
+            
+            echo "🔍 DEBUG: Text test counts - total: $total_tests, failed: $failed_tests, passed: $passed_tests" >&2
+            
+            push_metric "total_tests" "$total_tests"
+            push_metric "failed_tests" "$failed_tests"
+            push_metric "passed_tests" "$passed_tests"
+            
+            # Calculate test success rate
+            if [ "$total_tests" -gt 0 ]; then
+              success_rate=$(awk "BEGIN {printf \"%.2f\", $passed_tests * 100 / $total_tests}")
+              echo "🔍 DEBUG: Text success rate: $success_rate" >&2
+              push_metric "test_success_rate" "$success_rate"
+            fi
+          else
+            echo "No test results file found, skipping test metrics"
+            echo "🔍 DEBUG: Neither test_results.json nor test_results.txt found" >&2
+          fi
+
+          # Lines of code
+          echo "🔍 DEBUG: Starting cyclomatic complexity analysis..." >&2
+          # Generate cyclomatic complexity report with gocyclo for all tracked Go files
+          gocyclo_output=$(gocyclo $(git ls-files '*.go') 2>/dev/null || true)
+          if [ -n "$gocyclo_output" ]; then
+            echo "🔍 DEBUG: gocyclo produced output" >&2
+            # Average complexity excluding *_test.go files
+            avg_cyc=$(echo "$gocyclo_output" | grep -v '_test.go' | awk '{c+=$1; n++} END { if (n>0) printf "%.2f", c/n; else print 0 }')
+            # Count functions over threshold ( > 10 )
+            high_count=$(echo "$gocyclo_output" | awk '$1>10 {count++} END { print count+0 }')
+            echo "🔍 DEBUG: avg cyclomatic complexity: $avg_cyc" >&2
+            echo "🔍 DEBUG: high complexity function count (>10): $high_count" >&2
+            # Push metrics if configured
+            if is_metric_configured avg_cyclomatic_complexity; then
+              push_metric "avg_cyclomatic_complexity" "$avg_cyc"
+            else
+              echo "🔍 DEBUG: avg_cyclomatic_complexity metric not configured" >&2
+            fi
+            if is_metric_configured high_complexity_functions; then
+              push_metric "high_complexity_functions" "$high_count"
+            else
+              echo "🔍 DEBUG: high_complexity_functions metric not configured" >&2
+            fi
+          else
+            echo "⚠️  gocyclo produced no output; skipping complexity metrics" >&2
+          fi
+
+          # Lines of code
+          echo "🔍 DEBUG: Starting lines of code calculation..." >&2
+          loc=$(find . -name "*.go" -not -path "./_*" -not -path "./vendor/*" | xargs wc -l | tail -1 | awk '{print $1}')
+          echo "🔍 DEBUG: Lines of code: $loc" >&2
+          push_metric "lines_of_code" "$loc"
+
+          # Number of Go files
+          echo "🔍 DEBUG: Starting Go files count..." >&2
+          go_files=$(find . -name "*.go" -not -path "./_*" -not -path "./vendor/*" | wc -l)
+          echo "🔍 DEBUG: Go files count: $go_files" >&2
+          push_metric "go_files_count" "$go_files"
+
+          # Git metrics
+          echo "🔍 DEBUG: Starting git metrics..." >&2
+          commit_count=$(git rev-list --count HEAD)
+          echo "🔍 DEBUG: Total commits: $commit_count" >&2
+          push_metric "total_commits" "$commit_count"
+
+          # Recent commit activity (commits in last 30 days)
+          recent_commits=$(git rev-list --count --since="30 days ago" HEAD)
+          echo "🔍 DEBUG: Recent commits (30 days): $recent_commits" >&2
+          push_metric "commits_last_30_days" "$recent_commits"
+
+          # Parse benchmark results if available
+          echo "🔍 DEBUG: Starting benchmark results parsing..." >&2
+          if [ -f bench_results.txt ]; then
+            echo "🔍 DEBUG: bench_results.txt file exists"
+            benchmark_count=$(grep "^Benchmark" bench_results.txt | wc -l)
+            echo "🔍 DEBUG: Benchmark count: $benchmark_count"
+            if [ "$benchmark_count" -gt 0 ]; then
+              echo "🔍 DEBUG: About to push benchmark_count metric"
+              push_metric "benchmark_count" "$benchmark_count"
+              
+              echo "🔍 DEBUG: Starting average ns/op calculation..."
+              # Average ns/op across all benchmarks
+              avg_ns_op=$(grep "ns/op" bench_results.txt | awk '{
+                for(i=1;i<=NF;i++) {
+                  if($i ~ /^[0-9.]+$/ && $(i+1) == "ns/op") {
+                    sum += $i; count++
+                  }
+                }
+              } END {
+                if(count > 0) print sum/count; else print 0
+              }')
+              
+              echo "🔍 DEBUG: Average ns/op: $avg_ns_op"
+              if [ -n "$avg_ns_op" ] && [ "$avg_ns_op" != "0" ]; then
+                echo "🔍 DEBUG: About to push avg_benchmark_ns_per_op metric"
+                push_metric "avg_benchmark_ns_per_op" "$avg_ns_op"
+              else
+                echo "🔍 DEBUG: avg_ns_op is empty or 0, skipping"
+              fi
+
+              # Average bytes per operation across all benchmarks
+              avg_b_op=$(grep "B/op" bench_results.txt | awk '{
+                for(i=1;i<=NF;i++) {
+                  if($i ~ /^[0-9.]+$/ && $(i+1) == "B/op") {
+                    sum += $i; count++
+                  }
+                }
+              } END {
+                if(count > 0) print sum/count; else print 0
+              }')
+              
+              if [ -n "$avg_b_op" ] && [ "$avg_b_op" != "0" ]; then
+                push_metric "avg_benchmark_bytes_per_op" "$avg_b_op"
+              fi
+
+              # Average allocations per operation across all benchmarks
+              avg_allocs_op=$(grep "allocs/op" bench_results.txt | awk '{
+                for(i=1;i<=NF;i++) {
+                  if($i ~ /^[0-9.]+$/ && $(i+1) == "allocs/op") {
+                    sum += $i; count++
+                  }
+                }
+              } END {
+                if(count > 0) print sum/count; else print 0
+              }')
+              
+              if [ -n "$avg_allocs_op" ] && [ "$avg_allocs_op" != "0" ]; then
+                push_metric "avg_benchmark_allocs_per_op" "$avg_allocs_op"
+              fi
+
+              # Find slowest benchmark (highest ns/op)
+              slowest_benchmark=$(grep "ns/op" bench_results.txt | awk '
+                BEGIN { max_ns = 0; slowest = "" }
+                {
+                  for(i=1;i<=NF;i++) {
+                    if($i ~ /^[0-9.]+$/ && $(i+1) == "ns/op") {
+                      if($i > max_ns) {
+                        max_ns = $i
+                        slowest = $1
+                      }
+                    }
+                  }
+                }
+                END { print max_ns }
+              ')
+              
+              if [ -n "$slowest_benchmark" ] && [ "$slowest_benchmark" != "0" ]; then
+                push_metric "slowest_benchmark_ns_per_op" "$slowest_benchmark"
+              fi
+
+              # Find fastest benchmark (lowest ns/op)
+              fastest_benchmark=$(grep "ns/op" bench_results.txt | awk '
+                BEGIN { min_ns = 999999999999; fastest = "" }
+                {
+                  for(i=1;i<=NF;i++) {
+                    if($i ~ /^[0-9.]+$/ && $(i+1) == "ns/op") {
+                      if($i < min_ns && $i > 0) {
+                        min_ns = $i
+                        fastest = $1
+                      }
+                    }
+                  }
+                }
+                END { if(min_ns < 999999999999) print min_ns; else print 0 }
+              ')
+              
+              if [ -n "$fastest_benchmark" ] && [ "$fastest_benchmark" != "0" ]; then
+                push_metric "fastest_benchmark_ns_per_op" "$fastest_benchmark"
+              fi
+
+              # Calculate benchmark performance variance (standard deviation of ns/op)
+              benchmark_variance=$(grep "ns/op" bench_results.txt | awk '
+                {
+                  for(i=1;i<=NF;i++) {
+                    if($i ~ /^[0-9.]+$/ && $(i+1) == "ns/op") {
+                      values[++count] = $i
+                      sum += $i
+                    }
+                  }
+                }
+                END {
+                  if(count <= 1) { print 0; exit }
+                  mean = sum / count
+                  for(i=1;i<=count;i++) {
+                    diff = values[i] - mean
+                    variance += diff * diff
+                  }
+                  print sqrt(variance / count)
+                }
+              ')
+              
+              if [ -n "$benchmark_variance" ] && [ "$benchmark_variance" != "0" ]; then
+                push_metric "benchmark_performance_variance" "$benchmark_variance"
+              fi
+            else
+              echo "🔍 DEBUG: Benchmark count is 0, skipping benchmark metrics"
+            fi
+          else
+            echo "🔍 DEBUG: bench_results.txt file does not exist"
+          fi
+
+          # Cyclomatic complexity (if gocyclo is available)
+          echo "🔍 DEBUG: Checking for gocyclo availability..."
+          if command -v gocyclo >/dev/null 2>&1; then
+            echo "🔍 DEBUG: gocyclo is available"
+            avg_complexity=$(gocyclo -avg . 2>/dev/null || echo "0")
+            echo "🔍 DEBUG: Average complexity: $avg_complexity"
+            if [ "$avg_complexity" != "0" ]; then
+              echo "🔍 DEBUG: About to push avg_cyclomatic_complexity metric"
+              push_metric "avg_cyclomatic_complexity" "$avg_complexity"
+            else
+              echo "🔍 DEBUG: Average complexity is 0, skipping"
+            fi
+          else
+            echo "🔍 DEBUG: gocyclo is not available"
+          fi
+
+          # Dependencies count
+          echo "🔍 DEBUG: Starting dependencies count..."
+          direct_deps=$(go list -m all | grep -v "$(go list -m)" | wc -l)
+          echo "🔍 DEBUG: Direct dependencies: $direct_deps"
+          push_metric "direct_dependencies" "$direct_deps"
+
+          echo "Metrics collection and push completed"
+          echo "🔍 DEBUG: Calculate and push metrics step completed successfully"
+
+      - name: Parse JSON benchmark results
+        env:
+          COMPASS_USER_EMAIL: ${{ secrets.COMPASS_USER_EMAIL }}
+          COMPASS_API_KEY: ${{ secrets.COMPASS_API_KEY }}
+          COMPASS_COMPONENT_ID: ${{ steps.compass-config.outputs.compass_component_id }}
+          CONFIG_FILE: ${{ steps.load-config.outputs.config_file }}
+          COMPASS_URL: ${{ steps.load-config.outputs.compass_url }}
+          BASE_ARN: ${{ steps.load-config.outputs.base_arn }}
+          COMPONENT_UUID: ${{ steps.load-config.outputs.component_uuid }}
+        run: |
+          set -euo pipefail
+
+          # Function to get metric UUID from configuration
+          get_metric_uuid() {
+            local metric_name="$1"
+            local uuid=$(yq eval ".metrics.${metric_name}.uuid" "$CONFIG_FILE")
+            if [ "$uuid" = "null" ] || [ -z "$uuid" ]; then
+              echo ""
+            else
+              echo "$uuid"
+            fi
+          }
+
+          # Function to construct full metric ARN
+          construct_metric_arn() {
+            local metric_uuid="$1"
+            echo "${BASE_ARN}:metric-source/${COMPONENT_UUID}/${metric_uuid}"
+          }
+
+          # Function to push metric to Compass
+          push_metric() {
+            local metric_name="$1"
+            local metric_value="$2"
+            local timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            
+            # Get the metric UUID from configuration
+            local metric_uuid=$(get_metric_uuid "$metric_name")
+            
+            if [ -z "$metric_uuid" ]; then
+              echo "⚠️  Skipping JSON benchmark metric '$metric_name' - not configured in compass-metrics.yml"
+              return 0
+            fi
+            
+            # Construct the full ARN
+            local metric_arn=$(construct_metric_arn "$metric_uuid")
+            
+            echo "Pushing JSON benchmark metric: $metric_name = $metric_value"
+            echo "Using metric UUID: $metric_uuid"
+            echo "Constructed ARN: $metric_arn"
+            
+            response=$(curl --request POST \
+              --url "${COMPASS_URL}/gateway/api/compass/v1/metrics" \
+              --user "$COMPASS_USER_EMAIL:$COMPASS_API_KEY" \
+              --header "Accept: application/json" \
+              --header "Content-Type: application/json" \
+              --data "{
+                \"metricSourceId\": \"$metric_arn\",
+                \"value\": $metric_value,
+                \"timestamp\": \"$timestamp\"
+              }" \
+              --write-out "%{http_code}" \
+              --silent \
+              --output "/tmp/compass_response_json_${metric_name}.json" \
+              --max-time 30)
+            
+            if [ "$response" -eq 200 ] || [ "$response" -eq 201 ]; then
+              echo "✅ Successfully pushed JSON benchmark metric: $metric_name"
+            else
+              echo "❌ Failed to push JSON benchmark metric: $metric_name (HTTP $response)"
+              
+              # Check if verbose logging is enabled
+              verbose_logging=$(yq eval '.settings.verbose_logging // true' "$CONFIG_FILE")
+              if [ "$verbose_logging" = "true" ] && [ -f "/tmp/compass_response_json_${metric_name}.json" ]; then
+                echo "Response body:"
+                cat "/tmp/compass_response_json_${metric_name}.json"
+              fi
+              
+              # Check settings to see if we should continue on error
+              continue_on_error=$(yq eval '.settings.continue_on_error // true' "$CONFIG_FILE")
+              if [ "$continue_on_error" = "false" ]; then
+                return 1
+              fi
+            fi
+          }
+
+          # Parse JSON benchmark results if available
+          echo "🔍 DEBUG: Starting JSON benchmark parsing..." >&2
+          if [ -f bench_results.json ] && [ -s bench_results.json ]; then
+            echo "🔍 DEBUG: bench_results.json file exists and is not empty" >&2
+            echo "Parsing JSON benchmark results..."
+            
+            # Temporarily disable exit-on-error for robust parsing
+            set +e
+            
+            echo "🔍 DEBUG: Counting successful benchmarks..." >&2
+            # Benchmarks don't have pass/fail states - count run actions for benchmarks
+            successful_benchmarks=$(grep '"Action":"run"' bench_results.json | grep '"Test":"Benchmark' | wc -l 2>/dev/null)
+            successful_exit_code=$?
+            echo "🔍 DEBUG: Successful benchmarks grep exit code: $successful_exit_code" >&2
+            
+            echo "🔍 DEBUG: Counting failed benchmarks..." >&2
+            # Benchmarks typically don't fail like tests - set to 0 unless there are actual failures
+            failed_benchmarks=0
+            failed_exit_code=0
+            echo "🔍 DEBUG: Failed benchmarks set to 0 (benchmarks don't typically fail)" >&2
+            
+            # Re-enable exit-on-error
+            set -e
+            
+            # Set defaults if grep failed
+            successful_benchmarks=${successful_benchmarks:-0}
+            failed_benchmarks=${failed_benchmarks:-0}
+            
+            echo "🔍 DEBUG: Benchmark counts - successful: $successful_benchmarks, failed: $failed_benchmarks" >&2
+            
+            if [ "$successful_benchmarks" -gt 0 ]; then
+              echo "🔍 DEBUG: Pushing successful_benchmarks metric" >&2
+              push_metric "successful_benchmarks" "$successful_benchmarks"
+            fi
+
+            echo "🔍 DEBUG: Pushing failed_benchmarks metric" >&2
+            push_metric "failed_benchmarks" "$failed_benchmarks"
+
+            # Calculate benchmark success rate
+            if [ "$successful_benchmarks" -gt 0 ] || [ "$failed_benchmarks" -gt 0 ]; then
+              total_bench_runs=$((successful_benchmarks + failed_benchmarks))
+              if [ "$total_bench_runs" -gt 0 ]; then
+                bench_success_rate=$(awk "BEGIN {printf \"%.2f\", $successful_benchmarks * 100 / $total_bench_runs}")
+                echo "🔍 DEBUG: Calculated benchmark success rate: $bench_success_rate" >&2
+                push_metric "benchmark_success_rate" "$bench_success_rate"
+              fi
+            fi
+
+            # Total benchmark execution time (use package elapsed time as approximation)
+            echo "🔍 DEBUG: Calculating total benchmark time..." >&2
+            set +e
+            # Get the package elapsed time as an approximation for total benchmark time
+            total_bench_time=$(grep '"Action":"pass"' bench_results.json | grep '"Package":"go.spyder.org/bit"' | grep '"Elapsed":' | sed 's/.*"Elapsed":\([0-9.]*\).*/\1/' 2>/dev/null)
+            bench_time_exit_code=$?
+            set -e
+            
+            echo "🔍 DEBUG: Benchmark time calculation exit code: $bench_time_exit_code" >&2
+            echo "🔍 DEBUG: Total benchmark time: '$total_bench_time'" >&2
+            
+            if [ -n "$total_bench_time" ] && [ "$total_bench_time" != "0" ] && [ "$total_bench_time" != "" ]; then
+              echo "🔍 DEBUG: Pushing total benchmark time metric" >&2
+              push_metric "total_benchmark_time_seconds" "$total_bench_time"
+            else
+              echo "🔍 DEBUG: Skipping benchmark time - no valid data" >&2
+            fi
+
+            echo "JSON benchmark metrics completed"
+          else
+            echo "🔍 DEBUG: bench_results.json file does not exist or is empty, skipping JSON benchmark parsing" >&2
+            echo "No JSON benchmark results found, skipping additional benchmark metrics"
+          fi
+
+      - name: Push enhanced metrics
+        env:
+          COMPASS_USER_EMAIL: ${{ secrets.COMPASS_USER_EMAIL }}
+          COMPASS_API_KEY: ${{ secrets.COMPASS_API_KEY }}
+          COMPASS_COMPONENT_ID: ${{ steps.compass-config.outputs.compass_component_id }}
+          CONFIG_FILE: ${{ steps.load-config.outputs.config_file }}
+          COMPASS_URL: ${{ steps.load-config.outputs.compass_url }}
+          BASE_ARN: ${{ steps.load-config.outputs.base_arn }}
+          COMPONENT_UUID: ${{ steps.load-config.outputs.component_uuid }}
+        run: |
+          set -euo pipefail
+
+          # Function to get metric UUID from configuration
+          get_metric_uuid() {
+            local metric_name="$1"
+            local uuid=$(yq eval ".metrics.${metric_name}.uuid" "$CONFIG_FILE")
+            if [ "$uuid" = "null" ] || [ -z "$uuid" ]; then
+              echo ""
+            else
+              echo "$uuid"
+            fi
+          }
+
+          # Function to construct full metric ARN
+          construct_metric_arn() {
+            local metric_uuid="$1"
+            echo "${BASE_ARN}:metric-source/${COMPONENT_UUID}/${metric_uuid}"
+          }
+
+          # Function to push metric to Compass
+          push_metric() {
+            local metric_name="$1"
+            local metric_value="$2"
+            local timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            
+            # Get the metric UUID from configuration
+            local metric_uuid=$(get_metric_uuid "$metric_name")
+            
+            if [ -z "$metric_uuid" ]; then
+              echo "⚠️  Skipping enhanced metric '$metric_name' - not configured in compass-metrics.yml"
+              return 0
+            fi
+            
+            # Construct the full ARN
+            local metric_arn=$(construct_metric_arn "$metric_uuid")
+            
+            echo "Pushing enhanced metric: $metric_name = $metric_value"
+            echo "Using metric UUID: $metric_uuid"
+            echo "Constructed ARN: $metric_arn"
+            
+            response=$(curl --request POST \
+              --url "${COMPASS_URL}/gateway/api/compass/v1/metrics" \
+              --user "$COMPASS_USER_EMAIL:$COMPASS_API_KEY" \
+              --header "Accept: application/json" \
+              --header "Content-Type: application/json" \
+              --data "{
+                \"metricSourceId\": \"$metric_arn\",
+                \"value\": $metric_value,
+                \"timestamp\": \"$timestamp\"
+              }" \
+              --write-out "%{http_code}" \
+              --silent \
+              --output "/tmp/compass_response_enhanced_${metric_name}.json" \
+              --max-time 30)
+            
+            if [ "$response" -eq 200 ] || [ "$response" -eq 201 ]; then
+              echo "✅ Successfully pushed enhanced metric: $metric_name"
+            else
+              echo "❌ Failed to push enhanced metric: $metric_name (HTTP $response)"
+              
+              # Check if verbose logging is enabled
+              verbose_logging=$(yq eval '.settings.verbose_logging // true' "$CONFIG_FILE")
+              if [ "$verbose_logging" = "true" ] && [ -f "/tmp/compass_response_enhanced_${metric_name}.json" ]; then
+                echo "Response body:"
+                cat "/tmp/compass_response_enhanced_${metric_name}.json"
+              fi
+              
+              # Check settings to see if we should continue on error
+              continue_on_error=$(yq eval '.settings.continue_on_error // true' "$CONFIG_FILE")
+              if [ "$continue_on_error" = "false" ]; then
+                return 1
+              fi
+            fi
+          }
+
+          # Enhanced cyclomatic complexity metrics
+          if command -v gocyclo >/dev/null 2>&1; then
+            # Average complexity
+            avg_complexity=$(gocyclo -avg . 2>/dev/null | awk '{print $1}' || echo "0")
+            if [ "$avg_complexity" != "0" ] && [ -n "$avg_complexity" ]; then
+              push_metric "avg_cyclomatic_complexity" "$avg_complexity"
+            fi
+            
+            # Count functions with high complexity (>10)
+            high_complexity_funcs=$(gocyclo -over 10 . 2>/dev/null | wc -l || echo "0")
+            push_metric "high_complexity_functions" "$high_complexity_funcs"
+          fi
+
+          # Function count
+          func_count=$(grep -r "^func " . --include="*.go" | grep -v "_test.go" | wc -l)
+          push_metric "function_count" "$func_count"
+
+          # Test function count
+          test_func_count=$(grep -r "^func Test" . --include="*_test.go" | wc -l)
+          push_metric "test_function_count" "$test_func_count"
+
+          # Benchmark function count
+          bench_func_count=$(grep -r "^func Benchmark" . --include="*_test.go" | wc -l)
+          push_metric "benchmark_function_count" "$bench_func_count"
+
+          # Package count
+          package_count=$(go list ./... | wc -l)
+          push_metric "package_count" "$package_count"
+
+          echo "Enhanced metrics collection completed"
+
+      - name: Configuration Summary
+        env:
+          CONFIG_FILE: ${{ steps.load-config.outputs.config_file }}
+          BASE_ARN: ${{ steps.load-config.outputs.base_arn }}
+          COMPONENT_UUID: ${{ steps.load-config.outputs.component_uuid }}
+        run: |
+          set -euo pipefail
+
+          echo "================================================================"
+          echo "             Compass Metrics Configuration Summary"
+          echo "================================================================"
+          echo "Configuration file: $CONFIG_FILE"
+          echo "Compass URL: ${{ steps.load-config.outputs.compass_url }}"
+          echo "Component ID: ${{ steps.compass-config.outputs.compass_component_id }}"
+          echo "Base ARN: $BASE_ARN"
+          echo "Component UUID: $COMPONENT_UUID"
+          echo "Total configured metrics: ${{ steps.load-config.outputs.metric_count }}"
+          echo ""
+          echo "ARN Construction:"
+          echo "  - Base ARN: $BASE_ARN"
+          echo "  - Component UUID: $COMPONENT_UUID"
+          echo "  - ARN Pattern: {base_arn}:metric-source/{component_uuid}/{metric_uuid}"
+          echo ""
+          echo "Configured metrics with UUIDs:"
+          yq eval '.metrics | keys | .[]' "$CONFIG_FILE" | while read metric; do
+            uuid=$(yq eval ".metrics.${metric}.uuid" "$CONFIG_FILE")
+            description=$(yq eval ".metrics.${metric}.description // \"No description\"" "$CONFIG_FILE")
+            constructed_arn="${BASE_ARN}:metric-source/${COMPONENT_UUID}/${uuid}"
+            echo "  - $metric:"
+            echo "    UUID: $uuid"
+            echo "    Description: $description"
+            echo "    Full ARN: $constructed_arn"
+          done
+          echo ""
+          echo "Settings:"
+          echo "  - Continue on error: $(yq eval '.settings.continue_on_error // true' "$CONFIG_FILE")"
+          echo "  - Validate ARN format: $(yq eval '.settings.validate_arn_format // true' "$CONFIG_FILE")"
+          echo "  - Request timeout: $(yq eval '.settings.request_timeout // 30' "$CONFIG_FILE") seconds"
+          echo "  - Verbose logging: $(yq eval '.settings.verbose_logging // true' "$CONFIG_FILE")"
+          echo "================================================================"
