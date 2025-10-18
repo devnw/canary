@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"go.spyder.org/canary/internal/specs"
-	"go.spyder.org/canary/internal/storage"
+	"go.devnw.com/canary/internal/specs"
+	"go.devnw.com/canary/internal/storage"
 )
 
 var updateCmd = &cobra.Command{

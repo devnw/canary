@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.spyder.org/canary/internal/docs"
-	"go.spyder.org/canary/internal/storage"
+	"go.devnw.com/canary/internal/docs"
+	"go.devnw.com/canary/internal/storage"
 )
 
 // TestCANARY_CBIN_136_CLI_DocWorkflow verifies end-to-end documentation workflow

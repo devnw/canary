@@ -20,12 +20,12 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"go.spyder.org/canary/embedded"
-	"go.spyder.org/canary/internal/config"
-	"go.spyder.org/canary/internal/gap"
-	"go.spyder.org/canary/internal/migrate"
-	"go.spyder.org/canary/internal/reqid"
-	"go.spyder.org/canary/internal/storage"
+	"go.devnw.com/canary/embedded"
+	"go.devnw.com/canary/internal/config"
+	"go.devnw.com/canary/internal/gap"
+	"go.devnw.com/canary/internal/migrate"
+	"go.devnw.com/canary/internal/reqid"
+	"go.devnw.com/canary/internal/storage"
 )
 
 var (

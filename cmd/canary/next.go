@@ -16,8 +16,8 @@ import (
 	"text/template"
 	"time"
 
-	"go.spyder.org/canary/internal/config"
-	"go.spyder.org/canary/internal/storage"
+	"go.devnw.com/canary/internal/config"
+	"go.devnw.com/canary/internal/storage"
 )
 
 // PromptData holds template variables for prompt generation

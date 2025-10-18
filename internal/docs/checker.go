@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"go.spyder.org/canary/internal/storage"
+	"go.devnw.com/canary/internal/storage"
 )
 
 // CheckStaleness compares documentation file hash to token DOC_HASH field.

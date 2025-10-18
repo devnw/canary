@@ -11,8 +11,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"go.spyder.org/canary/internal/matcher"
-	"go.spyder.org/canary/internal/storage"
+	"go.devnw.com/canary/internal/matcher"
+	"go.devnw.com/canary/internal/storage"
 )
 
 // FindSpecByID locates spec.md file by exact requirement ID

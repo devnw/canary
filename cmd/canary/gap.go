@@ -10,8 +10,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"go.spyder.org/canary/internal/gap"
-	"go.spyder.org/canary/internal/storage"
+	"go.devnw.com/canary/internal/gap"
+	"go.devnw.com/canary/internal/storage"
 )
 
 // CANARY: REQ=CBIN-140; FEATURE="GapMarkCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.spyder.org/canary/internal/storage"
+	"go.devnw.com/canary/internal/storage"
 )
 
 // CANARY: REQ=CBIN-140; FEATURE="GapServiceTests"; ASPECT=Engine; STATUS=IMPL; TEST=TestService_MarkGap; UPDATED=2025-10-17

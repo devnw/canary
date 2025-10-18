@@ -7,7 +7,7 @@
 
 package migrate
 
-import "go.spyder.org/canary/internal/storage"
+import "go.devnw.com/canary/internal/storage"
 
 // Confidence levels for orphan detection
 const (

@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.spyder.org/canary/internal/matcher"
+	"go.devnw.com/canary/internal/matcher"
 )
 
 // validAspects defines all valid aspect values with their canonical casing

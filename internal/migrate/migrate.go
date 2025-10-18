@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go.spyder.org/canary/embedded"
+	"go.devnw.com/canary/embedded"
 )
 
 // SystemType represents the type of system being migrated from

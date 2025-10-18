@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"go.spyder.org/canary/internal/storage"
+	"go.devnw.com/canary/internal/storage"
 )
 
 // Service provides gap analysis business logic

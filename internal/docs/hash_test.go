@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.spyder.org/canary/internal/docs"
+	"go.devnw.com/canary/internal/docs"
 )
 
 // TestCANARY_CBIN_136_Engine_HashCalculation verifies deterministic SHA256 hash calculation

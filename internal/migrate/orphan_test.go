@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.spyder.org/canary/internal/storage"
+	"go.devnw.com/canary/internal/storage"
 )
 
 // TestCANARY_CBIN_145_Engine_PathFilter verifies path filtering logic

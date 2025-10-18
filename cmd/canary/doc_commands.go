@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"go.spyder.org/canary/internal/docs"
-	"go.spyder.org/canary/internal/storage"
+	"go.devnw.com/canary/internal/docs"
+	"go.devnw.com/canary/internal/storage"
 )
 
 // CANARY: REQ=CBIN-136; FEATURE="DocParentCommand"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-16

@@ -15,7 +15,7 @@ import (
 	"text/template"
 	"time"
 
-	"go.spyder.org/canary/internal/matcher"
+	"go.devnw.com/canary/internal/matcher"
 )
 
 // RequirementSpec holds loaded specification data

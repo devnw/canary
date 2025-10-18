@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.spyder.org/canary/internal/storage"
+	"go.devnw.com/canary/internal/storage"
 )
 
 // TestCANARY_CBIN_132_CLI_NextPrioritySelection verifies priority-based selection logic

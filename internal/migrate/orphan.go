@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go.spyder.org/canary/internal/storage"
+	"go.devnw.com/canary/internal/storage"
 )
 
 // DetectOrphans finds all requirements with tokens but no specification
