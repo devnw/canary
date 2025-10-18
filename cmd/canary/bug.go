@@ -72,14 +72,28 @@ Examples:
 			filters["status"] = status
 		}
 
-		// Query database for BUG-* tokens
-		tokens, err := db.ListTokens(filters, "BUG-[A-Za-z]+-[0-9]{3}", "priority ASC, updated_at DESC", limit)
+		// Query database for all tokens (ListTokens is hardcoded for CBIN patterns)
+		allTokens, err := db.ListTokens(filters, "", "priority ASC, updated_at DESC", 0)
 		if err != nil {
 			return fmt.Errorf("query bugs: %w", err)
 		}
 
+		// Filter for BUG tokens only
+		var tokens []*storage.Token
+		bugPattern := regexp.MustCompile(`^BUG-[A-Za-z]+-[0-9]{3}$`)
+		for _, tok := range allTokens {
+			if bugPattern.MatchString(tok.ReqID) {
+				tokens = append(tokens, tok)
+			}
+		}
+
 		// Additional filtering for severity and priority (stored in token comments or metadata)
 		filteredTokens := filterBugTokens(tokens, severity, priority)
+
+		// Apply limit if specified
+		if limit > 0 && len(filteredTokens) > limit {
+			filteredTokens = filteredTokens[:limit]
+		}
 
 		if jsonOutput {
 			enc := json.NewEncoder(os.Stdout)
@@ -389,21 +403,31 @@ func generateBugID(aspect string, dbPath string) (string, error) {
 	}
 	defer db.Close()
 
-	// Query existing BUG tokens for this aspect
-	pattern := fmt.Sprintf("BUG-%s-[0-9]{3}", aspect)
-	tokens, err := db.ListTokens(nil, pattern, "req_id DESC", 1)
+	return generateBugIDWithDB(aspect, db)
+}
+
+func generateBugIDWithDB(aspect string, db *storage.DB) (string, error) {
+	// Normalize aspect to uppercase
+	aspect = strings.ToUpper(aspect)
+
+	// Query ALL tokens (no pattern filter since ListTokens is hardcoded for CBIN)
+	tokens, err := db.ListTokens(nil, "", "req_id DESC", 0) // Get all tokens
 	if err != nil {
 		// If database doesn't have tokens table yet, start from 001
 		return fmt.Sprintf("BUG-%s-001", aspect), nil
 	}
 
-	// Find highest number
+	// Find highest number for this aspect
 	maxNum := 0
-	if len(tokens) > 0 {
-		// Extract number from last token
-		re := regexp.MustCompile(`BUG-[A-Za-z]+-([0-9]{3})`)
-		if matches := re.FindStringSubmatch(tokens[0].ReqID); len(matches) > 1 {
-			maxNum, _ = strconv.Atoi(matches[1])
+	pattern := fmt.Sprintf(`BUG-%s-([0-9]{3})`, aspect)
+	re := regexp.MustCompile(pattern)
+	for _, token := range tokens {
+		// Extract number from matching tokens
+		if matches := re.FindStringSubmatch(token.ReqID); len(matches) > 1 {
+			num, _ := strconv.Atoi(matches[1])
+			if num > maxNum {
+				maxNum = num
+			}
 		}
 	}
 

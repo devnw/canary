@@ -147,7 +147,7 @@ upgrade:
 	upgrade
 
 tidy: fmt
-	tidy
+	go mod tidy
 
 release: 
 	if [ -z "$(tag)" ]; then echo "tag is required"; exit 1; fi

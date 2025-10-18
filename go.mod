@@ -2,8 +2,6 @@ module go.devnw.com/canary
 
 go 1.24.0
 
-toolchain go1.24.6
-
 require (
 	github.com/fatih/color v1.18.0
 	github.com/golang-migrate/migrate/v4 v4.19.0
