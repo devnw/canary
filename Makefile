@@ -1,4 +1,4 @@
-all: build tidy lint fmt test canary-build
+all: tidy build fmt lint test canary-build
 
 #-------------------------------------------------------------------------
 # Variables

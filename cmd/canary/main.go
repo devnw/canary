@@ -174,6 +174,12 @@ var initCmd = &cobra.Command{
 	Short: "Initialize a new project with full CANARY workflow",
 	Long: `Bootstrap a new project with CANARY spec-kit-inspired workflow.
 
+Installation Modes:
+  Global (default): Installs commands in ~/.claude/commands/, ~/.cursor/commands/, etc.
+                    for use across all projects
+  Local (--local):  Installs commands in .claude/commands/, .cursor/commands/, etc.
+                    for project-specific use
+
 Creates:
 - .canary/ directory with templates, scripts, agents, and slash commands
 - .canary/agents/ directory with pre-configured CANARY agent definitions
@@ -184,7 +190,12 @@ Creates:
 The agent files support template variables that can be customized:
   --agent-prefix: Agent name prefix (default: project key)
   --agent-model:  AI model to use (default: sonnet)
-  --agent-color:  Agent color theme (default: blue)`,
+  --agent-color:  Agent color theme (default: blue)
+
+Examples:
+  canary init                  # Global install (default)
+  canary init --local           # Local install in current project
+  canary init myproject --local # Local install in new project`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName := "."
 		if len(args) > 0 {
@@ -268,6 +279,9 @@ The agent files support template variables that can be customized:
 			return fmt.Errorf("customize project.yaml: %w", err)
 		}
 
+		// Get installation mode flag
+		localInstall, _ := cmd.Flags().GetBool("local")
+
 		// Get agent selection flags
 		agentsList, _ := cmd.Flags().GetStringSlice("agents")
 		allAgents, _ := cmd.Flags().GetBool("all-agents")
@@ -294,12 +308,12 @@ The agent files support template variables that can be customized:
 		}
 
 		// Install/update slash commands to agent directories
-		if err := installSlashCommands(projectName, agentsList, allAgents); err != nil {
+		if err := installSlashCommands(projectName, agentsList, allAgents, localInstall); err != nil {
 			return fmt.Errorf("install slash commands: %w", err)
 		}
 
 		// Install agent files to each agent system's directory
-		if err := installAgentFilesToSystems(projectName, agentsList, allAgents, agentPrefix, agentModel, agentColor); err != nil {
+		if err := installAgentFilesToSystems(projectName, agentsList, allAgents, agentPrefix, agentModel, agentColor, localInstall); err != nil {
 			return fmt.Errorf("install agent files to systems: %w", err)
 		}
 
@@ -407,7 +421,13 @@ The agent files support template variables that can be customized:
 		fmt.Println("     ├── scripts/ - Automation scripts")
 		fmt.Println("     ├── templates/ - Spec/plan templates")
 		fmt.Println("     └── templates/commands/ - Slash commands for AI agents")
-		fmt.Println("  ✅ Agent Files - Installed to detected AI agent systems")
+		// Show installation location information
+		if localInstall {
+			fmt.Println("  ✅ Agent Files - Installed LOCALLY in project directory")
+		} else {
+			homeDir, _ := os.UserHomeDir()
+			fmt.Printf("  ✅ Agent Files - Installed GLOBALLY in %s\n", homeDir)
+		}
 
 		// Show which agents had commands installed
 		agentDirs := map[string]string{
@@ -424,15 +444,28 @@ The agent files support template variables that can be customized:
 			".amazonq":   "Amazon Q Developer",
 		}
 
+		// Determine where to check for agent directories
+		checkDir := projectName
+		if !localInstall {
+			// For global install, check in home directory
+			if homeDir, err := os.UserHomeDir(); err == nil {
+				checkDir = homeDir
+			}
+		}
+
 		installedAgents := []string{}
 		for dir, name := range agentDirs {
-			if _, err := os.Stat(filepath.Join(projectName, dir)); err == nil {
+			if _, err := os.Stat(filepath.Join(checkDir, dir)); err == nil {
 				installedAgents = append(installedAgents, name)
 			}
 		}
 
 		if len(installedAgents) > 0 {
-			fmt.Printf("  ✅ AI Agent Integration (%d systems detected):\n", len(installedAgents))
+			installType := "local"
+			if !localInstall {
+				installType = "global"
+			}
+			fmt.Printf("  ✅ AI Agent Integration (%d systems with %s commands):\n", len(installedAgents), installType)
 			for _, agent := range installedAgents {
 				fmt.Printf("     • %s (commands + agent files)\n", agent)
 			}
@@ -563,37 +596,54 @@ type AgentConfig struct {
 // installSlashCommands copies slash commands to agent systems based on selection mode
 // agentsList: specific agents to install for (e.g., ["claude", "cursor"])
 // allAgentsFlag: if true, install for all supported agents
+// localInstall: if true, install in project directory; if false, install globally in home directory
 // If both are empty/false, auto-detect existing agent directories
-func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag bool) error {
+func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag bool, localInstall bool) error {
 	sourceDir := filepath.Join(targetDir, ".canary", "templates", "commands")
+
+	// Determine base directory for installation
+	var baseDir string
+	if localInstall {
+		// Local installation: use project directory
+		baseDir = targetDir
+		fmt.Println("📍 Installing commands locally in project directory...")
+	} else {
+		// Global installation: use home directory
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("get home directory: %w", err)
+		}
+		baseDir = homeDir
+		fmt.Println("🌍 Installing commands globally in home directory...")
+	}
 
 	// Agent configurations - matching spec-kit-repo structure
 	allAgents := map[string]AgentConfig{
-		"claude":    {Dir: filepath.Join(targetDir, ".claude", "commands"), Prefix: "canary."},
-		"cursor":    {Dir: filepath.Join(targetDir, ".cursor", "commands"), Prefix: "canary."},
-		"copilot":   {Dir: filepath.Join(targetDir, ".github", "prompts"), Prefix: "canary-"},
-		"windsurf":  {Dir: filepath.Join(targetDir, ".windsurf", "workflows"), Prefix: "canary-"},
-		"kilocode":  {Dir: filepath.Join(targetDir, ".kilocode", "rules"), Prefix: "canary-"},
-		"roo":       {Dir: filepath.Join(targetDir, ".roo", "rules"), Prefix: "canary-"},
-		"opencode":  {Dir: filepath.Join(targetDir, ".opencode", "command"), Prefix: "canary-"},
-		"codex":     {Dir: filepath.Join(targetDir, ".codex", "commands"), Prefix: "canary."},
-		"auggie":    {Dir: filepath.Join(targetDir, ".augment", "rules"), Prefix: "canary-"},
-		"codebuddy": {Dir: filepath.Join(targetDir, ".codebuddy", "commands"), Prefix: "canary."},
-		"amazonq":   {Dir: filepath.Join(targetDir, ".amazonq", "prompts"), Prefix: "canary-"},
+		"claude":    {Dir: filepath.Join(baseDir, ".claude", "commands"), Prefix: "canary."},
+		"cursor":    {Dir: filepath.Join(baseDir, ".cursor", "commands"), Prefix: "canary."},
+		"copilot":   {Dir: filepath.Join(baseDir, ".github", "prompts"), Prefix: "canary-"},
+		"windsurf":  {Dir: filepath.Join(baseDir, ".windsurf", "workflows"), Prefix: "canary-"},
+		"kilocode":  {Dir: filepath.Join(baseDir, ".kilocode", "rules"), Prefix: "canary-"},
+		"roo":       {Dir: filepath.Join(baseDir, ".roo", "rules"), Prefix: "canary-"},
+		"opencode":  {Dir: filepath.Join(baseDir, ".opencode", "command"), Prefix: "canary-"},
+		"codex":     {Dir: filepath.Join(baseDir, ".codex", "commands"), Prefix: "canary."},
+		"auggie":    {Dir: filepath.Join(baseDir, ".augment", "rules"), Prefix: "canary-"},
+		"codebuddy": {Dir: filepath.Join(baseDir, ".codebuddy", "commands"), Prefix: "canary."},
+		"amazonq":   {Dir: filepath.Join(baseDir, ".amazonq", "prompts"), Prefix: "canary-"},
 	}
 
 	agentRootDirs := map[string]string{
-		"claude":    filepath.Join(targetDir, ".claude"),
-		"cursor":    filepath.Join(targetDir, ".cursor"),
-		"copilot":   filepath.Join(targetDir, ".github"),
-		"windsurf":  filepath.Join(targetDir, ".windsurf"),
-		"kilocode":  filepath.Join(targetDir, ".kilocode"),
-		"roo":       filepath.Join(targetDir, ".roo"),
-		"opencode":  filepath.Join(targetDir, ".opencode"),
-		"codex":     filepath.Join(targetDir, ".codex"),
-		"auggie":    filepath.Join(targetDir, ".augment"),
-		"codebuddy": filepath.Join(targetDir, ".codebuddy"),
-		"amazonq":   filepath.Join(targetDir, ".amazonq"),
+		"claude":    filepath.Join(baseDir, ".claude"),
+		"cursor":    filepath.Join(baseDir, ".cursor"),
+		"copilot":   filepath.Join(baseDir, ".github"),
+		"windsurf":  filepath.Join(baseDir, ".windsurf"),
+		"kilocode":  filepath.Join(baseDir, ".kilocode"),
+		"roo":       filepath.Join(baseDir, ".roo"),
+		"opencode":  filepath.Join(baseDir, ".opencode"),
+		"codex":     filepath.Join(baseDir, ".codex"),
+		"auggie":    filepath.Join(baseDir, ".augment"),
+		"codebuddy": filepath.Join(baseDir, ".codebuddy"),
+		"amazonq":   filepath.Join(baseDir, ".amazonq"),
 	}
 
 	// Determine which agents to install for
@@ -731,7 +781,7 @@ func copyAndProcessAgentFiles(targetDir, agentPrefix, agentModel, agentColor str
 // CANARY: REQ=CBIN-105; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17
 // installAgentFilesToSystems copies agent files from embedded/.canary/agents/ to each agent system's agents directory
 // This ensures agent definitions are available in each AI agent system (Claude, Cursor, etc.)
-func installAgentFilesToSystems(targetDir string, agentsList []string, allAgentsFlag bool, agentPrefix, agentModel, agentColor string) error {
+func installAgentFilesToSystems(targetDir string, agentsList []string, allAgentsFlag bool, agentPrefix, agentModel, agentColor string, localInstall bool) error {
 	// Try new path first, fall back to old path
 	sourceAgentsDir := ".canary/agents"
 	entries, err := embedded.CanaryFS.ReadDir(sourceAgentsDir)
@@ -744,33 +794,47 @@ func installAgentFilesToSystems(targetDir string, agentsList []string, allAgents
 		}
 	}
 
+	// Determine base directory for installation
+	var baseDir string
+	if localInstall {
+		// Local installation: use project directory
+		baseDir = targetDir
+	} else {
+		// Global installation: use home directory
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("get home directory: %w", err)
+		}
+		baseDir = homeDir
+	}
+
 	// Agent configurations with agents subdirectory paths
 	allAgents := map[string]string{
-		"claude":    filepath.Join(targetDir, ".claude", "agents"),
-		"cursor":    filepath.Join(targetDir, ".cursor", "agents"),
-		"copilot":   filepath.Join(targetDir, ".github", "copilot", "agents"),
-		"windsurf":  filepath.Join(targetDir, ".windsurf", "agents"),
-		"kilocode":  filepath.Join(targetDir, ".kilocode", "agents"),
-		"roo":       filepath.Join(targetDir, ".roo", "agents"),
-		"opencode":  filepath.Join(targetDir, ".opencode", "agents"),
-		"codex":     filepath.Join(targetDir, ".codex", "agents"),
-		"auggie":    filepath.Join(targetDir, ".augment", "agents"),
-		"codebuddy": filepath.Join(targetDir, ".codebuddy", "agents"),
-		"amazonq":   filepath.Join(targetDir, ".amazonq", "agents"),
+		"claude":    filepath.Join(baseDir, ".claude", "agents"),
+		"cursor":    filepath.Join(baseDir, ".cursor", "agents"),
+		"copilot":   filepath.Join(baseDir, ".github", "copilot", "agents"),
+		"windsurf":  filepath.Join(baseDir, ".windsurf", "agents"),
+		"kilocode":  filepath.Join(baseDir, ".kilocode", "agents"),
+		"roo":       filepath.Join(baseDir, ".roo", "agents"),
+		"opencode":  filepath.Join(baseDir, ".opencode", "agents"),
+		"codex":     filepath.Join(baseDir, ".codex", "agents"),
+		"auggie":    filepath.Join(baseDir, ".augment", "agents"),
+		"codebuddy": filepath.Join(baseDir, ".codebuddy", "agents"),
+		"amazonq":   filepath.Join(baseDir, ".amazonq", "agents"),
 	}
 
 	agentRootDirs := map[string]string{
-		"claude":    filepath.Join(targetDir, ".claude"),
-		"cursor":    filepath.Join(targetDir, ".cursor"),
-		"copilot":   filepath.Join(targetDir, ".github"),
-		"windsurf":  filepath.Join(targetDir, ".windsurf"),
-		"kilocode":  filepath.Join(targetDir, ".kilocode"),
-		"roo":       filepath.Join(targetDir, ".roo"),
-		"opencode":  filepath.Join(targetDir, ".opencode"),
-		"codex":     filepath.Join(targetDir, ".codex"),
-		"auggie":    filepath.Join(targetDir, ".augment"),
-		"codebuddy": filepath.Join(targetDir, ".codebuddy"),
-		"amazonq":   filepath.Join(targetDir, ".amazonq"),
+		"claude":    filepath.Join(baseDir, ".claude"),
+		"cursor":    filepath.Join(baseDir, ".cursor"),
+		"copilot":   filepath.Join(baseDir, ".github"),
+		"windsurf":  filepath.Join(baseDir, ".windsurf"),
+		"kilocode":  filepath.Join(baseDir, ".kilocode"),
+		"roo":       filepath.Join(baseDir, ".roo"),
+		"opencode":  filepath.Join(baseDir, ".opencode"),
+		"codex":     filepath.Join(baseDir, ".codex"),
+		"auggie":    filepath.Join(baseDir, ".augment"),
+		"codebuddy": filepath.Join(baseDir, ".codebuddy"),
+		"amazonq":   filepath.Join(baseDir, ".amazonq"),
 	}
 
 	// Determine which agents to install for
@@ -2125,8 +2189,11 @@ func init() {
 	rootCmd.AddCommand(gapCmd)
 	// CANARY: REQ=CBIN-145; FEATURE="SpecsCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_145_CLI_SpecsCmd; UPDATED=2025-10-17
 	rootCmd.AddCommand(specsCmd)
+	// Bug tracking command for managing BUG-* CANARY tokens
+	rootCmd.AddCommand(bugCmd)
 
 	// initCmd flags
+	initCmd.Flags().Bool("local", false, "install commands locally in project directory (default: global in home directory)")
 	initCmd.Flags().StringSlice("agents", []string{}, "comma-separated list of agents to install for (claude,cursor,copilot,windsurf,kilocode,roo,opencode,codex,auggie,codebuddy,amazonq)")
 	initCmd.Flags().Bool("all-agents", false, "install commands for all supported agents")
 	initCmd.Flags().String("key", "", "project requirement ID prefix (e.g., CBIN, PROJ, ACME)")
