@@ -280,7 +280,7 @@ func (db *DB) ListTokens(filters map[string]string, idPattern string, orderBy st
 		// Match 3+ digit CBIN IDs (CBIN-100 and above) OR BUG-ASPECT-NNN format
 		query += " AND ("
 		query += "  (req_id GLOB 'CBIN-[0-9][0-9][0-9]*' AND req_id NOT GLOB 'CBIN-0[0-9][0-9]*')" // CBIN-100 and above
-		query += "  OR req_id GLOB 'BUG-*-[0-9][0-9][0-9]*'" // BUG-ASPECT-NNN format
+		query += "  OR req_id GLOB 'BUG-*-[0-9][0-9][0-9]*'"                                       // BUG-ASPECT-NNN format
 		query += " )"
 	}
 

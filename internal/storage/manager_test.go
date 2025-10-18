@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.devnw.com/canary/internal/storage/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.devnw.com/canary/internal/storage/testutil"
 )
 
 func TestGlobalDatabaseInitialization(t *testing.T) {
@@ -109,11 +109,11 @@ func TestDatabasePrecedence(t *testing.T) {
 
 func TestDatabaseDiscovery(t *testing.T) {
 	tests := []struct {
-		name           string
-		setupGlobal    bool
-		setupLocal     bool
-		expectedMode   DatabaseMode
-		expectError    bool
+		name         string
+		setupGlobal  bool
+		setupLocal   bool
+		expectedMode DatabaseMode
+		expectError  bool
 	}{
 		{
 			name:         "local exists - use local",

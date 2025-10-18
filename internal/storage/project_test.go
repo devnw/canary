@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"go.devnw.com/canary/internal/storage/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.devnw.com/canary/internal/storage/testutil"
 )
 
 func TestRegisterProject(t *testing.T) {
@@ -171,9 +171,9 @@ func TestProjectSlugGeneration(t *testing.T) {
 	registry := NewProjectRegistry(manager)
 
 	tests := []struct {
-		name           string
-		projectName    string
-		expectedSlug   string
+		name         string
+		projectName  string
+		expectedSlug string
 	}{
 		{
 			name:         "simple name",

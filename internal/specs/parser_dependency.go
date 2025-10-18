@@ -16,7 +16,7 @@ var (
 	// Format: "- CBIN-123 (Description)" for full dependencies
 	// Format: "- CBIN-123:Feature1,Feature2 (Description)" for partial feature dependencies
 	// Format: "- CBIN-123:AspectName (Description)" for partial aspect dependencies
-	fullDependencyPattern = regexp.MustCompile(`^-\s+(CBIN-\d+)\s*(?:\(([^)]+)\))?`)
+	fullDependencyPattern    = regexp.MustCompile(`^-\s+(CBIN-\d+)\s*(?:\(([^)]+)\))?`)
 	partialDependencyPattern = regexp.MustCompile(`^-\s+(CBIN-\d+):([^(\s]+)\s*(?:\(([^)]+)\))?`)
 )
 

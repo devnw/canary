@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.devnw.com/canary/internal/storage/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.devnw.com/canary/internal/storage/testutil"
 )
 
 func TestDetectProjectFromPath(t *testing.T) {

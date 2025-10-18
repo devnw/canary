@@ -9,9 +9,9 @@ package storage
 import (
 	"testing"
 
-	"go.devnw.com/canary/internal/storage/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.devnw.com/canary/internal/storage/testutil"
 )
 
 func TestTokenIsolationBetweenProjects(t *testing.T) {
@@ -38,29 +38,29 @@ func TestTokenIsolationBetweenProjects(t *testing.T) {
 
 	// Create same token in both projects (same req_id)
 	token1 := &Token{
-		ReqID:     "CBIN-100",
-		Feature:   "TestFeature",
-		Aspect:    "API",
-		Status:    "IMPL",
-		FilePath:  "/file1.go",
+		ReqID:      "CBIN-100",
+		Feature:    "TestFeature",
+		Aspect:     "API",
+		Status:     "IMPL",
+		FilePath:   "/file1.go",
 		LineNumber: 10,
-		UpdatedAt: "2025-10-18",
-		RawToken:  "// CANARY: REQ=CBIN-100; FEATURE=\"TestFeature\"; ASPECT=API; STATUS=IMPL",
-		IndexedAt: "2025-10-18",
-		ProjectID: project1.ID, // New field
+		UpdatedAt:  "2025-10-18",
+		RawToken:   "// CANARY: REQ=CBIN-100; FEATURE=\"TestFeature\"; ASPECT=API; STATUS=IMPL",
+		IndexedAt:  "2025-10-18",
+		ProjectID:  project1.ID, // New field
 	}
 
 	token2 := &Token{
-		ReqID:     "CBIN-100", // Same ID
-		Feature:   "TestFeature",
-		Aspect:    "API",
-		Status:    "IMPL",
-		FilePath:  "/file2.go",
+		ReqID:      "CBIN-100", // Same ID
+		Feature:    "TestFeature",
+		Aspect:     "API",
+		Status:     "IMPL",
+		FilePath:   "/file2.go",
 		LineNumber: 20,
-		UpdatedAt: "2025-10-18",
-		RawToken:  "// CANARY: REQ=CBIN-100; FEATURE=\"TestFeature\"; ASPECT=API; STATUS=IMPL",
-		IndexedAt: "2025-10-18",
-		ProjectID: project2.ID, // Different project
+		UpdatedAt:  "2025-10-18",
+		RawToken:   "// CANARY: REQ=CBIN-100; FEATURE=\"TestFeature\"; ASPECT=API; STATUS=IMPL",
+		IndexedAt:  "2025-10-18",
+		ProjectID:  project2.ID, // Different project
 	}
 
 	// Both should succeed (different projects)
@@ -105,29 +105,29 @@ func TestCrossProjectQuery(t *testing.T) {
 
 	// Create tokens in different projects
 	token1 := &Token{
-		ReqID:     "CBIN-101",
-		Feature:   "Feature1",
-		Aspect:    "API",
-		Status:    "IMPL",
-		FilePath:  "/file1.go",
+		ReqID:      "CBIN-101",
+		Feature:    "Feature1",
+		Aspect:     "API",
+		Status:     "IMPL",
+		FilePath:   "/file1.go",
 		LineNumber: 10,
-		UpdatedAt: "2025-10-18",
-		RawToken:  "test",
-		IndexedAt: "2025-10-18",
-		ProjectID: project1.ID,
+		UpdatedAt:  "2025-10-18",
+		RawToken:   "test",
+		IndexedAt:  "2025-10-18",
+		ProjectID:  project1.ID,
 	}
 
 	token2 := &Token{
-		ReqID:     "CBIN-102",
-		Feature:   "Feature2",
-		Aspect:    "Storage",
-		Status:    "TESTED",
-		FilePath:  "/file2.go",
+		ReqID:      "CBIN-102",
+		Feature:    "Feature2",
+		Aspect:     "Storage",
+		Status:     "TESTED",
+		FilePath:   "/file2.go",
 		LineNumber: 20,
-		UpdatedAt: "2025-10-18",
-		RawToken:  "test",
-		IndexedAt: "2025-10-18",
-		ProjectID: project2.ID,
+		UpdatedAt:  "2025-10-18",
+		RawToken:   "test",
+		IndexedAt:  "2025-10-18",
+		ProjectID:  project2.ID,
 	}
 
 	err = db.UpsertToken(token1)
@@ -173,29 +173,29 @@ func TestGetTokensByReqIDAndProject(t *testing.T) {
 
 	// Create same req_id in both projects
 	token1 := &Token{
-		ReqID:     "CBIN-200",
-		Feature:   "SharedFeature",
-		Aspect:    "API",
-		Status:    "IMPL",
-		FilePath:  "/file1.go",
+		ReqID:      "CBIN-200",
+		Feature:    "SharedFeature",
+		Aspect:     "API",
+		Status:     "IMPL",
+		FilePath:   "/file1.go",
 		LineNumber: 10,
-		UpdatedAt: "2025-10-18",
-		RawToken:  "test",
-		IndexedAt: "2025-10-18",
-		ProjectID: project1.ID,
+		UpdatedAt:  "2025-10-18",
+		RawToken:   "test",
+		IndexedAt:  "2025-10-18",
+		ProjectID:  project1.ID,
 	}
 
 	token2 := &Token{
-		ReqID:     "CBIN-200", // Same req_id
-		Feature:   "SharedFeature",
-		Aspect:    "API",
-		Status:    "TESTED",
-		FilePath:  "/file2.go",
+		ReqID:      "CBIN-200", // Same req_id
+		Feature:    "SharedFeature",
+		Aspect:     "API",
+		Status:     "TESTED",
+		FilePath:   "/file2.go",
 		LineNumber: 20,
-		UpdatedAt: "2025-10-18",
-		RawToken:  "test",
-		IndexedAt: "2025-10-18",
-		ProjectID: project2.ID,
+		UpdatedAt:  "2025-10-18",
+		RawToken:   "test",
+		IndexedAt:  "2025-10-18",
+		ProjectID:  project2.ID,
 	}
 
 	err = db.UpsertToken(token1)
@@ -234,16 +234,16 @@ func TestTokenUniqueConstraintWithProjects(t *testing.T) {
 
 	// Create a token
 	token1 := &Token{
-		ReqID:     "CBIN-300",
-		Feature:   "UniqueTest",
-		Aspect:    "API",
-		Status:    "IMPL",
-		FilePath:  "/file.go",
+		ReqID:      "CBIN-300",
+		Feature:    "UniqueTest",
+		Aspect:     "API",
+		Status:     "IMPL",
+		FilePath:   "/file.go",
 		LineNumber: 100,
-		UpdatedAt: "2025-10-18",
-		RawToken:  "test",
-		IndexedAt: "2025-10-18",
-		ProjectID: project.ID,
+		UpdatedAt:  "2025-10-18",
+		RawToken:   "test",
+		IndexedAt:  "2025-10-18",
+		ProjectID:  project.ID,
 	}
 
 	err = db.UpsertToken(token1)
@@ -251,16 +251,16 @@ func TestTokenUniqueConstraintWithProjects(t *testing.T) {
 
 	// Try to insert duplicate (same project, req_id, feature, file, line)
 	token2 := &Token{
-		ReqID:     "CBIN-300",
-		Feature:   "UniqueTest",
-		Aspect:    "API",
-		Status:    "TESTED", // Different status
-		FilePath:  "/file.go",
+		ReqID:      "CBIN-300",
+		Feature:    "UniqueTest",
+		Aspect:     "API",
+		Status:     "TESTED", // Different status
+		FilePath:   "/file.go",
 		LineNumber: 100,
-		UpdatedAt: "2025-10-18",
-		RawToken:  "test updated",
-		IndexedAt: "2025-10-18",
-		ProjectID: project.ID,
+		UpdatedAt:  "2025-10-18",
+		RawToken:   "test updated",
+		IndexedAt:  "2025-10-18",
+		ProjectID:  project.ID,
 	}
 
 	// Should update, not fail
@@ -287,16 +287,16 @@ func TestDefaultProjectForBackwardCompatibility(t *testing.T) {
 
 	// Create token without project_id (backward compatibility)
 	token := &Token{
-		ReqID:     "CBIN-400",
-		Feature:   "BackwardCompat",
-		Aspect:    "API",
-		Status:    "IMPL",
-		FilePath:  "/file.go",
+		ReqID:      "CBIN-400",
+		Feature:    "BackwardCompat",
+		Aspect:     "API",
+		Status:     "IMPL",
+		FilePath:   "/file.go",
 		LineNumber: 50,
-		UpdatedAt: "2025-10-18",
-		RawToken:  "test",
-		IndexedAt: "2025-10-18",
-		ProjectID: "", // Empty project ID
+		UpdatedAt:  "2025-10-18",
+		RawToken:   "test",
+		IndexedAt:  "2025-10-18",
+		ProjectID:  "", // Empty project ID
 	}
 
 	// Should use default project or handle gracefully

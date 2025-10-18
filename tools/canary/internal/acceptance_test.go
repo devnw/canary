@@ -127,25 +127,33 @@ func TestAcceptance_SelfCanary(t *testing.T) {
 	// derive repo root via caller file path for robustness regardless of test working dir
 	_, thisFile, _, _ := runtime.Caller(0)
 	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "../../.."))
-	gap := filepath.Join(repoRoot, "GAP_ANALYSIS.md")
-	if _, err := os.Stat(gap); err != nil {
-		if err := os.WriteFile(gap, []byte("# Requirements Gap Analysis (Self)\n✅ CBIN-101\n✅ CBIN-102\n"), 0o644); err != nil {
-			t.Fatalf("create GAP_ANALYSIS.md: %v", err)
-		}
+
+	// Use a temporary GAP_ANALYSIS.md in testdata to avoid conflicts with repo root file
+	testdataDir := filepath.Join("tools", "canary", "testdata", "selfcanary")
+	if err := os.MkdirAll(testdataDir, 0o755); err != nil {
+		t.Fatalf("create testdata dir: %v", err)
 	}
+	gap := filepath.Join(testdataDir, "GAP_ANALYSIS.md")
+
+	// Always write the test GAP file with correct requirement IDs
+	if err := os.WriteFile(gap, []byte("# Requirements Gap Analysis (Self)\n✅ CBIN-101\n✅ CBIN-102\n"), 0o644); err != nil {
+		t.Fatalf("create GAP_ANALYSIS.md: %v", err)
+	}
+
 	canaryRoot := filepath.Join(repoRoot, "tools", "canary")
 	skipPattern := `(^|/)(.git|.direnv|node_modules|vendor|bin|dist|build|zig-out|.zig-cache|testdata|internal)(/|$)`
-	res1 := run(exe, "--root", canaryRoot, "--out", "status.json", "--csv", "status.csv", "--skip", skipPattern)
+	statusJSON := filepath.Join(testdataDir, "status.json")
+	statusCSV := filepath.Join(testdataDir, "status.csv")
+
+	res1 := run(exe, "--root", canaryRoot, "--out", statusJSON, "--csv", statusCSV, "--skip", skipPattern)
 	if res1.code != 0 {
 		t.Fatalf("scan exit=%d stderr=%s root=%s", res1.code, res1.stderr, canaryRoot)
 	}
-	res2 := run(exe, "--root", canaryRoot, "--verify", gap, "--strict", "--out", "status.json", "--skip", skipPattern)
+	res2 := run(exe, "--root", canaryRoot, "--verify", gap, "--strict", "--out", statusJSON, "--skip", skipPattern)
 	if res2.code != 0 {
 		t.Fatalf("verify exit=%d stderr=%s", res2.code, res2.stderr)
 	}
 	fmt.Println("ACCEPT SelfCanary OK ids=[CBIN-101,CBIN-102]")
-	_ = os.Remove("status.json")
-	_ = os.Remove("status.csv")
 }
 
 func TestAcceptance_CSVOrder(t *testing.T) {
