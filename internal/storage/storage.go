@@ -50,6 +50,10 @@ type Token struct {
 	DocType      string // Documentation type (user, technical, feature, api, architecture)
 	DocCheckedAt string // ISO 8601 timestamp of last staleness check
 	DocStatus    string // DOC_CURRENT, DOC_STALE, DOC_MISSING, DOC_UNHASHED
+
+	// CANARY: REQ=CBIN-146; FEATURE="TokenNamespacing"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-18
+	// Multi-project support
+	ProjectID string // Project identifier for token isolation
 }
 
 // Checkpoint represents a state snapshot
@@ -98,6 +102,11 @@ func (db *DB) Close() error {
 
 // UpsertToken inserts or updates a token
 func (db *DB) UpsertToken(token *Token) error {
+	// Ensure tokens table exists
+	if err := db.ensureTokensTable(); err != nil {
+		return fmt.Errorf("ensure tokens table: %w", err)
+	}
+
 	query := `
 		INSERT INTO tokens (
 			req_id, feature, aspect, status, file_path, line_number,
@@ -105,9 +114,10 @@ func (db *DB) UpsertToken(token *Token) error {
 			created_at, updated_at, started_at, completed_at,
 			commit_hash, branch, depends_on, blocks, related_to,
 			raw_token, indexed_at,
-			doc_path, doc_hash, doc_type, doc_checked_at, doc_status
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(req_id, feature, file_path, line_number)
+			doc_path, doc_hash, doc_type, doc_checked_at, doc_status,
+			project_id
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(req_id, feature, file_path, line_number, project_id)
 		DO UPDATE SET
 			aspect = excluded.aspect,
 			status = excluded.status,
@@ -132,7 +142,8 @@ func (db *DB) UpsertToken(token *Token) error {
 			doc_hash = excluded.doc_hash,
 			doc_type = excluded.doc_type,
 			doc_checked_at = excluded.doc_checked_at,
-			doc_status = excluded.doc_status
+			doc_status = excluded.doc_status,
+			project_id = excluded.project_id
 	`
 
 	_, err := db.conn.Exec(query,
@@ -145,6 +156,7 @@ func (db *DB) UpsertToken(token *Token) error {
 		token.DependsOn, token.Blocks, token.RelatedTo,
 		token.RawToken, token.IndexedAt,
 		token.DocPath, token.DocHash, token.DocType, token.DocCheckedAt, token.DocStatus,
+		token.ProjectID,
 	)
 
 	return err
@@ -510,6 +522,203 @@ func scanTokens(rows *sql.Rows) ([]*Token, error) {
 			&t.DependsOn, &t.Blocks, &t.RelatedTo,
 			&t.RawToken, &t.IndexedAt,
 			&t.DocPath, &t.DocHash, &t.DocType, &t.DocCheckedAt, &t.DocStatus,
+		)
+		if err != nil {
+			return nil, err
+		}
+		tokens = append(tokens, t)
+	}
+	return tokens, rows.Err()
+}
+
+// ensureTokensTable creates the tokens table if it doesn't exist
+func (db *DB) ensureTokensTable() error {
+	query := `
+		CREATE TABLE IF NOT EXISTS tokens (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			req_id TEXT NOT NULL,
+			feature TEXT NOT NULL,
+			aspect TEXT NOT NULL,
+			status TEXT NOT NULL,
+
+			-- File location
+			file_path TEXT NOT NULL,
+			line_number INTEGER NOT NULL,
+
+			-- Optional fields
+			test TEXT,
+			bench TEXT,
+			owner TEXT,
+
+			-- Extended metadata
+			priority INTEGER DEFAULT 5,
+			phase TEXT,
+			keywords TEXT,
+
+			-- Spec lifecycle
+			spec_status TEXT DEFAULT 'draft',
+
+			-- Dates
+			created_at TEXT,
+			updated_at TEXT NOT NULL,
+			started_at TEXT,
+			completed_at TEXT,
+
+			-- Git integration
+			commit_hash TEXT,
+			branch TEXT,
+
+			-- Relationships
+			depends_on TEXT,
+			blocks TEXT,
+			related_to TEXT,
+
+			-- Full token content for reference
+			raw_token TEXT NOT NULL,
+
+			-- Timestamps
+			indexed_at TEXT NOT NULL,
+
+			-- Documentation tracking
+			doc_path TEXT,
+			doc_hash TEXT,
+			doc_type TEXT,
+			doc_checked_at TEXT,
+			doc_status TEXT,
+
+			-- Multi-project support
+			project_id TEXT DEFAULT '',
+
+			UNIQUE(req_id, feature, file_path, line_number, project_id)
+		)
+	`
+
+	_, err := db.conn.Exec(query)
+	if err != nil {
+		return fmt.Errorf("create tokens table: %w", err)
+	}
+
+	// Create indexes
+	indexes := []string{
+		`CREATE INDEX IF NOT EXISTS idx_tokens_req_id ON tokens(req_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_tokens_status ON tokens(status)`,
+		`CREATE INDEX IF NOT EXISTS idx_tokens_priority ON tokens(priority)`,
+		`CREATE INDEX IF NOT EXISTS idx_tokens_aspect ON tokens(aspect)`,
+		`CREATE INDEX IF NOT EXISTS idx_tokens_spec_status ON tokens(spec_status)`,
+		`CREATE INDEX IF NOT EXISTS idx_tokens_phase ON tokens(phase)`,
+		`CREATE INDEX IF NOT EXISTS idx_tokens_keywords ON tokens(keywords)`,
+		`CREATE INDEX IF NOT EXISTS idx_tokens_project_id ON tokens(project_id)`,
+	}
+
+	for _, indexQuery := range indexes {
+		if _, err := db.conn.Exec(indexQuery); err != nil {
+			return fmt.Errorf("create index: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// CANARY: REQ=CBIN-146; FEATURE="TokenNamespacing"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-18
+// GetTokensByProject retrieves all tokens for a specific project
+func (db *DB) GetTokensByProject(projectID string) ([]*Token, error) {
+	if err := db.ensureTokensTable(); err != nil {
+		return nil, fmt.Errorf("ensure tokens table: %w", err)
+	}
+
+	query := `
+		SELECT id, req_id, feature, aspect, status, file_path, line_number,
+			test, bench, owner, priority, phase, keywords, spec_status,
+			created_at, updated_at, started_at, completed_at,
+			commit_hash, branch, depends_on, blocks, related_to,
+			raw_token, indexed_at,
+			doc_path, doc_hash, doc_type, doc_checked_at, doc_status,
+			COALESCE(project_id, '') as project_id
+		FROM tokens
+		WHERE COALESCE(project_id, '') = ?
+		ORDER BY priority ASC, feature ASC
+	`
+
+	rows, err := db.conn.Query(query, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanTokensWithProject(rows)
+}
+
+// GetAllTokens retrieves all tokens across all projects
+func (db *DB) GetAllTokens() ([]*Token, error) {
+	if err := db.ensureTokensTable(); err != nil {
+		return nil, fmt.Errorf("ensure tokens table: %w", err)
+	}
+
+	query := `
+		SELECT id, req_id, feature, aspect, status, file_path, line_number,
+			test, bench, owner, priority, phase, keywords, spec_status,
+			created_at, updated_at, started_at, completed_at,
+			commit_hash, branch, depends_on, blocks, related_to,
+			raw_token, indexed_at,
+			doc_path, doc_hash, doc_type, doc_checked_at, doc_status,
+			COALESCE(project_id, '') as project_id
+		FROM tokens
+		ORDER BY priority ASC, updated_at DESC
+	`
+
+	rows, err := db.conn.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanTokensWithProject(rows)
+}
+
+// GetTokensByReqIDAndProject retrieves tokens for a requirement within a specific project
+func (db *DB) GetTokensByReqIDAndProject(reqID, projectID string) ([]*Token, error) {
+	if err := db.ensureTokensTable(); err != nil {
+		return nil, fmt.Errorf("ensure tokens table: %w", err)
+	}
+
+	query := `
+		SELECT id, req_id, feature, aspect, status, file_path, line_number,
+			test, bench, owner, priority, phase, keywords, spec_status,
+			created_at, updated_at, started_at, completed_at,
+			commit_hash, branch, depends_on, blocks, related_to,
+			raw_token, indexed_at,
+			doc_path, doc_hash, doc_type, doc_checked_at, doc_status,
+			COALESCE(project_id, '') as project_id
+		FROM tokens
+		WHERE req_id = ? AND COALESCE(project_id, '') = ?
+		ORDER BY priority ASC, feature ASC
+	`
+
+	rows, err := db.conn.Query(query, reqID, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanTokensWithProject(rows)
+}
+
+// Helper function to scan token rows including project_id
+func scanTokensWithProject(rows *sql.Rows) ([]*Token, error) {
+	var tokens []*Token
+	for rows.Next() {
+		t := &Token{}
+		err := rows.Scan(
+			&t.ID, &t.ReqID, &t.Feature, &t.Aspect, &t.Status,
+			&t.FilePath, &t.LineNumber,
+			&t.Test, &t.Bench, &t.Owner,
+			&t.Priority, &t.Phase, &t.Keywords, &t.SpecStatus,
+			&t.CreatedAt, &t.UpdatedAt, &t.StartedAt, &t.CompletedAt,
+			&t.CommitHash, &t.Branch,
+			&t.DependsOn, &t.Blocks, &t.RelatedTo,
+			&t.RawToken, &t.IndexedAt,
+			&t.DocPath, &t.DocHash, &t.DocType, &t.DocCheckedAt, &t.DocStatus,
+			&t.ProjectID,
 		)
 		if err != nil {
 			return nil, err
