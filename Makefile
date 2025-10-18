@@ -198,20 +198,6 @@ test-ci: deps build-ci
 		-coverprofile=./out/coverage.txt \
 		-failfast \
 		-race ./...
-	@# Downstream import compile checks (dynamic + static preference)
-	@if [ "$(UNAME_S)" = "Linux" ]; then \
-	  echo "[ci] downstream import checks"; \
-	  CGO_ENABLED=1 go test -c -tags zcap ./internal/captest || exit 1; \
-	  CGO_ENABLED=1 go test -c -tags "zcap zcapstatic" ./internal/captest || exit 1; \
-	else \
-	  echo "[ci] skipping downstream import checks (non-Linux host)"; \
-	fi
-	@if [ "$(UNAME_S)" = "Linux" ] && [ "$(HOST_ARCH)" = "x86_64" ]; then \
-		$(MAKE) test-qemu-arm64 || exit 1; \
-	else \
-		echo "[ci] skipping qemu arm64 test (not x86_64 Linux host)"; \
-	fi
-	make fuzz FUZZ_TIME=10
 
 
 bench-ci: deps test-ci

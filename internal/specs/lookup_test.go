@@ -9,26 +9,72 @@ package specs
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 )
 
-// getRepoRoot returns the repository root directory
-func getRepoRoot() string {
-	_, thisFile, _, _ := runtime.Caller(0)
-	// From internal/specs/lookup_test.go, go up two levels to repo root
-	return filepath.Clean(filepath.Join(filepath.Dir(thisFile), "../.."))
+// setupTestSpecs creates a temporary .canary/specs directory structure for testing
+func setupTestSpecs(t *testing.T) (string, func()) {
+	t.Helper()
+
+	// Create temporary directory
+	tempDir := t.TempDir()
+
+	// Create .canary/specs structure
+	specsDir := filepath.Join(tempDir, ".canary", "specs")
+
+	// Create test spec directories
+	testSpecs := []struct {
+		reqID   string
+		content string
+	}{
+		{
+			reqID: "CBIN-134",
+			content: `# CBIN-134: ExactIDLookup
+
+## Description
+Test spec for exact ID lookup functionality.
+`,
+		},
+		{
+			reqID: "CBIN-100",
+			content: `# CBIN-100: Sample Spec
+
+## Description
+Sample spec for modification testing.
+`,
+		},
+	}
+
+	for _, spec := range testSpecs {
+		specDir := filepath.Join(specsDir, spec.reqID+"-test-feature")
+		if err := os.MkdirAll(specDir, 0755); err != nil {
+			t.Fatalf("failed to create spec directory: %v", err)
+		}
+
+		specFile := filepath.Join(specDir, "spec.md")
+		if err := os.WriteFile(specFile, []byte(spec.content), 0644); err != nil {
+			t.Fatalf("failed to write spec file: %v", err)
+		}
+	}
+
+	// Return tempDir and cleanup function
+	oldDir, _ := os.Getwd()
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("failed to change to temp directory: %v", err)
+	}
+
+	cleanup := func() {
+		os.Chdir(oldDir)
+	}
+
+	return tempDir, cleanup
 }
 
 // TestCANARY_CBIN_134_Engine_ExactIDLookup verifies FindSpecByID locates spec files
 func TestCANARY_CBIN_134_Engine_ExactIDLookup(t *testing.T) {
-	// Change to repo root for .canary/specs access
-	repoRoot := getRepoRoot()
-	oldDir, _ := os.Getwd()
-	defer os.Chdir(oldDir)
-	if err := os.Chdir(repoRoot); err != nil {
-		t.Fatalf("failed to change to repo root: %v", err)
-	}
+	// Setup: Create temporary test spec structure
+	_, cleanup := setupTestSpecs(t)
+	defer cleanup()
 
 	tests := []struct {
 		name      string
@@ -74,13 +120,9 @@ func TestCANARY_CBIN_134_Engine_ExactIDLookup(t *testing.T) {
 
 // TestCANARY_CBIN_134_Engine_FuzzySpecSearch verifies FindSpecBySearch returns ranked results
 func TestCANARY_CBIN_134_Engine_FuzzySpecSearch(t *testing.T) {
-	// Change to repo root for .canary/specs access
-	repoRoot := getRepoRoot()
-	oldDir, _ := os.Getwd()
-	defer os.Chdir(oldDir)
-	if err := os.Chdir(repoRoot); err != nil {
-		t.Fatalf("failed to change to repo root: %v", err)
-	}
+	// Setup: Create temporary test spec structure
+	_, cleanup := setupTestSpecs(t)
+	defer cleanup()
 
 	// Execute: Fuzzy search
 	results, err := FindSpecBySearch("spec modification", 5)
