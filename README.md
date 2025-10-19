@@ -2,9 +2,12 @@
 
 **Requirement Tracking System for Code-First Development**
 
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Go Version](https://img.shields.io/badge/Go-1.20+-00ADD8?logo=go)](https://go.dev/)
-[![Build Status](https://github.com/devnw/canary/workflows/CI/badge.svg)](https://github.com/devnw/canary/actions)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go)](https://go.dev/)
+[![Build](https://github.com/devnw/canary/actions/workflows/build.yml/badge.svg)](https://github.com/devnw/canary/actions/workflows/build.yml)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+[![Go Reference](https://pkg.go.dev/badge/go.devnw.com/canary.svg)](https://pkg.go.dev/go.devnw.com/canary)
+[![Version](https://img.shields.io/github/v/tag/devnw/canary?sort=semver&style=plastic)](https://github.com/devnw/canary/releases)
 
 CANARY is a requirement tracking system that embeds tokens directly into source code, enabling precise tracking of features, tests, benchmarks, and documentation. It bridges the gap between requirements and implementation by making every feature claim searchable, verifiable, and traceable.
 
