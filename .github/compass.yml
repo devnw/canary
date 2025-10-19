@@ -4,23 +4,26 @@ slug: canary
 description: 'Creator, Manager and Manager of Agent Prompts and Canary Tokens in Agent Repositories'
 configVersion: 1
 typeId: APPLICATION
-ownerId: 'ari:cloud:identity::team/94046dbf-b5f2-435e-bd32-3aee54446e1f'
+ownerId: 'ari:cloud:identity::team/ed895264-a5df-48d6-9aa2-f44fe1686317'
 fields:
-  lifecycle: Pre-release
-  tier: 4
+  lifecycle: Active
+  tier: 2
   isMonorepoProject: false
 links:
   - name: null
     type: REPOSITORY
     url: 'https://github.com/devnw/canary'
+  - name: 'DOCUMENTATION'
+    type: WEBSITE
+    url: 'https://canary.devnw.dev/'
   - name: ''
     type: PROJECT
-    url: 'https://devnw.atlassian.net/browse/CP'
+    url: 'https://devnw.atlassian.net/browse/DEV'
+  - name: Slack
+    type: CHAT_CHANNEL
+    url: 'https://codeprosorg.slack.com/archives/C09MCUT88MS'
 relationships: {}
 labels:
   - 'source:github'
   - synced-with-jsm
 customFields: null
-
-# Learn more about formatting compass.yml:
-# https://go.atlassian.com/compass-yml-format
