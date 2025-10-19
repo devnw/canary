@@ -110,7 +110,7 @@ dockers:
       - canary
 
     image_templates:
-      - "gcr.io/devnw/canary:latest"
+      - "ghcr.io/devnw/canary:latest"
 
     dockerfile: "{{ .Env.DOCKERFILE }}"
 
@@ -137,7 +137,7 @@ dockers:
     ids:
       - canary
     image_templates:
-      - "gcr.io/devnw/canary:latest"
+      - "ghcr.io/devnw/canary:latest"
     dockerfile: "{{ .Env.DOCKERFILE }}"
     use: docker
     build_flag_templates:
