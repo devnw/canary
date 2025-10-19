@@ -56,16 +56,15 @@ canary init my-project
 # Create a specification (AI agent)
 /canary.specify Add user authentication with JWT tokens
 
-# Or interactively (human)
-canary specify
+/canary.plan CBIN-001
 
-# Generate implementation plan
-canary plan CBIN-001
+/canary.implement
 
-# Implement with test-first approach
-# ... write tests ...
-# ... add CANARY tokens ...
-# ... implement feature ...
+# The primary functions like specify, plan, and implement can be run
+# via the CLI but won't really do much for a user. They are designed
+# for AI agents to call programmatically.
+
+# User's can find all of the command options through the --help flag
 
 # Build database and query progress
 canary index
