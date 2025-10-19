@@ -32,12 +32,12 @@ Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days 
 
    The following CANARY tokens need updating:
 
-   - {{.ProjectKey}}-001: UserAuth (288 days old)
-     - File: internal/auth/auth.go:10
+   - {{.ReqID}}-API-001: UserAuth (288 days old)
+     - File: src/api/auth.go:10
      - Current: UPDATED=2024-01-01
      - New: UPDATED=2025-10-16
 
-   - {{.ProjectKey}}-004: CacheOptimization (288 days old)
+   - {{.ReqID}}-Engine-004: CacheOptimization (288 days old)
      - File: internal/cache/cache.go:15
      - Current: UPDATED=2024-01-01
      - New: UPDATED=2025-10-16
@@ -71,11 +71,11 @@ Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days 
    **Tokens Updated:** N
 
    ### Updated Tokens
-   - ✅ {{.ProjectKey}}-001: internal/auth/auth.go (2024-01-01 → 2025-10-16)
-   - ✅ {{.ProjectKey}}-004: internal/cache/cache.go (2024-01-01 → 2025-10-16)
+   - ✅ {{.ReqID}}-API-001: src/api/auth.go (2024-01-01 → 2025-10-16)
+   - ✅ {{.ReqID}}-Engine-004: internal/cache/cache.go (2024-01-01 → 2025-10-16)
 
    ### Files Modified
-   - internal/auth/auth.go
+   - src/api/auth.go
    - internal/cache/cache.go
 
    ### Verification
@@ -92,8 +92,8 @@ Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days 
    git commit -m "chore: update stale CANARY tokens
 
    Updated UPDATED field for N stale tokens:
-   - {{.ProjectKey}}-001: UserAuth
-   - {{.ProjectKey}}-004: CacheOptimization
+   - {{.ReqID}}-<ASPECT>-001: UserAuth
+   - {{.ReqID}}-<ASPECT>-004: CacheOptimization
 
    All TESTED/BENCHED requirements now current (within 30 days).
    "
@@ -109,16 +109,16 @@ Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days 
 
 ### Before Update
 ```go
-// CANARY: REQ={{.ProjectKey}}-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2024-01-01
+// CANARY: REQ={{.ReqID}}-<ASPECT>-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2024-01-01
 ```
 
 ### After Update
 ```go
-// CANARY: REQ={{.ProjectKey}}-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2025-10-16
+// CANARY: REQ={{.ReqID}}-API-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2025-10-16
 ```
 
 ### Files Modified
-- internal/auth/auth.go (1 token updated)
+- src/api/auth.go (1 token updated)
 - internal/cache/cache.go (1 token updated)
 
 ### Verification
@@ -128,7 +128,7 @@ Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days 
 
 **Git Command:**
 ```bash
-git add internal/auth/auth.go internal/cache/cache.go
+git add src/api/auth.go internal/cache/cache.go
 git commit -m "chore: update stale CANARY tokens"
 ```
 ```
