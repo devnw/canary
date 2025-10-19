@@ -14,7 +14,7 @@ links:
     type: REPOSITORY
     url: 'https://github.com/devnw/canary'
   - name: 'DOCUMENTATION'
-    type: WEBSITE
+    type: DOCUMENT
     url: 'https://canary.devnw.dev/'
   - name: ''
     type: PROJECT
