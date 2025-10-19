@@ -43,7 +43,7 @@ jobs:
           name: oss-devnw 
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
       - name: Use doc-pages composite action
-        uses: codeprosorg/doc-pages@main
+        uses: devnw/doc-pages@main
         id: docs
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
