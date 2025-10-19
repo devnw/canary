@@ -3,13 +3,14 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
 
     dev-env = {
       url = "github:devnw/dev-env";
       inputs = {
         nixpkgs.follows = "nixpkgs";
-        unstable.follows = "nixpkgs";
+        unstable.follows = "unstable";
         flake-utils.follows = "flake-utils";
       };
     };
