@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -317,6 +318,12 @@ Examples:
 			return fmt.Errorf("install agent files to systems: %w", err)
 		}
 
+		// CANARY: REQ=CBIN-148; FEATURE="CopilotInitInstructions"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCreateCopilotInstructions; BENCH=BenchmarkCreateCopilotInstructions; UPDATED=2025-10-19
+		// Create GitHub Copilot instruction files
+		if err := createCopilotInstructions(projectName, projectKey); err != nil {
+			return fmt.Errorf("create Copilot instructions: %w", err)
+		}
+
 		// Rebuild canary binary if we're updating
 		if isUpdate {
 			fmt.Println("\n🔧 Rebuilding canary binary...")
@@ -536,6 +543,78 @@ func readEmbeddedFile(path string) ([]byte, error) {
 	}
 
 	return nil, fmt.Errorf("file not found in embedded filesystem: %s", path)
+}
+
+// CANARY: REQ=CBIN-148; FEATURE="CopilotInstructionCreator"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCreateCopilotInstructions; BENCH=BenchmarkCreateCopilotInstructions; UPDATED=2025-10-19
+// createCopilotInstructions generates GitHub Copilot instruction files for the project
+func createCopilotInstructions(projectName, projectKey string) error {
+	instructionsDir := filepath.Join(projectName, ".github", "instructions")
+
+	// Create .github/instructions/ directory structure
+	if err := os.MkdirAll(instructionsDir, 0755); err != nil {
+		return fmt.Errorf("create .github/instructions: %w", err)
+	}
+
+	// Define instruction files to create
+	instructionFiles := map[string]string{
+		// Repository-wide instruction
+		"repository.md": "base/copilot/repository.md",
+
+		// Path-specific instructions (nested directories)
+		".canary/specs/instruction.md": "base/copilot/specs.md",
+		".canary/instruction.md":       "base/copilot/canary.md",
+		"tests/instruction.md":         "base/copilot/tests.md",
+	}
+
+	// Template data for variable substitution
+	type TemplateData struct {
+		ProjectKey string
+	}
+	data := TemplateData{ProjectKey: projectKey}
+
+	for targetPath, templatePath := range instructionFiles {
+		fullTargetPath := filepath.Join(instructionsDir, targetPath)
+
+		// Check if file already exists (preserve user customizations)
+		if _, err := os.Stat(fullTargetPath); err == nil {
+			fmt.Printf("⏭️  Skipping existing instruction file: %s\n", targetPath)
+			continue
+		}
+
+		// Create parent directories for path-specific instructions
+		if err := os.MkdirAll(filepath.Dir(fullTargetPath), 0755); err != nil {
+			return fmt.Errorf("create directory for %s: %w", targetPath, err)
+		}
+
+		// Read template from embedded filesystem
+		templateContent, err := readEmbeddedFile(templatePath)
+		if err != nil {
+			return fmt.Errorf("read template %s: %w", templatePath, err)
+		}
+
+		// Parse and execute template
+		tmpl, err := template.New(targetPath).Parse(string(templateContent))
+		if err != nil {
+			return fmt.Errorf("parse template %s: %w", templatePath, err)
+		}
+
+		// Write to file
+		outFile, err := os.Create(fullTargetPath)
+		if err != nil {
+			return fmt.Errorf("create file %s: %w", fullTargetPath, err)
+		}
+
+		if err := tmpl.Execute(outFile, data); err != nil {
+			outFile.Close()
+			return fmt.Errorf("execute template %s: %w", templatePath, err)
+		}
+		outFile.Close()
+
+		fmt.Printf("✅ Created Copilot instruction: %s\n", targetPath)
+	}
+
+	fmt.Println("✅ GitHub Copilot instructions configured")
+	return nil
 }
 
 // CANARY: REQ=CBIN-105; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16

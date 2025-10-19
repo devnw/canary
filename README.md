@@ -367,6 +367,63 @@ Slash commands for autonomous workflows:
 - `/canary.specify` - Create new requirement
 - `/canary.plan <req-id>` - Generate implementation plan
 
+### 🚀 GitHub Copilot Integration
+
+<!-- CANARY: REQ=CBIN-148; FEATURE="InitDocs"; ASPECT=Docs; STATUS=IMPL; UPDATED=2025-10-19 -->
+
+CANARY automatically configures GitHub Copilot with project-specific instructions:
+
+```bash
+canary init my-project
+# Creates .github/instructions/ with CANARY workflow guidance
+```
+
+**What Gets Configured:**
+
+- **Repository-wide instructions** - CANARY token format, test-first development, constitutional principles
+- **Path-specific guidance** - Context-aware help for specs, tests, and .canary/ directory
+- **Automatic discovery** - Works with both GitHub Copilot CLI and VS Code Copilot Chat
+
+**Instruction Files Created:**
+
+```
+.github/instructions/
+├── repository.md              # CANARY workflow fundamentals
+├── .canary/
+│   ├── instruction.md        # CANARY directory guidelines
+│   └── specs/
+│       └── instruction.md    # Specification writing (WHAT/WHY, not HOW)
+└── tests/
+    └── instruction.md        # Test-first development guidelines
+```
+
+**Verification:**
+
+```bash
+# Using GitHub Copilot CLI
+gh copilot suggest "What is the CANARY token format?"
+
+# Using VS Code Copilot Chat
+# Ask: "@workspace What is the CANARY token format?"
+```
+
+**Features:**
+- ✅ Zero manual configuration required
+- ✅ Preserves custom instructions on re-init
+- ✅ Project key substitution in templates
+- ✅ Compatible with Copilot CLI and VS Code
+
+**Re-initialization Safe:**
+
+```bash
+# Customize your instructions
+echo "# Custom Rule" >> .github/instructions/repository.md
+
+# Re-run init - your customizations are preserved
+canary init --local
+# ⏭️  Skipping existing instruction file: repository.md
+```
+
 ## Documentation
 
 ### User Documentation
