@@ -14,5 +14,5 @@ permissions:
 
 jobs:
   build:
-    uses: spyderorg/workflows/.github/workflows/make-ci.yml@main
+    uses: devnw/workflows/.github/workflows/make-ci.yml@main
     secrets: inherit # pragma: allowlist secret
