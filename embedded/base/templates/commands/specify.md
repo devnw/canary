@@ -21,8 +21,8 @@ The text the user typed after `/canary.specify` is the feature description.
 Given that feature description, do this:
 
 1. **Generate requirement ID**:
-   - Scan existing `.canary/specs/` directory for highest CBIN-### number
-   - Assign next sequential ID (e.g., if CBIN-105 exists, use CBIN-106)
+   - Scan existing `.canary/specs/` directory for highest {{.ProjectKey}}-### number
+   - Assign next sequential ID (e.g., if {{.ProjectKey}}-105 exists, use {{.ProjectKey}}-106)
    - Format: CBIN-XXX (zero-padded 3 digits)
 
 2. **Generate concise feature name** (2-4 words):
@@ -85,17 +85,17 @@ After creating the spec, validate:
 
 User input: "Add user authentication with email/password and OAuth2 support"
 
-1. Generate ID: CBIN-107
+1. Generate ID: {{.ProjectKey}}-107
 2. Feature name: "user-authentication"
-3. Create: `.canary/specs/CBIN-107-user-authentication/spec.md`
+3. Create: `.canary/specs/{{.ProjectKey}}-107-user-authentication/spec.md`
 4. CANARY token:
    ```
-   // CANARY: REQ=CBIN-107; FEATURE="UserAuthentication"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-16
+   // CANARY: REQ={{.ProjectKey}}-107; FEATURE="UserAuthentication"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-16
    ```
 5. Suggest placement:
    ```go
    // File: internal/auth/auth.go
-   // CANARY: REQ=CBIN-107; FEATURE="UserAuthentication"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-16
+   // CANARY: REQ={{.ProjectKey}}-107; FEATURE="UserAuthentication"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-16
    package auth
 
    func Authenticate(credentials Credentials) (*Session, error) {

@@ -232,7 +232,7 @@ Retry succeeds on second attempt.
 - Reduced testcase: artifacts/login-retry.html
 
 ## Related / Dependencies
-REQ: CBIN-API-134 (UserOnboarding)
+REQ: {{.ProjectKey}}-API-134 (UserOnboarding)
 
 ## Next Actions (Triage)
 Assign API team • Add failing test • Investigate session initialization race.

@@ -101,7 +101,7 @@ Scan the codebase for CANARY requirement tokens and generate comprehensive statu
 ### Quality Metrics
 - Test Coverage: 70% (TESTED+BENCHED)
 - Benchmark Coverage: 30% (BENCHED)
-- Stale Tokens: 2 (CBIN-001, CBIN-004)
+- Stale Tokens: 2 ({{.ProjectKey}}-001, {{.ProjectKey}}-004)
 
 **Reports Generated:**
 - [status.json](./status.json) - Detailed JSON report
@@ -110,16 +110,16 @@ Scan the codebase for CANARY requirement tokens and generate comprehensive statu
 ### Action Items
 
 1. **Update Stale Tokens**: Run `canary scan --update-stale`
-   - CBIN-001: UserAuth (updated 2024-01-01, age 288 days)
-   - CBIN-004: Cache (updated 2024-01-01, age 288 days)
+   - {{.ProjectKey}}-001: UserAuth (updated 2024-01-01, age 288 days)
+   - {{.ProjectKey}}-004: Cache (updated 2024-01-01, age 288 days)
 
 2. **Add Tests**: 2 IMPL requirements need tests
-   - CBIN-003: DataValidation
-   - CBIN-007: ReportGenerator
+   - {{.ProjectKey}}-003: DataValidation
+   - {{.ProjectKey}}-007: ReportGenerator
 
 3. **Add Benchmarks**: 4 TESTED requirements could use performance benchmarks
-   - CBIN-002: TokenParser
-   - CBIN-005: Serializer
+   - {{.ProjectKey}}-002: TokenParser
+   - {{.ProjectKey}}-005: Serializer
 ```
 
 ## Guidelines

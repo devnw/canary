@@ -28,13 +28,13 @@ done
 # Validate required arguments
 if [[ -z "$REQ_ID" ]]; then
   echo "Error: --req-id required" >&2
-  echo "Usage: $0 --req-id CBIN-XXX --feature \"feature-name\"" >&2
+  echo "Usage: $0 --req-id {{.ProjectKey}}-XXX --feature \"feature-name\"" >&2
   exit 1
 fi
 
 if [[ -z "$FEATURE" ]]; then
   echo "Error: --feature required" >&2
-  echo "Usage: $0 --req-id CBIN-XXX --feature \"feature-name\"" >&2
+  echo "Usage: $0 --req-id {{.ProjectKey}}-XXX --feature \"feature-name\"" >&2
   exit 1
 fi
 
@@ -49,7 +49,7 @@ if [[ -f ".canary/templates/spec-template.md" ]]; then
 
   # Replace placeholders
   DATE=$(date +%Y-%m-%d)
-  sed -i "s/CBIN-XXX/${REQ_ID}/g" "$SPEC_FILE"
+  sed -i "s/{{.ProjectKey}}-XXX/${REQ_ID}/g" "$SPEC_FILE"
   sed -i "s/\[FEATURE NAME\]/${FEATURE}/g" "$SPEC_FILE"
   sed -i "s/YYYY-MM-DD/${DATE}/g" "$SPEC_FILE"
 else

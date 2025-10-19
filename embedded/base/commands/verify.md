@@ -21,8 +21,8 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
 
 2. **Parse claimed requirements**:
    - Find lines starting with `✅` followed by requirement ID
-   - Extract all claimed CBIN-XXX identifiers
-   - Example: `✅ CBIN-001 - UserAuth fully implemented`
+   - Extract all claimed {{.ProjectKey}}-XXX identifiers
+   - Example: `✅ {{.ProjectKey}}-001 - UserAuth fully implemented`
 
 3. **Run verification scan**:
    ```bash
@@ -48,10 +48,10 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
    **Status:** PASS / FAIL
 
    ### Claimed Requirements: N
-   - ✅ CBIN-001: UserAuth (BENCHED, verified)
-   - ✅ CBIN-002: DataValidation (TESTED, verified)
-   - ❌ CBIN-003: ReportGen (IMPL only, overclaim)
-   - ⚠️ CBIN-004: Cache (TESTED but stale, 288 days old)
+   - ✅ {{.ProjectKey}}-001: UserAuth (BENCHED, verified)
+   - ✅ {{.ProjectKey}}-002: DataValidation (TESTED, verified)
+   - ❌ {{.ProjectKey}}-003: ReportGen (IMPL only, overclaim)
+   - ⚠️ {{.ProjectKey}}-004: Cache (TESTED but stale, 288 days old)
 
    ### Verification Summary
    - Valid Claims: X
@@ -63,9 +63,9 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
    ```
 
 6. **Provide remediation steps** (if verification failed):
-   - For overclaims: "Add TEST= field and create test function for CBIN-XXX"
+   - For overclaims: "Add TEST= field and create test function for {{.ProjectKey}}-XXX"
    - For stale tokens: "Run `canary scan --update-stale` to refresh UPDATED fields"
-   - For missing tokens: "Remove ✅ CBIN-XXX from GAP_ANALYSIS.md (not found in code)"
+   - For missing tokens: "Remove ✅ {{.ProjectKey}}-XXX from GAP_ANALYSIS.md (not found in code)"
 
 ## Verification Rules
 
@@ -85,16 +85,16 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
 # Requirements Gap Analysis
 
 ## Verified Requirements
-✅ CBIN-001 - User authentication fully tested
-✅ CBIN-002 - Data validation with comprehensive tests
-✅ CBIN-003 - Report generation functional
+✅ {{.ProjectKey}}-001 - User authentication fully tested
+✅ {{.ProjectKey}}-002 - Data validation with comprehensive tests
+✅ {{.ProjectKey}}-003 - Report generation functional
 ```
 
 **Verification scan finds:**
 ```
-✅ CBIN-001: STATUS=BENCHED, UPDATED=2025-10-15 → Valid
-✅ CBIN-002: STATUS=TESTED, UPDATED=2025-10-14 → Valid
-❌ CBIN-003: STATUS=IMPL, missing TEST= field → Overclaim!
+✅ {{.ProjectKey}}-001: STATUS=BENCHED, UPDATED=2025-10-15 → Valid
+✅ {{.ProjectKey}}-002: STATUS=TESTED, UPDATED=2025-10-14 → Valid
+❌ {{.ProjectKey}}-003: STATUS=IMPL, missing TEST= field → Overclaim!
 ```
 
 **Report:**
@@ -104,12 +104,12 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
 **Status:** ❌ FAILED
 
 ### Verification Details
-- ✅ CBIN-001: UserAuth (BENCHED, verified)
-- ✅ CBIN-002: DataValidation (TESTED, verified)
-- ❌ CBIN-003: ReportGen (IMPL only, overclaim detected)
+- ✅ {{.ProjectKey}}-001: UserAuth (BENCHED, verified)
+- ✅ {{.ProjectKey}}-002: DataValidation (TESTED, verified)
+- ❌ {{.ProjectKey}}-003: ReportGen (IMPL only, overclaim detected)
 
 ### Action Required
-1. Add tests for CBIN-003:
+1. Add tests for {{.ProjectKey}}-003:
    - Create test function: `TestReportGeneration`
    - Add to token: `TEST=TestReportGeneration`
    - Ensure test passes
@@ -118,7 +118,7 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
 OR
 
 2. Update GAP_ANALYSIS.md:
-   - Remove `✅` marker from CBIN-003
+   - Remove `✅` marker from {{.ProjectKey}}-003
    - Move to "In Progress" section
 ```
 

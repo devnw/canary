@@ -29,7 +29,7 @@ This project uses CANARY requirement tracking with spec-kit-inspired workflows.
 ## CANARY Token Format
 
 ```
-// CANARY: REQ=CBIN-###; FEATURE="Name"; ASPECT=API; STATUS=IMPL; [TEST=TestName]; [BENCH=BenchName]; [OWNER=team]; UPDATED=YYYY-MM-DD
+// CANARY: REQ={{.ProjectKey}}-###; FEATURE="Name"; ASPECT=API; STATUS=IMPL; [TEST=TestName]; [BENCH=BenchName]; [OWNER=team]; UPDATED=YYYY-MM-DD
 ```
 
 ## Status Progression
@@ -70,7 +70,7 @@ canary scan --root . --update-stale
 
 **Create token:**
 ```bash
-canary create CBIN-105 "FeatureName" --aspect API --status IMPL
+canary create {{.ProjectKey}}-105 "FeatureName" --aspect API --status IMPL
 ```
 
 ## Project Structure
