@@ -110,9 +110,6 @@ dockers:
       - canary
 
     image_templates:
-      - "devnw/canary:latest"
-      - "devnw/canary:{{ .Tag }}"
-      - "devnw/canary:v{{ .Major }}"
       - "gcr.io/devnw/canary:latest"
 
     dockerfile: "{{ .Env.DOCKERFILE }}"
@@ -140,9 +137,6 @@ dockers:
     ids:
       - canary
     image_templates:
-      - "devnw/canary:latest"
-      - "devnw/canary:{{ .Tag }}"
-      - "devnw/canary:v{{ .Major }}"
       - "gcr.io/devnw/canary:latest"
     dockerfile: "{{ .Env.DOCKERFILE }}"
     use: docker
