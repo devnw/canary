@@ -4,8 +4,16 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     flake-utils.url = "github:numtide/flake-utils";
-    # Shared development environment (provides pinned Go + Zig 0.15.1 + common tools)
-    dev-env.url = "github:spyderorg/dev-env";
+
+    dev-env = {
+      url = "github:devnw/dev-env";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        unstable.follows = "nixpkgs";
+        flake-utils.follows = "flake-utils";
+      };
+    };
+
     gomod2nix.url = "github:nix-community/gomod2nix";
   };
 
@@ -24,7 +32,7 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           # Pull toolchains / common tooling from centralized dev-env flake
-          inherit (dev-env.packages.${system}) zigPackages goPackages commonPackages;
+          inherit (dev-env.packages.${system}) goPackages commonPackages;
           buildGoApp = gomod2nix.legacyPackages.${system}.buildGoApplication;
 
           # Use GOPRIVATE only (default to go.spyder.org)
@@ -131,7 +139,6 @@
             }
             // gitAuthEnv;
             packages =
-              # Base developer toolchain (Go + Zig + shared utilities)
               [
                 goPackages
                 commonPackages
@@ -146,9 +153,15 @@
     flake-utils.lib.eachDefaultSystem (system: flakeForSystem nixpkgs system);
 
   nixConfig = {
-    extra-substituters = [ "https://spyder.cachix.org" ];
+    extra-substituters = [
+      "https://oss-devnw.cachix.org"
+      "https://oss-spyder.cachix.org"
+      "https://oss-codepros.cachix.org"
+    ];
     extra-trusted-public-keys = [
-      "spyder.cachix.org-1:xZG2a8INH6yNyOAwtN2Ojjys0GO9D1pXEe3PNriT04E="
+      "oss-devnw.cachix.org-1:iJblmQB0mX8MTEqkKJv3piJK3mimEbHpgU1+FSeRuGY="
+      "oss-spyder.cachix.org-1:CMypXJpvr7z6IGQdIGDHgZBaZX7JSX9AuPErD/in01g="
+      "oss-codepros.cachix.org-1:dP82KzkIxKQp+kS1RgxasR9JYlFdy4W9y7heHeD5h34="
     ];
   };
 }
