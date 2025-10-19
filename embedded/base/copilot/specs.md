@@ -1,4 +1,4 @@
-<!-- CANARY: REQ=CBIN-148; FEATURE="InstructionTemplates"; ASPECT=Docs; STATUS=TESTED; TEST=TestCopilotInstructionTemplateValidity; UPDATED=2025-10-19 -->
+<!-- CANARY: REQ=CBIN-148; FEATURE="InstructionTemplates"; ASPECT=Docs; STATUS=BENCHED; TEST=TestCopilotInstructionTemplateValidity; BENCH=BenchmarkCreateCopilotInstructions; UPDATED=2025-10-19 -->
 
 # CANARY Specification Writing Guidelines
 
@@ -22,14 +22,6 @@ You are working in the `.canary/specs/` directory where requirement specificatio
 - ~~"Store in PostgreSQL database"~~
 - ~~"Use React hooks for state management"~~
 
-## Required Specification Sections
-
-1. **Overview** - Purpose and scope
-2. **User Stories** - Who wants what and why
-3. **Functional Requirements** - Testable, unambiguous requirements
-4. **Success Criteria** - Measurable, technology-agnostic outcomes
-5. **User Scenarios** - Given/When/Then acceptance tests
-
 ## Technology-Agnostic Writing
 
 Describe requirements without mentioning:
@@ -41,6 +33,14 @@ Describe requirements without mentioning:
 
 Implementation details belong in the **plan.md** file, not the specification.
 
+## Required Specification Sections
+
+1. **Overview** - Purpose and scope
+2. **User Stories** - Who wants what and why
+3. **Functional Requirements** - Testable, unambiguous requirements
+4. **Success Criteria** - Measurable, technology-agnostic outcomes
+5. **User Scenarios** - Given/When/Then acceptance tests
+
 ## Measurable Success Criteria
 
 Every success criterion must be:
@@ -48,8 +48,25 @@ Every success criterion must be:
 - **User-Focused**: Describe outcomes from user perspective
 - **Verifiable**: Can be tested without knowing implementation
 
-## Related Commands
+## Creating Specifications
 
-- `/canary.specify` - Create new specification
-- `/canary.plan` - Create implementation plan (where HOW goes)
-- `/canary.scan` - Check spec completeness
+**Read `.canary/commands/specify.md` for the complete workflow**, including:
+- How to generate requirement IDs
+- Required sections and quality standards
+- Validation criteria
+- Example specifications
+
+## Planning Implementation
+
+**Read `.canary/commands/plan.md` for creating technical plans** (where HOW goes):
+- Architecture decisions
+- Technology choices
+- Implementation phases
+- Testing strategy
+
+## Related Files
+
+- `.canary/commands/specify.md` - Complete specification workflow
+- `.canary/commands/plan.md` - Implementation planning workflow
+- `.canary/templates/spec-template.md` - Specification template
+- `.canary/memory/constitution.md` - Governing principles

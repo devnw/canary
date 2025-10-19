@@ -108,6 +108,11 @@ func TestCopilotInstructionTemplateValidity(t *testing.T) {
 		if !strings.Contains(string(content), "CANARY:") {
 			t.Errorf("template %s missing CANARY token", tmpl)
 		}
+
+		// Verify templates reference shared command files (not duplicate content)
+		if !strings.Contains(string(content), ".canary/commands/") {
+			t.Errorf("template %s should reference .canary/commands/ files", tmpl)
+		}
 	}
 }
 

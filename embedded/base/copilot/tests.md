@@ -1,4 +1,4 @@
-<!-- CANARY: REQ=CBIN-148; FEATURE="InstructionTemplates"; ASPECT=Docs; STATUS=TESTED; TEST=TestCopilotInstructionTemplateValidity; UPDATED=2025-10-19 -->
+<!-- CANARY: REQ=CBIN-148; FEATURE="InstructionTemplates"; ASPECT=Docs; STATUS=BENCHED; TEST=TestCopilotInstructionTemplateValidity; BENCH=BenchmarkCreateCopilotInstructions; UPDATED=2025-10-19 -->
 
 # CANARY Test-First Development Guidelines
 
@@ -67,7 +67,27 @@ Write minimal code to make the test pass.
 - Integration tests for end-to-end flows
 - Benchmarks for performance-critical code (BENCH= field)
 
-## Related Commands
+## Complete TDD Workflow
 
-- `/canary.implement` - Get implementation guidance with TDD workflow
-- `/canary.scan` - Verify test coverage
+**Read `.canary/commands/implement.md` for the complete test-first workflow**, including:
+- RED-GREEN-REFACTOR cycle details
+- Constitutional compliance validation
+- Status progression rules
+- Implementation guidance
+
+**Read `.canary/memory/constitution.md` for Articles IV and VI** covering:
+- Test-First Imperative (Article IV)
+- Integration-First Testing (Article VI)
+
+## Verification
+
+**Use `/canary.scan` to verify test coverage:**
+- Checks for TEST= fields on TESTED status tokens
+- Identifies missing tests
+- Validates test-first compliance
+
+## Related Files
+
+- `.canary/commands/implement.md` - Implementation workflow with TDD
+- `.canary/commands/scan.md` - Test coverage verification
+- `.canary/memory/constitution.md` - Articles IV & VI

@@ -1,4 +1,4 @@
-<!-- CANARY: REQ=CBIN-148; FEATURE="InstructionTemplates"; ASPECT=Docs; STATUS=TESTED; TEST=TestCopilotInstructionTemplateValidity; UPDATED=2025-10-19 -->
+<!-- CANARY: REQ=CBIN-148; FEATURE="InstructionTemplates"; ASPECT=Docs; STATUS=BENCHED; TEST=TestCopilotInstructionTemplateValidity; BENCH=BenchmarkCreateCopilotInstructions; UPDATED=2025-10-19 -->
 
 # CANARY Directory Guidelines
 
@@ -8,6 +8,12 @@ You are working in the `.canary/` directory - the heart of the CANARY requiremen
 
 ```
 .canary/
+├── commands/                # Slash command definitions (READ THESE!)
+│   ├── specify.md
+│   ├── plan.md
+│   ├── implement.md
+│   ├── scan.md
+│   └── ... (all commands)
 ├── specs/                  # Requirement specifications (WHAT/WHY)
 │   └── {{.ProjectKey}}-XXX-feature/
 │       ├── spec.md        # Requirement specification
@@ -15,20 +21,28 @@ You are working in the `.canary/` directory - the heart of the CANARY requiremen
 ├── templates/              # Templates for specs, plans, commands
 ├── memory/                 # Project context and principles
 │   └── constitution.md    # Governing principles
-├── scripts/                # Automation scripts
-└── agents/                 # AI agent configurations
+└── scripts/                # Automation scripts
 ```
 
 ## Key Files
 
 ### constitution.md
-Project governing principles. Review before implementing features.
+Project governing principles. **Read this before implementing any feature.**
 
 **Core Principles:**
 - Article I: Requirement-First Development
 - Article IV: Test-First Imperative (non-negotiable)
 - Article V: Simplicity and Anti-Abstraction
 - Article VI: Integration-First Testing
+
+### commands/*.md
+**Complete workflow definitions for all slash commands.** These files contain:
+- Step-by-step execution workflows
+- Example inputs and outputs
+- Quality validation criteria
+- Constitutional compliance checks
+
+**Always read the command file before executing that command.**
 
 ### specs/{{.ProjectKey}}-XXX-feature/
 Each requirement has its own directory containing:
@@ -38,6 +52,8 @@ Each requirement has its own directory containing:
 ## Working with CANARY
 
 ### Creating New Requirements
+
+**Read `.canary/commands/specify.md` first**, then:
 
 ```bash
 # Use slash command
@@ -49,6 +65,8 @@ canary create {{.ProjectKey}}-XXX "FeatureName"
 
 ### Planning Implementation
 
+**Read `.canary/commands/plan.md` first**, then:
+
 ```bash
 # Use slash command
 /canary.plan {{.ProjectKey}}-XXX
@@ -58,6 +76,8 @@ canary create {{.ProjectKey}}-XXX "FeatureName"
 
 ### Implementing Features
 
+**Read `.canary/commands/implement.md` first**, then:
+
 ```bash
 # Use slash command
 /canary.implement {{.ProjectKey}}-XXX
@@ -66,6 +86,8 @@ canary create {{.ProjectKey}}-XXX "FeatureName"
 ```
 
 ### Scanning Progress
+
+**Read `.canary/commands/scan.md` first**, then:
 
 ```bash
 # Use slash command
@@ -91,10 +113,28 @@ CANARY tokens track requirement status directly in source code.
 - TESTED: Must have TEST=TestName field
 - BENCHED: Must have BENCH=BenchName field
 
-## Related Commands
+See `.canary/commands/specify.md` for complete token format details.
 
-- `/canary.specify` - Create new requirement specification
-- `/canary.plan` - Generate implementation plan
-- `/canary.implement` - Get implementation guidance
-- `/canary.scan` - Scan for tokens and generate reports
-- `/canary.verify` - Verify GAP_ANALYSIS.md claims
+## Available Commands
+
+**All commands are documented in `.canary/commands/` - read those files for workflows:**
+
+- `/canary.specify` → `commands/specify.md` - Create new requirement specification
+- `/canary.plan` → `commands/plan.md` - Generate implementation plan
+- `/canary.implement` → `commands/implement.md` - Get implementation guidance
+- `/canary.scan` → `commands/scan.md` - Scan for tokens and generate reports
+- `/canary.verify` → `commands/verify.md` - Verify GAP_ANALYSIS.md claims
+- `/canary.show` → `commands/show.md` - Display all tokens for a requirement
+- `/canary.status` → `commands/status.md` - Show implementation progress
+- `/canary.files` → `commands/files.md` - List files containing tokens
+- `/canary.grep` → `commands/grep.md` - Search tokens by keyword
+
+**For complete workflows, examples, and validation criteria, read the command file.**
+
+## Related Files
+
+- `commands/*.md` - Complete command workflows (PRIMARY REFERENCE)
+- `memory/constitution.md` - Governing principles
+- `templates/spec-template.md` - Specification template
+- `templates/plan-template.md` - Implementation plan template
+- `AGENT_CONTEXT.md` - Complete agent reference
