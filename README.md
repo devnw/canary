@@ -1,6 +1,6 @@
 # CANARY
 
-**Requirement Tracking System for Code-First Development**
+**Agentic-Coding-Friendly Requirement Tracking System**
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go)](https://go.dev/)
@@ -9,18 +9,17 @@
 [![Go Reference](https://pkg.go.dev/badge/go.devnw.com/canary.svg)](https://pkg.go.dev/go.devnw.com/canary)
 [![Version](https://img.shields.io/github/v/tag/devnw/canary?sort=semver&style=plastic)](https://github.com/devnw/canary/releases)
 
-CANARY is a requirement tracking system that embeds tokens directly into source code, enabling precise tracking of features, tests, benchmarks, and documentation. It bridges the gap between requirements and implementation by making every feature claim searchable, verifiable, and traceable.
+CANARY is a requirement tracking system that embeds tokens directly into 
+source code, enabling precise tracking of features, tests, benchmarks, and 
+documentation. This bridges the gap between requirements and implementation,
+ensuring that an agent coding system has not only the ability to be precise
+in the specification and planning phases but the outputs of which can be
+measured and verified automatically.
 
-## Why CANARY?
-
-Traditional requirement tracking systems live in separate tools (JIRA, Linear, etc.), creating a disconnect between requirements and code. CANARY solves this by:
-
-- **Code-First Tracking**: Requirements live in source code as structured comments
-- **Verification Gates**: Prevent overclaiming by requiring TESTED or BENCHED status
-- **Dependency Management**: Express dependencies between requirements with circular detection
-- **Documentation Currency**: Track documentation status with cryptographic hashes
-- **AI-Friendly**: Designed for autonomous agent workflows with slash commands
-- **Test-First Enforcement**: Constitutional principles ensure quality over speed
+The CANARY system is designed with autonomous AI agents in mind, providing
+slash commands and structured data to facilitate agent workflows. It also
+enforces a test-first development approach through constitutional principles,
+ensuring that quality is prioritized over speed.
 
 ## Quick Start
 
