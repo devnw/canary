@@ -24,13 +24,13 @@ func TestCANARY_CBIN_101_Engine_ScanBasic(t *testing.T) {
 	dir := t.TempDir()
 	fixtures := map[string]string{
 		"file1.go": `package p
-// CANARY: REQ=CBIN-200; FEATURE="Alpha"; ASPECT=API; STATUS=STUB; UPDATED=2025-09-20
+// CANARY: REQ=CBIN-200; FEATURE="Alpha"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-15
 `,
 		"file2.go": `package p
-// CANARY: REQ=CBIN-201; FEATURE="Bravo"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-09-20
+// CANARY: REQ=CBIN-201; FEATURE="Bravo"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-15
 `,
 		"file3.go": `package p
-// CANARY: REQ=CBIN-202; FEATURE="Charlie"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-09-20
+// CANARY: REQ=CBIN-202; FEATURE="Charlie"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-10-15
 `,
 	}
 	for name, content := range fixtures {
@@ -77,7 +77,7 @@ func setupFixture(tb testing.TB, numFiles int) string {
 	dir := tb.TempDir()
 	for i := 0; i < numFiles; i++ {
 		content := fmt.Sprintf(`package p
-// CANARY: REQ=CBIN-%03d; FEATURE="Feature%d"; ASPECT=API; STATUS=IMPL; UPDATED=2025-09-20
+// CANARY: REQ=CBIN-%03d; FEATURE="Feature%d"; ASPECT=API; STATUS=IMPL; UPDATED=2025-10-15
 `, i, i)
 		if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("file%d.go", i)), []byte(content), 0o644); err != nil {
 			tb.Fatal(err)

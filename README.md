@@ -35,6 +35,13 @@ cd canary
 make build
 ```
 
+## Repository
+
+The code is hosted on GitHub:
+
+- Repository: [Github](https://github.com/devnw/canary)
+- Code Ref: [pkg.go.dev](https://pkg.go.dev/go.devnw.com/canary)
+
 ### Initialize Your Project
 
 ```bash
@@ -545,11 +552,11 @@ We welcome contributions! Please:
 5. Update documentation with DOC= fields
 6. Verify before submitting: `canary scan --verify GAP_ANALYSIS.md`
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for detailed guidelines.
 
 ## License
 
-Licensed under the terms found in [LICENSE](LICENSE).
+Licensed under the terms found in [LICENSE](https://github.com/devnw/canary/blob/main/LICENSE).
 
 ## Acknowledgments
 

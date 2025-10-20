@@ -13,8 +13,8 @@ import (
 
 func TestAcceptance_ParseAndSummarizeFixture_WithPromotion(t *testing.T) {
 	dir := t.TempDir()
-	mustWrite(t, filepath.Join(dir, "file1.zig"), `// CANARY: REQ=REQ-GQL-042; FEATURE="CDC/Streaming"; ASPECT=API; STATUS=STUB; TEST=tests/e2e_cdc.zig:TestCANARY_REQ_GQL_042_StartStop; OWNER=streaming; UPDATED=2025-09-20`)
-	mustWrite(t, filepath.Join(dir, "file2.go"), `// CANARY: REQ=REQ-GQL-046; FEATURE="TDE"; ASPECT=Storage; STATUS=IMPL; TEST=TestCANARY_REQ_GQL_046_KeyRotate; OWNER=security; UPDATED=2025-09-20`)
+	mustWrite(t, filepath.Join(dir, "file1.zig"), `// CANARY: REQ=REQ-GQL-042; FEATURE="CDC/Streaming"; ASPECT=API; STATUS=STUB; TEST=tests/e2e_cdc.zig:TestCANARY_REQ_GQL_042_StartStop; OWNER=streaming; UPDATED=2025-10-15`)
+	mustWrite(t, filepath.Join(dir, "file2.go"), `// CANARY: REQ=REQ-GQL-046; FEATURE="TDE"; ASPECT=Storage; STATUS=IMPL; TEST=TestCANARY_REQ_GQL_046_KeyRotate; OWNER=security; UPDATED=2025-10-15`)
 
 	rep, err := Scan(dir)
 	if err != nil {
@@ -35,7 +35,7 @@ func TestAcceptance_ParseAndSummarizeFixture_WithPromotion(t *testing.T) {
 
 func TestAcceptance_PromotionToBenched(t *testing.T) {
 	dir := t.TempDir()
-	mustWrite(t, filepath.Join(dir, "file3.zig"), `// CANARY: REQ=REQ-GQL-050; FEATURE="RecursiveQuery"; ASPECT=Planner; STATUS=IMPL; BENCH=BenchmarkCANARY_REQ_GQL_050_RecursivePerf; UPDATED=2025-09-20`)
+	mustWrite(t, filepath.Join(dir, "file3.zig"), `// CANARY: REQ=REQ-GQL-050; FEATURE="RecursiveQuery"; ASPECT=Planner; STATUS=IMPL; BENCH=BenchmarkCANARY_REQ_GQL_050_RecursivePerf; UPDATED=2025-10-15`)
 	rep, err := Scan(dir)
 	if err != nil {
 		t.Fatalf("scan: %v", err)
@@ -53,7 +53,7 @@ func TestAcceptance_VerifyFailsOnOverclaim(t *testing.T) {
 
 	// repo with only STUB marker
 	dir := t.TempDir()
-	mustWrite(t, filepath.Join(dir, "cdc.zig"), `// CANARY: REQ=REQ-GQL-042; FEATURE="CDC"; ASPECT=API; STATUS=STUB; UPDATED=2025-09-20`)
+	mustWrite(t, filepath.Join(dir, "cdc.zig"), `// CANARY: REQ=REQ-GQL-042; FEATURE="CDC"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-15`)
 
 	rep, _ := Scan(dir)
 	claims, _ := ParseGAPClaims(p)

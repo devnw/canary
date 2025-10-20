@@ -37,7 +37,7 @@ func TestCANARY_CBIN_102_CLI_Verify(t *testing.T) {
 	repoDir := t.TempDir()
 	repoFile := filepath.Join(repoDir, "code.go")
 	repoContent := `package p
-// CANARY: REQ=CBIN-888; FEATURE="Present"; ASPECT=API; STATUS=TESTED; TEST=TestFoo; UPDATED=2025-09-20
+// CANARY: REQ=CBIN-888; FEATURE="Present"; ASPECT=API; STATUS=TESTED; TEST=TestFoo; UPDATED=2025-10-15
 `
 	if err := os.WriteFile(repoFile, []byte(repoContent), 0o644); err != nil {
 		t.Fatal(err)
@@ -115,7 +115,7 @@ func setupGAPFixture(tb testing.TB, numClaims int) (string, *Report) {
 		rep.Requirements[i] = Requirement{
 			ID: fmt.Sprintf("CBIN-%03d", i),
 			Features: []Feature{
-				{Feature: fmt.Sprintf("Feature%d", i), Aspect: "API", Status: "TESTED", Tests: []string{"TestFoo"}, Updated: "2025-09-20"},
+				{Feature: fmt.Sprintf("Feature%d", i), Aspect: "API", Status: "TESTED", Tests: []string{"TestFoo"}, Updated: "2025-10-15"},
 			},
 		}
 	}
