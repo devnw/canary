@@ -92,8 +92,8 @@ Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days 
    git commit -m "chore: update stale CANARY tokens
 
    Updated UPDATED field for N stale tokens:
-   - {{.ReqID}}-<ASPECT>-001: UserAuth
-   - {{.ReqID}}-<ASPECT>-004: CacheOptimization
+   - {{.ReqID}}-SECURITY_REVIEW-001: UserAuth
+   - {{.ReqID}}-SECURITY_REVIEW-004: CacheOptimization
 
    All TESTED/BENCHED requirements now current (within 30 days).
    "
@@ -109,7 +109,7 @@ Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days 
 
 ### Before Update
 ```go
-// CANARY: REQ={{.ReqID}}-<ASPECT>-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2024-01-01
+// CANARY: REQ={{.ReqID}}-SECURITY_REVIEW-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2024-01-01
 ```
 
 ### After Update

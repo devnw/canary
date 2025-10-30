@@ -15,7 +15,7 @@ $ARGUMENTS
 Display all CANARY tokens for a specific requirement, organized by aspect or status.
 
 1. **Parse requirement ID**:
-   - Extract REQ-ID from arguments (e.g., {{.ReqID}}-<ASPECT>-133)
+   - Extract REQ-ID from arguments (e.g., {{.ReqID}}-SECURITY_REVIEW-133)
    - Validate format (should match XXXX-NNN pattern)
 
 2. **Run canary show command**:

@@ -5,5 +5,5 @@
 -- This migration is informational only
 
 -- Warning: Rolling back this migration means the application will no longer
--- properly support aspect-based requirement IDs (CBIN-<ASPECT>-XXX format)
+-- properly support aspect-based requirement IDs (CBIN-SECURITY_REVIEW-XXX format)
 -- Any tokens with new format IDs will need to be migrated back manually

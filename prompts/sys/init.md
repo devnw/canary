@@ -17,8 +17,8 @@ You are a senior **{{SCANNER_LANG}} {{SCANNER_LANG_VERSION}}** engineer. Bootstr
        - `ASPECT ∈ {{ASPECT_ENUM}}`
        - `STATUS ∈ {{STATUS_ENUM}}`
      - **Test/bench naming**:
-       - `TestCANARY_{{REQ_PREFIX}}_<###>_<Aspect>_<Short>`
-       - `BenchmarkCANARY_{{REQ_PREFIX}}_<###>_<Aspect>_<Short>`
+       - `TestCANARY_{{REQ_PREFIX}}_<###>_<Short>`
+       - `BenchmarkCANARY_{{REQ_PREFIX}}_<###>_<Short>`
      - **Greps**:
        - `rg -n "CANARY:\s*REQ={{REQ_PREFIX}}-" {{SOURCE_DIRS}}`
        - `rg -n "TestCANARY_{{REQ_PREFIX}}_" {{TEST_DIRS}}`

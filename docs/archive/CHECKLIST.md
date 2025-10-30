@@ -22,7 +22,7 @@
   - Validates ASPECT enum: `{API, CLI, Engine, Planner, Storage, Wire, Security, Docs, ...}` (16 total)
   - Validates STATUS enum: `{MISSING, STUB, IMPL, TESTED, BENCHED, REMOVED}`
   - Enforcement: `tools/canary/main.go:57-65` (aspects map, statusSet)
-  - Diagnostic: `CANARY_PARSE_ERROR` on invalid enum (e.g., `ASPECT=<ASPECT>` in CRUSH.md causes parse failure)
+  - Diagnostic: `CANARY_PARSE_ERROR` on invalid enum (e.g., `ASPECT=SECURITY_REVIEW` in CRUSH.md causes parse failure)
 
 ### NormalizeREQ
 - **CBIN-101, CBIN-102, CBIN-103:** TestAcceptance_FixtureSummary, TestAcceptance_SelfCanary

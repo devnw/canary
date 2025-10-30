@@ -49,8 +49,8 @@ For each requirement, emit **both** a Markdown entry and a JSON record with the 
 * `bench?` (optional): guard(s) like `ns/op <= <N>`, `allocs/op <= <N>`
 * `canary_names`:
 
-  * `test`: `TestCANARY_{{REQ_PREFIX}}_<NNN>_<Aspect>_<Short>` (names only; code/tests are created later)
-  * `bench?`: `BenchmarkCANARY_{{REQ_PREFIX}}_<NNN>_<Aspect>_<Short>`
+  * `test`: `TestCANARY_{{REQ_PREFIX}}_<NNN>_<Short>` (names only; code/tests are created later)
+  * `bench?`: `BenchmarkCANARY_{{REQ_PREFIX}}_<NNN>_<Short>`
 
 **GENERATION RULES.**
 

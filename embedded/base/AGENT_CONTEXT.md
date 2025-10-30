@@ -22,14 +22,14 @@ This project uses CANARY requirement tracking with spec-kit-inspired workflows.
 
 1. **Establish Principles**: `/canary.constitution`
 2. **Define Requirements**: `/canary.specify [feature description]`
-3. **Plan Implementation**: `/canary.plan {{.ReqID}}-<ASPECT>-XXX [tech stack]`
+3. **Plan Implementation**: `/canary.plan {{.ReqID}}-SECURITY_REVIEW-XXX [tech stack]`
 4. **Scan & Verify**: `/canary.scan` and `/canary.verify`
 5. **Update Stale**: `/canary.update-stale` (as needed)
 
 ## CANARY Token Format
 
 ```
-// CANARY: REQ={{.ReqID}}-<ASPECT>-###; FEATURE="Name"; ASPECT=API; STATUS=IMPL; [TEST=TestName]; [BENCH=BenchName]; [OWNER=team]; UPDATED=YYYY-MM-DD
+// CANARY: REQ={{.ReqID}}-SECURITY_REVIEW-###; FEATURE="Name"; ASPECT=API; STATUS=IMPL; [TEST=TestName]; [BENCH=BenchName]; [OWNER=team]; UPDATED=YYYY-MM-DD
 ```
 
 ## Status Progression
@@ -86,7 +86,7 @@ canary create {{.ProjectKey}}-105 "FeatureName" --aspect API --status IMPL
 │   ├── spec-template.md         # Requirement spec template
 │   └── plan-template.md         # Implementation plan template
 └── specs/
-    └── {{.ReqID}}-<ASPECT>-XXX-feature-name/   # Individual requirement specs
+    └── {{.ReqID}}-SECURITY_REVIEW-XXX-feature-name/   # Individual requirement specs
         ├── spec.md
         └── plan.md
 

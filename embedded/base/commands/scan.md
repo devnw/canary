@@ -75,7 +75,7 @@ Scan the codebase for CANARY requirement tokens and generate comprehensive statu
 
 6. **Suggest next steps**:
    - If stale tokens found: "Run `canary scan --update-stale` to auto-update"
-   - If STUB tokens found: "Use `/canary.plan` to plan implementation for {{.ReqID}}-<ASPECT>-XXX"
+   - If STUB tokens found: "Use `/canary.plan` to plan implementation for {{.ReqID}}-SECURITY_REVIEW-XXX"
    - If IMPL tokens without tests: "Add TEST= field and create test functions"
 
 ## Example Output
@@ -101,7 +101,7 @@ Scan the codebase for CANARY requirement tokens and generate comprehensive statu
 ### Quality Metrics
 - Test Coverage: 70% (TESTED+BENCHED)
 - Benchmark Coverage: 30% (BENCHED)
-- Stale Tokens: 2 ({{.ReqID}}-<ASPECT>-001, {{.ReqID}}-<ASPECT>-004)
+- Stale Tokens: 2 ({{.ReqID}}-SECURITY_REVIEW-001, {{.ReqID}}-SECURITY_REVIEW-004)
 
 **Reports Generated:**
 - [status.json](./status.json) - Detailed JSON report
@@ -110,16 +110,16 @@ Scan the codebase for CANARY requirement tokens and generate comprehensive statu
 ### Action Items
 
 1. **Update Stale Tokens**: Run `canary scan --update-stale`
-   - {{.ReqID}}-<ASPECT>-001: UserAuth (updated 2024-01-01, age 288 days)
-   - {{.ReqID}}-<ASPECT>-004: Cache (updated 2024-01-01, age 288 days)
+   - {{.ReqID}}-SECURITY_REVIEW-001: UserAuth (updated 2024-01-01, age 288 days)
+   - {{.ReqID}}-SECURITY_REVIEW-004: Cache (updated 2024-01-01, age 288 days)
 
 2. **Add Tests**: 2 IMPL requirements need tests
-   - {{.ReqID}}-<ASPECT>-003: DataValidation
-   - {{.ReqID}}-<ASPECT>-007: ReportGenerator
+   - {{.ReqID}}-SECURITY_REVIEW-003: DataValidation
+   - {{.ReqID}}-SECURITY_REVIEW-007: ReportGenerator
 
 3. **Add Benchmarks**: 4 TESTED requirements could use performance benchmarks
-   - {{.ReqID}}-<ASPECT>-002: TokenParser
-   - {{.ReqID}}-<ASPECT>-005: Serializer
+   - {{.ReqID}}-SECURITY_REVIEW-002: TokenParser
+   - {{.ReqID}}-SECURITY_REVIEW-005: Serializer
 ```
 
 ## Guidelines

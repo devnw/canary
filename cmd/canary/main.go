@@ -1249,7 +1249,7 @@ var specifyCmd = &cobra.Command{
 	Short: "Create a new requirement specification",
 	Long: `Create a new CANARY requirement specification from a feature description.
 
-Generates a new requirement ID with aspect-based format (CBIN-<ASPECT>-XXX),
+Generates a new requirement ID with aspect-based format (CBIN-SECURITY_REVIEW-XXX),
 creates a spec directory, and populates it with a specification template.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -1301,7 +1301,7 @@ creates a spec directory, and populates it with a specification template.`,
 		content = strings.ReplaceAll(content, "CBIN-XXX", generatedID)
 		content = strings.ReplaceAll(content, "[FEATURE NAME]", featureDesc)
 		content = strings.ReplaceAll(content, "YYYY-MM-DD", time.Now().UTC().Format("2006-01-02"))
-		content = strings.ReplaceAll(content, "<ASPECT>", aspect)
+		content = strings.ReplaceAll(content, "SECURITY_REVIEW", aspect)
 
 		if err := os.WriteFile(specFile, []byte(content), 0644); err != nil {
 			return fmt.Errorf("write spec file: %w", err)
@@ -1505,7 +1505,7 @@ tech stack decisions, and CANARY token placement instructions.`,
 		content = strings.ReplaceAll(content, "CBIN-XXX", reqID)
 		content = strings.ReplaceAll(content, "[FEATURE NAME]", featureName)
 		content = strings.ReplaceAll(content, "YYYY-MM-DD", time.Now().UTC().Format("2006-01-02"))
-		content = strings.ReplaceAll(content, "<ASPECT>", aspect)
+		content = strings.ReplaceAll(content, "SECURITY_REVIEW", aspect)
 
 		if techStack != "" {
 			content = strings.ReplaceAll(content, "[Go/Python/JavaScript/etc.]", techStack)

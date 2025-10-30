@@ -15,7 +15,7 @@ $ARGUMENTS
 Display implementation progress for a requirement with completion percentage and breakdown.
 
 1. **Parse requirement ID**:
-   - Extract REQ-ID from arguments (e.g., {{.ReqID}}-<ASPECT>-102)
+   - Extract REQ-ID from arguments (e.g., {{.ReqID}}-SECURITY_REVIEW-102)
    - Validate format
 
 2. **Run canary status command**:

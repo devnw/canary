@@ -239,7 +239,7 @@ Complete evidence chain established:
 
 **Immediate Next Action:** Fix CRUSH.md placeholder (Slice 7)
 - **File:** CRUSH.md:27
-- **Issue:** `ASPECT=<ASPECT>` placeholder causing parse errors
+- **Issue:** `ASPECT=SECURITY_REVIEW` placeholder causing parse errors
 - **Fix:** Replace with valid enum value or remove token
 - **Time:** 5 minutes
 - **Blocks:** Full-repo scanning, CI workflow

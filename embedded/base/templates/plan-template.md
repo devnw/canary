@@ -1,7 +1,7 @@
 <!-- CANARY: REQ=CBIN-Docs-116; FEATURE="PlanTemplate"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
-# Implementation Plan: {{.ReqID}}-<ASPECT>-XXX [FEATURE NAME]
+# Implementation Plan: {{.ReqID}}-SECURITY_REVIEW-XXX [FEATURE NAME]
 
-**Requirement:** {{.ReqID}}-<ASPECT>-XXX (e.g., {{.ReqID}}-CLI-001, {{.ReqID}}-API-042)
+**Requirement:** {{.ReqID}}-SECURITY_REVIEW-XXX (e.g., {{.ReqID}}-CLI-001, {{.ReqID}}-API-042)
 **Specification:** [Link to spec.md]
 **Status:** STUB → IMPL
 **Created:** YYYY-MM-DD
@@ -26,7 +26,7 @@
 ### Token Definition
 ```go
 // File: [path/to/file.go]
-// CANARY: REQ={{.ReqID}}-<ASPECT>-XXX; FEATURE="FeatureName"; ASPECT=API; STATUS=IMPL; OWNER=team; UPDATED=YYYY-MM-DD
+// CANARY: REQ={{.ReqID}}-SECURITY_REVIEW-XXX; FEATURE="FeatureName"; ASPECT=API; STATUS=IMPL; OWNER=team; UPDATED=YYYY-MM-DD
 // Example: REQ={{.ReqID}}-API-105; FEATURE="UserAuth"; ASPECT=API; STATUS=IMPL; OWNER=team; UPDATED=2025-10-16
 
 package [package]

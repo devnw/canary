@@ -158,7 +158,7 @@ FEATURE="password-hash"   # Use CamelCase, not kebab-case
 
 ## Test Naming Convention
 
-**Format:** `Test[CANARY_CBIN_<###>_<Aspect>_]<DescriptiveName>`
+**Format:** `Test[CANARY_CBIN_<###>_]<DescriptiveName>`
 
 **Examples:**
 ```go
@@ -179,7 +179,7 @@ TEST=TestParseDependencies_FullDependency,TestParseDependencies_PartialFeatures
 
 ## Benchmark Naming Convention
 
-**Format:** `Benchmark[CANARY_CBIN_<###>_<Aspect>_]<DescriptiveName>`
+**Format:** `Benchmark[CANARY_CBIN_<###>_]<DescriptiveName>`
 
 **Examples:**
 ```go

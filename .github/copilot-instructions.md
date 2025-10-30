@@ -21,7 +21,7 @@ Create `docs/CANARY_POLICY.md` with this exact snippet (and copy it into README 
 **Purpose.** Make every feature claim searchable and verifiable by linking requirements → code → tests → docs.
 
 ## Token (single line, place at top of implementation files or relevant tests)
-`CANARY: REQ=CBIN-<###>; FEATURE="<name>"; ASPECT=<ASPECT>; STATUS=<STATUS>; TEST=<TestCANARY_CBIN_<###>_<Aspect>_<Short>>; BENCH=<BenchmarkCANARY_CBIN_<###>_<Aspect>_<Short>>; OWNER=<team-or-alias>; UPDATED=<YYYY-MM-DD>`
+`CANARY: REQ=CBIN-<###>; FEATURE="<name>"; ASPECT=SECURITY_REVIEW; STATUS=<STATUS>; TEST=<TestCANARY_CBIN_<###>_<Short>>; BENCH=<BenchmarkCANARY_CBIN_<###>_<Short>>; OWNER=<team-or-alias>; UPDATED=<YYYY-MM-DD>`
 
 - **ASPECT** ∈ ["API","CLI","Engine","Planner","Storage","Wire","Security","Docs","Decode","Encode","RoundTrip","Bench","FrontEnd","Dist"]
 - **STATUS** ∈ ["MISSING","STUB","IMPL","TESTED","BENCHED","REMOVED"]

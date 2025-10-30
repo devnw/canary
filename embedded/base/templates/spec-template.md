@@ -1,7 +1,7 @@
 <!-- CANARY: REQ=CBIN-Docs-115; FEATURE="SpecTemplate"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
 # Feature Specification: [FEATURE NAME]
 
-**Requirement ID:** {{.ReqID}}-XXX (will be generated as {{.ReqID}}-<ASPECT>-XXX)
+**Requirement ID:** {{.ReqID}}-XXX (will be generated as {{.ReqID}}-SECURITY_REVIEW-XXX)
 **Aspect:** [API|CLI|Engine|Storage|Security|Docs|Wire|Planner|Decode|Encode|RoundTrip|Bench|FrontEnd|Dist]
 **Status:** STUB
 **Created:** YYYY-MM-DD

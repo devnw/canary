@@ -15,7 +15,7 @@ $ARGUMENTS
 List all implementation files for a requirement, grouped by aspect with token counts.
 
 1. **Parse requirement ID**:
-   - Extract REQ-ID from arguments (e.g., {{.ReqID}}-<ASPECT>-XXX)
+   - Extract REQ-ID from arguments (e.g., {{.ReqID}}-SECURITY_REVIEW-XXX)
    - Validate format
 
 2. **Run canary files command**:

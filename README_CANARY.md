@@ -148,7 +148,7 @@ func ParseDependencies(sourceReqID string, reader io.Reader) ([]Dependency, erro
 
 **Purpose:** Link implementation to test functions
 
-**Naming Convention:** `TestCANARY_CBIN_<###>_<Aspect>_<Short>`
+**Naming Convention:** `TestCANARY_CBIN_<###>_<Short>`
 
 **Examples:**
 - `TEST=TestCANARY_CBIN_147_Engine_ParseFull`
@@ -166,7 +166,7 @@ func ParseDependencies(sourceReqID string, reader io.Reader) ([]Dependency, erro
 
 **Purpose:** Link implementation to benchmark functions
 
-**Naming Convention:** `BenchmarkCANARY_CBIN_<###>_<Aspect>_<Short>`
+**Naming Convention:** `BenchmarkCANARY_CBIN_<###>_<Short>`
 
 **Examples:**
 - `BENCH=BenchmarkCANARY_CBIN_147_Engine_CircularDetection`

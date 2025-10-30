@@ -6,7 +6,7 @@ description: Generate a technical implementation plan from a CANARY requirement 
 command: PlanCmd
 version: 2.1
 outputs:
-  - plan_markdown: .canary/specs/<REQ_ID>-<ASPECT>-<slug>/plan.md
+  - plan_markdown: .canary/specs/<REQ_ID>-SECURITY_REVIEW-<slug>/plan.md
   - summary_json: STDOUT (unwrapped JSON, strict schema below)
 runtime_guarantees:
   no_mock_data: true
@@ -22,7 +22,7 @@ runtime_guarantees:
 
 * **User Arguments (raw):** `$ARGUMENTS`
   Parse into:
-  `req_id?` (e.g., `{{.ReqID}}-<ASPECT>-113`) • `preferences?` (tech stack, perf/security constraints) • `notes?`.
+  `req_id?` (e.g., `{{.ReqID}}-SECURITY_REVIEW-113`) • `preferences?` (tech stack, perf/security constraints) • `notes?`.
 * **Repository Layout (assumed):**
 
   * Specs: `.canary/specs/<REQ_ID>-<slug>/spec.md`
@@ -121,9 +121,9 @@ End with:
 
 ```json
 {
-  "req_id": "{{.ReqID}}-<ASPECT>-XXX",
+  "req_id": "{{.ReqID}}-SECURITY_REVIEW-XXX",
   "feature_name": "PlanCmd",
-  "plan_path": ".canary/specs/{{.ReqID}}-<ASPECT>-XXX-<slug>/plan.md",
+  "plan_path": ".canary/specs/{{.ReqID}}-SECURITY_REVIEW-XXX-<slug>/plan.md",
   "status": "ready-for-implementation",
   "gates": {
     "article_I": "pass|fail",

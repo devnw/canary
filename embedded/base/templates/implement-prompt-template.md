@@ -43,7 +43,7 @@
 
 1. **Write tests BEFORE implementation**
    - Create test file: `*_test.go` or equivalent
-   - Test function name format: `TestCANARY_{{.ReqID}}_<ASPECT>_<Description>`
+   - Test function name format: `TestCANARY_{{.ReqID}}_SECURITY_REVIEW_<Description>`
    - All tests must fail initially (TDD Red phase)
 
 2. **Implement to pass tests**

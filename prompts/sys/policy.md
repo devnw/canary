@@ -19,8 +19,8 @@ OWNER=<team-or-alias>; UPDATED=<YYYY-MM-DD>
 - **ASPECT** ∈ {{ASPECT_ENUM}}
 - **STATUS** ∈ {{STATUS_ENUM}}
 - **Tests/Benches naming**:
-  - `TestCANARY_{{REQ_PREFIX}}_<###>_<Aspect>_<Short>`
-  - `BenchmarkCANARY_{{REQ_PREFIX}}_<###>_<Aspect>_<Short>`
+  - `TestCANARY_{{REQ_PREFIX}}_<###>_<Short>`
+  - `BenchmarkCANARY_{{REQ_PREFIX}}_<###>_<Short>`
 
 ## Verification (CI Gate)
 1) `{{SCANNER_BIN}} --root . --out status.json --csv status.csv`

@@ -117,7 +117,7 @@ var bugCreateCmd = &cobra.Command{
 	Short: "Create a new BUG-* CANARY token",
 	Long: `Create a new BUG-* CANARY token for tracking a defect.
 
-The bug ID will be automatically generated in the format BUG-<ASPECT>-XXX.
+The bug ID will be automatically generated in the format BUG-SECURITY_REVIEW-XXX.
 
 Examples:
   canary bug create "Login fails on first attempt"
@@ -237,7 +237,7 @@ Examples:
 
 		// Validate bug ID format
 		if !regexp.MustCompile(`^BUG-[A-Za-z]+-[0-9]{3}$`).MatchString(bugID) {
-			return fmt.Errorf("invalid bug ID format: %s (expected BUG-<ASPECT>-XXX)", bugID)
+			return fmt.Errorf("invalid bug ID format: %s (expected BUG-SECURITY_REVIEW-XXX)", bugID)
 		}
 
 		// Open database
@@ -341,7 +341,7 @@ Examples:
 
 		// Validate bug ID format
 		if !regexp.MustCompile(`^BUG-[A-Za-z]+-[0-9]{3}$`).MatchString(bugID) {
-			return fmt.Errorf("invalid bug ID format: %s (expected BUG-<ASPECT>-XXX)", bugID)
+			return fmt.Errorf("invalid bug ID format: %s (expected BUG-SECURITY_REVIEW-XXX)", bugID)
 		}
 
 		// Open database
