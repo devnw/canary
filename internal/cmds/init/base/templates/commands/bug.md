@@ -68,7 +68,6 @@ defaults:
    ```
 
    Identify candidate duplicates (same summary keywords; same files/stack; same component). If a high‑similarity existing BUG is found, return as `DUPLICATE_CANDIDATE` with links; **do not create a new ID** unless user insists. Bugzilla guidance: check for existing reports; one issue per bug. ([Bugzilla][1])
-
 5. **ID generation (collision‑safe):** Acquire `id_lockfile`; scan `bugs_root` for `BUG-SECURITY_REVIEW-NNN`; pick next zero‑padded NNN; if dir exists, increment & retry; release lock.
 
 ### 3) Planning & Parallelism
