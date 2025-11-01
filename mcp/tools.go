@@ -16,10 +16,10 @@ import (
 
 // ListParams defines parameters for the list tool
 type ListParams struct {
-	Status string `json:"status,omitempty" jsonschema:"description=Filter by status (STUB, IMPL, TESTED, BENCHED)"`
-	Aspect string `json:"aspect,omitempty" jsonschema:"description=Filter by aspect (API, CLI, Engine, etc.)"`
-	Owner  string `json:"owner,omitempty" jsonschema:"description=Filter by owner"`
-	Limit  int    `json:"limit,omitempty" jsonschema:"description=Maximum number of results"`
+	Status string `json:"status,omitempty" jsonschema:"description:Filter by status (STUB IMPL TESTED BENCHED)"`
+	Aspect string `json:"aspect,omitempty" jsonschema:"description:Filter by aspect (API CLI Engine etc.)"`
+	Owner  string `json:"owner,omitempty" jsonschema:"description:Filter by owner"`
+	Limit  int    `json:"limit,omitempty" jsonschema:"description:Maximum number of results"`
 }
 
 // ListResult defines the output for the list tool
@@ -75,7 +75,7 @@ func handleList(ctx context.Context, req *mcp.CallToolRequest, params *ListParam
 
 // ShowParams defines parameters for the show tool
 type ShowParams struct {
-	ReqID string `json:"reqId" jsonschema:"description=Requirement ID (e.g. CBIN-123),required"`
+	ReqID string `json:"reqId" jsonschema:"description:Requirement ID (e.g. CBIN-123),required"`
 }
 
 // ShowResult defines the output for the show tool
@@ -120,11 +120,11 @@ func handleShow(ctx context.Context, req *mcp.CallToolRequest, params *ShowParam
 
 // CreateParams defines parameters for the create tool
 type CreateParams struct {
-	ReqID   string `json:"reqId" jsonschema:"description=Requirement ID (e.g. CBIN-CLI-105),required"`
-	Feature string `json:"feature" jsonschema:"description=Feature name,required"`
-	Aspect  string `json:"aspect,omitempty" jsonschema:"description=Aspect (API CLI Engine etc.)"`
-	Status  string `json:"status,omitempty" jsonschema:"description=Status (STUB IMPL TESTED BENCHED)"`
-	Owner   string `json:"owner,omitempty" jsonschema:"description=Owner/assignee"`
+	ReqID   string `json:"reqId" jsonschema:"description:Requirement ID (e.g. CBIN-CLI-105),required"`
+	Feature string `json:"feature" jsonschema:"description:Feature name,required"`
+	Aspect  string `json:"aspect,omitempty" jsonschema:"description:Aspect (API CLI Engine etc.)"`
+	Status  string `json:"status,omitempty" jsonschema:"description:Status (STUB IMPL TESTED BENCHED)"`
+	Owner   string `json:"owner,omitempty" jsonschema:"description:Owner/assignee"`
 }
 
 // CreateResult defines the output for the create tool
@@ -184,7 +184,7 @@ func handleCreate(ctx context.Context, req *mcp.CallToolRequest, params *CreateP
 
 // StatusParams defines parameters for the status tool
 type StatusParams struct {
-	ReqID string `json:"reqId" jsonschema:"description=Requirement ID (e.g. CBIN-123),required"`
+	ReqID string `json:"reqId" jsonschema:"description:Requirement ID (e.g. CBIN-123),required"`
 }
 
 // StatusResult defines the output for the status tool
@@ -266,7 +266,7 @@ func handleStatus(ctx context.Context, req *mcp.CallToolRequest, params *StatusP
 
 // SearchParams defines parameters for the search tool
 type SearchParams struct {
-	Keywords string `json:"keywords" jsonschema:"description=Search keywords,required"`
+	Keywords string `json:"keywords" jsonschema:"description:Search keywords,required"`
 }
 
 // SearchResult defines the output for the search tool
@@ -311,8 +311,8 @@ func handleSearch(ctx context.Context, req *mcp.CallToolRequest, params *SearchP
 
 // NextParams defines parameters for the next tool
 type NextParams struct {
-	Status string `json:"status,omitempty" jsonschema:"description=Filter by status (STUB or IMPL)"`
-	Aspect string `json:"aspect,omitempty" jsonschema:"description=Filter by aspect"`
+	Status string `json:"status,omitempty" jsonschema:"description:Filter by status (STUB or IMPL)"`
+	Aspect string `json:"aspect,omitempty" jsonschema:"description:Filter by aspect"`
 }
 
 // NextResult defines the output for the next tool
@@ -388,8 +388,8 @@ func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParam
 
 // ScanParams defines parameters for the scan tool
 type ScanParams struct {
-	Root        string `json:"root,omitempty" jsonschema:"description=Root directory to scan"`
-	ProjectOnly bool   `json:"projectOnly,omitempty" jsonschema:"description=Filter by project requirement ID pattern"`
+	Root        string `json:"root,omitempty" jsonschema:"description:Root directory to scan"`
+	ProjectOnly bool   `json:"projectOnly,omitempty" jsonschema:"description:Filter by project requirement ID pattern"`
 }
 
 // ScanResult defines the output for the scan tool
