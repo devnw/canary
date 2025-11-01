@@ -409,8 +409,52 @@ func installAgentFilesToSystems(targetDir string, agentsList []string, allAgents
 	return nil
 }
 
+// CANARY: REQ=CBIN-149; FEATURE="AgentContextUpdate"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
+// updateAgentContextFiles updates all agent context files with gated CANARY sections
+func updateAgentContextFiles(projectName string) error {
+	// Get CANARY content for each file
+	claudeContent := createClaudeMD()
+	cursorContent := createCursorMD()
+	agentContextContent, err := utils.ReadEmbeddedFile("base/AGENT_CONTEXT.md")
+	if err != nil {
+		return fmt.Errorf("read AGENT_CONTEXT.md: %w", err)
+	}
+
+	// Update CLAUDE.md
+	claudePath := filepath.Join(projectName, "CLAUDE.md")
+	if err := updateMarkdownSection(claudePath, claudeContent); err != nil {
+		return fmt.Errorf("update CLAUDE.md: %w", err)
+	}
+
+	// Update CURSOR.md
+	cursorPath := filepath.Join(projectName, "CURSOR.md")
+	if err := updateMarkdownSection(cursorPath, cursorContent); err != nil {
+		return fmt.Errorf("update CURSOR.md: %w", err)
+	}
+
+	// Update .canary/AGENT_CONTEXT.md (embedded file is already correct)
+	agentContextPath := filepath.Join(projectName, ".canary", "AGENT_CONTEXT.md")
+	// Filter out internal CANARY tokens
+	filteredContent := utils.FilterCanaryTokens(agentContextContent)
+	if err := os.WriteFile(agentContextPath, filteredContent, 0644); err != nil {
+		return fmt.Errorf("write AGENT_CONTEXT.md: %w", err)
+	}
+
+	// Update .github/copilot-instructions.md if .github exists
+	githubDir := filepath.Join(projectName, ".github")
+	if _, err := os.Stat(githubDir); err == nil {
+		copilotPath := filepath.Join(githubDir, "copilot-instructions.md")
+		copilotContent := createCopilotInstructionsMD()
+		if err := updateMarkdownSection(copilotPath, copilotContent); err != nil {
+			return fmt.Errorf("update copilot-instructions.md: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // CANARY: REQ=CBIN-106; FEATURE="AgentContext"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
-// createClaudeMD generates the CLAUDE.md file for AI agent integration
+// createClaudeMD generates the CANARY section for CLAUDE.md
 func createClaudeMD() string {
 	return `# CANARY Development - AI Agent Guide
 
@@ -529,4 +573,40 @@ status.json                       # Scanner output
 - [.canary/memory/constitution.md](./.canary/memory/constitution.md) - Constitutional principles
 - [GAP_ANALYSIS.md](./GAP_ANALYSIS.md) - Requirement tracking
 `
+}
+
+// CANARY: REQ=CBIN-149; FEATURE="AgentContextUpdate"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
+// createCursorMD generates the CANARY section for CURSOR.md
+func createCursorMD() string {
+	// Cursor uses similar format to Claude but with Cursor-specific terminology
+	return createClaudeMD() // For now, same content works for both
+}
+
+// CANARY: REQ=CBIN-149; FEATURE="AgentContextUpdate"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
+// createCopilotInstructionsMD generates the CANARY section for .github/copilot-instructions.md
+func createCopilotInstructionsMD() string {
+	return "# CANARY Development Guide for GitHub Copilot\n\n" +
+		"This project uses CANARY requirement tracking. Reference .canary/AGENT_CONTEXT.md for complete documentation.\n\n" +
+		"## CANARY Token Format\n\n" +
+		"```\n" +
+		"// CANARY: REQ=CBIN-###; FEATURE=\"Name\"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD\n" +
+		"```\n\n" +
+		"## Status Values\n" +
+		"- **STUB** → **IMPL** → **TESTED** → **BENCHED**\n\n" +
+		"## Key Principles\n" +
+		"1. Every feature starts with a CANARY token\n" +
+		"2. Tests written before implementation\n" +
+		"3. Status promoted based on TEST=/BENCH= fields\n" +
+		"4. Keep UPDATED field current\n\n" +
+		"## Workflow\n" +
+		"1. Check .canary/memory/constitution.md for project principles\n" +
+		"2. Follow spec-driven development from .canary/specs/\n" +
+		"3. Update tokens as code evolves\n\n" +
+		"## Commands\n" +
+		"```bash\n" +
+		"canary scan --root .                    # Scan for tokens\n" +
+		"canary verify GAP_ANALYSIS.md --strict  # Verify claims\n" +
+		"canary create CBIN-### \"Feature\"        # Create token\n" +
+		"```\n\n" +
+		"See [.canary/AGENT_CONTEXT.md](./.canary/AGENT_CONTEXT.md) for complete details.\n"
 }
