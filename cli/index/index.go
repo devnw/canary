@@ -22,6 +22,10 @@ var IndexCmd = &cobra.Command{
 This enables advanced features like priority ordering, keyword search, and checkpoints.
 The database is stored at .canary/canary.db by default.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts
+		prompt, _ := cmd.Flags().GetString("prompt")
+		_ = prompt // Stubbed for future use
+
 		dbPath, _ := cmd.Flags().GetString("db")
 		rootPath, _ := cmd.Flags().GetString("root")
 
@@ -177,4 +181,10 @@ The database is stored at .canary/canary.db by default.`,
 
 		return nil
 	},
+}
+
+func init() {
+	IndexCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
+	IndexCmd.Flags().String("db", ".canary/canary.db", "path to database file")
+	IndexCmd.Flags().String("root", ".", "root directory to scan")
 }

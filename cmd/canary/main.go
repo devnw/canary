@@ -152,51 +152,6 @@ func init() {
 	canaryinit.InitCmd.Flags().String("agent-model", "sonnet", "AI model for CANARY agents")
 	canaryinit.InitCmd.Flags().String("agent-color", "blue", "color for CANARY agents")
 
-	// specifyCmd flags
-	specify.SpecifyCmd.Flags().String("aspect", "Engine", "requirement aspect (API, CLI, Engine, Storage, Security, Docs, Wire, Planner, Decode, Encode, RoundTrip, Bench, FrontEnd, Dist)")
-
-	// planCmd flags
-	plan.PlanCmd.Flags().String("aspect", "", "requirement aspect for template substitution (API, CLI, Engine, Storage, Security, Docs, Wire, Planner, Decode, Encode, RoundTrip, Bench, FrontEnd, Dist)")
-
-	// createCmd flags
-	create.CreateCmd.Flags().String("aspect", "API", "requirement aspect/category")
-	create.CreateCmd.Flags().String("status", "IMPL", "implementation status")
-	create.CreateCmd.Flags().String("owner", "", "team/person responsible")
-	create.CreateCmd.Flags().String("test", "", "test function name")
-	create.CreateCmd.Flags().String("bench", "", "benchmark function name")
-
-	// implementCmd flags
-	implement.ImplementCmd.Flags().Bool("list", false, "list all unimplemented requirements")
-	implement.ImplementCmd.Flags().Bool("prompt", true, "generate full implementation prompt (default: true)")
-
-	// indexCmd flags
-	index.IndexCmd.Flags().String("db", ".canary/canary.db", "path to database file")
-	index.IndexCmd.Flags().String("root", ".", "root directory to scan")
-
-	// listCmd flags
-	list.ListCmd.Flags().String("db", ".canary/canary.db", "path to database file")
-	list.ListCmd.Flags().String("status", "", "filter by status (STUB, IMPL, TESTED, BENCHED)")
-	list.ListCmd.Flags().String("aspect", "", "filter by aspect (API, CLI, Engine, etc.)")
-	list.ListCmd.Flags().String("phase", "", "filter by phase (Phase0, Phase1, Phase2, Phase3)")
-	list.ListCmd.Flags().String("owner", "", "filter by owner")
-	list.ListCmd.Flags().String("spec-status", "", "filter by spec status (draft, approved, in-progress, completed, archived)")
-	list.ListCmd.Flags().Int("priority-min", 0, "filter by minimum priority (0 = no minimum)")
-	list.ListCmd.Flags().Int("priority-max", 0, "filter by maximum priority (0 = no maximum)")
-	list.ListCmd.Flags().String("order-by", "", "custom ORDER BY clause (default: priority ASC, updated_at DESC)")
-	list.ListCmd.Flags().Int("limit", 0, "maximum number of results (0 = no limit)")
-	list.ListCmd.Flags().Bool("json", false, "output as JSON")
-	list.ListCmd.Flags().Bool("include-hidden", false, "include hidden requirements (test files, templates, examples)")
-
-	// searchCmd flags
-	search.SearchCmd.Flags().String("db", ".canary/canary.db", "path to database file")
-	search.SearchCmd.Flags().Bool("json", false, "output as JSON")
-
-	// prioritizeCmd flags
-	prioritize.PrioritizeCmd.Flags().String("db", ".canary/canary.db", "path to database file")
-
-	// checkpointCmd flags
-	checkpoint.CheckpointCmd.Flags().String("db", ".canary/canary.db", "path to database file")
-
 	// migrateCmd flags
 	db.MigrateCmd.Flags().String("db", ".canary/canary.db", "path to database file")
 
@@ -206,16 +161,6 @@ func init() {
 	// migrateFromCmd flags
 	legacy.MigrateFromCmd.Flags().Bool("dry-run", false, "preview changes without applying them")
 	legacy.MigrateFromCmd.Flags().Bool("force", false, "force migration even if system type doesn't match detection")
-
-	// scanCmd flags
-	scan.ScanCmd.Flags().String("root", ".", "root directory to scan")
-	scan.ScanCmd.Flags().String("out", "status.json", "output status.json path")
-	scan.ScanCmd.Flags().String("csv", "", "optional status.csv path")
-	scan.ScanCmd.Flags().String("verify", "", "GAP_ANALYSIS file to verify claims")
-	scan.ScanCmd.Flags().Bool("strict", false, "enforce staleness on TESTED/BENCHED tokens (30 days)")
-	scan.ScanCmd.Flags().Bool("update-stale", false, "rewrite UPDATED field for stale tokens")
-	scan.ScanCmd.Flags().String("skip", "", "skip path regex (RE2)")
-	scan.ScanCmd.Flags().Bool("project-only", false, "filter by project requirement ID pattern")
 
 	// nextCmd flags
 	next.NextCmd.Flags().String("db", ".canary/canary.db", "path to database file")

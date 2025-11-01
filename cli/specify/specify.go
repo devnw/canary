@@ -22,6 +22,10 @@ Generates a new requirement ID with aspect-based format (CBIN-SECURITY_REVIEW-XX
 creates a spec directory, and populates it with a specification template.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts
+		prompt, _ := cmd.Flags().GetString("prompt")
+		_ = prompt // Stubbed for future use
+
 		featureDesc := strings.Join(args, " ")
 		aspect, _ := cmd.Flags().GetString("aspect")
 
@@ -86,4 +90,9 @@ creates a spec directory, and populates it with a specification template.`,
 
 		return nil
 	},
+}
+
+func init() {
+	SpecifyCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
+	SpecifyCmd.Flags().String("aspect", "Engine", "requirement aspect (API, CLI, Engine, Storage, Security, Docs, Wire, Planner, Decode, Encode, RoundTrip, Bench, FrontEnd, Dist)")
 }

@@ -19,6 +19,10 @@ var SearchCmd = &cobra.Command{
 Keywords are matched case-insensitively using LIKE queries.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts
+		prompt, _ := cmd.Flags().GetString("prompt")
+		_ = prompt // Stubbed for future use
+
 		dbPath, _ := cmd.Flags().GetString("db")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 		keywords := strings.Join(args, " ")
@@ -59,4 +63,10 @@ Keywords are matched case-insensitively using LIKE queries.`,
 
 		return nil
 	},
+}
+
+func init() {
+	SearchCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
+	SearchCmd.Flags().String("db", ".canary/canary.db", "path to database file")
+	SearchCmd.Flags().Bool("json", false, "output as JSON")
 }
