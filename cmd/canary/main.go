@@ -12,32 +12,11 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"go.devnw.com/canary/cli/bug"
-	"go.devnw.com/canary/cli/checkpoint"
-	"go.devnw.com/canary/cli/constitution"
-	"go.devnw.com/canary/cli/create"
+	"go.devnw.com/canary/cli"
 	"go.devnw.com/canary/cli/db"
-	"go.devnw.com/canary/cli/deps"
-	"go.devnw.com/canary/cli/doc"
-	"go.devnw.com/canary/cli/files"
-	"go.devnw.com/canary/cli/gap"
-	"go.devnw.com/canary/cli/grep"
-	"go.devnw.com/canary/cli/implement"
-	"go.devnw.com/canary/cli/index"
 	canaryinit "go.devnw.com/canary/cli/init"
 	"go.devnw.com/canary/cli/legacy"
-	"go.devnw.com/canary/cli/list"
-	"go.devnw.com/canary/cli/migrate"
 	"go.devnw.com/canary/cli/next"
-	"go.devnw.com/canary/cli/plan"
-	"go.devnw.com/canary/cli/prioritize"
-	"go.devnw.com/canary/cli/project"
-	"go.devnw.com/canary/cli/scan"
-	"go.devnw.com/canary/cli/search"
-	"go.devnw.com/canary/cli/show"
-	"go.devnw.com/canary/cli/specs"
-	"go.devnw.com/canary/cli/specify"
-	"go.devnw.com/canary/cli/status"
 	"go.devnw.com/canary/internal/storage"
 )
 
@@ -104,44 +83,10 @@ func init() {
 	handler := slog.NewTextHandler(os.Stderr, opts)
 	slog.SetDefault(slog.New(handler))
 
-	rootCmd.AddCommand(scan.ScanCmd)
-	rootCmd.AddCommand(canaryinit.InitCmd)
-	rootCmd.AddCommand(create.CreateCmd)
-	rootCmd.AddCommand(constitution.ConstitutionCmd)
-	rootCmd.AddCommand(specify.SpecifyCmd)
-	rootCmd.AddCommand(plan.PlanCmd)
-	rootCmd.AddCommand(implement.ImplementCmd)
-	rootCmd.AddCommand(next.NextCmd)
-	rootCmd.AddCommand(index.IndexCmd)
-	rootCmd.AddCommand(list.ListCmd)
-	rootCmd.AddCommand(search.SearchCmd)
-	rootCmd.AddCommand(prioritize.PrioritizeCmd)
-	rootCmd.AddCommand(checkpoint.CheckpointCmd)
-	rootCmd.AddCommand(db.MigrateCmd)
-	rootCmd.AddCommand(db.RollbackCmd)
-	rootCmd.AddCommand(legacy.DetectCmd)
-	rootCmd.AddCommand(legacy.MigrateFromCmd)
-	rootCmd.AddCommand(migrate.OrphanCmd)
-	rootCmd.AddCommand(doc.DocCmd)
-	// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_ShowCmd; UPDATED=2025-10-16
-	rootCmd.AddCommand(show.ShowCmd)
-	// CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_FilesCmd; UPDATED=2025-10-16
-	rootCmd.AddCommand(files.FilesCmd)
-	// CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_StatusCmd; UPDATED=2025-10-16
-	rootCmd.AddCommand(status.StatusCmd)
-	// CANARY: REQ=CBIN-CLI-001; FEATURE="GrepCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_GrepCmd; UPDATED=2025-10-16
-	rootCmd.AddCommand(grep.GrepCmd)
-	// CANARY: REQ=CBIN-147; FEATURE="DepsParentCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsParentCommand; UPDATED=2025-10-18
-	rootCmd.AddCommand(deps.CreateDepsCommand())
-	// CANARY: REQ=CBIN-140; FEATURE="GapCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
-	rootCmd.AddCommand(gap.GapCmd)
-	// CANARY: REQ=CBIN-145; FEATURE="SpecsCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_145_CLI_SpecsCmd; UPDATED=2025-10-17
-	rootCmd.AddCommand(specs.SpecsCmd)
-	// Bug tracking command for managing BUG-* CANARY tokens
-	rootCmd.AddCommand(bug.BugCmd)
-	// Project and database management commands
-	rootCmd.AddCommand(project.DbCmd)
-	rootCmd.AddCommand(project.ProjectCmd)
+	// Add all commands using the centralized Commands() function
+	// This automatically includes all subcommands which are registered
+	// in their respective package init() functions
+	rootCmd.AddCommand(cli.Commands()...)
 
 	// initCmd flags
 	canaryinit.InitCmd.Flags().Bool("local", false, "install commands locally in project directory (default: global in home directory)")
