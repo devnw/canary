@@ -250,11 +250,9 @@ Examples:
 			return fmt.Errorf("write GAP_ANALYSIS.md: %w", err)
 		}
 
-		// Create CLAUDE.md for AI agent integration
-		claudeMD := createClaudeMD()
-		claudePath := filepath.Join(projectName, "CLAUDE.md")
-		if err := os.WriteFile(claudePath, []byte(claudeMD), 0644); err != nil {
-			return fmt.Errorf("write CLAUDE.md: %w", err)
+		// Update agent context files for AI agent integration (preserves existing content)
+		if err := updateAgentContextFiles(projectName); err != nil {
+			return fmt.Errorf("update agent context files: %w", err)
 		}
 
 		if isUpdate {
