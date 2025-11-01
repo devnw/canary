@@ -44,6 +44,10 @@ Examples:
   canary implement --list                # List all unimplemented requirements`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts from file
+		promptArg, _ := cmd.Flags().GetString("prompt-arg")
+		_ = promptArg // Stubbed for future use
+
 		listFlag, _ := cmd.Flags().GetBool("list")
 		promptFlag, _ := cmd.Flags().GetBool("prompt")
 
@@ -79,6 +83,12 @@ Examples:
 
 		return nil
 	},
+}
+
+func init() {
+	ImplementCmd.Flags().String("prompt-arg", "", "Custom prompt file or embedded prompt name (future use)")
+	ImplementCmd.Flags().Bool("list", false, "list all unimplemented requirements")
+	ImplementCmd.Flags().Bool("prompt", true, "generate full implementation prompt (default: true)")
 }
 
 // RequirementSpec holds loaded specification data

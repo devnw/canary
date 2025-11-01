@@ -46,6 +46,10 @@ Priority determination factors:
 3. DEPENDS_ON (dependencies must be TESTED/BENCHED)
 4. UPDATED field (older tokens get priority boost)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts from file
+		promptArg, _ := cmd.Flags().GetString("prompt-arg")
+		_ = promptArg // Stubbed for future use
+
 		dbPath, _ := cmd.Flags().GetString("db")
 		promptFlag, _ := cmd.Flags().GetBool("prompt")
 		jsonOutput, _ := cmd.Flags().GetBool("json")

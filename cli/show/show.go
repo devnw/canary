@@ -38,6 +38,10 @@ Examples:
   canary show CBIN-133 --json`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts
+		prompt, _ := cmd.Flags().GetString("prompt")
+		_ = prompt // Stubbed for future use
+
 		reqID := args[0]
 		groupBy, _ := cmd.Flags().GetString("group-by")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
@@ -154,6 +158,7 @@ func groupTokens(tokens []*storage.Token, groupBy string) map[string][]*storage.
 }
 
 func init() {
+	ShowCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	ShowCmd.Flags().String("group-by", "aspect", "Group tokens by field (aspect, status)")
 	ShowCmd.Flags().Bool("json", false, "Output in JSON format")
 	ShowCmd.Flags().Bool("no-color", false, "Disable colored output")

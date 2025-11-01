@@ -426,7 +426,8 @@ func init() {
 	GapCmd.AddCommand(gapConfigCmd)
 	GapCmd.AddCommand(gapCategoriesCmd)
 
-	// Global db flag for all gap commands
+	// Global flags for all gap commands
+	GapCmd.PersistentFlags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	GapCmd.PersistentFlags().String("db", ".canary/canary.db", "path to database file")
 
 	// gapMarkCmd flags

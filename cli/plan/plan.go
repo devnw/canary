@@ -24,6 +24,10 @@ Creates a plan.md file in the spec directory with implementation details,
 tech stack decisions, and CANARY token placement instructions.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts
+		prompt, _ := cmd.Flags().GetString("prompt")
+		_ = prompt // Stubbed for future use
+
 		reqID := args[0]
 		techStack := ""
 		if len(args) > 1 {
@@ -150,4 +154,9 @@ tech stack decisions, and CANARY token placement instructions.`,
 
 		return nil
 	},
+}
+
+func init() {
+	PlanCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
+	PlanCmd.Flags().String("aspect", "", "requirement aspect for template substitution (API, CLI, Engine, Storage, Security, Docs, Wire, Planner, Decode, Encode, RoundTrip, Bench, FrontEnd, Dist)")
 }

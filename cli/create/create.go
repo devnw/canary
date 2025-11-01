@@ -23,6 +23,10 @@ Outputs a ready-to-paste CANARY token comment.`,
 		reqID := args[0]
 		feature := args[1]
 
+		// TODO: Implement --prompt flag to load custom prompts
+		prompt, _ := cmd.Flags().GetString("prompt")
+		_ = prompt // Stubbed for future use
+
 		aspect, _ := cmd.Flags().GetString("aspect")
 		status, _ := cmd.Flags().GetString("status")
 		owner, _ := cmd.Flags().GetString("owner")
@@ -62,4 +66,13 @@ Outputs a ready-to-paste CANARY token comment.`,
 
 		return nil
 	},
+}
+
+func init() {
+	CreateCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
+	CreateCmd.Flags().String("aspect", "API", "requirement aspect/category")
+	CreateCmd.Flags().String("status", "IMPL", "implementation status")
+	CreateCmd.Flags().String("owner", "", "team/person responsible")
+	CreateCmd.Flags().String("test", "", "test function name")
+	CreateCmd.Flags().String("bench", "", "benchmark function name")
 }

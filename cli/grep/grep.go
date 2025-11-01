@@ -35,6 +35,10 @@ Examples:
   canary grep TestAuth          # Find tokens with "TestAuth" test`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts
+		prompt, _ := cmd.Flags().GetString("prompt")
+		_ = prompt // Stubbed for future use
+
 		pattern := args[0]
 		dbPath, _ := cmd.Flags().GetString("db")
 		groupBy, _ := cmd.Flags().GetString("group-by")
@@ -159,6 +163,7 @@ func displayGrepResultsByRequirement(tokens []*storage.Token) {
 }
 
 func init() {
+	GrepCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	GrepCmd.Flags().String("db", ".canary/canary.db", "Path to database file")
 	GrepCmd.Flags().String("group-by", "none", "Group results (none, requirement)")
 }
