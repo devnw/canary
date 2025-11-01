@@ -10,11 +10,17 @@ package migrate
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"go.devnw.com/canary/internal/migrate"
 	"go.devnw.com/canary/internal/storage"
 )
+
+// Helper function for string containment checks
+func contains(s, substr string) bool {
+	return strings.Contains(s, substr)
+}
 
 // TestCANARY_CBIN_145_CLI_OrphanDetection verifies detection of orphaned requirements
 func TestCANARY_CBIN_145_CLI_OrphanDetection(t *testing.T) {

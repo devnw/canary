@@ -205,7 +205,7 @@ func TestDepsValidateCommand_DetectsCycle(t *testing.T) {
 
 // CANARY: REQ=CBIN-147; FEATURE="DepsParentCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsParentCommand; UPDATED=2025-10-18
 func TestDepsParentCommand(t *testing.T) {
-	cmd := createDepsCommand()
+	cmd := CreateDepsCommand()
 
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "deps", cmd.Use)

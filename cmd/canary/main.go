@@ -31,26 +31,6 @@ Inspired by spec-kit's specification-driven development, canary provides
 commands for scanning, creating, and managing requirement tokens.`,
 		Version: version,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// Skip auto-migration for commands that don't use the database
-			skipCommands := map[string]bool{
-				"init":         true,
-				"create":       true,
-				"constitution": true,
-				"specify":      true,
-				"plan":         true,
-				"implement":    true,
-				"scan":         true,
-				"help":         true,
-				"completion":   true,
-				"migrate":      true, // migrate command manages migrations itself
-				"rollback":     true, // rollback command manages migrations itself
-				"detect":       true, // detect command just reads, doesn't need DB
-				"migrate-from": true, // migrate-from creates .canary/, shouldn't auto-migrate first
-			}
-
-			if skipCommands[cmd.Name()] {
-				return nil
-			}
 
 			// Check if database commands have --db flag
 			dbPath := ".canary/canary.db" // default

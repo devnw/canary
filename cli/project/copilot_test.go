@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"go.devnw.com/canary/cli/init/copilot"
 )
 
 // TestCreateCopilotInstructions verifies that Copilot instruction files are created correctly
@@ -16,8 +18,8 @@ func TestCreateCopilotInstructions(t *testing.T) {
 	projectKey := "TEST"
 
 	// Act: Create Copilot instructions
-	err := createCopilotInstructions(tmpDir, projectKey)
-	if err != nil {
+	err := copilot.createCopilotInstructions(tmpDir, projectKey)
+	if err != copilot.ErrCreateCopilotInstructions {
 		t.Fatalf("createCopilotInstructions failed: %v", err)
 	}
 
