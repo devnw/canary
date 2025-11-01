@@ -28,6 +28,10 @@ Examples:
   canary files CBIN-133 --all  # Include spec/template files`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts
+		prompt, _ := cmd.Flags().GetString("prompt")
+		_ = prompt // Stubbed for future use
+
 		reqID := args[0]
 		includeAll, _ := cmd.Flags().GetBool("all")
 		dbPath, _ := cmd.Flags().GetString("db")
@@ -119,6 +123,7 @@ func formatFilesList(fileGroups map[string][]*storage.Token) {
 }
 
 func init() {
+	FilesCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	FilesCmd.Flags().Bool("all", false, "Include spec and template files")
 	FilesCmd.Flags().String("db", ".canary/canary.db", "Path to database file")
 }

@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.devnw.com/canary/cli/internal/utils"
 	"go.devnw.com/canary/internal/gap"
 	"go.devnw.com/canary/internal/reqid"
 	"go.devnw.com/canary/internal/storage"
-	"go.devnw.com/canary/cli/internal/utils"
 )
 
 // CANARY: REQ=CBIN-121; FEATURE="PlanCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
@@ -24,6 +24,10 @@ Creates a plan.md file in the spec directory with implementation details,
 tech stack decisions, and CANARY token placement instructions.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts
+		prompt, _ := cmd.Flags().GetString("prompt")
+		_ = prompt // Stubbed for future use
+
 		reqID := args[0]
 		techStack := ""
 		if len(args) > 1 {
@@ -150,4 +154,9 @@ tech stack decisions, and CANARY token placement instructions.`,
 
 		return nil
 	},
+}
+
+func init() {
+	PlanCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
+	PlanCmd.Flags().String("aspect", "", "requirement aspect for template substitution (API, CLI, Engine, Storage, Security, Docs, Wire, Planner, Decode, Encode, RoundTrip, Bench, FrontEnd, Dist)")
 }

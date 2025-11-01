@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"go.devnw.com/canary/internal/matcher"
 	"go.devnw.com/canary/cli/internal/utils"
+	"go.devnw.com/canary/internal/matcher"
 )
 
 // CANARY: REQ=CBIN-133; FEATURE="ImplementCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_ExactMatch; OWNER=canary; DOC=user:docs/user/implement-command-guide.md; DOC_HASH=ed68fb1d97cf0562; UPDATED=2025-10-17
@@ -44,6 +44,10 @@ Examples:
   canary implement --list                # List all unimplemented requirements`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts from file
+		promptArg, _ := cmd.Flags().GetString("prompt-arg")
+		_ = promptArg // Stubbed for future use
+
 		listFlag, _ := cmd.Flags().GetBool("list")
 		promptFlag, _ := cmd.Flags().GetBool("prompt")
 
@@ -79,6 +83,12 @@ Examples:
 
 		return nil
 	},
+}
+
+func init() {
+	ImplementCmd.Flags().String("prompt-arg", "", "Custom prompt file or embedded prompt name (future use)")
+	ImplementCmd.Flags().Bool("list", false, "list all unimplemented requirements")
+	ImplementCmd.Flags().Bool("prompt", true, "generate full implementation prompt (default: true)")
 }
 
 // RequirementSpec holds loaded specification data

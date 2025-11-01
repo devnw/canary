@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"go.devnw.com/canary/internal/storage"
 	"go.devnw.com/canary/cli/internal/utils"
+	"go.devnw.com/canary/internal/storage"
 )
 
 // CANARY: REQ=CBIN-128; FEATURE="CheckpointCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
@@ -25,6 +25,10 @@ Checkpoints include:
 Useful for tracking progress over time.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts
+		prompt, _ := cmd.Flags().GetString("prompt")
+		_ = prompt // Stubbed for future use
+
 		dbPath, _ := cmd.Flags().GetString("db")
 		name := args[0]
 		description := ""
@@ -77,4 +81,9 @@ Useful for tracking progress over time.`,
 
 		return nil
 	},
+}
+
+func init() {
+	CheckpointCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
+	CheckpointCmd.Flags().String("db", ".canary/canary.db", "path to database file")
 }

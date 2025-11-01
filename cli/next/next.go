@@ -17,9 +17,9 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.devnw.com/canary/cli/internal/utils"
 	"go.devnw.com/canary/internal/config"
 	"go.devnw.com/canary/internal/storage"
-	"go.devnw.com/canary/cli/internal/utils"
 )
 
 // CANARY: REQ=CBIN-132; FEATURE="NextCmd"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; DOC=user:docs/user/next-priority-guide.md; DOC_HASH=17524f7a14d2c410; UPDATED=2025-10-17
@@ -46,6 +46,10 @@ Priority determination factors:
 3. DEPENDS_ON (dependencies must be TESTED/BENCHED)
 4. UPDATED field (older tokens get priority boost)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts from file
+		promptArg, _ := cmd.Flags().GetString("prompt-arg")
+		_ = promptArg // Stubbed for future use
+
 		dbPath, _ := cmd.Flags().GetString("db")
 		promptFlag, _ := cmd.Flags().GetBool("prompt")
 		jsonOutput, _ := cmd.Flags().GetBool("json")

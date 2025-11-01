@@ -31,6 +31,10 @@ Examples:
   canary status CBIN-133 --no-color`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts
+		prompt, _ := cmd.Flags().GetString("prompt")
+		_ = prompt // Stubbed for future use
+
 		reqID := args[0]
 		noColor, _ := cmd.Flags().GetBool("no-color")
 		dbPath, _ := cmd.Flags().GetString("db")
@@ -180,6 +184,7 @@ func progressBar(pct int, width int) string {
 }
 
 func init() {
+	StatusCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	StatusCmd.Flags().Bool("no-color", false, "Disable colored output")
 	StatusCmd.Flags().String("db", ".canary/canary.db", "Path to database file")
 }

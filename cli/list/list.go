@@ -7,8 +7,8 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
-	"go.devnw.com/canary/internal/storage"
 	"go.devnw.com/canary/cli/internal/utils"
+	"go.devnw.com/canary/internal/storage"
 )
 
 // CANARY: REQ=CBIN-125; FEATURE="ListCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
@@ -28,6 +28,10 @@ By default, hides requirements from:
 
 Use --include-hidden to show all requirements including hidden ones.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts
+		prompt, _ := cmd.Flags().GetString("prompt")
+		_ = prompt // Stubbed for future use
+
 		dbPath, _ := cmd.Flags().GetString("db")
 		filterStatus, _ := cmd.Flags().GetString("status")
 		filterAspect, _ := cmd.Flags().GetString("aspect")
@@ -125,4 +129,20 @@ Use --include-hidden to show all requirements including hidden ones.`,
 
 		return nil
 	},
+}
+
+func init() {
+	ListCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
+	ListCmd.Flags().String("db", ".canary/canary.db", "path to database file")
+	ListCmd.Flags().String("status", "", "filter by status (STUB, IMPL, TESTED, BENCHED)")
+	ListCmd.Flags().String("aspect", "", "filter by aspect (API, CLI, Engine, etc.)")
+	ListCmd.Flags().String("phase", "", "filter by phase (Phase0, Phase1, Phase2, Phase3)")
+	ListCmd.Flags().String("owner", "", "filter by owner")
+	ListCmd.Flags().String("spec-status", "", "filter by spec status (draft, approved, in-progress, completed, archived)")
+	ListCmd.Flags().Int("priority-min", 0, "filter by minimum priority (0 = no minimum)")
+	ListCmd.Flags().Int("priority-max", 0, "filter by maximum priority (0 = no maximum)")
+	ListCmd.Flags().String("order-by", "", "custom ORDER BY clause (default: priority ASC, updated_at DESC)")
+	ListCmd.Flags().Int("limit", 0, "maximum number of results (0 = no limit)")
+	ListCmd.Flags().Bool("json", false, "output as JSON")
+	ListCmd.Flags().Bool("include-hidden", false, "include hidden requirements (test files, templates, examples)")
 }

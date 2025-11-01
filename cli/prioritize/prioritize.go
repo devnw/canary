@@ -17,6 +17,10 @@ var PrioritizeCmd = &cobra.Command{
 Priority affects ordering in list and search results.`,
 	Args: cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts
+		prompt, _ := cmd.Flags().GetString("prompt")
+		_ = prompt // Stubbed for future use
+
 		dbPath, _ := cmd.Flags().GetString("db")
 		reqID := args[0]
 		feature := args[1]
@@ -43,4 +47,9 @@ Priority affects ordering in list and search results.`,
 		fmt.Printf("✅ Updated priority for %s/%s to %d\n", reqID, feature, priority)
 		return nil
 	},
+}
+
+func init() {
+	PrioritizeCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
+	PrioritizeCmd.Flags().String("db", ".canary/canary.db", "path to database file")
 }

@@ -40,6 +40,10 @@ Examples:
   # Strict mode with staleness enforcement
   canary scan --strict`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement --prompt flag to load custom prompts
+		prompt, _ := cmd.Flags().GetString("prompt")
+		_ = prompt // Stubbed for future use
+
 		// Build path to the canary scanner
 		scanner := filepath.Join("tools", "canary", "main.go")
 
@@ -91,4 +95,16 @@ Examples:
 
 		return goCmd.Run()
 	},
+}
+
+func init() {
+	ScanCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
+	ScanCmd.Flags().String("root", ".", "root directory to scan")
+	ScanCmd.Flags().String("out", "status.json", "output status.json path")
+	ScanCmd.Flags().String("csv", "", "optional status.csv path")
+	ScanCmd.Flags().String("verify", "", "GAP_ANALYSIS file to verify claims")
+	ScanCmd.Flags().Bool("strict", false, "enforce staleness on TESTED/BENCHED tokens (30 days)")
+	ScanCmd.Flags().Bool("update-stale", false, "rewrite UPDATED field for stale tokens")
+	ScanCmd.Flags().String("skip", "", "skip path regex (RE2)")
+	ScanCmd.Flags().Bool("project-only", false, "filter by project requirement ID pattern")
 }
