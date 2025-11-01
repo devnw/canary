@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.devnw.com/canary/cli/internal/utils"
 	"go.devnw.com/canary/internal/gap"
 	"go.devnw.com/canary/internal/reqid"
 	"go.devnw.com/canary/internal/storage"
-	"go.devnw.com/canary/cli/internal/utils"
 )
 
 // CANARY: REQ=CBIN-121; FEATURE="PlanCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16

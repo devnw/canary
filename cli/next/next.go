@@ -17,9 +17,9 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.devnw.com/canary/cli/internal/utils"
 	"go.devnw.com/canary/internal/config"
 	"go.devnw.com/canary/internal/storage"
-	"go.devnw.com/canary/cli/internal/utils"
 )
 
 // CANARY: REQ=CBIN-132; FEATURE="NextCmd"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; DOC=user:docs/user/next-priority-guide.md; DOC_HASH=17524f7a14d2c410; UPDATED=2025-10-17

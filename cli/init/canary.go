@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go.devnw.com/canary/embedded"
 	"go.devnw.com/canary/cli/internal/utils"
+	"go.devnw.com/canary/embedded"
 )
 
 // CANARY: REQ=CBIN-105; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16

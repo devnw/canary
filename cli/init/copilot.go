@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"text/template"
+
 	"go.devnw.com/canary/cli/internal/utils"
 )
 

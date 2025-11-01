@@ -40,7 +40,8 @@ import (
 // Subcommands are already registered with their parent commands via init() functions.
 //
 // Usage:
-//   rootCmd.AddCommand(cli.Commands()...)
+//
+//	rootCmd.AddCommand(cli.Commands()...)
 //
 // Note: Commands with subcommands (bug, gap, deps, project, db, doc, legacy, migrate)
 // have their subcommands registered in their respective package init() functions.
@@ -85,9 +86,9 @@ func Commands() []*cobra.Command {
 		deps.CreateDepsCommand(),
 
 		// Advanced features with subcommands
-		gap.GapCmd,  // Subcommands: mark, query, report, helpful, unhelpful, config, categories
+		gap.GapCmd, // Subcommands: mark, query, report, helpful, unhelpful, config, categories
 		specs.SpecsCmd,
-		bug.BugCmd,  // Subcommands: list, create, update, show
+		bug.BugCmd, // Subcommands: list, create, update, show
 
 		// Project management
 		project.DbCmd,

@@ -7,8 +7,8 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
-	"go.devnw.com/canary/internal/storage"
 	"go.devnw.com/canary/cli/internal/utils"
+	"go.devnw.com/canary/internal/storage"
 )
 
 // CANARY: REQ=CBIN-125; FEATURE="ListCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16

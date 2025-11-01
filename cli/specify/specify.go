@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"go.devnw.com/canary/internal/reqid"
 	"go.devnw.com/canary/cli/internal/utils"
+	"go.devnw.com/canary/internal/reqid"
 )
 
 // CANARY: REQ=CBIN-120; FEATURE="SpecifyCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
