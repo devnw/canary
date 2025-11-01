@@ -9,19 +9,27 @@ You are a senior **{{SCANNER_LANG}} {{SCANNER_LANG_VERSION}}** engineer. Bootstr
    - Create `{{DOCS_DIR}}/CANARY_POLICY.md` containing:
      - One‑line **CANARY token** (language‑agnostic) to place above implementing functions or at file headers:
        ```
-       CANARY: REQ={{REQ_PREFIX}}-<###>; FEATURE="<name>"; ASPECT={{ASPECT}}; STATUS={{STATUS}};
-               TEST=<TestCANARY_{{REQ_PREFIX}}_<###>_<Short>>; BENCH=<BenchmarkCANARY_{{REQ_PREFIX}}_<###>_<Short>>;
+       CANARY: <REQ|TASK|BUG>-<###>; FEATURE="<name>"; ASPECT={{ASPECT}}; STATUS={{STATUS}};
+               [PARENT=<REQ|TASK>-<###>]; TEST=<Test<REQ|TASK>_<###>_<Short>>; BENCH=<Benchmark<REQ|TASK>_<###>_<Short>>;
                OWNER=<team-or-alias>; UPDATED=<YYYY-MM-DD>
        ```
+     - **ID Types**:
+       - `REQ-###` - Requirement specifications
+       - `TASK-###` - Tasks within requirement plans (use PARENT=REQ-### to link)
+       - `BUG-###` - Bugs related to requirements or tasks (use PARENT=REQ-### or PARENT=TASK-###)
      - **Enums** (case‑sensitive):
        - `ASPECT ∈ {{ASPECT_ENUM}}`
        - `STATUS ∈ {{STATUS_ENUM}}`
      - **Test/bench naming**:
-       - `TestCANARY_{{REQ_PREFIX}}_<###>_<Short>`
-       - `BenchmarkCANARY_{{REQ_PREFIX}}_<###>_<Short>`
+       - `TestREQ_<###>_<Short>` for requirements
+       - `TestTASK_<###>_<Short>` for tasks
+       - `BenchmarkREQ_<###>_<Short>` for benchmarks
      - **Greps**:
-       - `rg -n "CANARY:\s*REQ={{REQ_PREFIX}}-" {{SOURCE_DIRS}}`
-       - `rg -n "TestCANARY_{{REQ_PREFIX}}_" {{TEST_DIRS}}`
+       - `rg -n "CANARY:\s*REQ-" {{SOURCE_DIRS}}`
+       - `rg -n "CANARY:\s*TASK-" {{SOURCE_DIRS}}`
+       - `rg -n "CANARY:\s*BUG-" {{SOURCE_DIRS}}`
+       - `rg -n "TestREQ_" {{TEST_DIRS}}`
+       - `rg -n "TestTASK_" {{TEST_DIRS}}`
 
 2) **Implement Scanner CLI (`{{SCANNER_BIN}}`)**
    - Location: `{{SCANNER_DIR}}/`
@@ -38,18 +46,24 @@ You are a senior **{{SCANNER_LANG}} {{SCANNER_LANG_VERSION}}** engineer. Bootstr
        {
          "generated_at": "<UTC ISO8601>",
          "requirements": [
-           { "id": "{{REQ_PREFIX}}-042", "features": [
+           { "id": "REQ-42", "features": [
                { "feature": "CDC", "aspect": "API", "status": "STUB",
-                 "files": ["src/streaming/cdc.zig"], "tests": ["TestCANARY_{{REQ_PREFIX}}_042_CDC_StartStop"],
-                 "benches": [], "owner": "streaming", "updated": "2025-09-20"
+                 "files": ["src/streaming/cdc.zig"], "tests": ["TestREQ_42_CDC_StartStop"],
+                 "benches": [], "owner": "streaming", "updated": "2025-09-20", "parent": ""
+               }
+           ]},
+           { "id": "TASK-1", "features": [
+               { "feature": "SetupCDC", "aspect": "API", "status": "IMPL",
+                 "files": ["src/streaming/setup.zig"], "tests": [],
+                 "benches": [], "owner": "streaming", "updated": "2025-09-21", "parent": "REQ-42"
                }
            ]}
          ],
-         "summary": { "by_status": {}, "by_aspect": {} }
+         "summary": { "by_status": {}, "by_aspect": {}, "by_type": {"REQ": 1, "TASK": 1, "BUG": 0} }
        }
        ```
-     - Optional **CSV** explosion of rows (`req,feature,aspect,status,file,test,bench,owner,updated`).
-     - `--verify {{GAP_FILE}}`: fail (**exit 2**) if any `{{REQ_PREFIX}}-NNN` is **claimed Implemented/✅** in `{{GAP_FILE}}`
+     - Optional **CSV** explosion of rows (`id,type,feature,aspect,status,file,test,bench,owner,parent,updated`).
+     - `--verify {{GAP_FILE}}`: fail (**exit 2**) if any `REQ-NNN` is **claimed Implemented/✅** in `{{GAP_FILE}}`
        **without** at least one CANARY entry with `STATUS ∈ {TESTED,BENCHED}`.
      - `--strict`: also fail on **stale** `UPDATED` for `STATUS ∈ {TESTED,BENCHED}` older than **{{STALE_DAYS}} days**.
      - Exit codes: **0=OK**, **2=verification/staleness failure**, **3=parse/IO error**.
@@ -118,9 +132,10 @@ You are a senior **{{SCANNER_LANG}} {{SCANNER_LANG_VERSION}}** engineer. Bootstr
 
 ## Assumptions
 
-* A1) Requirement IDs use **{{REQ\_PREFIX}}-###**.
+* A1) Fixed ID types: **REQ-###** (requirements), **TASK-###** (tasks), **BUG-###** (bugs).
 * A2) Status/Aspect enums = **{{STATUS\_ENUM}}** / **{{ASPECT\_ENUM}}**.
 * A3) CI provider = **{{CI\_PROVIDER}}**.
+* A4) Tasks and bugs link to parent via **PARENT=<ID>** field.
 
 ## Output Quality
 
