@@ -50,6 +50,8 @@ The server runs as an HTTP endpoint that AI assistants can interact with.`,
 			}, nil)
 
 			// Add all Canary tools to the server
+			
+			// Core token management
 			mcp.AddTool(server, &mcp.Tool{
 				Name:        "list",
 				Description: "List CANARY tokens with optional filtering",
@@ -80,10 +82,65 @@ The server runs as an HTTP endpoint that AI assistants can interact with.`,
 				Description: "Identify next highest priority unimplemented requirement",
 			}, handleNext)
 
+			// Workflow tools
 			mcp.AddTool(server, &mcp.Tool{
 				Name:        "scan",
 				Description: "Scan codebase for CANARY tokens",
 			}, handleScan)
+
+			mcp.AddTool(server, &mcp.Tool{
+				Name:        "specify",
+				Description: "Create a requirement specification",
+			}, handleSpecify)
+
+			mcp.AddTool(server, &mcp.Tool{
+				Name:        "plan",
+				Description: "Generate implementation plan for a requirement",
+			}, handlePlan)
+
+			mcp.AddTool(server, &mcp.Tool{
+				Name:        "implement",
+				Description: "Get implementation guidance for a requirement",
+			}, handleImplement)
+
+			mcp.AddTool(server, &mcp.Tool{
+				Name:        "index",
+				Description: "Index codebase tokens into database",
+			}, handleIndex)
+
+			// Query and navigation
+			mcp.AddTool(server, &mcp.Tool{
+				Name:        "files",
+				Description: "Find files containing tokens for a requirement",
+			}, handleFiles)
+
+			mcp.AddTool(server, &mcp.Tool{
+				Name:        "grep",
+				Description: "Search tokens by pattern in specific fields",
+			}, handleGrep)
+
+			// Management
+			mcp.AddTool(server, &mcp.Tool{
+				Name:        "prioritize",
+				Description: "Set priority level for a requirement",
+			}, handlePrioritize)
+
+			// Bug tracking
+			mcp.AddTool(server, &mcp.Tool{
+				Name:        "bug-list",
+				Description: "List bug tracking tokens",
+			}, handleBugList)
+
+			mcp.AddTool(server, &mcp.Tool{
+				Name:        "bug-create",
+				Description: "Create a new bug tracking token",
+			}, handleBugCreate)
+
+			// Gap analysis
+			mcp.AddTool(server, &mcp.Tool{
+				Name:        "gap-mark",
+				Description: "Mark gap analysis claim as helpful or unhelpful",
+			}, handleGapMark)
 
 			// Create HTTP handler for MCP
 			handler := mcp.NewStreamableHTTPHandler(func(r *http.Request) *mcp.Server {
@@ -155,14 +212,36 @@ func printServerInfo(addr string) {
 	fmt.Println("  GET  /health         - Health check")
 	fmt.Println("  POST /mcp            - MCP endpoint")
 	fmt.Println()
-	fmt.Println("Available MCP Tools:")
-	fmt.Println("  - list               - List CANARY tokens with filtering")
-	fmt.Println("  - show               - Show details for a specific requirement")
-	fmt.Println("  - create             - Create a new CANARY token")
-	fmt.Println("  - status             - Show implementation status")
-	fmt.Println("  - search             - Search tokens by keywords")
-	fmt.Println("  - next               - Get next priority requirement")
-	fmt.Println("  - scan               - Scan codebase for CANARY tokens")
+	fmt.Println("Available MCP Tools (18 total):")
+	fmt.Println()
+	fmt.Println("Core Token Management:")
+	fmt.Println("  ? list               - List CANARY tokens with filtering")
+	fmt.Println("  ? show               - Show details for a specific requirement")
+	fmt.Println("  ? create             - Create a new CANARY token")
+	fmt.Println("  ? status             - Show implementation status")
+	fmt.Println("  ? search             - Search tokens by keywords")
+	fmt.Println("  ? next               - Get next priority requirement")
+	fmt.Println()
+	fmt.Println("Workflow & Development:")
+	fmt.Println("  ? scan               - Scan codebase for CANARY tokens")
+	fmt.Println("  ? specify            - Create requirement specification")
+	fmt.Println("  ? plan               - Generate implementation plan")
+	fmt.Println("  ? implement          - Get implementation guidance")
+	fmt.Println("  ? index              - Index codebase tokens into database")
+	fmt.Println()
+	fmt.Println("Query & Navigation:")
+	fmt.Println("  ? files              - Find files containing requirement tokens")
+	fmt.Println("  ? grep               - Search tokens by pattern")
+	fmt.Println()
+	fmt.Println("Management:")
+	fmt.Println("  ? prioritize         - Set requirement priority")
+	fmt.Println()
+	fmt.Println("Bug Tracking:")
+	fmt.Println("  ? bug-list           - List bug tracking tokens")
+	fmt.Println("  ? bug-create         - Create new bug token")
+	fmt.Println()
+	fmt.Println("Gap Analysis:")
+	fmt.Println("  ? gap-mark           - Mark gap claims as helpful/unhelpful")
 	fmt.Println()
 	fmt.Println("Example usage:")
 	fmt.Printf("  curl -H 'Content-Type: application/json' \\\n")

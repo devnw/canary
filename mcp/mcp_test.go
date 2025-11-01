@@ -20,6 +20,7 @@ func TestMCPToolHandlers(t *testing.T) {
 		handler string
 		params  interface{}
 	}{
+		// Core tools
 		{
 			name:    "handleList",
 			handler: "list",
@@ -59,6 +60,84 @@ func TestMCPToolHandlers(t *testing.T) {
 				Root: ".",
 			},
 		},
+		// Extended tools
+		{
+			name:    "handleSpecify",
+			handler: "specify",
+			params: &SpecifyParams{
+				Description: "Test feature",
+				Aspect:      "API",
+			},
+		},
+		{
+			name:    "handlePlan",
+			handler: "plan",
+			params: &PlanParams{
+				ReqID:     "TEST-001",
+				TechStack: "Go",
+			},
+		},
+		{
+			name:    "handleIndex",
+			handler: "index",
+			params: &IndexParams{
+				Root: ".",
+			},
+		},
+		{
+			name:    "handleImplement",
+			handler: "implement",
+			params: &ImplementParams{
+				ReqID: "TEST-001",
+			},
+		},
+		{
+			name:    "handleFiles",
+			handler: "files",
+			params: &FilesParams{
+				ReqID: "TEST-001",
+			},
+		},
+		{
+			name:    "handleGrep",
+			handler: "grep",
+			params: &GrepParams{
+				Pattern: "test",
+				Field:   "feature",
+			},
+		},
+		{
+			name:    "handlePrioritize",
+			handler: "prioritize",
+			params: &PrioritizeParams{
+				ReqID:    "TEST-001",
+				Priority: 1,
+			},
+		},
+		{
+			name:    "handleBugList",
+			handler: "bug-list",
+			params: &BugListParams{
+				Status: "OPEN",
+				Limit:  10,
+			},
+		},
+		{
+			name:    "handleBugCreate",
+			handler: "bug-create",
+			params: &BugCreateParams{
+				Title:    "Test bug",
+				Severity: "MEDIUM",
+			},
+		},
+		{
+			name:    "handleGapMark",
+			handler: "gap-mark",
+			params: &GapMarkParams{
+				ClaimID:  "CLAIM-001",
+				Judgment: "helpful",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -79,6 +158,26 @@ func TestMCPToolHandlers(t *testing.T) {
 				result, _, err = handleNext(ctx, req, tt.params.(*NextParams))
 			case "scan":
 				result, _, err = handleScan(ctx, req, tt.params.(*ScanParams))
+			case "specify":
+				result, _, err = handleSpecify(ctx, req, tt.params.(*SpecifyParams))
+			case "plan":
+				result, _, err = handlePlan(ctx, req, tt.params.(*PlanParams))
+			case "index":
+				result, _, err = handleIndex(ctx, req, tt.params.(*IndexParams))
+			case "implement":
+				result, _, err = handleImplement(ctx, req, tt.params.(*ImplementParams))
+			case "files":
+				result, _, err = handleFiles(ctx, req, tt.params.(*FilesParams))
+			case "grep":
+				result, _, err = handleGrep(ctx, req, tt.params.(*GrepParams))
+			case "prioritize":
+				result, _, err = handlePrioritize(ctx, req, tt.params.(*PrioritizeParams))
+			case "bug-list":
+				result, _, err = handleBugList(ctx, req, tt.params.(*BugListParams))
+			case "bug-create":
+				result, _, err = handleBugCreate(ctx, req, tt.params.(*BugCreateParams))
+			case "gap-mark":
+				result, _, err = handleGapMark(ctx, req, tt.params.(*GapMarkParams))
 			}
 
 			// We expect errors for some handlers (e.g., database not found)
