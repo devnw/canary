@@ -33,6 +33,7 @@ import (
 	"go.devnw.com/canary/cli/specify"
 	"go.devnw.com/canary/cli/specs"
 	"go.devnw.com/canary/cli/status"
+	"go.devnw.com/canary/mcp"
 )
 
 // Commands returns all top-level commands for the canary CLI.
@@ -91,5 +92,8 @@ func Commands() []*cobra.Command {
 		// Project management
 		project.DbCmd,
 		project.ProjectCmd,
+
+		// MCP server for AI assistant integration
+		mcp.New(),
 	}
 }
