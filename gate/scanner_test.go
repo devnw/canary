@@ -46,9 +46,15 @@ func TestLegacyRequirementID(t *testing.T) {
 	}
 	sc := NewScanner()
 	res, err := sc.ScanRepository(dir)
-	if err != nil { t.Fatalf("scan error: %v", err) }
-	if len(res.Requirements) != 1 { t.Fatalf("expected 1 requirement, got %d", len(res.Requirements)) }
-	if res.Requirements[0].ID != "REQ-001" { t.Fatalf("expected padded ID REQ-001, got %s", res.Requirements[0].ID) }
+	if err != nil {
+		t.Fatalf("scan error: %v", err)
+	}
+	if len(res.Requirements) != 1 {
+		t.Fatalf("expected 1 requirement, got %d", len(res.Requirements))
+	}
+	if res.Requirements[0].ID != "REQ-001" {
+		t.Fatalf("expected padded ID REQ-001, got %s", res.Requirements[0].ID)
+	}
 }
 
 func TestLegacyPaddedVariants(t *testing.T) {
@@ -58,21 +64,83 @@ func TestLegacyPaddedVariants(t *testing.T) {
 		`// CANARY: REQ-12; FEATURE="Core"; ASPECT=API; STATUS=IMPL; UPDATED=2025-11-02`,
 	}
 	for i, l := range lines {
-		if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("f%d.go", i)), []byte(l+"\n"), 0644); err != nil { t.Fatalf("write: %v", err) }
+		if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("f%d.go", i)), []byte(l+"\n"), 0644); err != nil {
+			t.Fatalf("write: %v", err)
+		}
 	}
-	sc := NewScanner(); res, err := sc.ScanRepository(dir); if err != nil { t.Fatalf("scan: %v", err) }
+	sc := NewScanner()
+	res, err := sc.ScanRepository(dir)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
 	want := map[string]bool{"REQ-GQL-004": true, "REQ-012": true}
-	for _, r := range res.Requirements { delete(want, r.ID) }
-	if len(want) != 0 { t.Fatalf("missing padded IDs: %v", want) }
+	for _, r := range res.Requirements {
+		delete(want, r.ID)
+	}
+	if len(want) != 0 {
+		t.Fatalf("missing padded IDs: %v", want)
+	}
 }
 
 func TestMixedLegacyModernREQ(t *testing.T) {
 	dir := t.TempDir()
 	// Same line contains legacy REQ-7 and modern REQ=CBIN-005; the parser should treat key-based REQ as authoritative and ignore ID-only segment (which still sets REQ first but gets overridden by key-value later in parse loop logic).
 	line := `// CANARY: REQ-7; REQ=CBIN-5; FEATURE="Mixed"; ASPECT=API; STATUS=IMPL; UPDATED=2025-11-02`
-	if err := os.WriteFile(filepath.Join(dir, "mixed.go"), []byte(line+"\n"), 0644); err != nil { t.Fatalf("write mixed: %v", err) }
-	sc := NewScanner(); res, err := sc.ScanRepository(dir); if err != nil { t.Fatalf("scan: %v", err) }
-	if len(res.Requirements) != 1 { t.Fatalf("expected 1 requirement got %d", len(res.Requirements)) }
+	if err := os.WriteFile(filepath.Join(dir, "mixed.go"), []byte(line+"\n"), 0644); err != nil {
+		t.Fatalf("write mixed: %v", err)
+	}
+	sc := NewScanner()
+	res, err := sc.ScanRepository(dir)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if len(res.Requirements) != 1 {
+		t.Fatalf("expected 1 requirement got %d", len(res.Requirements))
+	}
 	// CBIN-5 should be padded to CBIN-005
-	if res.Requirements[0].ID != "CBIN-005" { t.Fatalf("expected CBIN-005 got %s", res.Requirements[0].ID) }
+	if res.Requirements[0].ID != "CBIN-005" {
+		t.Fatalf("expected CBIN-005 got %s", res.Requirements[0].ID)
+	}
+}
+
+func TestGenericLegacyPrefixes_TASK_BUG(t *testing.T) {
+	dir := t.TempDir()
+	lines := []string{
+		`// CANARY: TASK-2; FEATURE="TaskWork"; ASPECT=API; STATUS=IMPL; UPDATED=2025-11-02`,
+		`// CANARY: BUG-7; FEATURE="BugFix"; ASPECT=API; STATUS=IMPL; UPDATED=2025-11-02`,
+	}
+	for i, l := range lines {
+		if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("x%d.go", i)), []byte(l+"\n"), 0644); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+	}
+	sc := NewScanner()
+	res, err := sc.ScanRepository(dir)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	// Expect two distinct requirements padded
+	want := map[string]bool{"TASK-002": true, "BUG-007": true}
+	for _, r := range res.Requirements {
+		delete(want, r.ID)
+	}
+	if len(want) != 0 {
+		t.Fatalf("missing padded TASK/BUG IDs: %v", want)
+	}
+}
+
+func TestPlaceholderTokenSkipped(t *testing.T) {
+	dir := t.TempDir()
+	line := `// CANARY: <ID>; FEATURE="<name>"; ASPECT=<aspect>; STATUS=<status>; UPDATED=2025-11-02`
+	if err := os.WriteFile(filepath.Join(dir, "placeholder.go"), []byte(line+"\n"), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	sc := NewScanner()
+	res, err := sc.ScanRepository(dir)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if len(res.Requirements) != 0 {
+		t.Fatalf("expected 0 requirements for placeholder token, got %d", len(res.Requirements))
+	}
 }

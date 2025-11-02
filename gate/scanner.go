@@ -120,6 +120,10 @@ func (s *Scanner) ScanRepository(root string) (ScanResult, error) {
 			if perr != nil {
 				return fmt.Errorf("parse %s:%d: %w", path, ln, perr)
 			}
+			// If parseKV returned empty map (placeholder skip), ignore this token
+			if len(rec) == 0 {
+				continue
+			}
 			k := key{id: rec["REQ"], feature: unquoteValue(rec["FEATURE"]), aspect: rec["ASPECT"], status: rec["STATUS"], owner: rec["OWNER"], updated: rec["UPDATED"]}
 			if k.id == "" || k.aspect == "" || k.status == "" {
 				return fmt.Errorf("missing required fields in %s:%d", path, ln)
@@ -183,7 +187,12 @@ func parseKV(s string) (map[string]string, error) {
 	s = strings.TrimSuffix(strings.TrimSpace(s), "-->")
 	s = strings.TrimSpace(s)
 	out := map[string]string{}
-	legacyReqRe := regexp.MustCompile(`^(REQ[-A-Z]*-?\d{1,4})$`)
+	// Skip placeholder/example tokens containing angle-bracket placeholders
+	if strings.ContainsAny(s, "<>") || strings.Contains(s, "{{") || strings.Contains(s, "}}") || strings.Contains(s, "%s") {
+		return map[string]string{}, nil
+	}
+	// Accept bare legacy ID-only segments for REQ, TASK, BUG forms (optionally namespaced like REQ-GQL-4)
+	legacyReqRe := regexp.MustCompile(`^((?:REQ|TASK|BUG)(?:-[A-Z]+)?-?\d{1,4})$`)
 	for _, seg := range strings.Split(s, ";") {
 		seg = strings.TrimSpace(seg)
 		if seg == "" {
@@ -191,6 +200,7 @@ func parseKV(s string) (map[string]string, error) {
 		}
 		// Legacy ID-only segment (e.g. REQ-1 or REQ-GQL-42)
 		if !strings.Contains(seg, "=") && legacyReqRe.MatchString(seg) {
+			// Treat TASK-/BUG- prefixed IDs as requirement identifiers for aggregation purposes
 			out["REQ"] = normalizeRequirement(seg)
 			continue
 		}
@@ -202,7 +212,7 @@ func parseKV(s string) (map[string]string, error) {
 	}
 	status := strings.ToUpper(out["STATUS"])
 	switch status {
-	case "", "MISSING", "STUB", "IMPL", "TESTED", "BENCHED", "REMOVED":
+	case "", "MISSING", "STUB", "IMPL", "TESTED", "BENCHED", "REMOVED", "FIXED", "OPEN":
 		// valid (empty means optional)
 	default:
 		return nil, fmt.Errorf("invalid STATUS %q", status)
@@ -269,13 +279,26 @@ func normalizeRequirement(id string) string {
 	legacyPad := regexp.MustCompile(`^(REQ(?:-[A-Z]+)?-)(\d{1,3})$`)
 	if m := legacyPad.FindStringSubmatch(id); len(m) == 3 {
 		num := m[2]
-		for len(num) < 3 { num = "0" + num }
+		for len(num) < 3 {
+			num = "0" + num
+		}
 		return m[1] + num
 	}
 	cbinPad := regexp.MustCompile(`^(CBIN-)(\d{1,3})$`)
 	if m := cbinPad.FindStringSubmatch(id); len(m) == 3 {
 		num := m[2]
-		for len(num) < 3 { num = "0" + num }
+		for len(num) < 3 {
+			num = "0" + num
+		}
+		return m[1] + num
+	}
+	// Pad TASK and BUG numeric suffixes
+	genericPad := regexp.MustCompile(`^((?:TASK|BUG)-)(\d{1,3})$`)
+	if m := genericPad.FindStringSubmatch(id); len(m) == 3 {
+		num := m[2]
+		for len(num) < 3 {
+			num = "0" + num
+		}
 		return m[1] + num
 	}
 	return id

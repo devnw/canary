@@ -75,9 +75,9 @@ var (
 	tokenLineRe = regexp.MustCompile(`(?m)^[ \t]*(?:\/\/|#|\/\*)?[ \t]*CANARY:\s*(.*)$`)
 	kvRe        = regexp.MustCompile(`\s*([A-Za-z_]+)\s*=\s*([^;]+)\s*`)
 	claimRe     = regexp.MustCompile(`(?m)^\s*✅\s+(CBIN-\d{3})\b`)
-	skipDefault = regexp.MustCompile(`(^|/)(.git|node_modules|vendor|bin|dist|build|zig-out|.zig-cache)(/|$)`)
+	skipDefault = regexp.MustCompile(`(^|/)(.git|node_modules|vendor|bin|dist|build|zig-out|.zig-cache|canary-new)(/|$)`)
 	aspects     = map[string]struct{}{"API": {}, "CLI": {}, "Engine": {}, "Planner": {}, "Storage": {}, "Wire": {}, "Security": {}, "Docs": {}, "Decode": {}, "Encode": {}, "RoundTrip": {}, "Bench": {}, "FrontEnd": {}, "Dist": {}}
-	statuses    = []string{"MISSING", "STUB", "IMPL", "TESTED", "BENCHED", "REMOVED"}
+	statuses    = []string{"MISSING", "STUB", "IMPL", "TESTED", "BENCHED", "REMOVED", "FIXED", "OPEN"}
 	statusSet   = func() map[string]struct{} {
 		m := map[string]struct{}{}
 		for _, s := range statuses {
@@ -264,6 +264,10 @@ func scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 			if perr != nil {
 				return fmt.Errorf("%s: %w", path, perr)
 			}
+			// Skip placeholder/example tokens (empty map returned by parseKV)
+			if len(fields) == 0 {
+				continue
+			}
 			for _, k := range []string{"REQ", "FEATURE", "ASPECT", "STATUS", "UPDATED"} {
 				if fields[k] == "" {
 					absPath, _ := filepath.Abs(path)
@@ -312,7 +316,11 @@ func scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 	byAspect := AspectCounts{}
 	total := 0
 	for k, v := range agg {
-		status := promote(v.status, len(v.tests) > 0, len(v.benches) > 0)
+			// Treat FIXED as REMOVED for aggregation semantics
+			if v.status == "FIXED" {
+				v.status = "REMOVED"
+			}
+			status := promote(v.status, len(v.tests) > 0, len(v.benches) > 0)
 		f := Feature{Feature: k.feature, Aspect: k.aspect, Status: status, Files: keys(v.files), Tests: keys(v.tests), Benches: keys(v.benches), Owner: k.owner, Updated: k.updated}
 		byReq[k.req] = append(byReq[k.req], f)
 		byStatus[status]++
@@ -547,7 +555,11 @@ func writeCSV(path string, rep Report) error {
 }
 func parseKV(s string) (map[string]string, error) {
 	out := map[string]string{}
-	legacyReqRe := regexp.MustCompile(`^(REQ[-A-Z]*-?\d{1,4})$`)
+	legacyReqRe := regexp.MustCompile(`^((?:REQ|TASK|BUG)(?:-[A-Z]+)?-?\d{1,4})$`)
+	// Skip placeholder/example tokens with angle brackets (e.g. <ID>, <name>)
+	if strings.ContainsAny(s, "<>") || strings.Contains(s, "{{") || strings.Contains(s, "}}") || strings.Contains(s, "%s") {
+		return map[string]string{}, nil
+	}
 	for _, seg := range strings.Split(s, ";") {
 		seg = strings.TrimSpace(seg)
 		if seg == "" {
@@ -610,13 +622,18 @@ func normalizeREQ(v string) string {
 	v = strings.ReplaceAll(v, "–", "-")
 	// Pad CBIN and generic REQ patterns
 	pad := func(prefix, num string) string {
-		for len(num) < 3 { num = "0" + num }
+		for len(num) < 3 {
+			num = "0" + num
+		}
 		return prefix + num
 	}
 	if m := regexp.MustCompile(`^(CBIN-)(\d{1,3})$`).FindStringSubmatch(v); len(m) == 3 {
 		return pad(m[1], m[2])
 	}
 	if m := regexp.MustCompile(`^(REQ(?:-[A-Z]+)?-)(\d{1,3})$`).FindStringSubmatch(v); len(m) == 3 {
+		return pad(m[1], m[2])
+	}
+	if m := regexp.MustCompile(`^((?:TASK|BUG)-)(\d{1,3})$`).FindStringSubmatch(v); len(m) == 3 {
 		return pad(m[1], m[2])
 	}
 	return v
