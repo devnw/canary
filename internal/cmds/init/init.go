@@ -143,7 +143,7 @@ Examples:
 			agentPrefix = projectKey // Use project key as default agent prefix
 		}
 		if agentModel == "" {
-			agentModel = "claude-3-5-sonnet-20241022"
+			agentModel = "sonnet" // Default to Claude 4.5
 		}
 		if agentColor == "" {
 			agentColor = "blue"

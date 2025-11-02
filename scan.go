@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-package main
+package canary
 
 import (
 	"bufio"
@@ -19,7 +19,11 @@ import (
 	"time"
 )
 
-var canaryRe = regexp.MustCompile(`^\s*(?://|#|--|\[//\]:\s*#|<!--)\s*CANARY:\s*(.*)$`)
+// canaryRe matches CANARY token lines with various comment styles:
+// //, #, --, <!--, /*, /**, * (doc block continuation). It tolerates optional leading '*' and spaces
+// between a block opener and the CANARY keyword (e.g., "/* * CANARY:" or "/*   ** CANARY:").
+// For block comments we only need the opening delimiter; closing will be trimmed downstream.
+var canaryRe = regexp.MustCompile(`^\s*(?://|#|--|\[//\]:\s*#|<!--|/\*+|\*)[\s\*]*CANARY:\s*(.*)$`)
 var kvRe = regexp.MustCompile(`\s*([^=;\s]+)\s*=\s*([^;]+)\s*`)
 
 // directories to skip during scan
@@ -72,7 +76,9 @@ func Scan(root string) (report, error) {
 			if len(m) < 2 {
 				continue
 			}
-			rec, err := parseCanaryKV(m[1])
+			// Normalize potential inline block comment tail markers on same line
+			segment := normalizeCanarySegment(m[1])
+			rec, err := parseCanaryKV(segment)
 			if err != nil {
 				return fmt.Errorf("parse %s:%d: %w", path, ln, err)
 			}
@@ -190,6 +196,22 @@ func parseCanaryKV(s string) (map[string]string, error) {
 		}
 	}
 	return out, nil
+}
+
+// normalizeCanarySegment trims trailing block comment closures (*/ and -->) and leading asterisks
+// frequently found in formatted block comments (e.g. /** CANARY: ... */ or /* CANARY: ... */).
+func normalizeCanarySegment(s string) string {
+	s = strings.TrimSpace(s)
+	// Remove trailing block comment closures
+	s = strings.TrimSuffix(s, "*/")
+	s = strings.TrimSuffix(s, "-->")
+	s = strings.TrimSpace(s)
+	// Leading asterisk (for JSDoc / Rust doc style) before CANARY already consumed by regex group, but defensive trim
+	if strings.HasPrefix(s, "*") {
+		s = strings.TrimLeft(s, "*")
+		s = strings.TrimSpace(s)
+	}
+	return s
 }
 
 func unquote(v string) string {

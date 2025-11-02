@@ -227,3 +227,24 @@ func TestUpdateMultipleMarkdownSections(t *testing.T) {
 		}
 	})
 }
+
+func TestBuildMarkdownGatedBodyHelpers(t *testing.T) {
+	unnamed := buildMarkdownGatedBody("Body Line")
+	if !strings.Contains(unnamed, "<!-- CANARY:START -->") || !strings.Contains(unnamed, "<!-- CANARY:END -->") {
+		t.Errorf("unnamed gated body missing markers: %s", unnamed)
+	}
+	if !strings.Contains(unnamed, "Body Line") {
+		t.Errorf("unnamed gated body missing content")
+	}
+	keyed := buildMarkdownGatedBodyKey("intro", "Intro Line")
+	if !strings.Contains(keyed, "<!-- CANARY:intro:START -->") || !strings.Contains(keyed, "<!-- CANARY:intro:END -->") {
+		t.Errorf("keyed gated body missing markers: %s", keyed)
+	}
+	if !strings.Contains(keyed, "Intro Line") {
+		t.Errorf("keyed gated body missing content")
+	}
+	// Ensure trailing newline
+	if !strings.HasSuffix(unnamed, "\n") || !strings.HasSuffix(keyed, "\n") {
+		t.Errorf("expected trailing newline in gated body snippets")
+	}
+}
