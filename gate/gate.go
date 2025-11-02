@@ -167,7 +167,9 @@ func buildEndMarker(o Options, section string) string {
 // StartMarker returns the start marker string for a keyed or unnamed section given options.
 func StartMarker(section string, opts ...Option) string {
 	o := DefaultOptions()
-	for _, fn := range opts { fn(&o) }
+	for _, fn := range opts {
+		fn(&o)
+	}
 	m := buildStartMarker(o, section)
 	if section == "" {
 		// Normalize potential double colons defensively
@@ -179,7 +181,9 @@ func StartMarker(section string, opts ...Option) string {
 // EndMarker returns the end marker string for a keyed or unnamed section given options.
 func EndMarker(section string, opts ...Option) string {
 	o := DefaultOptions()
-	for _, fn := range opts { fn(&o) }
+	for _, fn := range opts {
+		fn(&o)
+	}
 	m := buildEndMarker(o, section)
 	if section == "" {
 		m = strings.ReplaceAll(m, "::", ":")

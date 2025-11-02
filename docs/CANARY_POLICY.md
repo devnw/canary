@@ -11,6 +11,7 @@ Make every feature claim searchable, verifiable, and traceable by linking requir
 ## Policy Statement
 
 **All implemented features MUST be tracked with CANARY tokens.** This enables:
+
 - Automated verification of requirement completion
 - Traceability from specification to implementation
 - Prevention of overclaiming in progress reports
@@ -58,23 +59,27 @@ CANARY: REQ=<req-id>; FEATURE="<name>"; ASPECT=<aspect>; STATUS=<status>; [OPTIO
 ### ASPECT (Architectural Layer)
 
 **Core Layers:**
+
 - `API` - Public interfaces, exported functions
 - `CLI` - Command-line interfaces, terminal UI
 - `Engine` - Core algorithms, business logic
 - `Storage` - Database, persistence, repositories
 
 **Specialized Layers:**
+
 - `Security` - Authentication, authorization, encryption
 - `Wire` - Serialization, protocols, networking
 - `Planner` - Planning and scheduling algorithms
 - `Docs` - Documentation files
 
 **Data Handling:**
+
 - `Decode` - Deserialization, unmarshaling
 - `Encode` - Serialization, marshaling
 - `RoundTrip` - Full encode/decode cycles
 
 **Supporting:**
+
 - `Bench` - Performance benchmarks
 - `FrontEnd` - User interface components
 - `Dist` - Distribution, deployment, packaging
@@ -82,32 +87,38 @@ CANARY: REQ=<req-id>; FEATURE="<name>"; ASPECT=<aspect>; STATUS=<status>; [OPTIO
 ### STATUS (Implementation State)
 
 **Progression Path:**
+
 ```
 MISSING → STUB → IMPL → TESTED → BENCHED → (REMOVED)
 ```
 
 1. **MISSING** - Planned but no code exists
+
    - Use in spec.md before implementation
    - Indicates requirement exists but not started
 
 2. **STUB** - Placeholder code exists
+
    - Structure is present but not functional
    - Returns placeholder values or errors
    - No tests required yet
 
 3. **IMPL** - Implementation exists but untested
+
    - Code is functional
    - No TEST= field present
    - **WARNING:** Cannot satisfy dependencies
    - **WARNING:** Cannot be claimed in GAP_ANALYSIS.md
 
 4. **TESTED** - Fully tested with passing tests
+
    - Requires TEST= field with test names
    - Tests must exist and pass
    - **REQUIRED** to satisfy dependencies
    - **REQUIRED** to claim in GAP_ANALYSIS.md
 
 5. **BENCHED** - Tested and performance benchmarked
+
    - Requires both TEST= and BENCH= fields
    - Benchmarks must exist and run
    - Indicates production-ready quality
@@ -121,20 +132,66 @@ MISSING → STUB → IMPL → TESTED → BENCHED → (REMOVED)
 **Format:** `CBIN-###`
 
 **Rules:**
+
 - Prefix must be `CBIN-` (uppercase)
 - Number must be 3 digits, zero-padded
 - Sequential allocation recommended
 
 **Examples:**
+
 - `CBIN-001` - First requirement
 - `CBIN-105` - 105th requirement
 - `CBIN-147` - Specification Dependencies
+
+## Legacy Tokens & Normalization
+
+To preserve historical data, the scanner accepts certain legacy token variants and normalizes them to the canonical form.
+
+### Accepted Legacy Forms
+
+1. **ID-Only Segments inside a CANARY line** – Older tokens sometimes included a bare requirement identifier (e.g. `REQ-1` or `CBIN-5`) alongside modern key/value pairs.
+2. **Non‑padded numeric IDs** – Forms like `CBIN-5`, `CBIN-42`, `REQ-7`, `REQ-12`, or namespaced forms such as `REQ-GQL-4`.
+
+### Normalization Rules (Automated)
+
+The scanner normalizes legacy forms before reporting:
+
+| Input       | Normalized    |
+| ----------- | ------------- |
+| `CBIN-5`    | `CBIN-005`    |
+| `CBIN-42`   | `CBIN-042`    |
+| `REQ-7`     | `REQ-007`     |
+| `REQ-12`    | `REQ-012`     |
+| `REQ-GQL-4` | `REQ-GQL-004` |
+
+All numeric suffixes are zero‑padded to three digits. Namespaced legacy IDs (`REQ-<NAMESPACE>-<n>`) preserve their namespace and only pad the final numeric segment.
+
+### Precedence When Both Appear
+
+If a CANARY line contains both a legacy ID‑only segment and a canonical `REQ=` key/value pair, the value of `REQ=` takes precedence for the requirement identifier.
+
+### Rationale
+
+This approach allows incremental migration without breaking historical references, while ensuring reporting, verification, and status summaries remain deterministic and sortable.
+
+### Recommendation
+
+Prefer the canonical form going forward:
+
+```go
+// Example canonical token after normalization
+// (avoid adding bare legacy IDs in new code)
+CANARY: REQ=CBIN-005; FEATURE="Parser"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-10-18
+```
+
+Legacy bare IDs should not be added to new tokens; they are supported only for backward compatibility.
 
 ## Feature Naming Conventions
 
 **Format:** CamelCase, quoted, descriptive
 
 **Good Examples:**
+
 ```
 FEATURE="PasswordHasher"
 FEATURE="DependencyParser"
@@ -143,6 +200,7 @@ FEATURE="CircularDetection"
 ```
 
 **Bad Examples:**
+
 ```
 FEATURE="Utils"           # Too generic
 FEATURE="Helper1"         # Non-descriptive
@@ -151,6 +209,7 @@ FEATURE="password-hash"   # Use CamelCase, not kebab-case
 ```
 
 **Guidelines:**
+
 - Describe WHAT the feature does, not HOW
 - Keep under 40 characters
 - Use domain language
@@ -161,6 +220,7 @@ FEATURE="password-hash"   # Use CamelCase, not kebab-case
 **Format:** `Test[CANARY_CBIN_<###>_]<DescriptiveName>`
 
 **Examples:**
+
 ```go
 // Full CANARY naming (recommended for primary tests)
 func TestCANARY_CBIN_147_Engine_ParseFullDependency(t *testing.T)
@@ -172,6 +232,7 @@ func TestParseDependencies_PartialFeatures(t *testing.T)
 ```
 
 **In Token:**
+
 ```
 TEST=TestCANARY_CBIN_147_Engine_ParseFullDependency
 TEST=TestParseDependencies_FullDependency,TestParseDependencies_PartialFeatures
@@ -182,6 +243,7 @@ TEST=TestParseDependencies_FullDependency,TestParseDependencies_PartialFeatures
 **Format:** `Benchmark[CANARY_CBIN_<###>_]<DescriptiveName>`
 
 **Examples:**
+
 ```go
 // Full CANARY naming (recommended)
 func BenchmarkCANARY_CBIN_147_Engine_CircularDetection(b *testing.B)
@@ -248,7 +310,9 @@ func BenchmarkCANARY_CBIN_147_Engine_CircularDetection(b *testing.B) {
 <!-- .canary/specs/CBIN-147-specification-dependencies/spec.md -->
 
 <!-- CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=STUB; UPDATED=2025-10-18 -->
+
 **Feature 1: Dependency Parser**
+
 - [ ] Parse full dependencies (CBIN-XXX format)
 - [ ] Parse partial feature dependencies (CBIN-XXX:Feature1,Feature2)
 - [ ] Parse partial aspect dependencies (CBIN-XXX:AspectName)
@@ -259,21 +323,25 @@ func BenchmarkCANARY_CBIN_147_Engine_CircularDetection(b *testing.B) {
 ### Finding Tokens
 
 **Find all CANARY tokens:**
+
 ```bash
 rg -n "CANARY:\s*REQ=" src internal cmd tools
 ```
 
 **Find tokens for specific requirement:**
+
 ```bash
 rg -n "REQ=CBIN-147" .
 ```
 
 **Find test functions:**
+
 ```bash
 rg -n "TestCANARY_CBIN_" .
 ```
 
 **Find benchmark functions:**
+
 ```bash
 rg -n "BenchmarkCANARY_CBIN_" .
 ```
@@ -302,12 +370,14 @@ canary scan --verify GAP_ANALYSIS.md --strict
 ### When to Update UPDATED Field
 
 **Always update when:**
+
 - Modifying implementation code
 - Changing STATUS value
 - Adding/removing TEST or BENCH fields
 - Refactoring that affects behavior
 
 **Example:**
+
 ```go
 // Before change (2025-10-01)
 // CANARY: REQ=CBIN-147; FEATURE="Parser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParser; UPDATED=2025-10-01
@@ -321,11 +391,13 @@ canary scan --verify GAP_ANALYSIS.md --strict
 **Rule:** TESTED and BENCHED tokens must have UPDATED within 30 days
 
 **Automated Update:**
+
 ```bash
 canary scan --update-stale
 ```
 
 **Effect:**
+
 - Finds all TESTED/BENCHED tokens with UPDATED >30 days ago
 - Rewrites tokens in-place with current date
 - Reports count of updated tokens
@@ -335,6 +407,7 @@ canary scan --update-stale
 ### GAP_ANALYSIS.md Format
 
 **Claim Requirements:**
+
 ```markdown
 # Requirements Gap Analysis
 
@@ -348,10 +421,12 @@ canary scan --update-stale
 ### Claim Requirements
 
 1. **At least one token must be TESTED or BENCHED**
+
    - IMPL is insufficient
    - STUB cannot be claimed
 
 2. **Run verification before committing:**
+
    ```bash
    canary scan --verify GAP_ANALYSIS.md --strict
    ```
@@ -369,9 +444,11 @@ canary scan --update-stale
 ## Dependencies
 
 ### Full Dependencies (entire requirement must be complete)
+
 - CBIN-146 (Multi-Project Support - required for token namespacing)
 
 ### Partial Dependencies (specific features/aspects required)
+
 - CBIN-140:GapRepository,GapService (only gap storage features needed)
 - CBIN-133:Engine (only Engine aspect required)
 ```
@@ -379,6 +456,7 @@ canary scan --update-stale
 ### Satisfaction Rules
 
 **Dependency is satisfied when:**
+
 1. Full: ALL features in target requirement are TESTED or BENCHED
 2. Partial Features: Specified features are TESTED or BENCHED
 3. Partial Aspect: All features with specified aspect are TESTED or BENCHED
@@ -408,12 +486,14 @@ canary deps validate
 **Format:** `DOC=<type>:<path>`
 
 **Types:**
+
 - `user` - User-facing documentation
 - `api` - API reference
 - `arch` - Architecture docs
 - `dev` - Developer docs
 
 **Example:**
+
 ```go
 // CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED;
 // TEST=TestParseDependencies; DOC=user:docs/user/dependency-guide.md;
@@ -480,6 +560,7 @@ canary doc report --show-undocumented
 ### Automated Checks
 
 **Pre-commit hook:**
+
 ```bash
 #!/bin/bash
 canary scan --verify GAP_ANALYSIS.md --strict
@@ -490,6 +571,7 @@ fi
 ```
 
 **CI Pipeline:**
+
 ```yaml
 - name: Verify CANARY claims
   run: |
@@ -500,6 +582,7 @@ fi
 ### Manual Review
 
 Code reviewers should verify:
+
 1. New features have CANARY tokens
 2. STATUS matches implementation reality
 3. Tests exist for TESTED status
@@ -520,11 +603,13 @@ The following code does NOT require CANARY tokens:
 ## Policy Updates
 
 This policy may be updated to:
+
 - Add new ASPECT values for project-specific needs
 - Adjust staleness threshold (currently 30 days)
 - Add project-specific requirements
 
 Updates must be:
+
 1. Documented in this file
 2. Communicated to team
 3. Applied retroactively with `canary scan --update-stale`
@@ -534,21 +619,25 @@ Updates must be:
 ## Quick Reference
 
 ### Minimal Token
+
 ```
 CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-18
 ```
 
 ### Tested Token
+
 ```
 CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=TESTED; TEST=TestFeatureName; UPDATED=2025-10-18
 ```
 
 ### Benched Token
+
 ```
 CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=BENCHED; TEST=TestFeatureName; BENCH=BenchmarkFeatureName; UPDATED=2025-10-18
 ```
 
 ### Documented Token
+
 ```
 CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=TESTED; TEST=TestFeatureName; DOC=user:docs/user/guide.md; DOC_HASH=a3f5b8c2; UPDATED=2025-10-18
 ```

@@ -62,10 +62,18 @@ func TestStartEndMarkerHelpers(t *testing.T) {
 	opts := []Option{WithStyle(CommentStyle{LinePrefix: "<!--", BlockEnd: "-->", Space: true}), WithKey("CANARY"), WithTokens("START", "END")}
 	unnamedStart := StartMarker("", opts...)
 	unnamedEnd := EndMarker("", opts...)
-	if unnamedStart != "<!-- CANARY:START -->" { t.Errorf("unexpected unnamed start marker: %s", unnamedStart) }
-	if unnamedEnd != "<!-- CANARY:END -->" { t.Errorf("unexpected unnamed end marker: %s", unnamedEnd) }
+	if unnamedStart != "<!-- CANARY:START -->" {
+		t.Errorf("unexpected unnamed start marker: %s", unnamedStart)
+	}
+	if unnamedEnd != "<!-- CANARY:END -->" {
+		t.Errorf("unexpected unnamed end marker: %s", unnamedEnd)
+	}
 	keyedStart := StartMarker("intro", opts...)
 	keyedEnd := EndMarker("intro", opts...)
-	if keyedStart != "<!-- CANARY:intro:START -->" { t.Errorf("unexpected keyed start: %s", keyedStart) }
-	if keyedEnd != "<!-- CANARY:intro:END -->" { t.Errorf("unexpected keyed end: %s", keyedEnd) }
+	if keyedStart != "<!-- CANARY:intro:START -->" {
+		t.Errorf("unexpected keyed start: %s", keyedStart)
+	}
+	if keyedEnd != "<!-- CANARY:intro:END -->" {
+		t.Errorf("unexpected keyed end: %s", keyedEnd)
+	}
 }

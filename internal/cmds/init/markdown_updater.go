@@ -35,36 +35,36 @@ var (
 // If the markers don't exist, it appends the section to the end
 // CANARY: REQ=CBIN-149; FEATURE="MarkdownSectionUpdater"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
 func updateMarkdownSection(filePath, sectionContent string) error {
-    return gate.UpdateSingle(filePath, sectionContent,
-        append(markdownOptions, gate.WithBlankLineBefore())...,
-    )
+	return gate.UpdateSingle(filePath, sectionContent,
+		append(markdownOptions, gate.WithBlankLineBefore())...,
+	)
 }
 
 // CANARY: REQ=CBIN-149; FEATURE="MarkdownSectionUpdater"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
 // updateMultipleMarkdownSections updates multiple gated sections in a markdown file
 // Each section is identified by a unique key: <!-- CANARY:key:START --> ... <!-- CANARY:key:END -->
 func updateMultipleMarkdownSections(filePath string, sections map[string]string) error {
-    return gate.UpdateMultiple(filePath, sections,
-        append(markdownOptions, gate.WithBlankLineBefore())...,
-    )
+	return gate.UpdateMultiple(filePath, sections,
+		append(markdownOptions, gate.WithBlankLineBefore())...,
+	)
 }
 
 // CANARY: REQ=CBIN-149; FEATURE="MarkdownSectionUpdater"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
 // removeMarkdownSection removes a gated section from a markdown file
 func removeMarkdownSection(filePath, sectionKey string) error {
-    return gate.RemoveSection(filePath, sectionKey, markdownOptions...)
+	return gate.RemoveSection(filePath, sectionKey, markdownOptions...)
 }
 
 // buildMarkdownGatedBody returns a gated snippet (unnamed CANARY section) for direct insertion.
 // Example:
 // <!-- CANARY:START -->\n<content>\n<!-- CANARY:END -->\n
 func buildMarkdownGatedBody(content string) string {
-    return gate.BuildGatedBody(content, markdownOptions...)
+	return gate.BuildGatedBody(content, markdownOptions...)
 }
 
 // buildMarkdownGatedBodyKey returns a gated snippet for a keyed CANARY section.
 // Example key="intro":
 // <!-- CANARY:intro:START -->\n<content>\n<!-- CANARY:intro:END -->\n
 func buildMarkdownGatedBodyKey(key, content string) string {
-    return gate.BuildGatedBodyKey(key, content, markdownOptions...)
+	return gate.BuildGatedBodyKey(key, content, markdownOptions...)
 }

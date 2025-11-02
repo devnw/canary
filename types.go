@@ -32,8 +32,10 @@ type summary struct {
 
 // fromScanResult converts a gate.ScanResult into a legacy report (without GeneratedAt).
 // GeneratedAt should be set by caller (e.g., Run). Key ordering and promotion already handled upstream.
-func fromScanResult(res interface{ GetRequirements() []requirementRow; GetSummary() summary }) Report {
+func fromScanResult(res interface {
+	GetRequirements() []requirementRow
+	GetSummary() summary
+}) Report {
 	// This adapter interface allows future decoupling; currently unused externally.
 	return Report{Requirements: res.GetRequirements(), Summary: res.GetSummary()}
 }
-

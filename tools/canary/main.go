@@ -547,9 +547,14 @@ func writeCSV(path string, rep Report) error {
 }
 func parseKV(s string) (map[string]string, error) {
 	out := map[string]string{}
+	legacyReqRe := regexp.MustCompile(`^(REQ[-A-Z]*-?\d{1,4})$`)
 	for _, seg := range strings.Split(s, ";") {
 		seg = strings.TrimSpace(seg)
 		if seg == "" {
+			continue
+		}
+		if !strings.Contains(seg, "=") && legacyReqRe.MatchString(seg) {
+			out["REQ"] = normalizeREQ(seg)
 			continue
 		}
 		m := kvRe.FindStringSubmatch(seg)
@@ -603,12 +608,16 @@ func normalizeREQ(v string) string {
 	v = strings.TrimSpace(v)
 	v = strings.ReplaceAll(v, "‑", "-")
 	v = strings.ReplaceAll(v, "–", "-")
+	// Pad CBIN and generic REQ patterns
+	pad := func(prefix, num string) string {
+		for len(num) < 3 { num = "0" + num }
+		return prefix + num
+	}
 	if m := regexp.MustCompile(`^(CBIN-)(\d{1,3})$`).FindStringSubmatch(v); len(m) == 3 {
-		n := m[2]
-		for len(n) < 3 {
-			n = "0" + n
-		}
-		return m[1] + n
+		return pad(m[1], m[2])
+	}
+	if m := regexp.MustCompile(`^(REQ(?:-[A-Z]+)?-)(\d{1,3})$`).FindStringSubmatch(v); len(m) == 3 {
+		return pad(m[1], m[2])
 	}
 	return v
 }
