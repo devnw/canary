@@ -9,9 +9,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
+	"go.devnw.com/canary"
 	"go.devnw.com/canary/internal/storage"
 )
 
@@ -45,7 +45,8 @@ Examples:
 		reqID := args[0]
 		groupBy, _ := cmd.Flags().GetString("group-by")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
-		noColor, _ := cmd.Flags().GetBool("no-color")
+		// noColor flag retained for backward compatibility; color output removed in refactor
+		_, _ = cmd.Flags().GetBool("no-color")
 
 		dbPath, _ := cmd.Flags().GetString("db")
 
@@ -78,7 +79,7 @@ Examples:
 		}
 
 		fmt.Printf("Tokens for %s:\n\n", reqID)
-		output := formatTokensTable(tokens, groupBy, !noColor)
+		output := canary.FormatTokensTable(tokens, groupBy)
 		fmt.Println(output)
 
 		return nil
@@ -93,70 +94,6 @@ func outputTokensJSON(tokens []*storage.Token) error {
 }
 
 // formatTokensTable formats tokens as a grouped table
-func formatTokensTable(tokens []*storage.Token, groupBy string, useColor bool) string {
-	var buf strings.Builder
-
-	// Group tokens
-	groups := groupTokens(tokens, groupBy)
-
-	// Format each group
-	for groupName, groupTokens := range groups {
-		buf.WriteString(fmt.Sprintf("## %s\n\n", groupName))
-
-		for _, token := range groupTokens {
-			buf.WriteString(fmt.Sprintf("📌 %s - %s\n", token.ReqID, token.Feature))
-
-			// Status with optional color
-			statusLine := fmt.Sprintf("   Status: %s | Aspect: %s", token.Status, token.Aspect)
-			if token.Priority > 0 {
-				statusLine += fmt.Sprintf(" | Priority: %d", token.Priority)
-			}
-			buf.WriteString(statusLine + "\n")
-
-			buf.WriteString(fmt.Sprintf("   Location: %s:%d\n", token.FilePath, token.LineNumber))
-
-			if token.Test != "" {
-				buf.WriteString(fmt.Sprintf("   Test: %s\n", token.Test))
-			}
-			if token.Bench != "" {
-				buf.WriteString(fmt.Sprintf("   Bench: %s\n", token.Bench))
-			}
-			if token.Owner != "" {
-				buf.WriteString(fmt.Sprintf("   Owner: %s\n", token.Owner))
-			}
-			buf.WriteString("\n")
-		}
-	}
-
-	return buf.String()
-}
-
-// groupTokens groups tokens by specified field
-func groupTokens(tokens []*storage.Token, groupBy string) map[string][]*storage.Token {
-	groups := make(map[string][]*storage.Token)
-
-	for _, token := range tokens {
-		var key string
-		switch groupBy {
-		case "status":
-			key = token.Status
-		case "aspect":
-			key = token.Aspect
-		default:
-			// Default: group by aspect
-			key = token.Aspect
-		}
-
-		if key == "" {
-			key = "Ungrouped"
-		}
-
-		groups[key] = append(groups[key], token)
-	}
-
-	return groups
-}
-
 func init() {
 	ShowCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	ShowCmd.Flags().String("group-by", "aspect", "Group tokens by field (aspect, status)")

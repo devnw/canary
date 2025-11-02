@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"go.devnw.com/canary"
 	"go.devnw.com/canary/internal/storage"
 )
 
@@ -108,7 +109,7 @@ func TestCANARY_CBIN_CLI_001_CLI_ShowCmd(t *testing.T) {
 
 			// Test grouping
 			if len(tokens) > 0 {
-				groups := groupTokens(tokens, tt.groupBy)
+				groups := canary.GroupTokens(tokens, tt.groupBy)
 				if len(groups) == 0 {
 					t.Error("grouping returned no groups")
 				}
@@ -206,7 +207,7 @@ func TestCANARY_CBIN_CLI_001_CLI_ShowCmd_Grouping(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			groups := groupTokens(tokens, tt.groupBy)
+			groups := canary.GroupTokens(tokens, tt.groupBy)
 			if len(groups) != tt.wantGroups {
 				t.Errorf("got %d groups, want %d", len(groups), tt.wantGroups)
 			}

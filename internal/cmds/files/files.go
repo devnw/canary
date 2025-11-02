@@ -8,9 +8,9 @@ package files
 import (
 	"fmt"
 	"os"
-	"sort"
 
 	"github.com/spf13/cobra"
+	"go.devnw.com/canary"
 	"go.devnw.com/canary/internal/storage"
 )
 
@@ -62,66 +62,13 @@ Examples:
 
 		// Format output
 		fmt.Printf("Implementation files for %s:\n\n", reqID)
-		formatFilesList(fileGroups)
+		fmt.Print(canary.FormatFilesList(fileGroups))
 
 		return nil
 	},
 }
 
 // formatFilesList formats file groups by aspect
-func formatFilesList(fileGroups map[string][]*storage.Token) {
-	// Group files by aspect
-	aspectFiles := make(map[string][]string)
-	fileCounts := make(map[string]int)
-
-	for filePath, tokens := range fileGroups {
-		// Get aspect from first token (all tokens in same file may have different aspects)
-		aspects := make(map[string]bool)
-		for _, token := range tokens {
-			aspects[token.Aspect] = true
-		}
-
-		// Add file to each unique aspect
-		for aspect := range aspects {
-			aspectFiles[aspect] = append(aspectFiles[aspect], filePath)
-		}
-
-		fileCounts[filePath] = len(tokens)
-	}
-
-	// Sort aspects for consistent output
-	var aspects []string
-	for aspect := range aspectFiles {
-		aspects = append(aspects, aspect)
-	}
-	sort.Strings(aspects)
-
-	// Display by aspect
-	for _, aspect := range aspects {
-		files := aspectFiles[aspect]
-		sort.Strings(files)
-
-		fmt.Printf("**%s:**\n", aspect)
-		for _, file := range files {
-			count := fileCounts[file]
-			plural := "token"
-			if count > 1 {
-				plural = "tokens"
-			}
-			fmt.Printf("  %s (%d %s)\n", file, count, plural)
-		}
-		fmt.Println()
-	}
-
-	// Summary
-	totalFiles := len(fileGroups)
-	totalTokens := 0
-	for _, tokens := range fileGroups {
-		totalTokens += len(tokens)
-	}
-	fmt.Printf("Total: %d files, %d tokens\n", totalFiles, totalTokens)
-}
-
 func init() {
 	FilesCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	FilesCmd.Flags().Bool("all", false, "Include spec and template files")

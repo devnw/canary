@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"go.devnw.com/canary"
 	"go.devnw.com/canary/internal/storage"
 )
 
@@ -114,7 +115,7 @@ func TestCANARY_CBIN_CLI_001_CLI_FilesCmd_Formatting(t *testing.T) {
 	}
 
 	// Test that formatFilesList doesn't panic
-	formatFilesList(fileGroups)
+	canary.FormatFilesList(fileGroups)
 
 	// Verify total counts
 	totalFiles := len(fileGroups)
@@ -141,7 +142,7 @@ func TestCANARY_CBIN_CLI_001_CLI_FilesCmd_AspectGrouping(t *testing.T) {
 	}
 
 	// Format output (should group by aspect)
-	formatFilesList(fileGroups)
+	canary.FormatFilesList(fileGroups)
 
 	// Verify that file appears under both aspects
 	aspectFiles := make(map[string][]string)

@@ -316,11 +316,11 @@ func scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 	byAspect := AspectCounts{}
 	total := 0
 	for k, v := range agg {
-			// Treat FIXED as REMOVED for aggregation semantics
-			if v.status == "FIXED" {
-				v.status = "REMOVED"
-			}
-			status := promote(v.status, len(v.tests) > 0, len(v.benches) > 0)
+		// Treat FIXED as REMOVED for aggregation semantics
+		if v.status == "FIXED" {
+			v.status = "REMOVED"
+		}
+		status := promote(v.status, len(v.tests) > 0, len(v.benches) > 0)
 		f := Feature{Feature: k.feature, Aspect: k.aspect, Status: status, Files: keys(v.files), Tests: keys(v.tests), Benches: keys(v.benches), Owner: k.owner, Updated: k.updated}
 		byReq[k.req] = append(byReq[k.req], f)
 		byStatus[status]++

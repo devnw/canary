@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"go.devnw.com/canary"
 	"go.devnw.com/canary/internal/storage"
 )
 
@@ -96,7 +97,7 @@ func TestCANARY_CBIN_CLI_001_CLI_GrepCmd(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tokens, err := grepTokens(db, tt.pattern)
+			tokens, err := canary.GrepTokens(db, tt.pattern)
 			if err != nil {
 				t.Fatalf("grepTokens failed: %v", err)
 			}
@@ -162,7 +163,7 @@ func TestCANARY_CBIN_CLI_001_CLI_GrepCmd_CaseInsensitive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.pattern, func(t *testing.T) {
-			tokens, err := grepTokens(db, tt.pattern)
+			tokens, err := canary.GrepTokens(db, tt.pattern)
 			if err != nil {
 				t.Fatalf("grepTokens failed: %v", err)
 			}
@@ -191,7 +192,7 @@ func TestCANARY_CBIN_CLI_001_CLI_GrepCmd_EmptyPattern(t *testing.T) {
 	defer db.Close()
 
 	// Empty pattern should return no results
-	tokens, err := grepTokens(db, "")
+	tokens, err := canary.GrepTokens(db, "")
 	if err != nil {
 		t.Fatalf("grepTokens failed: %v", err)
 	}
