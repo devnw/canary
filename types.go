@@ -2,7 +2,8 @@ package canary
 
 import "time"
 
-type report struct {
+// Report is the canonical legacy output structure retained for backward compatibility.
+type Report struct {
 	GeneratedAt  time.Time        `json:"generated_at"`
 	Requirements []requirementRow `json:"requirements"`
 	Summary      summary          `json:"summary"`
@@ -28,3 +29,11 @@ type summary struct {
 	ByStatus map[string]int `json:"by_status"`
 	ByAspect map[string]int `json:"by_aspect"`
 }
+
+// fromScanResult converts a gate.ScanResult into a legacy report (without GeneratedAt).
+// GeneratedAt should be set by caller (e.g., Run). Key ordering and promotion already handled upstream.
+func fromScanResult(res interface{ GetRequirements() []requirementRow; GetSummary() summary }) Report {
+	// This adapter interface allows future decoupling; currently unused externally.
+	return Report{Requirements: res.GetRequirements(), Summary: res.GetSummary()}
+}
+

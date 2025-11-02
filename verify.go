@@ -55,7 +55,7 @@ func ParseGAPClaims(path string) (map[string]claim, error) {
 	return claims, sc.Err()
 }
 
-func VerifyClaims(rep report, claims map[string]claim) error {
+func VerifyClaims(rep Report, claims map[string]claim) error {
 	var errs []string
 	evidence := map[string]bool{} // REQ -> has TESTED/BENCHED
 	for _, r := range rep.Requirements {
@@ -80,4 +80,12 @@ func VerifyClaims(rep report, claims map[string]claim) error {
 		return fmt.Errorf("%s", strings.Join(errs, "; "))
 	}
 	return nil
+}
+
+// normalizeReq ensures requirement IDs use ASCII hyphen and trimmed spaces.
+func normalizeReq(id string) string {
+	id = strings.TrimSpace(id)
+	id = strings.ReplaceAll(id, "\u2011", "-")
+	id = strings.ReplaceAll(id, "\u2013", "-")
+	return id
 }

@@ -10,12 +10,12 @@ import (
 
 // Run executes a scan and writes JSON/CSV outputs. Caller supplies already-built report.
 // This separates CLI main from library logic.
-func Run(rep report, out, csv string) error {
+func Run(rep Report, out, csv string) error {
 	rep.GeneratedAt = time.Now().UTC()
 	return writeOutputs(rep, out, csv)
 }
 
-func writeOutputs(rep report, out, csv string) error {
+func writeOutputs(rep Report, out, csv string) error {
 	jf, err := os.Create(out)
 	if err != nil {
 		return err
