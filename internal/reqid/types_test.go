@@ -21,17 +21,17 @@ func TestParse(t *testing.T) {
 		{"TASK-456", &ID{Type: TypeTASK, Number: 456}, false},
 		{"BUG-1", &ID{Type: TypeBUG, Number: 1}, false},
 		{"BUG-789", &ID{Type: TypeBUG, Number: 789}, false},
-		
+
 		// Invalid formats
-		{"CBIN-001", nil, true},           // Old format
-		{"REQ-ABC", nil, true},            // Non-numeric
-		{"INVALID-123", nil, true},        // Wrong prefix
-		{"REQ", nil, true},                // Missing number
-		{"123", nil, true},                // Missing type
-		{"REQ-", nil, true},               // Missing number
-		{"", nil, true},                   // Empty
+		{"CBIN-001", nil, true},    // Old format
+		{"REQ-ABC", nil, true},     // Non-numeric
+		{"INVALID-123", nil, true}, // Wrong prefix
+		{"REQ", nil, true},         // Missing number
+		{"123", nil, true},         // Missing type
+		{"REQ-", nil, true},        // Missing number
+		{"", nil, true},            // Empty
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			got, err := Parse(tt.input)
@@ -59,7 +59,7 @@ func TestIDTypeChecks(t *testing.T) {
 	if req.IsTASK() || req.IsBUG() {
 		t.Error("REQ should not be TASK or BUG")
 	}
-	
+
 	task := NewTASK(1)
 	if !task.IsTASK() {
 		t.Error("NewTASK(1).IsTASK() = false, want true")
@@ -67,7 +67,7 @@ func TestIDTypeChecks(t *testing.T) {
 	if task.IsREQ() || task.IsBUG() {
 		t.Error("TASK should not be REQ or BUG")
 	}
-	
+
 	bug := NewBUG(1)
 	if !bug.IsBUG() {
 		t.Error("NewBUG(1).IsBUG() = false, want true")
@@ -90,7 +90,7 @@ func TestValidate(t *testing.T) {
 		{"negative number", &ID{Type: TypeREQ, Number: -1}, true},
 		{"invalid type", &ID{Type: "INVALID", Number: 1}, true},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.id.Validate()
@@ -111,7 +111,7 @@ func TestString(t *testing.T) {
 		{NewTASK(456), "TASK-456"},
 		{NewBUG(789), "BUG-789"},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
 			if got := tt.id.String(); got != tt.want {

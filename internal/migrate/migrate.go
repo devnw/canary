@@ -12,9 +12,32 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"go.devnw.com/canary/embedded"
 )
+
+// readEmbeddedCandidate tries common locations for embedded templates on disk
+func readEmbeddedCandidate(p string) ([]byte, error) {
+	candidates := []string{
+		p,
+		filepath.Join("internal", "cmds", "init", p),
+	}
+
+	if strings.HasPrefix(p, "base/") {
+		trimmed := strings.TrimPrefix(p, "base/")
+		candidates = append(candidates, trimmed)
+		candidates = append(candidates, filepath.Join("internal", "cmds", "init", trimmed))
+	} else {
+		withBase := filepath.Join("base", p)
+		candidates = append(candidates, withBase)
+		candidates = append(candidates, filepath.Join("internal", "cmds", "init", withBase))
+	}
+
+	for _, c := range candidates {
+		if content, err := os.ReadFile(c); err == nil {
+			return content, nil
+		}
+	}
+	return nil, fmt.Errorf("embedded file not found: %s", p)
+}
 
 // SystemType represents the type of system being migrated from
 type SystemType string
@@ -299,7 +322,8 @@ func ExecuteMigration(rootDir string, plan *MigrationPlan, dryRun bool) error {
 			// Map file path to embedded template path
 			embeddedPath := filepath.Join("base", filename)
 
-			content, err := embedded.CanaryFS.ReadFile(embeddedPath)
+			// Try reading embedded template from candidate disk locations
+			content, err := readEmbeddedCandidate(embeddedPath)
 			if err != nil {
 				return fmt.Errorf("failed to read embedded template %s: %w", embeddedPath, err)
 			}

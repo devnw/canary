@@ -50,7 +50,7 @@ The server runs as an HTTP endpoint that AI assistants can interact with.`,
 			}, nil)
 
 			// Add all Canary tools to the server
-			
+
 			// Core token management
 			mcp.AddTool(server, &mcp.Tool{
 				Name:        "list",

@@ -1,3 +1,5 @@
+//go:build ignore
+
 // Copyright (c) 2025 by Developer Network.
 //
 // For more details, see the LICENSE file in the root directory of this

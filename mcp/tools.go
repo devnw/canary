@@ -257,7 +257,7 @@ func handleStatus(ctx context.Context, req *mcp.CallToolRequest, params *StatusP
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{
-				Text: fmt.Sprintf("Status for %s: %d%% complete (%d/%d tokens)", 
+				Text: fmt.Sprintf("Status for %s: %d%% complete (%d/%d tokens)",
 					params.ReqID, completionPct, stats.Completed, stats.Total),
 			},
 		},

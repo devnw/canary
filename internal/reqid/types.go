@@ -18,10 +18,10 @@ type IDType string
 const (
 	// TypeREQ represents a requirement specification
 	TypeREQ IDType = "REQ"
-	
+
 	// TypeTASK represents a task within a requirement plan
 	TypeTASK IDType = "TASK"
-	
+
 	// TypeBUG represents a bug related to a requirement or task
 	TypeBUG IDType = "BUG"
 )
@@ -30,7 +30,7 @@ const (
 type ID struct {
 	Type   IDType // REQ, TASK, or BUG
 	Number int    // Numeric identifier (e.g., 123)
-	
+
 	// Relationships
 	ParentID string // For TASK/BUG: the REQ or TASK this relates to (optional)
 }
@@ -46,13 +46,13 @@ func Parse(id string) (*ID, error) {
 	if matches == nil {
 		return nil, fmt.Errorf("invalid ID format: %q (expected REQ-###, TASK-###, or BUG-###)", id)
 	}
-	
+
 	typ := IDType(matches[1])
 	number, err := strconv.Atoi(matches[2])
 	if err != nil {
 		return nil, fmt.Errorf("invalid number in ID %q: %w", id, err)
 	}
-	
+
 	return &ID{
 		Type:   typ,
 		Number: number,
@@ -84,11 +84,11 @@ func (id *ID) Validate() error {
 	if id.Type != TypeREQ && id.Type != TypeTASK && id.Type != TypeBUG {
 		return fmt.Errorf("invalid ID type: %q", id.Type)
 	}
-	
+
 	if id.Number <= 0 {
 		return fmt.Errorf("ID number must be positive, got: %d", id.Number)
 	}
-	
+
 	return nil
 }
 

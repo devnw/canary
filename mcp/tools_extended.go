@@ -180,7 +180,7 @@ func handleImplement(ctx context.Context, req *mcp.CallToolRequest, params *Impl
 	// Check for spec and plan files
 	specPath := filepath.Join(".canary", "specs", params.ReqID, "spec.md")
 	planPath := filepath.Join(".canary", "specs", params.ReqID, "plan.md")
-	
+
 	_, hasSpecErr := os.Stat(specPath)
 	_, hasPlanErr := os.Stat(planPath)
 
@@ -429,7 +429,7 @@ func handleBugList(ctx context.Context, req *mcp.CallToolRequest, params *BugLis
 	if params.Status != "" {
 		filters["status"] = params.Status
 	}
-	
+
 	// Filter for BUG- prefix tokens
 	filters["req_id_prefix"] = "BUG-"
 
