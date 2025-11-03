@@ -3,7 +3,7 @@
 **Agentic-Coding-Friendly Requirement Tracking System**
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev/)
 [![Build](https://github.com/devnw/canary/actions/workflows/build.yml/badge.svg)](https://github.com/devnw/canary/actions/workflows/build.yml)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 [![Go Reference](https://pkg.go.dev/badge/go.devnw.com/canary.svg)](https://pkg.go.dev/go.devnw.com/canary)
@@ -35,7 +35,7 @@ cd canary
 make build
 ```
 
-## Repository
+## Repository (for the pages site)
 
 The code is hosted on GitHub:
 
