@@ -1,0 +1,52 @@
+stages:
+  - build
+  - test
+  - lint
+
+variables:
+  GO_VERSION: "1.24"
+  GOFLAGS: "-buildvcs=false"
+
+default:
+  image: golang:${GO_VERSION}
+  before_script:
+    - go version
+
+build:
+  stage: build
+  script:
+    - go build ./...
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - .go/pkg/mod/
+
+test:
+  stage: test
+  script:
+    - go test -race -coverprofile=coverage.out ./...
+    - go tool cover -func=coverage.out
+  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.out
+    paths:
+      - coverage.out
+    expire_in: 1 week
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - .go/pkg/mod/
+
+lint:
+  stage: lint
+  image: golangci/golangci-lint:latest
+  script:
+    - golangci-lint run --timeout 5m
+  allow_failure: true
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-lint
+    paths:
+      - .go/pkg/mod/
