@@ -3,6 +3,11 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
+// This file defines extended MCP tools. The following handlers are
+// currently stubs returning placeholder responses: specify, plan, index,
+// BUG create (ID generation), and gap mark. Tracked in docs/GAP_ANALYSIS.md
+// (GAP-0005). The scan tool is implemented in tools.go (internal/canaryscan).
+
 package mcp
 
 import (

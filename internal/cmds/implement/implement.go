@@ -44,10 +44,12 @@ Examples:
   canary implement --list                # List all unimplemented requirements`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO: Implement --prompt flag to load custom prompts from file
 		promptArg, _ := cmd.Flags().GetString("prompt-arg")
-		_ = promptArg // Stubbed for future use
-
+		if promptArg != "" {
+			if _, err := utils.LoadPrompt(promptArg); err != nil {
+				return err
+			}
+		}
 		listFlag, _ := cmd.Flags().GetBool("list")
 		promptFlag, _ := cmd.Flags().GetBool("prompt")
 
@@ -359,11 +361,37 @@ func extractImplementationChecklist(specContent string) string {
 	return checklist.String()
 }
 
-// listUnimplemented lists all unimplemented (STUB/IMPL) requirements
+// listUnimplemented lists all requirement specs under .canary/specs (candidates for implementation).
 func listUnimplemented() error {
-	// TODO: Implement listing functionality
-	// For now, just return a message
-	fmt.Println("Listing unimplemented requirements...")
-	fmt.Println("(Feature not yet fully implemented)")
+	specsDir := ".canary/specs"
+	entries, err := os.ReadDir(specsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println("No specifications found. Run 'canary specify <description>' or add specs under .canary/specs/")
+			return nil
+		}
+		return fmt.Errorf("list specs: %w", err)
+	}
+	var count int
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		// Expect CBIN-XXX-feature-name or similar
+		parts := strings.SplitN(name, "-", 3)
+		if len(parts) >= 2 {
+			reqID := parts[0] + "-" + parts[1]
+			featureName := name
+			if len(parts) == 3 {
+				featureName = parts[2]
+			}
+			fmt.Printf("%s\t%s\n", reqID, featureName)
+			count++
+		}
+	}
+	if count == 0 {
+		fmt.Println("No requirement specifications found under .canary/specs/")
+	}
 	return nil
 }

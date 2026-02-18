@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"go.devnw.com/canary/internal/canaryscan"
 	"go.devnw.com/canary/internal/storage"
 )
 
@@ -396,27 +397,31 @@ type ScanParams struct {
 type ScanResult struct {
 	Message string `json:"message"`
 	Root    string `json:"root"`
+	Tokens  int    `json:"total_tokens"`
 }
 
-// handleScan implements the scan tool handler
+// handleScan implements the scan tool handler by calling the canary scanner.
 func handleScan(ctx context.Context, req *mcp.CallToolRequest, params *ScanParams) (*mcp.CallToolResult, *ScanResult, error) {
 	root := params.Root
 	if root == "" {
 		root = "."
 	}
-
-	// TODO: Implement actual scan functionality
-	// For now, return a placeholder response
-	result := &ScanResult{
-		Message: fmt.Sprintf("Scan functionality will scan directory: %s", root),
-		Root:    root,
+	skipRegex := canaryscan.DefaultSkipRegex()
+	rep, err := canaryscan.Scan(root, skipRegex, nil, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("scan %s: %w", root, err)
 	}
-
+	tokens := rep.Summary.TotalTokens
+	unique := rep.Summary.UniqueRequirements
+	msg := fmt.Sprintf("Scanned %s: %d tokens, %d unique requirements", root, tokens, unique)
+	result := &ScanResult{
+		Message: msg,
+		Root:    root,
+		Tokens:  rep.Summary.TotalTokens,
+	}
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
-			&mcp.TextContent{
-				Text: fmt.Sprintf("Scan would process directory: %s (implementation pending)", root),
-			},
+			&mcp.TextContent{Text: msg},
 		},
 	}, result, nil
 }

@@ -28,10 +28,12 @@ By default, hides requirements from:
 
 Use --include-hidden to show all requirements including hidden ones.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO: Implement --prompt flag to load custom prompts
 		prompt, _ := cmd.Flags().GetString("prompt")
-		_ = prompt // Stubbed for future use
-
+		if prompt != "" {
+			if _, err := utils.LoadPrompt(prompt); err != nil {
+				return err
+			}
+		}
 		dbPath, _ := cmd.Flags().GetString("db")
 		filterStatus, _ := cmd.Flags().GetString("status")
 		filterAspect, _ := cmd.Flags().GetString("aspect")

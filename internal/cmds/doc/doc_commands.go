@@ -93,19 +93,19 @@ The command will:
 
 ## Overview
 
-TODO: Provide an overview of this feature/component.
+*(Auto-generated stub. Replace with a short overview of this feature or component.)*
 
 ## Usage
 
-TODO: Describe how to use this feature.
+*(Describe how to use this feature. Replace this stub with real usage instructions.)*
 
 ## Examples
 
-TODO: Provide concrete examples.
+*(Provide concrete examples. Replace this stub with code or command examples.)*
 
 ## Notes
 
-TODO: Additional notes, caveats, or considerations.
+*(Additional notes, caveats, or considerations. Replace or remove this section as needed.)*
 `, reqID, reqID, docType, time.Now().Format("2006-01-02")))
 		}
 

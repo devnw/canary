@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"go.devnw.com/canary/internal/cmds/internal/utils"
 	"go.devnw.com/canary/internal/storage"
 )
 
@@ -19,10 +20,12 @@ var SearchCmd = &cobra.Command{
 Keywords are matched case-insensitively using LIKE queries.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO: Implement --prompt flag to load custom prompts
 		prompt, _ := cmd.Flags().GetString("prompt")
-		_ = prompt // Stubbed for future use
-
+		if prompt != "" {
+			if _, err := utils.LoadPrompt(prompt); err != nil {
+				return err
+			}
+		}
 		dbPath, _ := cmd.Flags().GetString("db")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 		keywords := strings.Join(args, " ")

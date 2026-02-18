@@ -146,9 +146,7 @@ func TestCANARY_CBIN_145_Engine_OrphanRequirementCreation(t *testing.T) {
 }
 
 // TestCANARY_CBIN_145_Engine_MinimumFeatureThreshold verifies feature count filtering
-// TODO: This test is currently skipped due to database insertion issue
 func TestCANARY_CBIN_145_Engine_MinimumFeatureThreshold(t *testing.T) {
-	t.Skip("Skipping due to database insertion issue - needs investigation")
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
 
@@ -168,9 +166,11 @@ func TestCANARY_CBIN_145_Engine_MinimumFeatureThreshold(t *testing.T) {
 		t.Fatalf("failed to create specs directory: %v", err)
 	}
 
-	// Insert tokens - CBIN-500 has only 1 feature (below threshold)
+	// Insert tokens - CBIN-500 has only 1 feature (below threshold).
+	// RawToken and IndexedAt are required by the schema; use placeholders.
+	now := "2025-10-17T00:00:00Z"
 	tokens := []*storage.Token{
-		{ReqID: "CBIN-500", Feature: "SingleFeature", Aspect: "API", Status: "STUB", FilePath: "test.go", LineNumber: 10, UpdatedAt: "2025-10-17"},
+		{ReqID: "CBIN-500", Feature: "SingleFeature", Aspect: "API", Status: "STUB", FilePath: "pkg/api/handler.go", LineNumber: 10, UpdatedAt: "2025-10-17", RawToken: "CANARY: REQ=CBIN-500; FEATURE=\"SingleFeature\"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-17", IndexedAt: now},
 	}
 
 	for _, token := range tokens {
@@ -179,8 +179,8 @@ func TestCANARY_CBIN_145_Engine_MinimumFeatureThreshold(t *testing.T) {
 		}
 	}
 
-	// Verify token was inserted
-	allTokens, err := db.ListTokens(map[string]string{}, "", "req_id ASC", 0)
+	// Verify token was inserted (include_hidden so path exclusions don't hide pkg/ file)
+	allTokens, err := db.ListTokens(map[string]string{"include_hidden": "true"}, "", "req_id ASC", 0)
 	if err != nil {
 		t.Fatalf("failed to list tokens: %v", err)
 	}

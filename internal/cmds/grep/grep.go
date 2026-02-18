@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"go.devnw.com/canary"
+	"go.devnw.com/canary/internal/cmds/internal/utils"
 	"go.devnw.com/canary/internal/storage"
 )
 
@@ -35,9 +36,12 @@ Examples:
   canary grep TestAuth          # Find tokens with "TestAuth" test`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO: Implement --prompt flag to load custom prompts
 		prompt, _ := cmd.Flags().GetString("prompt")
-		_ = prompt // Stubbed for future use
+		if prompt != "" {
+			if _, err := utils.LoadPrompt(prompt); err != nil {
+				return err
+			}
+		}
 
 		pattern := args[0]
 		dbPath, _ := cmd.Flags().GetString("db")

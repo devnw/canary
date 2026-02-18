@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 	"testing"
+
+	"go.devnw.com/canary/internal/canaryscan"
 )
 
 // CANARY: REQ=CBIN-211; FEATURE="BugOpenStatusTest"; ASPECT=Engine; STATUS=TESTED; TEST=TestBUGOpenStatus; OWNER=canary; UPDATED=2025-11-02
@@ -14,7 +16,7 @@ func TestBUGOpenStatus(t *testing.T) {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write temp file: %v", err)
 	}
-	rep, err := scan(dir, skipDefault, nil, nil)
+	rep, err := canaryscan.Scan(dir, canaryscan.DefaultSkipRegex(), nil, nil)
 	if err != nil {
 		t.Fatalf("scan error: %v", err)
 	}

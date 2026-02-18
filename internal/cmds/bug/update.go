@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.devnw.com/canary/internal/cmds/internal/utils"
 	"go.devnw.com/canary/internal/storage"
 )
 
@@ -26,10 +27,12 @@ Examples:
   canary bug update BUG-Storage-003 --priority P0 --severity S1`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO: Implement --prompt flag to load custom prompts
 		prompt, _ := cmd.Flags().GetString("prompt")
-		_ = prompt // Stubbed for future use
-
+		if prompt != "" {
+			if _, err := utils.LoadPrompt(prompt); err != nil {
+				return err
+			}
+		}
 		bugID := args[0]
 		status, _ := cmd.Flags().GetString("status")
 		severity, _ := cmd.Flags().GetString("severity")

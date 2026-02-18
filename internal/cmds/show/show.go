@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"go.devnw.com/canary"
+	"go.devnw.com/canary/internal/cmds/internal/utils"
 	"go.devnw.com/canary/internal/storage"
 )
 
@@ -38,10 +39,12 @@ Examples:
   canary show CBIN-133 --json`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO: Implement --prompt flag to load custom prompts
 		prompt, _ := cmd.Flags().GetString("prompt")
-		_ = prompt // Stubbed for future use
-
+		if prompt != "" {
+			if _, err := utils.LoadPrompt(prompt); err != nil {
+				return err
+			}
+		}
 		reqID := args[0]
 		groupBy, _ := cmd.Flags().GetString("group-by")
 		jsonOutput, _ := cmd.Flags().GetBool("json")

@@ -7,6 +7,7 @@
 package next
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -46,10 +47,12 @@ Priority determination factors:
 3. DEPENDS_ON (dependencies must be TESTED/BENCHED)
 4. UPDATED field (older tokens get priority boost)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO: Implement --prompt flag to load custom prompts from file
 		promptArg, _ := cmd.Flags().GetString("prompt-arg")
-		_ = promptArg // Stubbed for future use
-
+		if promptArg != "" {
+			if _, err := utils.LoadPrompt(promptArg); err != nil {
+				return err
+			}
+		}
 		dbPath, _ := cmd.Flags().GetString("db")
 		promptFlag, _ := cmd.Flags().GetBool("prompt")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
@@ -95,14 +98,37 @@ Priority determination factors:
 		}
 
 		if jsonOutput {
-			// TODO: Implement JSON output format
-			fmt.Println("{\"error\": \"JSON output not yet implemented\"}")
+			out := nextJSONOutput{
+				ReqID:    token.ReqID,
+				Feature:  token.Feature,
+				Aspect:   token.Aspect,
+				Status:   token.Status,
+				Priority: token.Priority,
+				FilePath: token.FilePath,
+				Updated:  token.UpdatedAt,
+			}
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(out); err != nil {
+				return fmt.Errorf("json encode: %w", err)
+			}
 			return nil
 		}
 
 		fmt.Println(output)
 		return nil
 	},
+}
+
+// nextJSONOutput is the structure emitted for next --json.
+type nextJSONOutput struct {
+	ReqID    string `json:"req_id"`
+	Feature  string `json:"feature"`
+	Aspect   string `json:"aspect"`
+	Status   string `json:"status"`
+	Priority int    `json:"priority"`
+	FilePath string `json:"file_path"`
+	Updated  string `json:"updated"`
 }
 
 // PromptData holds template variables for prompt generation

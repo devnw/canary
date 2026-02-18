@@ -645,7 +645,7 @@ CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=TESTED; TEST=Tes
 ## Related Documentation
 
 - [README.md](../README.md) - Project overview
-- [README_CANARY.md](../README_CANARY.md) - Token specification
+- [README_CANARY.md](README_CANARY.md) - Token specification
 - [REQUIREMENTS.md](./REQUIREMENTS.md) - Requirements documentation
 - [Getting Started Guide](./user/getting-started.md) - User tutorial
 - [CLAUDE.md](../CLAUDE.md) - AI agent guide

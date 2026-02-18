@@ -1,8 +1,14 @@
 # CANARY Requirements Specification
 
-**Project:** CANARY Token Tracking System
-**Version:** 2.0
+**Project:** CANARY Token Tracking System  
+**Version:** 2.0  
 **Last Updated:** 2025-10-18
+
+**Source of truth for requirements and gaps:** [GitLab issues](https://gitlab.com/devnw/codepros/oss/canary/-/issues). This file is a flatfile mirror for humans and agents. For authoritative status, use GitLab.
+
+**Open gaps (as of 2026-02-18):** Tracked in [docs/GAP_ANALYSIS.md](./GAP_ANALYSIS.md). GitLab issues: [#8](https://gitlab.com/devnw/codepros/oss/canary/-/issues/8) (GAP-0001) through [#20](https://gitlab.com/devnw/codepros/oss/canary/-/issues/20) (GAP-0013).
+
+---
 
 ## Executive Summary
 
@@ -13,6 +19,7 @@ CANARY is a requirement tracking system that embeds structured tokens directly i
 ### In Scope
 
 **Core Tracking (CBIN-101, 102, 103)**
+
 - File scanning for CANARY tokens
 - JSON/CSV output generation
 - Verification gates for claimed requirements
@@ -20,6 +27,7 @@ CANARY is a requirement tracking system that embeds structured tokens directly i
 - Self-canary validation
 
 **CLI System (CBIN-104+)**
+
 - Full-featured command-line interface
 - SQLite database for fast queries
 - Specification and plan generation
@@ -29,6 +37,7 @@ CANARY is a requirement tracking system that embeds structured tokens directly i
 - Documentation tracking
 
 **AI Integration**
+
 - Slash commands for autonomous workflows
 - Constitutional principle enforcement
 - Test-first guidance
@@ -53,12 +62,14 @@ CANARY is a requirement tracking system that embeds structured tokens directly i
 ### Dependencies
 
 **Runtime (minimal):**
+
 - Go standard library (primary)
 - `github.com/spf13/cobra` - CLI framework
 - `modernc.org/sqlite` - Pure Go SQLite
 - `github.com/google/uuid` - UUID generation
 
 **Test Dependencies:**
+
 - `github.com/stretchr/testify` - Test assertions
 - `github.com/google/go-cmp` - Deep comparison
 
@@ -131,6 +142,7 @@ CANARY: REQ=<req-id>; FEATURE="<name>"; ASPECT=<aspect>; STATUS=<status>; [OPTIO
 ```
 
 **Exit Codes:**
+
 - `0` - Success
 - `2` - Verification/staleness failure
 - `3` - Parse/IO error
@@ -144,9 +156,11 @@ canary <command> [flags]
 **Commands:**
 
 **Initialization:**
+
 - `init <project>` - Initialize new CANARY project
 
 **Database Management:**
+
 - `index` - Build/rebuild token database
 - `index --local` - Use project-local database
 - `projects list` - List all registered projects
@@ -154,6 +168,7 @@ canary <command> [flags]
 - `projects switch <name>` - Change active project
 
 **Query Commands:**
+
 - `show <req-id>` - Display all tokens for requirement
 - `files <req-id>` - List implementation files
 - `status <req-id>` - Show progress summary
@@ -161,23 +176,27 @@ canary <command> [flags]
 - `list [--status] [--aspect]` - List requirements with filtering
 
 **Workflow Commands:**
+
 - `next [--prompt]` - Get next priority requirement
 - `implement <req-id>` - Get implementation guidance
 - `specify [update <req-id>]` - Create/modify specifications
 - `plan <req-id>` - Generate implementation plan
 
 **Documentation Commands:**
+
 - `doc status <req> <feature>` - Check documentation currency
 - `doc update [--req] [--feature]` - Update documentation hashes
 - `doc report [--show-undocumented]` - Generate coverage report
 
 **Dependency Commands (CBIN-147):**
+
 - `deps check <req-id>` - Check if dependencies satisfied
 - `deps graph <req-id> [--status]` - Show dependency tree
 - `deps reverse <req-id>` - Show reverse dependencies
 - `deps validate` - Detect circular dependencies
 
 **Scanning:**
+
 - `scan [--out] [--csv] [--verify] [--strict] [--update-stale]` - Scan codebase
 
 ## Output Formats
@@ -205,8 +224,8 @@ canary <command> [flags]
     }
   ],
   "summary": {
-    "by_status": {"STUB":0, "IMPL":0, "TESTED":50, "BENCHED":10},
-    "by_aspect": {"Engine":20, "CLI":15, "API":10},
+    "by_status": { "STUB": 0, "IMPL": 0, "TESTED": 50, "BENCHED": 10 },
+    "by_aspect": { "Engine": 20, "CLI": 15, "API": 10 },
     "total_tokens": 150,
     "unique_requirements": 90
   }
@@ -214,6 +233,7 @@ canary <command> [flags]
 ```
 
 **Requirements:**
+
 - Minified (no unnecessary whitespace)
 - Deterministic (same input → same bytes)
 - Maps are key-sorted
@@ -227,6 +247,7 @@ CBIN-147,DependencyParser,Engine,TESTED,internal/specs/parser_dependency.go,Test
 ```
 
 **Requirements:**
+
 - Header row with field names
 - Rows sorted by (req, feature, file, test, bench)
 - Deterministic output
@@ -248,11 +269,13 @@ Claims are extracted from `GAP_ANALYSIS.md` using regex:
 # Requirements Gap Analysis
 
 ## Claimed Requirements
+
 ✅ CBIN-101 - Scanner Core
 ✅ CBIN-102 - Verify Gate
 ✅ CBIN-147 - Specification Dependencies
 
 ## Gaps
+
 - [ ] CBIN-150 - Fuzzy Search (needs implementation)
 ```
 
@@ -261,9 +284,11 @@ Claims are extracted from `GAP_ANALYSIS.md` using regex:
 **Rule:** Claimed requirements must have at least one token with `STATUS ∈ {TESTED, BENCHED}`
 
 **Failure Condition:**
+
 - Claimed `CBIN-###` has only MISSING, STUB, or IMPL status
 
 **Error Message:**
+
 ```
 CANARY_VERIFY_FAIL REQ=CBIN-### reason=claimed_but_not_TESTED_OR_BENCHED
 ```
@@ -275,10 +300,12 @@ CANARY_VERIFY_FAIL REQ=CBIN-### reason=claimed_but_not_TESTED_OR_BENCHED
 **Rule:** Tokens with `STATUS ∈ {TESTED, BENCHED}` must have `UPDATED` within 30 days
 
 **Failure Condition (with --strict):**
+
 - Token STATUS is TESTED or BENCHED
 - UPDATED date is >30 days old
 
 **Error Message:**
+
 ```
 CANARY_STALE REQ=CBIN-### updated=YYYY-MM-DD age_days=N threshold=30
 ```
@@ -290,6 +317,7 @@ CANARY_STALE REQ=CBIN-### updated=YYYY-MM-DD age_days=N threshold=30
 **Command:** `canary scan --update-stale`
 
 **Behavior:**
+
 - Finds all tokens with STATUS=TESTED or BENCHED
 - Checks UPDATED field against current date
 - If >30 days old, rewrites token in-place with current date
@@ -305,10 +333,12 @@ Dependencies are declared in `spec.md` files:
 ## Dependencies
 
 ### Full Dependencies (entire requirement must be complete)
+
 - CBIN-146 (Multi-Project Support - required for namespacing)
 - CBIN-129 (Database Migrations - schema must be updated first)
 
 ### Partial Dependencies (specific features/aspects required)
+
 - CBIN-140:GapRepository,GapService (only gap storage features needed)
 - CBIN-133:Engine (only Engine aspect required for this feature)
 ```
@@ -316,16 +346,19 @@ Dependencies are declared in `spec.md` files:
 ### Syntax
 
 **Full Dependency:**
+
 ```
 - CBIN-XXX (Description - reason for dependency)
 ```
 
 **Partial Feature Dependency:**
+
 ```
 - CBIN-XXX:Feature1,Feature2 (Description - only these features needed)
 ```
 
 **Partial Aspect Dependency:**
+
 ```
 - CBIN-XXX:AspectName (Description - only this aspect needed)
 ```
@@ -333,6 +366,7 @@ Dependencies are declared in `spec.md` files:
 ### Satisfaction Rules
 
 **Dependency is satisfied when:**
+
 1. Full: ALL features in target requirement are TESTED or BENCHED
 2. Partial Features: Specified features are TESTED or BENCHED
 3. Partial Aspect: All features with specified aspect are TESTED or BENCHED
@@ -342,15 +376,18 @@ Dependencies are declared in `spec.md` files:
 ### Validation
 
 **Circular Detection:**
+
 - Uses Depth-First Search (DFS) with recursion stack
 - O(V+E) complexity
 - Detects cycles like: A → B → C → A
 
 **Missing Requirements:**
+
 - Checks if target requirements exist in .canary/specs/
 - Reports dependencies on non-existent specs
 
 **Self-Dependencies:**
+
 - Detects and reports A → A cases
 
 ## Multi-Project Support (CBIN-146)
@@ -358,12 +395,14 @@ Dependencies are declared in `spec.md` files:
 ### Database Modes
 
 **Global Mode (default):**
+
 ```bash
 canary index
 # Uses: ~/.canary/canary.db
 ```
 
 **Local Mode:**
+
 ```bash
 canary index --local
 # Uses: .canary/canary.db (in current project)
@@ -372,6 +411,7 @@ canary index --local
 ### Project Registry
 
 **Schema:**
+
 ```sql
 CREATE TABLE projects (
     id INTEGER PRIMARY KEY,
@@ -383,6 +423,7 @@ CREATE TABLE projects (
 ```
 
 **Commands:**
+
 ```bash
 canary projects list              # List all projects
 canary projects add my-app        # Register new project
@@ -399,12 +440,14 @@ DOC=<type>:<path>
 ```
 
 **Types:**
+
 - `user` - User-facing documentation
 - `api` - API reference
 - `arch` - Architecture docs
 - `dev` - Developer docs
 
 **Examples:**
+
 ```
 DOC=user:docs/user/getting-started.md
 DOC=api:docs/api/dependency-parser.md
@@ -416,12 +459,14 @@ DOC=arch:docs/architecture/adr-001-doc-tracking.md
 **Format:** First 16 characters of SHA256 hash
 
 **Calculation:**
+
 ```bash
 sha256sum docs/user/getting-started.md | cut -c1-16
 # Output: a3f5b8c2e1d4a6f9
 ```
 
 **Usage:**
+
 ```
 DOC=user:docs/user/getting-started.md; DOC_HASH=a3f5b8c2e1d4a6f9
 ```
@@ -496,6 +541,7 @@ canary doc report --show-undocumented
 ### Deterministic Output
 
 **Requirements:**
+
 1. Same codebase → same status.json bytes
 2. Maps are key-sorted (by_status, by_aspect)
 3. Arrays are sorted (requirements by ID, features by name)
@@ -503,6 +549,7 @@ canary doc report --show-undocumented
 5. CSV rows sorted by (req, feature, file, test, bench)
 
 **Testing:**
+
 - Scan codebase twice
 - Compare output byte-for-byte
 - Must be identical
@@ -510,11 +557,13 @@ canary doc report --show-undocumented
 ### Observability
 
 **Stderr Diagnostics:**
+
 - Single-line error messages
 - Structured format for easy parsing
 - Prefixed with severity (ERROR, WARN, INFO)
 
 **Examples:**
+
 ```
 CANARY_VERIFY_FAIL REQ=CBIN-147 reason=claimed_but_not_TESTED_OR_BENCHED
 CANARY_STALE REQ=CBIN-105 updated=2025-08-01 age_days=78 threshold=30
@@ -541,6 +590,7 @@ CANARY: REQ=CBIN-103; FEATURE="StatusJSON"; ASPECT=API; STATUS=BENCHED; ...
 ### CLI Tokens (cmd/canary, internal/)
 
 Over 90 requirements tracked with CANARY tokens, including:
+
 - CBIN-146: Multi-Project Support
 - CBIN-147: Specification Dependencies
 - CBIN-136: Documentation Tracking
@@ -570,35 +620,42 @@ canary deps validate
 ### Tests
 
 **1. TestAcceptance_FixtureSummary**
+
 - Scans fixture with STUB and IMPL tokens
 - Verifies summary counts
 
 **2. TestAcceptance_Overclaim**
+
 - Creates GAP file claiming STUB requirement
 - Expects exit code 2
 - Verifies error message contains CANARY_VERIFY_FAIL
 
 **3. TestAcceptance_Stale**
+
 - Creates token with old UPDATED date
 - Runs with --strict
 - Expects exit code 2 and CANARY_STALE message
 
 **4. TestAcceptance_SelfCanary**
+
 - Scans tools/canary directory
 - Verifies claims for CBIN-101, CBIN-102
 - Ensures exit code 0
 
 **5. TestAcceptance_CSVOrder**
+
 - Scans multiple times
 - Verifies deterministic CSV output
 - Checks sorting by REQ ID
 
 **6. TestAcceptance_SkipEdgeCases**
+
 - Tests --skip pattern functionality
 - Verifies .git, node_modules, vendor excluded
 - Tests Unicode filenames and spaces
 
 **7. TestAcceptance_UpdateStale**
+
 - Creates stale TESTED/BENCHED tokens
 - Runs --update-stale
 - Verifies UPDATED field changed
@@ -621,7 +678,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.20'
+          go-version: "1.20"
       - name: Build
         run: make build
       - name: Test
@@ -704,26 +761,31 @@ verify: build
 ## Evolution Summary
 
 **Phase 1 (CBIN-101, 102, 103):** Simple scanner
+
 - File scanning
 - JSON/CSV output
 - Basic verification
 
 **Phase 2 (CBIN-104-130):** CLI expansion
+
 - Database storage
 - Query commands
 - Specification management
 
 **Phase 3 (CBIN-131-140):** Workflow automation
+
 - Next priority command
 - Implement command
 - Fuzzy matching
 
 **Phase 4 (CBIN-141-146):** Multi-project support
+
 - Project registry
 - Global/local databases
 - Context management
 
 **Phase 5 (CBIN-147):** Dependency tracking
+
 - Dependency parser
 - Circular detection
 - Satisfaction checking
@@ -734,7 +796,7 @@ verify: build
 ## Related Documentation
 
 - [README.md](../README.md) - Project overview
-- [README_CANARY.md](../README_CANARY.md) - Token specification
+- [README_CANARY.md](README_CANARY.md) - Token specification
 - [CANARY_POLICY.md](./CANARY_POLICY.md) - Project policy
 - [Getting Started Guide](./user/getting-started.md) - User tutorial
 - [CLAUDE.md](../CLAUDE.md) - AI agent guide

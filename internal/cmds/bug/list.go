@@ -12,6 +12,7 @@ import (
 	"regexp"
 
 	"github.com/spf13/cobra"
+	"go.devnw.com/canary/internal/cmds/internal/utils"
 	"go.devnw.com/canary/internal/storage"
 )
 
@@ -27,10 +28,12 @@ Examples:
   canary bug list --priority P0,P1
   canary bug list --json`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO: Implement --prompt flag to load custom prompts
 		prompt, _ := cmd.Flags().GetString("prompt")
-		_ = prompt // Stubbed for future use
-
+		if prompt != "" {
+			if _, err := utils.LoadPrompt(prompt); err != nil {
+				return err
+			}
+		}
 		aspect, _ := cmd.Flags().GetString("aspect")
 		status, _ := cmd.Flags().GetString("status")
 		severity, _ := cmd.Flags().GetString("severity")

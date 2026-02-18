@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.devnw.com/canary/internal/cmds/internal/utils"
 	"go.devnw.com/canary/internal/reqid"
 )
 
@@ -22,11 +23,12 @@ Outputs a ready-to-paste CANARY token comment.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		reqID := args[0]
 		feature := args[1]
-
-		// TODO: Implement --prompt flag to load custom prompts
 		prompt, _ := cmd.Flags().GetString("prompt")
-		_ = prompt // Stubbed for future use
-
+		if prompt != "" {
+			if _, err := utils.LoadPrompt(prompt); err != nil {
+				return err
+			}
+		}
 		aspect, _ := cmd.Flags().GetString("aspect")
 		status, _ := cmd.Flags().GetString("status")
 		owner, _ := cmd.Flags().GetString("owner")

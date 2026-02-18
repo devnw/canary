@@ -6,14 +6,17 @@
 package bug
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+	"go.devnw.com/canary/internal/canaryscan"
 	"go.devnw.com/canary/internal/storage"
 )
 
@@ -201,14 +204,67 @@ func formatBugList(tokens []*storage.Token, noColor bool) {
 }
 
 func listBugsFromFilesystem(aspect, status, severity, priority string, jsonOutput, noColor bool, limit int) error {
-	// Fallback implementation for when database is not available
+	// Fallback when database is not available: use canary scanner and filter BUG tokens.
 	fmt.Fprintf(os.Stderr, "⚠️  Database not found, using filesystem search (slower)\n")
 	fmt.Fprintf(os.Stderr, "   Suggestion: Run 'canary index' to build database\n\n")
 
-	// TODO: Implement filesystem-based search for BUG tokens
-	// This would scan files for CANARY comments starting with BUG=
+	root := "."
+	if wd, err := os.Getwd(); err == nil {
+		root = wd
+	}
+	skip := canaryscan.DefaultSkipRegex()
+	rep, err := canaryscan.Scan(root, skip, nil, nil)
+	if err != nil {
+		return fmt.Errorf("filesystem scan: %w", err)
+	}
 
-	return fmt.Errorf("filesystem search not yet implemented for bug tokens")
+	bugPattern := regexp.MustCompile(`^BUG-[A-Za-z0-9]+-[0-9]{3}$`)
+	var tokens []*storage.Token
+	for _, req := range rep.Requirements {
+		if !bugPattern.MatchString(req.ID) {
+			continue
+		}
+		for _, f := range req.Features {
+			if aspect != "" && f.Aspect != aspect {
+				continue
+			}
+			if status != "" && f.Status != status {
+				continue
+			}
+			filePath := "."
+			if len(f.Files) > 0 {
+				filePath = f.Files[0]
+				if !filepath.IsAbs(filePath) {
+					filePath = filepath.Join(root, filePath)
+				}
+			}
+			tokens = append(tokens, &storage.Token{
+				ReqID:     req.ID,
+				Feature:   f.Feature,
+				Aspect:    f.Aspect,
+				Status:    f.Status,
+				FilePath:  filePath,
+				UpdatedAt: f.Updated,
+			})
+		}
+	}
+
+	filtered := filterBugTokens(tokens, severity, priority)
+	if limit > 0 && len(filtered) > limit {
+		filtered = filtered[:limit]
+	}
+
+	if jsonOutput {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(filtered)
+	}
+	if len(filtered) == 0 {
+		fmt.Println("No bug tokens found")
+		return nil
+	}
+	formatBugList(filtered, noColor)
+	return nil
 }
 
 func createBugCanaryComment(token *storage.Token, severity, priority string) error {

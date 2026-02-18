@@ -24,10 +24,12 @@ Creates a plan.md file in the spec directory with implementation details,
 tech stack decisions, and CANARY token placement instructions.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO: Implement --prompt flag to load custom prompts
 		prompt, _ := cmd.Flags().GetString("prompt")
-		_ = prompt // Stubbed for future use
-
+		if prompt != "" {
+			if _, err := utils.LoadPrompt(prompt); err != nil {
+				return err
+			}
+		}
 		reqID := args[0]
 		techStack := ""
 		if len(args) > 1 {

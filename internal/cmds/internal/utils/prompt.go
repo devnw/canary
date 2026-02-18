@@ -9,7 +9,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+
+	"go.devnw.com/canary/internal/prompts"
 )
 
 // LoadPrompt loads a custom prompt from file or embedded prompt name.
@@ -49,15 +52,24 @@ func loadPromptFromFile(path string) (string, error) {
 	return string(data), nil
 }
 
-// loadEmbeddedPrompt loads a prompt from embedded prompts
+// loadEmbeddedPrompt loads a prompt from embedded prompts (internal/prompts).
+// Tries command prompts first (e.g. "scan", "list"), then system prompts ("init", "policy", "requirements", "evaluate").
 func loadEmbeddedPrompt(name string) (string, error) {
-	// TODO: Implement embedded prompt loading
-	// This would use the embedded FS to load prompts from:
-	// - prompts/sys/*.md for system prompts
-	// - prompts/commands/*.md for command-specific prompts
-	// - .canary/templates/*.md for custom project prompts
-
-	return "", fmt.Errorf("embedded prompt loading not yet implemented: %s", name)
+	name = strings.TrimSpace(strings.ToLower(name))
+	if name == "" {
+		return "", fmt.Errorf("embedded prompt name is empty")
+	}
+	// Command prompts (prompts/commands/*/*.md)
+	content, err := prompts.GetCommand(name)
+	if err == nil {
+		return content, nil
+	}
+	// System prompts (prompts/sys/*.md)
+	all := prompts.All()
+	if content, ok := all[name]; ok && content != "" {
+		return content, nil
+	}
+	return "", fmt.Errorf("embedded prompt not found: %s", name)
 }
 
 // ValidatePromptArg validates a prompt argument format
@@ -85,13 +97,26 @@ func ValidatePromptArg(promptArg string) error {
 	return nil
 }
 
-// GetAvailablePrompts lists available embedded prompts
+// GetAvailablePrompts returns the list of available embedded prompt names
+// (command prompts from prompts/commands/* and system prompts from prompts/sys/*).
 func GetAvailablePrompts() ([]string, error) {
-	// TODO: Implement listing of embedded prompts
-	// This would scan:
-	// - embedded FS prompts directory
-	// - .canary/templates/ directory
-	// - prompts/ directory
-
-	return []string{}, fmt.Errorf("prompt listing not yet implemented")
+	commands, err := prompts.ListCommands()
+	if err != nil {
+		return nil, fmt.Errorf("list command prompts: %w", err)
+	}
+	seen := make(map[string]bool)
+	for _, c := range commands {
+		seen[c] = true
+	}
+	for k := range prompts.All() {
+		if k != "" {
+			seen[k] = true
+		}
+	}
+	names := make([]string, 0, len(seen))
+	for n := range seen {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return names, nil
 }
