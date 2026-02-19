@@ -18,8 +18,8 @@ var (
 const defaultSkipPattern = `(^|/)(.git|node_modules|vendor|bin|dist|build|zig-out|.zig-cache|canary-new)(/|$)`
 
 var (
-	aspects  = map[string]struct{}{"API": {}, "CLI": {}, "Engine": {}, "Planner": {}, "Storage": {}, "Wire": {}, "Security": {}, "Docs": {}, "Decode": {}, "Encode": {}, "RoundTrip": {}, "Bench": {}, "FrontEnd": {}, "Dist": {}}
-	statuses = []string{"MISSING", "STUB", "IMPL", "TESTED", "BENCHED", "REMOVED", "FIXED", "OPEN", "IN_PROGRESS", "VERIFIED", "BLOCKED", "WONTFIX", "DUPLICATE"}
+	aspects   = map[string]struct{}{"API": {}, "CLI": {}, "Engine": {}, "Planner": {}, "Storage": {}, "Wire": {}, "Security": {}, "Docs": {}, "Decode": {}, "Encode": {}, "RoundTrip": {}, "Bench": {}, "FrontEnd": {}, "Dist": {}}
+	statuses  = []string{"MISSING", "STUB", "IMPL", "TESTED", "BENCHED", "REMOVED", "FIXED", "OPEN", "IN_PROGRESS", "VERIFIED", "BLOCKED", "WONTFIX", "DUPLICATE"}
 	statusSet = func() map[string]struct{} {
 		m := map[string]struct{}{}
 		for _, s := range statuses {

@@ -1,4 +1,5 @@
 <!-- CANARY: REQ=CBIN-117; FEATURE="AgentContextDoc"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
+
 # CANARY Agent Context
 
 **Last Updated:** 2025-10-16
@@ -11,6 +12,7 @@ This project uses CANARY requirement tracking with spec-kit-inspired workflows.
 ## Available Commands
 
 ### Requirement Management
+
 - `/canary.constitution` - Create/update project principles
 - `/canary.specify` - Create new requirement specification
 - `/canary.plan` - Generate implementation plan
@@ -54,21 +56,25 @@ API, CLI, Engine, Storage, Security, Docs, Wire, Planner, Decode, Encode, RoundT
 ## Quick Reference
 
 **Scan for tokens:**
+
 ```bash
 canary scan --root . --out status.json --csv status.csv
 ```
 
 **Verify claims:**
+
 ```bash
 canary scan --root . --verify GAP_ANALYSIS.md --strict
 ```
 
 **Update stale:**
+
 ```bash
 canary scan --root . --update-stale
 ```
 
 **Create token:**
+
 ```bash
 canary create {{.ProjectKey}}-105 "FeatureName" --aspect API --status IMPL
 ```
@@ -95,10 +101,9 @@ status.json                       # Scanner output
 status.csv                        # Scanner output (CSV)
 ```
 
-## Notes for AI Agents
+## Notes for AI Agents (reduce context)
 
-- Reference `.canary/memory/constitution.md` before planning
-- Use `/canary.specify` to create structured requirements
-- Follow test-first approach (Article IV of constitution)
-- Update CANARY tokens as implementation progresses
-- Run `/canary.scan` after implementation to verify status
+- **Load only what you need:** For a given slash command, read only that command’s file in `.canary/commands/` (e.g. `scan.md` for `/canary.scan`). Do not load this full file, constitution, or GAP_ANALYSIS unless the task requires it.
+- **Scan/verify:** Use the one-line stdout from `canary scan` (`CANARY_SCAN tokens=...`) and `CANARY_VERIFY_OK` / `CANARY_VERIFY_FAIL`; avoid reading `status.json` or `GAP_ANALYSIS.md` unless you need to edit or inspect details.
+- Reference `.canary/memory/constitution.md` only when creating or editing principles.
+- Use `/canary.specify` to create structured requirements; follow test-first (Article IV); run `/canary.scan` after implementation to verify status.

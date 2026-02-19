@@ -8,7 +8,7 @@ type Config struct {
 	Root        string
 	Out         string
 	CSV         string
-	VerifyPath   string
+	VerifyPath  string
 	Strict      bool
 	SkipRegex   *regexp.Regexp
 	UpdateStale bool

@@ -225,8 +225,8 @@ func setupLargeReport(tb testing.TB, numReqs int, featuresPerReq int) *canarysca
 		Requirements: make([]canaryscan.Requirement, numReqs),
 		Summary: canaryscan.Summary{
 			ByStatus:           map[string]int{},
-			ByAspect:            map[string]int{},
-			TotalTokens:         numReqs * featuresPerReq,
+			ByAspect:           map[string]int{},
+			TotalTokens:        numReqs * featuresPerReq,
 			UniqueRequirements: numReqs,
 		},
 	}

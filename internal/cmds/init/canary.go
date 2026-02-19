@@ -449,163 +449,101 @@ func updateAgentContextFiles(projectName string) error {
 		}
 	}
 
+	// Create Cursor-specific files (rules + optional MCP) so Cursor IDE and plugins work well
+	if err := createCursorRuleAndMCP(projectName); err != nil {
+		return fmt.Errorf("create Cursor rule/MCP: %w", err)
+	}
+
+	return nil
+}
+
+// createCursorRuleAndMCP creates .cursor/rules/canary-requirements.mdc and .cursor/mcp.json (if missing)
+// so Cursor IDE and Cursor plugins get CANARY guidance and optional MCP tool access.
+func createCursorRuleAndMCP(projectName string) error {
+	cursorDir := filepath.Join(projectName, ".cursor")
+	rulesDir := filepath.Join(cursorDir, "rules")
+	if err := os.MkdirAll(rulesDir, 0755); err != nil {
+		return err
+	}
+
+	// Cursor rule: apply when working on requirements/specs; minimal so it doesn't bloat every chat
+	rulePath := filepath.Join(rulesDir, "canary-requirements.mdc")
+	ruleContent := "---\ndescription: CANARY requirement tracking — use when editing requirements, specs, or CANARY tokens\n" +
+		"globs: [\"**/.canary/**\", \"**/GAP_ANALYSIS.md\", \"**/*spec*.md\", \"**/plan.md\"]\nalwaysApply: false\n---\n\n" +
+		"# CANARY requirements\n\nThis project uses CANARY. For the command you're running, read only that file under .canary/commands/ (e.g. scan.md for /canary.scan).\n\n" +
+		"- **Scan:** Use the one-line stdout from `canary scan` (CANARY_SCAN tokens=...) for metrics; do not read status.json unless needed.\n" +
+		"- **Verify:** Use stdout CANARY_VERIFY_OK or stderr CANARY_VERIFY_FAIL lines; open GAP_ANALYSIS.md only when fixing claims.\n" +
+		"- **Token format:** `// CANARY: REQ=ID; FEATURE=\"Name\"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD` — status STUB→IMPL→TESTED→BENCHED.\n"
+	if err := os.WriteFile(rulePath, []byte(ruleContent), 0644); err != nil {
+		return err
+	}
+
+	// Optional MCP config: only create if missing so we don't overwrite user's other servers
+	mcpPath := filepath.Join(cursorDir, "mcp.json")
+	if _, err := os.Stat(mcpPath); err == nil {
+		return nil // already exists
+	}
+	mcpContent := `{
+  "mcpServers": {
+    "canary": {
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}
+`
+	// Cursor may expect streamable HTTP; url alone is often enough. User must run `canary mcp` first.
+	if err := os.WriteFile(mcpPath, []byte(mcpContent), 0644); err != nil {
+		return err
+	}
 	return nil
 }
 
 // CANARY: REQ=CBIN-106; FEATURE="AgentContext"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
-// createClaudeMD generates the CANARY section for CLAUDE.md
+// createClaudeMD generates the CANARY section for CLAUDE.md (Claude Code / Claude plugins).
+// Kept minimal to reduce agent context; load-only-what-you-need.
 func createClaudeMD() string {
-	return `# CANARY Development - AI Agent Guide
-
-**Context File for AI Coding Agents**
-
-This project uses CANARY requirement tracking with spec-kit-inspired workflows.
-
-## Available Slash Commands
-
-See [.canary/AGENT_CONTEXT.md](./.canary/AGENT_CONTEXT.md) for detailed information.
-
-### Workflow Commands
-
-- **/canary.constitution** - Create or update project governing principles
-- **/canary.specify** - Create a new requirement specification from feature description
-- **/canary.plan** - Generate technical implementation plan for a requirement
-- **/canary.scan** - Scan codebase for CANARY tokens and generate reports
-- **/canary.verify** - Verify GAP_ANALYSIS.md claims against actual implementation
-- **/canary.update-stale** - Auto-update UPDATED field for stale tokens (>30 days)
-
-### Command Definitions
-
-All slash commands are defined in:
-- ` + "`.canary/templates/commands/constitution.md`" + `
-- ` + "`.canary/templates/commands/specify.md`" + `
-- ` + "`.canary/templates/commands/plan.md`" + `
-- ` + "`.canary/templates/commands/scan.md`" + `
-- ` + "`.canary/templates/commands/verify.md`" + `
-- ` + "`.canary/templates/commands/update-stale.md`" + `
-
-## Quick Start Workflow
-
-1. **Establish Principles**: ` + "`/canary.constitution Create principles for code quality and testing`" + `
-2. **Define Requirement**: ` + "`/canary.specify Add user authentication with OAuth2 support`" + `
-3. **Create Plan**: ` + "`/canary.plan CBIN-001 Use Go standard library with bcrypt`" + `
-4. **Scan & Verify**: ` + "`/canary.scan`" + ` then ` + "`/canary.verify`" + `
-5. **Update Stale**: ` + "`/canary.update-stale`" + ` (as needed)
-
-## CANARY Token Format
-
-` + "```" + `
-// CANARY: REQ=CBIN-###; FEATURE="Name"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD
-` + "```" + `
-
-**Status Progression:**
-- STUB → IMPL → TESTED → BENCHED
-
-**Valid Aspects:**
-API, CLI, Engine, Storage, Security, Docs, Wire, Planner, Decode, Encode, RoundTrip, Bench, FrontEnd, Dist
-
-## Constitutional Principles
-
-See [.canary/memory/constitution.md](./.canary/memory/constitution.md) for full details.
-
-**Core Principles:**
-1. **Requirement-First**: Every feature starts with a CANARY token
-2. **Test-First**: Tests written before implementation (Article IV)
-3. **Evidence-Based**: Status promoted based on TEST=/BENCH= fields
-4. **Simplicity**: Minimal complexity, prefer standard library
-5. **Documentation Currency**: Keep tokens current with UPDATED field
-
-## CLI Commands
-
-` + "```bash" + `
-# Initialize new project
-canary init my-project
-
-# Create requirement token
-canary create CBIN-105 "FeatureName" --aspect API --status IMPL
-
-# Scan for tokens
-canary scan --root . --out status.json --csv status.csv
-
-# Verify claims
-canary scan --root . --verify GAP_ANALYSIS.md --strict
-
-# Update stale tokens
-canary scan --root . --update-stale
-` + "```" + `
-
-## Project Structure
-
-` + "```" + `
-.canary/
-├── memory/
-│   └── constitution.md          # Project principles
-├── scripts/
-│   └── create-new-requirement.sh # Automation
-├── templates/
-│   ├── commands/                # Slash command definitions
-│   ├── spec-template.md         # Requirement template
-│   └── plan-template.md         # Implementation plan template
-└── specs/
-    └── CBIN-XXX-feature/        # Individual requirements
-        ├── spec.md
-        └── plan.md
-
-GAP_ANALYSIS.md                   # Requirement tracking
-status.json                       # Scanner output
-` + "```" + `
-
-## For AI Agents
-
-**Before implementing:**
-1. Reference ` + "`.canary/memory/constitution.md`" + `
-2. Use ` + "`/canary.specify`" + ` to create structured requirements
-3. Follow test-first approach (Article IV)
-
-**After implementing:**
-1. Update CANARY tokens as code evolves
-2. Run ` + "`/canary.scan`" + ` to verify status
-3. Run ` + "`/canary.verify`" + ` to confirm claims
-
-**Key Files:**
-- [.canary/AGENT_CONTEXT.md](./.canary/AGENT_CONTEXT.md) - Complete context for AI agents
-- [.canary/memory/constitution.md](./.canary/memory/constitution.md) - Constitutional principles
-- [GAP_ANALYSIS.md](./GAP_ANALYSIS.md) - Requirement tracking
-`
+	b := "# CANARY Development - AI Agent Guide\n\n**Minimal context:** This project uses CANARY requirement tracking. Load only what you need.\n\n## Commands (load only the one you use)\n\n"
+	bt := "`"
+	b += "- **/canary.constitution** → " + bt + ".canary/commands/constitution.md" + bt + "\n"
+	b += "- **/canary.specify** → " + bt + ".canary/commands/specify.md" + bt + "\n"
+	b += "- **/canary.plan** → " + bt + ".canary/commands/plan.md" + bt + "\n"
+	b += "- **/canary.scan** → " + bt + ".canary/commands/scan.md" + bt + "\n"
+	b += "- **/canary.verify** → " + bt + ".canary/commands/verify.md" + bt + "\n"
+	b += "- **/canary.update-stale** → " + bt + ".canary/commands/update-stale.md" + bt + "\n\n"
+	b += "Read **only** the command file for the slash command you are running. Do not load AGENT_CONTEXT, full constitution, or GAP_ANALYSIS unless that command's instructions tell you to.\n\n"
+	b += "## Scan & verify (low context)\n\n"
+	b += "- **Scan:** Run " + bt + "canary scan --root . --out status.json" + bt + ". Use the **one line** on stdout (" + bt + "CANARY_SCAN tokens=N requirements=M STUB=..." + bt + ") for metrics. Do not read " + bt + "status.json" + bt + " unless you need per-requirement detail.\n"
+	b += "- **Verify:** Run " + bt + "canary scan --root . --verify GAP_ANALYSIS.md --strict" + bt + ". Use stdout (" + bt + "CANARY_VERIFY_OK" + bt + " or " + bt + "CANARY_VERIFY_FAIL count=N" + bt + ") and stderr for failures. Open " + bt + "GAP_ANALYSIS.md" + bt + " only when fixing or updating claims.\n\n"
+	b += "## Token format\n\n"
+	b += bt + "// CANARY: REQ=CBIN-###; FEATURE=\"Name\"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD" + bt + "\nStatus: STUB → IMPL → TESTED → BENCHED. Aspects: API, CLI, Engine, Storage, Security, Docs, Wire, Planner, Decode, Encode, RoundTrip, Bench, FrontEnd, Dist.\n\n"
+	b += "## Principles (inline; load constitution only when editing principles)\n\n1. Requirement-First: every feature has a CANARY token\n2. Test-First: tests before implementation (Article IV)\n3. Evidence-Based: status from TEST=/BENCH=\n4. Simplicity: prefer standard library\n5. Documentation Currency: keep UPDATED current\n\n"
+	b += "## Plugins & MCP (optional)\n\nFor **tool-based** access (list, show, scan, create, etc.) from Claude Code or Cursor: run " + bt + "canary mcp" + bt + " (HTTP server on port 8080), then add the MCP server in your IDE:\n"
+	b += "- **Claude Code:** Add to " + bt + "~/.claude.json" + bt + " or use MCP settings; URL " + bt + "http://localhost:8080/mcp" + bt + " (streamable HTTP).\n"
+	b += "- **Cursor:** Add to " + bt + ".cursor/mcp.json" + bt + " in this project; see docs/MCP_QUICK_START.md.\n"
+	return b
 }
 
 // CANARY: REQ=CBIN-149; FEATURE="AgentContextUpdate"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
-// createCursorMD generates the CANARY section for CURSOR.md
+// createCursorMD generates the CANARY section for CURSOR.md (Cursor IDE / Cursor plugins).
 func createCursorMD() string {
-	// Cursor uses similar format to Claude but with Cursor-specific terminology
-	return createClaudeMD() // For now, same content works for both
+	bt := "`"
+	return createClaudeMD() + "\n\n## Cursor-specific\n\n" +
+		"- **Project rules:** CANARY rule is in " + bt + ".cursor/rules/canary-requirements.mdc" + bt + " (apply when working on requirements or specs).\n" +
+		"- **MCP:** Optional " + bt + ".cursor/mcp.json" + bt + " is created by " + bt + "canary init" + bt + "; start " + bt + "canary mcp" + bt + " in a terminal, then Cursor can use list/show/scan tools.\n"
 }
 
 // CANARY: REQ=CBIN-149; FEATURE="AgentContextUpdate"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
-// createCopilotInstructionsMD generates the CANARY section for .github/copilot-instructions.md
+// createCopilotInstructionsMD generates the CANARY section for .github/copilot-instructions.md (GitHub Copilot / plugins).
 func createCopilotInstructionsMD() string {
 	return "# CANARY Development Guide for GitHub Copilot\n\n" +
-		"This project uses CANARY requirement tracking. Reference .canary/AGENT_CONTEXT.md for complete documentation.\n\n" +
-		"## CANARY Token Format\n\n" +
-		"```\n" +
-		"// CANARY: REQ=CBIN-###; FEATURE=\"Name\"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD\n" +
-		"```\n\n" +
-		"## Status Values\n" +
-		"- **STUB** → **IMPL** → **TESTED** → **BENCHED**\n\n" +
-		"## Key Principles\n" +
-		"1. Every feature starts with a CANARY token\n" +
-		"2. Tests written before implementation\n" +
-		"3. Status promoted based on TEST=/BENCH= fields\n" +
-		"4. Keep UPDATED field current\n\n" +
-		"## Workflow\n" +
-		"1. Check .canary/memory/constitution.md for project principles\n" +
-		"2. Follow spec-driven development from .canary/specs/\n" +
-		"3. Update tokens as code evolves\n\n" +
-		"## Commands\n" +
-		"```bash\n" +
-		"canary scan --root .                    # Scan for tokens\n" +
-		"canary verify GAP_ANALYSIS.md --strict  # Verify claims\n" +
-		"canary create CBIN-### \"Feature\"        # Create token\n" +
-		"```\n\n" +
-		"See [.canary/AGENT_CONTEXT.md](./.canary/AGENT_CONTEXT.md) for complete details.\n"
+		"This project uses CANARY requirement tracking. Load only the command file you need from `.canary/commands/`.\n\n" +
+		"## Token format\n" +
+		"`// CANARY: REQ=CBIN-###; FEATURE=\"Name\"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD`\n" +
+		"Status: STUB → IMPL → TESTED → BENCHED.\n\n" +
+		"## Scan & verify (low context)\n" +
+		"- **Scan:** `canary scan --root . --out status.json` — use the one-line stdout (`CANARY_SCAN tokens=...`) for metrics.\n" +
+		"- **Verify:** `canary scan --root . --verify GAP_ANALYSIS.md --strict` — use stdout `CANARY_VERIFY_OK` or stderr for failures.\n\n" +
+		"## Principles\n" +
+		"1. Requirement-First 2. Test-First 3. Evidence-Based (TEST=/BENCH=) 4. Simplicity 5. Keep UPDATED current.\n\n" +
+		"See [.canary/AGENT_CONTEXT.md](./.canary/AGENT_CONTEXT.md) for full reference.\n"
 }

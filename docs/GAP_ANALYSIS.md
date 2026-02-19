@@ -8,7 +8,7 @@
 
 ---
 
-## Gaps (OPEN)
+## Gap items (all Closed or Blocked)
 
 ### GAP-0014: Project structure does not follow Go best practices for importability
 

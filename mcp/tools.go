@@ -52,7 +52,10 @@ func handleList(ctx context.Context, req *mcp.CallToolRequest, params *ListParam
 
 	limit := params.Limit
 	if limit == 0 {
-		limit = 100 // Default limit
+		limit = 25 // Default limit to reduce context; use limit param for more
+	}
+	if limit > 50 {
+		limit = 50 // Cap to avoid large responses
 	}
 
 	tokens, err := db.ListTokens(filters, "", "", limit)
@@ -65,13 +68,40 @@ func handleList(ctx context.Context, req *mcp.CallToolRequest, params *ListParam
 		Count:  len(tokens),
 	}
 
+	// Compact summary in content so agents get the gist without parsing full result.
+	text := listSummaryLine(tokens, limit)
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
-			&mcp.TextContent{
-				Text: fmt.Sprintf("Found %d CANARY tokens", len(tokens)),
-			},
+			&mcp.TextContent{Text: text},
 		},
 	}, result, nil
+}
+
+// listSummaryLine returns a short one-line summary of tokens for MCP content (reduces context).
+func listSummaryLine(tokens []*storage.Token, limit int) string {
+	if len(tokens) == 0 {
+		return "Found 0 CANARY tokens"
+	}
+	return fmt.Sprintf("%d tokens (limit %d): %s", len(tokens), limit, tokensShortSummary(tokens, 5))
+}
+
+// tokensShortSummary returns up to max items as "REQ feature (status); ..." or "… +N more".
+func tokensShortSummary(tokens []*storage.Token, max int) string {
+	if len(tokens) == 0 {
+		return ""
+	}
+	var sum string
+	for i, t := range tokens {
+		if i >= max {
+			sum += fmt.Sprintf("… +%d more", len(tokens)-max)
+			break
+		}
+		if i > 0 {
+			sum += "; "
+		}
+		sum += fmt.Sprintf("%s %s (%s)", t.ReqID, t.Feature, t.Status)
+	}
+	return sum
 }
 
 // ShowParams defines parameters for the show tool
@@ -110,13 +140,31 @@ func handleShow(ctx context.Context, req *mcp.CallToolRequest, params *ShowParam
 		Count:  len(tokens),
 	}
 
+	text := showSummaryLine(params.ReqID, tokens)
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
-			&mcp.TextContent{
-				Text: fmt.Sprintf("Found %d tokens for %s", len(tokens), params.ReqID),
-			},
+			&mcp.TextContent{Text: text},
 		},
 	}, result, nil
+}
+
+func showSummaryLine(reqID string, tokens []*storage.Token) string {
+	if len(tokens) == 0 {
+		return fmt.Sprintf("Found 0 tokens for %s", reqID)
+	}
+	const maxInSummary = 5
+	sum := fmt.Sprintf("%d tokens for %s: ", len(tokens), reqID)
+	for i, t := range tokens {
+		if i >= maxInSummary {
+			sum += fmt.Sprintf("… +%d more", len(tokens)-maxInSummary)
+			break
+		}
+		if i > 0 {
+			sum += ", "
+		}
+		sum += fmt.Sprintf("%s (%s)", t.Feature, t.Status)
+	}
+	return sum
 }
 
 // CreateParams defines parameters for the create tool
@@ -301,11 +349,10 @@ func handleSearch(ctx context.Context, req *mcp.CallToolRequest, params *SearchP
 		Count:    len(tokens),
 	}
 
+	text := fmt.Sprintf("Found %d tokens matching %q: %s", len(tokens), params.Keywords, tokensShortSummary(tokens, 5))
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
-			&mcp.TextContent{
-				Text: fmt.Sprintf("Found %d tokens matching '%s'", len(tokens), params.Keywords),
-			},
+			&mcp.TextContent{Text: text},
 		},
 	}, result, nil
 }

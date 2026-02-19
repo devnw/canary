@@ -25,6 +25,7 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
    - Example: `✅ {{.ProjectKey}}-001 - UserAuth fully implemented`
 
 3. **Run verification scan**:
+
    ```bash
    canary scan --root . --verify GAP_ANALYSIS.md --strict
    ```
@@ -35,12 +36,12 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
    - No overclaims (claiming STUB or IMPL as complete)
    - No stale tokens (TESTED/BENCHED > 30 days old)
 
-4. **Analyze verification results**:
-   - Exit code 0: All claims verified ✅
-   - Exit code 2: Verification failed (overclaim or staleness) ❌
-   - Parse stderr for specific failures
+4. **Use stdout/stderr only (minimal context)**:
+   - **Success:** stdout contains `CANARY_VERIFY_OK` and exit code 0. No need to open GAP_ANALYSIS.md.
+   - **Failure:** exit code 2; stdout has `CANARY_VERIFY_FAIL count=N`; stderr has one line per failure (e.g. `CANARY_VERIFY_FAIL REQ=CBIN-003 reason=...`). Open GAP_ANALYSIS.md only when you need to fix or update claims.
 
 5. **Generate verification report**:
+
    ```markdown
    ## GAP Analysis Verification Results
 
@@ -48,17 +49,20 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
    **Status:** PASS / FAIL
 
    ### Claimed Requirements: N
+
    - ✅ {{.ProjectKey}}-001: UserAuth (BENCHED, verified)
    - ✅ {{.ProjectKey}}-002: DataValidation (TESTED, verified)
    - ❌ {{.ProjectKey}}-003: ReportGen (IMPL only, overclaim)
    - ⚠️ {{.ProjectKey}}-004: Cache (TESTED but stale, 288 days old)
 
    ### Verification Summary
+
    - Valid Claims: X
    - Overclaims: Y
    - Stale Claims: Z
 
    ### Action Required
+
    [If failures exist, list specific actions needed]
    ```
 
@@ -72,6 +76,7 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
 **Valid Claim**: Requirement with STATUS=TESTED or STATUS=BENCHED
 
 **Overclaim**: Requirement claimed with ✅ but:
+
 - STATUS=STUB (not implemented)
 - STATUS=IMPL (implemented but not tested)
 - STATUS=MISSING (placeholder only)
@@ -81,16 +86,19 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
 ## Example Flow
 
 **GAP_ANALYSIS.md contents:**
+
 ```markdown
 # Requirements Gap Analysis
 
 ## Verified Requirements
+
 ✅ {{.ProjectKey}}-001 - User authentication fully tested
 ✅ {{.ProjectKey}}-002 - Data validation with comprehensive tests
 ✅ {{.ProjectKey}}-003 - Report generation functional
 ```
 
 **Verification scan finds:**
+
 ```
 ✅ {{.ProjectKey}}-001: STATUS=BENCHED, UPDATED=2025-10-15 → Valid
 ✅ {{.ProjectKey}}-002: STATUS=TESTED, UPDATED=2025-10-14 → Valid
@@ -98,17 +106,20 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
 ```
 
 **Report:**
+
 ```markdown
 ## GAP Analysis Verification Results
 
 **Status:** ❌ FAILED
 
 ### Verification Details
+
 - ✅ {{.ProjectKey}}-001: UserAuth (BENCHED, verified)
 - ✅ {{.ProjectKey}}-002: DataValidation (TESTED, verified)
 - ❌ {{.ProjectKey}}-003: ReportGen (IMPL only, overclaim detected)
 
 ### Action Required
+
 1. Add tests for {{.ProjectKey}}-003:
    - Create test function: `TestReportGeneration`
    - Add to token: `TEST=TestReportGeneration`

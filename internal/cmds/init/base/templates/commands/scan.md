@@ -20,6 +20,7 @@ Scan the codebase for CANARY requirement tokens and generate comprehensive statu
    - Apply default skip pattern: `.git, node_modules, vendor, bin, dist, build`
 
 2. **Run canary scanner**:
+
    ```bash
    canary scan --root . --out status.json --csv status.csv
    ```
@@ -29,15 +30,13 @@ Scan the codebase for CANARY requirement tokens and generate comprehensive statu
    - `--skip`: Custom regex pattern for excluded paths
    - `--verify`: Path to GAP_ANALYSIS.md for claim verification
 
-3. **Parse scanner output**:
-   - Read `status.json` for structured data
-   - Extract key metrics:
-     - Total tokens by status (STUB, IMPL, TESTED, BENCHED)
-     - Coverage by aspect (API, CLI, Engine, etc.)
-     - Stale tokens (if --strict used)
-     - Unique requirements
+3. **Use scanner stdout (minimal context)**:
+   - The scanner prints a **single line** to stdout: `CANARY_SCAN tokens=N requirements=M STUB=a IMPL=b TESTED=c BENCHED=d`
+   - Use this line for metrics; **do not read status.json** unless you need per-requirement or per-file detail.
+   - If `--verify` was used: stdout also has `CANARY_VERIFY_OK` (pass) or `CANARY_VERIFY_FAIL count=N` (fail); stderr lists failing REQs.
 
 4. **Generate summary report**:
+
    ```markdown
    ## CANARY Token Scan Results
 
@@ -45,6 +44,7 @@ Scan the codebase for CANARY requirement tokens and generate comprehensive statu
    **Total Requirements:** N
 
    ### Status Distribution
+
    - BENCHED: X (Y%)
    - TESTED: X (Y%)
    - IMPL: X (Y%)
@@ -52,17 +52,20 @@ Scan the codebase for CANARY requirement tokens and generate comprehensive statu
    - MISSING: X (Y%)
 
    ### Aspect Coverage
+
    - API: X tokens
    - CLI: X tokens
    - Engine: X tokens
    - Storage: X tokens
 
    ### Quality Metrics
+
    - Test Coverage: X% (TESTED+BENCHED / total)
    - Benchmark Coverage: X% (BENCHED / total)
    - Stale Tokens: X (if --strict used)
 
    **Reports Generated:**
+
    - status.json (detailed JSON)
    - status.csv (spreadsheet format)
    ```
@@ -87,23 +90,27 @@ Scan the codebase for CANARY requirement tokens and generate comprehensive statu
 **Total Requirements:** 10
 
 ### Status Distribution
+
 - BENCHED: 3 (30%) ✅
 - TESTED: 4 (40%) ✅
 - IMPL: 2 (20%) ⚠️
 - STUB: 1 (10%) ⚠️
 
 ### Aspect Coverage
+
 - API: 4 tokens
 - CLI: 3 tokens
 - Engine: 2 tokens
 - Storage: 1 token
 
 ### Quality Metrics
+
 - Test Coverage: 70% (TESTED+BENCHED)
 - Benchmark Coverage: 30% (BENCHED)
 - Stale Tokens: 2 ({{.ReqID}}-SECURITY_REVIEW-001, {{.ReqID}}-SECURITY_REVIEW-004)
 
 **Reports Generated:**
+
 - [status.json](./status.json) - Detailed JSON report
 - [status.csv](./status.csv) - Spreadsheet format
 

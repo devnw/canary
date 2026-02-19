@@ -8,6 +8,14 @@ import (
 	"time"
 )
 
+// ScanSummaryLine returns a single parseable line for rep so agents get metrics without reading status.json.
+func ScanSummaryLine(rep Report) string {
+	s := rep.Summary
+	return fmt.Sprintf("CANARY_SCAN tokens=%d requirements=%d STUB=%d IMPL=%d TESTED=%d BENCHED=%d",
+		s.TotalTokens, s.UniqueRequirements,
+		s.ByStatus["STUB"], s.ByStatus["IMPL"], s.ByStatus["TESTED"], s.ByStatus["BENCHED"])
+}
+
 // Run runs the full scan pipeline: load config, scan, optional update-stale, write outputs, verify, strict.
 // It writes to stdout/stderr via the given writers (use os.Stdout, os.Stderr from CLI).
 // Returns exit code: 0 success, 2 verify/staleness failure, 3 parse/IO error.
@@ -86,6 +94,9 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 		}
 	}
 
+	// One-line stdout summary so agents get metrics without reading status.json.
+	fmt.Fprintln(stdout, ScanSummaryLine(rep))
+
 	var diags []string
 	if cfg.VerifyPath != "" {
 		diags = append(diags, VerifyClaims(rep, cfg.VerifyPath)...)
@@ -97,7 +108,13 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 		for _, d := range diags {
 			fmt.Fprintln(stderr, d)
 		}
+		if cfg.VerifyPath != "" {
+			fmt.Fprintf(stdout, "CANARY_VERIFY_FAIL count=%d\n", len(diags))
+		}
 		return 2
+	}
+	if cfg.VerifyPath != "" {
+		fmt.Fprintln(stdout, "CANARY_VERIFY_OK")
 	}
 	return 0
 }

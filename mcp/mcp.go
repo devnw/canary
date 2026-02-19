@@ -54,7 +54,7 @@ The server runs as an HTTP endpoint that AI assistants can interact with.`,
 			// Core token management
 			mcp.AddTool(server, &mcp.Tool{
 				Name:        "list",
-				Description: "List CANARY tokens with optional filtering",
+				Description: "List CANARY tokens with optional filtering (default limit 25, max 50 to reduce context)",
 			}, handleList)
 
 			mcp.AddTool(server, &mcp.Tool{

@@ -325,7 +325,10 @@ Examples:
 		if !isUpdate {
 			fmt.Println("  ✅ README_CANARY.md - Token format specification")
 			fmt.Println("  ✅ GAP_ANALYSIS.md - Requirements tracking template")
-			fmt.Println("  ✅ CLAUDE.md - AI agent slash command integration")
+			fmt.Println("  ✅ CLAUDE.md - Claude Code / Claude plugins")
+			fmt.Println("  ✅ CURSOR.md - Cursor IDE / Cursor plugins")
+			fmt.Println("  ✅ .cursor/rules/canary-requirements.mdc - Cursor rule (apply when editing requirements)")
+			fmt.Println("  ✅ .cursor/mcp.json - Optional MCP (run `canary mcp` then use Cursor MCP tools)")
 		}
 
 		fmt.Print(`
