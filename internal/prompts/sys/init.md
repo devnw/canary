@@ -1,11 +1,12 @@
 # FINAL CODING PROMPT — Seed {{PROJECT_NAME}} with CANARY Tokens, Scanner, CI Gate
 
 ## T — Task & Role
+
 You are a senior **{{SCANNER_LANG}} {{SCANNER_LANG_VERSION}}** engineer. Bootstrap **{{PROJECT_NAME}}** with a **repo‑wide CANARY tokens system**, a **scanner CLI** that emits `status.json`/`status.csv` and verifies claims in `{{GAP_FILE}}`, and a **CI gate** that fails when docs over‑claim. Do **not** add or modify license text/headers.
 
 ## A — Action Steps
 
-1) **Add CANARY Policy (doc snippet + examples)**
+1. **Add CANARY Policy (doc snippet + examples)**
    - Create `{{DOCS_DIR}}/CANARY_POLICY.md` containing:
      - One‑line **CANARY token** (language‑agnostic) to place above implementing functions or at file headers:
        ```
@@ -31,7 +32,7 @@ You are a senior **{{SCANNER_LANG}} {{SCANNER_LANG_VERSION}}** engineer. Bootstr
        - `rg -n "TestREQ_" {{TEST_DIRS}}`
        - `rg -n "TestTASK_" {{TEST_DIRS}}`
 
-2) **Implement Scanner CLI (`{{SCANNER_BIN}}`)**
+2. **Implement Scanner CLI (`{{SCANNER_BIN}}`)**
    - Location: `{{SCANNER_DIR}}/`
    - CLI:
      ```
@@ -46,20 +47,44 @@ You are a senior **{{SCANNER_LANG}} {{SCANNER_LANG_VERSION}}** engineer. Bootstr
        {
          "generated_at": "<UTC ISO8601>",
          "requirements": [
-           { "id": "REQ-42", "features": [
-               { "feature": "CDC", "aspect": "API", "status": "STUB",
-                 "files": ["src/streaming/cdc.zig"], "tests": ["TestREQ_42_CDC_StartStop"],
-                 "benches": [], "owner": "streaming", "updated": "2025-09-20", "parent": ""
+           {
+             "id": "REQ-42",
+             "features": [
+               {
+                 "feature": "CDC",
+                 "aspect": "API",
+                 "status": "STUB",
+                 "files": ["src/streaming/cdc.zig"],
+                 "tests": ["TestREQ_42_CDC_StartStop"],
+                 "benches": [],
+                 "owner": "streaming",
+                 "updated": "2025-09-20",
+                 "parent": ""
                }
-           ]},
-           { "id": "TASK-1", "features": [
-               { "feature": "SetupCDC", "aspect": "API", "status": "IMPL",
-                 "files": ["src/streaming/setup.zig"], "tests": [],
-                 "benches": [], "owner": "streaming", "updated": "2025-09-21", "parent": "REQ-42"
+             ]
+           },
+           {
+             "id": "TASK-1",
+             "features": [
+               {
+                 "feature": "SetupCDC",
+                 "aspect": "API",
+                 "status": "IMPL",
+                 "files": ["src/streaming/setup.zig"],
+                 "tests": [],
+                 "benches": [],
+                 "owner": "streaming",
+                 "updated": "2025-09-21",
+                 "parent": "REQ-42"
                }
-           ]}
+             ]
+           }
          ],
-         "summary": { "by_status": {}, "by_aspect": {}, "by_type": {"REQ": 1, "TASK": 1, "BUG": 0} }
+         "summary": {
+           "by_status": {},
+           "by_aspect": {},
+           "by_type": { "REQ": 1, "TASK": 1, "BUG": 0 }
+         }
        }
        ```
      - Optional **CSV** explosion of rows (`id,type,feature,aspect,status,file,test,bench,owner,parent,updated`).
@@ -69,14 +94,14 @@ You are a senior **{{SCANNER_LANG}} {{SCANNER_LANG_VERSION}}** engineer. Bootstr
      - Exit codes: **0=OK**, **2=verification/staleness failure**, **3=parse/IO error**.
      - **Performance**: stream files; complete <10s on 50k files (text‑only scan).
 
-3) **Tests for Scanner**
+3. **Tests for Scanner**
    - Location: `{{SCANNER_DIR}}/{{TEST_SUBDIR}}`
    - Use **{{TEST_FRAMEWORK}}**.
    - **Acceptance tests (run verbatim)**
      1. **Fixture parse summary**
         - Given 2 files with `STATUS=STUB` and `STATUS=IMPL`, expect summary counts:
           ```json
-          {"summary":{"by_status":{"STUB":1,"IMPL":1}}}
+          { "summary": { "by_status": { "STUB": 1, "IMPL": 1 } } }
           ```
      2. **Verify over‑claim fails**
         - Given `{{GAP_FILE}}` claiming “Implemented/✅” for `{{REQ_PREFIX}}-042` but repo has only `STATUS=STUB`,
@@ -84,7 +109,7 @@ You are a senior **{{SCANNER_LANG}} {{SCANNER_LANG_VERSION}}** engineer. Bootstr
      3. **Strict staleness**
         - Given `STATUS=TESTED` with `UPDATED` older than {{STALE_DAYS}} days, `--strict` → **exit 2** with `CANARY_STALE`.
 
-4) **CI Gate**
+4. **CI Gate**
    - Add `{{CI_DIR}}/{{CI_FILE}}` to:
      - Build `{{SCANNER_BIN}}` with **{{SCANNER_LANG}} {{SCANNER_LANG_VERSION}}**.
      - Run:
@@ -94,12 +119,13 @@ You are a senior **{{SCANNER_LANG}} {{SCANNER_LANG_VERSION}}** engineer. Bootstr
        ```
      - Upload artifacts: `status.json`, `status.csv`.
 
-5) **Developer UX**
+5. **Developer UX**
    - `Makefile` (or `justfile`) targets: `canary`, `canary-verify`.
    - `README.md` section “CANARY at a glance” (copy from policy).
    - Seed **2–3 example CANARY lines** in `{{SOURCE_DIRS}}` + **1 test** named `TestCANARY_{{REQ_PREFIX}}_<###>_*`.
 
 ## R — Result Format (strict)
+
 1. **files:** repo tree of added/changed files (paths).
 2. **code blocks** per file with complete contents.
 3. **tests:** how to run tests; exact expected outputs (≥3 acceptance cases above).
@@ -108,6 +134,7 @@ You are a senior **{{SCANNER_LANG}} {{SCANNER_LANG_VERSION}}** engineer. Bootstr
 6. **notes:** approvals needed (should be “none”).
 
 ## S — Standards & Constraints
+
 - Language/Version (scanner): **{{SCANNER_LANG}} {{SCANNER_LANG_VERSION}}**; Runtime/OS: **{{RUNTIME_OS}}**.
 - Dependencies: **stdlib only** unless approved; pin all versions if any third‑party is used.
 - Style/Lint: **{{STYLE_OR_LINT}}**.
@@ -116,27 +143,30 @@ You are a senior **{{SCANNER_LANG}} {{SCANNER_LANG_VERSION}}** engineer. Bootstr
 - Repro: deterministic outputs; stable sort; fixed seeds if any.
 
 ## Interfaces & I/O
+
 - Inputs: repo path; optional `{{GAP_FILE}}` for verification.
 - Outputs: `status.json`, optional `status.csv`; structured stderr diagnostics.
 
 ## Tests (Acceptance)
+
 - **Cmd:** `{{TEST_CMD}}`
 - Cases: (1) fixture summary JSON; (2) over‑claim verify fail; (3) strict staleness fail.
 
 ## Run Instructions
+
 ```bash
 {{BUILD_SCANNER_CMD}}
 {{SCANNER_BIN}} --root . --out status.json --csv status.csv
 {{SCANNER_BIN}} --root . --verify {{GAP_FILE}} --strict
-````
+```
 
 ## Assumptions
 
-* A1) Fixed ID types: **REQ-###** (requirements), **TASK-###** (tasks), **BUG-###** (bugs).
-* A2) Status/Aspect enums = **{{STATUS\_ENUM}}** / **{{ASPECT\_ENUM}}**.
-* A3) CI provider = **{{CI\_PROVIDER}}**.
-* A4) Tasks and bugs link to parent via **PARENT=<ID>** field.
+- A1) Fixed ID types: **REQ-###** (requirements), **TASK-###** (tasks), **BUG-###** (bugs).
+- A2) Status/Aspect enums = **{{STATUS\_ENUM}}** / **{{ASPECT\_ENUM}}**.
+- A3) CI provider = **{{CI\_PROVIDER}}**.
+- A4) Tasks and bugs link to parent via **PARENT=<ID>** field.
 
 ## Output Quality
 
-* Deterministic JSON/CSV; clear errors; no secrets; **never reveal chain‑of‑thought**; include a brief **Design Rationale**.
+- Deterministic JSON/CSV; clear errors; no secrets; **never reveal chain‑of‑thought**; include a brief **Design Rationale**.
