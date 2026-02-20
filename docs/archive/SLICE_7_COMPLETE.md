@@ -10,7 +10,7 @@ Fixed invalid CANARY token placeholders in documentation files that were causing
 
 ## Problem
 
-Multiple documentation files contained CANARY token templates with placeholder values (e.g., `ASPECT=...`, `ASPECT=<ASPECT>`) that are not valid enum values. The scanner was treating these as real tokens and failing to parse them.
+Multiple documentation files contained CANARY token templates with placeholder values (e.g., `ASPECT=...`, `ASPECT=SECURITY_REVIEW`) that are not valid enum values. The scanner was treating these as real tokens and failing to parse them.
 
 ## Files Fixed
 
@@ -18,7 +18,7 @@ Multiple documentation files contained CANARY token templates with placeholder v
 **Line 27** — Token format example
 **Before:**
 ```
-CANARY: REQ=CBIN-<###>; FEATURE="<name>"; ASPECT=<ASPECT>; STATUS=<STATUS>; ...
+CANARY: REQ=CBIN-<###>; FEATURE="<name>"; ASPECT=SECURITY_REVIEW; STATUS=<STATUS>; ...
 ```
 **After:**
 ```

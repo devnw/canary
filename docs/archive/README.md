@@ -26,9 +26,9 @@ Canary provides spec-kit-inspired commands for managing CANARY tokens.
 canary init <project>      # Initialize with full workflow
 canary constitution        # Create/view project principles
 canary specify "feature"   # Create requirement spec
-canary plan RKEY-<ASPECT>-XXX       # Generate implementation plan
-canary implement RKEY-<ASPECT>-XXX  # Show implementation locations (reduces context!)
-canary create RKEY-<ASPECT>-XXX     # Generate CANARY token
+canary plan RKEY-SECURITY_REVIEW-XXX       # Generate implementation plan
+canary implement RKEY-SECURITY_REVIEW-XXX  # Show implementation locations (reduces context!)
+canary create RKEY-SECURITY_REVIEW-XXX     # Generate CANARY token
 canary scan               # Scan for tokens and generate reports
 
 # Migration from spec-kit or legacy canary
@@ -41,7 +41,7 @@ canary migrate all        # Run database migrations
 canary index              # Build SQLite database from tokens
 canary list --status STUB  # List tokens with filtering
 canary search "keyword"    # Search by keywords
-canary prioritize RKEY-<ASPECT>-XXX Feature 1  # Set priority (1=highest)
+canary prioritize RKEY-SECURITY_REVIEW-XXX Feature 1  # Set priority (1=highest)
 canary checkpoint "name"   # Create state snapshot
 canary rollback 1         # Roll back last migration
 ```
@@ -100,7 +100,7 @@ canary init <project-name>
 ### Create a New Requirement Token
 
 ```bash
-canary create RKEY-<ASPECT>-105 "FeatureName" --aspect API --status IMPL --owner team
+canary create RKEY-SECURITY_REVIEW-105 "FeatureName" --aspect API --status IMPL --owner team
 # Outputs a properly formatted CANARY token ready to paste
 ```
 
@@ -178,7 +178,7 @@ go run ./tools/canary --root . --out status.json
 
 ```text
 Example template (replace with actual values):
-CANARY: REQ=RKEY-<ASPECT>-101; FEATURE="MyFeature"; ASPECT=API; STATUS=IMPL; TEST=TestCANARY_RKEY-<ASPECT>_101_API_MyFeature; BENCH=BenchmarkCANARY_RKEY-<ASPECT>_101_API_MyFeature; OWNER=team; UPDATED=2025-10-15
+CANARY: REQ=RKEY-SECURITY_REVIEW-101; FEATURE="MyFeature"; ASPECT=API; STATUS=IMPL; TEST=TestCANARY_RKEY-SECURITY_REVIEW_101_API_MyFeature; BENCH=BenchmarkCANARY_RKEY-SECURITY_REVIEW_101_API_MyFeature; OWNER=team; UPDATED=2025-10-15
 
 Valid ASPECT values: API, CLI, Engine, Planner, Storage, Wire, Security, Docs, Encode, Decode, RoundTrip, Bench, FrontEnd, Dist
 Valid STATUS values: MISSING, STUB, IMPL, TESTED, BENCHED, REMOVED
@@ -215,9 +215,9 @@ go test -v
 
 Policy excerpt (see `docs/CANARY_POLICY.md`). Example tokens:
 
-`CANARY: REQ=RKEY-<ASPECT>-101; FEATURE="ScannerCore"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_RKEY-<ASPECT>_101_Engine_ScanBasic; BENCH=BenchmarkCANARY_RKEY-<ASPECT>_101_Engine_Scan; OWNER=canary; UPDATED=2025-09-20`
+`CANARY: REQ=RKEY-SECURITY_REVIEW-101; FEATURE="ScannerCore"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_RKEY-SECURITY_REVIEW_101_Engine_ScanBasic; BENCH=BenchmarkCANARY_RKEY-SECURITY_REVIEW_101_Engine_Scan; OWNER=canary; UPDATED=2025-09-20`
 
-`CANARY: REQ=RKEY-<ASPECT>-102; FEATURE="VerifyGate"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_RKEY-<ASPECT>_102_CLI_Verify; BENCH=BenchmarkCANARY_RKEY-<ASPECT>_102_CLI_Verify; OWNER=canary; UPDATED=2025-09-20`
+`CANARY: REQ=RKEY-SECURITY_REVIEW-102; FEATURE="VerifyGate"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_RKEY-SECURITY_REVIEW_102_CLI_Verify; BENCH=BenchmarkCANARY_RKEY-SECURITY_REVIEW_102_CLI_Verify; OWNER=canary; UPDATED=2025-09-20`
 
 ## Structured Storage & Priority Management
 
@@ -272,7 +272,7 @@ canary search "authentication"
 canary search "oauth jwt"
 
 # Update priorities (1=highest, 10=lowest)
-canary prioritize RKEY-<ASPECT>-001 JWTGeneration 1
+canary prioritize RKEY-SECURITY_REVIEW-001 JWTGeneration 1
 ```
 
 ### Extended Metadata
@@ -340,18 +340,18 @@ cd my-project
 # Use AI agent slash commands (in Claude Code, Cursor, etc.)
 # /canary.constitution
 # /canary.specify "Add user authentication with OAuth2"
-# /canary.plan RKEY-<ASPECT>-001 "Use Go standard library"
+# /canary.plan RKEY-SECURITY_REVIEW-001 "Use Go standard library"
 
 # Find implementation points (reduces context!)
-canary implement RKEY-<ASPECT>-001 --status STUB
+canary implement RKEY-SECURITY_REVIEW-001 --status STUB
 # Shows exact locations of unimplemented features
 
 # Get context for specific feature
-canary implement RKEY-<ASPECT>-001 --feature JWTGeneration --context
+canary implement RKEY-SECURITY_REVIEW-001 --feature JWTGeneration --context
 # Shows file:line with surrounding code
 
 # Track progress
-canary implement RKEY-<ASPECT>-001
+canary implement RKEY-SECURITY_REVIEW-001
 # Shows: Progress: 67% (2/3)
 
 # Scan and verify
@@ -372,7 +372,7 @@ canary scan --root . --verify GAP_ANALYSIS.md --strict
 │   ├── spec-template.md         # Requirement template
 │   └── plan-template.md         # Implementation plan template
 └── specs/
-    └── RKEY-<ASPECT>-XXX-feature/        # Individual requirements
+    └── RKEY-SECURITY_REVIEW-XXX-feature/        # Individual requirements
         ├── spec.md
         └── plan.md
 

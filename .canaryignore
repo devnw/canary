@@ -28,14 +28,11 @@
 # Documentation directories (often contain example tokens)
 docs/
 specs/
-prompts/
-embedded/
 
 # Build artifacts
 bin/
 dist/
 build/
-canary
 *.exe
 *.dll
 *.so

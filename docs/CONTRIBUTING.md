@@ -24,7 +24,7 @@ template.
 
 #### SECURITY BUGS
 
-We take security bugs ***VERY*** seriously!
+We take security bugs **_VERY_** seriously!
 
 Please promptly report security related bugs to <security@devnw.com>. Please
 follow [responsible disclosure guidelines][SECURITY.md] when publicizing any security related
@@ -52,21 +52,20 @@ are more sensitive, emailed to <security@devnw.com>.
 
 ## Submitting a Pull Request
 
-  1. It's generally best to start by opening a new issue describing the bug or
-     feature you're intending to fix. Even if you think it's relatively minor,
-     it's helpful to know what people are working on. Mention in the initial
-     issue that you are planning to work on that bug or feature so that it can
-     be assigned to you.
+1. It's generally best to start by opening a new issue describing the bug or
+   feature you're intending to fix. Even if you think it's relatively minor,
+   it's helpful to know what people are working on. Mention in the initial
+   issue that you are planning to work on that bug or feature so that it can
+   be assigned to you.
 
-  1. Follow the normal process of [forking][https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo] the project, and setup a new
-     branch to work in. It's important that each group of changes be done in
-     separate branches in order to ensure that a pull request only includes the
-     commits related to that bug or feature.
-    
-  1. This project uses `nix` and `direnv` to manage development environments.
-     Please ensure you have both installed and configured on your system.
-     See the [development environment documentation](./DEVELOPMENT.md) for more
-     information.
+1. Follow the normal process of [forking][https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo] the project, and setup a new
+   branch to work in. It's important that each group of changes be done in
+   separate branches in order to ensure that a pull request only includes the
+   commits related to that bug or feature.
+
+1. Development is Go-based; see [Development Environment](./DEVELOPMENT.md) for
+   build, test, and contribution workflow. No Nix or direnv is required.
+
 ---
 
 ## Maintainer's Guide

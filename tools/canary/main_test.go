@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"go.devnw.com/canary/internal/canaryscan"
 )
 
 // TestCANARY_CBIN_101_Engine_ScanBasic validates the core scanning functionality.
@@ -40,7 +42,7 @@ func TestCANARY_CBIN_101_Engine_ScanBasic(t *testing.T) {
 	}
 
 	// Execute: scan directory
-	rep, err := scan(dir, skipDefault, nil, nil)
+	rep, err := canaryscan.Scan(dir, canaryscan.DefaultSkipRegex(), nil, nil)
 	if err != nil {
 		t.Fatalf("scan failed: %v", err)
 	}
@@ -91,10 +93,10 @@ func setupFixture(tb testing.TB, numFiles int) string {
 // Baseline target: allocs/op ≤ 10
 func BenchmarkCANARY_CBIN_101_Engine_Scan(b *testing.B) {
 	dir := setupFixture(b, 100)
-	skip := skipDefault
+	skip := canaryscan.DefaultSkipRegex()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := scan(dir, skip, nil, nil)
+		_, err := canaryscan.Scan(dir, skip, nil, nil)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -109,12 +111,12 @@ func BenchmarkCANARY_CBIN_101_Engine_Scan50k(b *testing.B) {
 	// Create 50k file fixture (one-time setup)
 	b.StopTimer()
 	dir := setupFixture(b, 50000)
-	skip := skipDefault
+	skip := canaryscan.DefaultSkipRegex()
 	b.StartTimer()
 
 	// Run scan N times
 	for i := 0; i < b.N; i++ {
-		_, err := scan(dir, skip, nil, nil)
+		_, err := canaryscan.Scan(dir, skip, nil, nil)
 		if err != nil {
 			b.Fatal(err)
 		}

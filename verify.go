@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-package main
+package canary
 
 // CANARY: REQ=CBIN-102; FEATURE="VerifyGate"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_102_CLI_Verify; BENCH=BenchmarkCANARY_CBIN_102_CLI_Verify; OWNER=canary; UPDATED=2025-10-15
 import (
@@ -55,7 +55,7 @@ func ParseGAPClaims(path string) (map[string]claim, error) {
 	return claims, sc.Err()
 }
 
-func VerifyClaims(rep report, claims map[string]claim) error {
+func VerifyClaims(rep Report, claims map[string]claim) error {
 	var errs []string
 	evidence := map[string]bool{} // REQ -> has TESTED/BENCHED
 	for _, r := range rep.Requirements {
@@ -80,4 +80,12 @@ func VerifyClaims(rep report, claims map[string]claim) error {
 		return fmt.Errorf("%s", strings.Join(errs, "; "))
 	}
 	return nil
+}
+
+// normalizeReq ensures requirement IDs use ASCII hyphen and trimmed spaces.
+func normalizeReq(id string) string {
+	id = strings.TrimSpace(id)
+	id = strings.ReplaceAll(id, "\u2011", "-")
+	id = strings.ReplaceAll(id, "\u2013", "-")
+	return id
 }

@@ -670,7 +670,7 @@ Mark Slices 1-6 as completed:
 **Duration:** 4-6 hours
 
 ### Priority 1: Fix CRUSH.md Placeholder (30 min)
-- **Issue:** Line 27 has `ASPECT=<ASPECT>` causing parse errors
+- **Issue:** Line 27 has `ASPECT=SECURITY_REVIEW` causing parse errors
 - **Fix:** Replace with valid example or remove token entirely
 - **Validation:** `./bin/canary --root . --out status.json` exits 0
 
@@ -777,7 +777,7 @@ Use this checklist while implementing:
 - [ ] Git commit with message: "feat: implement TestCANARY and BenchmarkCANARY functions for CBIN-101/102/103"
 
 ### Phase 4: Next Priorities
-- [ ] Fix CRUSH.md placeholder (remove `ASPECT=<ASPECT>`)
+- [ ] Fix CRUSH.md placeholder (remove `ASPECT=SECURITY_REVIEW`)
 - [ ] Create `.github/workflows/canary.yml`
 - [ ] Implement TestAcceptance_CSVOrder
 - [ ] Implement BenchmarkCANARY_CBIN_101_Perf50k

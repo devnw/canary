@@ -7,12 +7,14 @@ Completed full support for migrating legacy CANARY systems to the unified CANARY
 ## Problem Solved
 
 ### Before
+
 - No way to detect if a system was already migrated
 - Migration would try to run even on already-migrated systems
 - Files listed in migration plan weren't actually created
 - Race condition: auto-migration hook would run before migrate-from command
 
 ### After
+
 - ✅ Detects 4 system types: spec-kit, legacy-canary, migrated, unknown
 - ✅ Prevents double-migration with clear feedback
 - ✅ Creates all files from embedded templates (constitution, slash commands)
@@ -35,6 +37,7 @@ const (
 ```
 
 **Detection logic:**
+
 ```go
 func DetectSystemType(rootDir string) (SystemType, string) {
     // First check if already migrated
@@ -51,6 +54,7 @@ func DetectSystemType(rootDir string) (SystemType, string) {
 ### 2. File Creation from Embedded Templates
 
 **Files created during legacy-canary migration:**
+
 ```
 .canary/memory/constitution.md
 .canary/templates/spec-template.md
@@ -64,11 +68,12 @@ func DetectSystemType(rootDir string) (SystemType, string) {
 ```
 
 **Implementation:**
+
 ```go
 // Create files from templates
 for _, filename := range plan.FilesToCreate {
     embeddedPath := filepath.Join("base", filename)
-    content, err := embedded.CanaryFS.ReadFile(embeddedPath)
+    content, err := embedded.ReadFile(embeddedPath)
     // ... write to destPath
 }
 ```
@@ -90,6 +95,7 @@ skipCommands := map[string]bool{
 ### 4. Updated CLI Commands
 
 **detect command:**
+
 ```bash
 $ canary detect
 🔍 Analyzing: .
@@ -107,6 +113,7 @@ Available commands:
 ```
 
 **migrate-from command with already-migrated:**
+
 ```bash
 $ canary migrate-from legacy-canary
 ✅ System already migrated!
@@ -122,6 +129,7 @@ No migration needed.
 ### Test 1: True Legacy System
 
 **Setup:**
+
 ```bash
 mkdir -p /tmp/legacy-test/tools/canary
 touch /tmp/legacy-test/tools/canary/main.go
@@ -130,14 +138,17 @@ touch /tmp/legacy-test/GAP_ANALYSIS.md
 ```
 
 **Detection:**
+
 ```bash
 $ canary detect /tmp/legacy-test
 System Type: legacy-canary
 Details: Detected legacy CANARY system (4/4 indicators found)
 ```
+
 ✅ Correct detection
 
 **Migration:**
+
 ```bash
 $ canary migrate-from legacy-canary /tmp/legacy-test
 📋 Planning migration from legacy-canary...
@@ -153,32 +164,39 @@ Warnings: 1
 ... (9 files total)
 ✅ Migration complete!
 ```
+
 ✅ All files created successfully
 
 **Post-Migration Detection:**
+
 ```bash
 $ canary detect /tmp/legacy-test
 System Type: migrated
 Details: System already migrated to unified CANARY (has .canary/templates/)
 ```
+
 ✅ Correctly detects as migrated
 
 ### Test 2: Already-Migrated System
 
 **This repository:**
+
 ```bash
 $ canary detect
 System Type: migrated
 Details: System already migrated to unified CANARY (has .canary/canary.db)
 ```
+
 ✅ Correctly detects as already migrated
 
 **Attempt migration:**
+
 ```bash
 $ canary migrate-from legacy-canary
 ✅ System already migrated!
 No migration needed.
 ```
+
 ✅ Prevents double-migration
 
 ### Test 3: Dry-Run Mode
@@ -193,30 +211,36 @@ Would create: .canary/memory/constitution.md
 
 ✅ Dry run complete - no changes were made
 ```
+
 ✅ Preview works correctly
 
 ## Documentation Updates
 
 ### MIGRATION_GUIDE.md
+
 - Added "migrated" system type section
 - Added example reference to this repository's history (pre-migration state)
 - Updated detection indicators
 
 ### README.md
+
 - Added migration features list
 - Clarified detection capabilities
 - Added example showing system type detection
 
 ### status.json
+
 - Updated notes to reflect "already-migrated detection" feature
 - Mentioned embedded template file creation
 
 ## File Changes
 
 **Created:**
+
 - `LEGACY_MIGRATION_COMPLETE.md` (this file)
 
 **Modified:**
+
 - `internal/migrate/migrate.go`:
   - Added `SystemTypeMigrated` constant
   - Updated `DetectSystemType()` to check for migrated systems first
@@ -240,12 +264,14 @@ Would create: .canary/memory/constitution.md
 ## Benefits
 
 ### For Users
+
 ✅ **No double-migration** - Safely detects if already using unified system
 ✅ **Complete migration** - All necessary files created automatically
 ✅ **Clear feedback** - Knows exactly what system type they have
 ✅ **Safe preview** - Dry-run shows exactly what will change
 
 ### For Agents
+
 ✅ **One command** - `canary detect` tells them everything
 ✅ **No manual steps** - Files created from templates automatically
 ✅ **No confusion** - Clear error messages if trying to re-migrate
@@ -256,12 +282,14 @@ Would create: .canary/memory/constitution.md
 This repository itself demonstrates the evolution:
 
 **Before (commit fca0037, Sept 2025):**
+
 - Pure legacy CANARY system
 - Only had `tools/canary/` standalone scanner
 - `status.json`, `GAP_ANALYSIS.md` in root
 - No `.canary/` directory
 
 **After (commit 846a6de+):**
+
 - Migrated to unified system
 - Has `.canary/` with modern structure
 - Has `.canary/canary.db` (SQLite storage)
@@ -269,6 +297,7 @@ This repository itself demonstrates the evolution:
 - Still has `tools/canary/` (can be removed)
 
 **Current state:**
+
 - Detected as "migrated" system type
 - Migration commands refuse to run (already migrated)
 - Suggests using modern commands instead
@@ -276,18 +305,21 @@ This repository itself demonstrates the evolution:
 ## Summary
 
 ✅ **Complete legacy migration support**
+
 - Detects 4 system types (spec-kit, legacy-canary, migrated, unknown)
 - Prevents double-migration
 - Creates all files from embedded templates
 - Tested with real legacy system structure
 
 ✅ **Zero manual intervention**
+
 - Auto-detects system type
 - Creates .canary/ structure
 - Copies/creates all necessary files
 - Clear next steps after migration
 
 ✅ **Production-ready**
+
 - Tested with multiple scenarios
 - Clear error messages
 - Dry-run mode for safety

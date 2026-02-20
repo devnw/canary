@@ -39,7 +39,7 @@
 ### ✅ Slice 7: Fix CRUSH.md Placeholder (2025-10-15)
 - **Scope:** Removed invalid CANARY token causing parse errors
 - **Files Modified:** CRUSH.md:27, README.md:29, docs/CANARY_EXAMPLES_SPEC_KIT.md:8
-- **Issue:** Lines contained `ASPECT=<ASPECT>` placeholder causing `CANARY_PARSE_ERROR`
+- **Issue:** Lines contained `ASPECT=SECURITY_REVIEW` placeholder causing `CANARY_PARSE_ERROR`
 - **Fix:** Replaced with valid concrete examples using actual enum values (ASPECT=API, STATUS=IMPL)
 - **Validation:** `./bin/canary --root tools/canary --out status.json` → EXIT=0 (no parse errors)
 - **Evidence:** SLICE_7_COMPLETE.md

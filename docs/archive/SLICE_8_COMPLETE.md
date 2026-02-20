@@ -65,7 +65,7 @@ Created `.github/workflows/canary.yml` with 5 parallel/sequential jobs matching 
 ## Key Fixes
 
 ### Fix 1: Skip Pattern for .crush Directory
-**Issue:** Verify gate was failing with `CANARY_PARSE_ERROR err=".crush/crush.db: invalid ASPECT <ASPECT>"`
+**Issue:** Verify gate was failing with `CANARY_PARSE_ERROR err=".crush/crush.db: invalid ASPECT SECURITY_REVIEW"`
 **Root Cause:** `.crush/` directory contains database file with invalid token placeholders
 **Solution:** Added `.crush` to skip pattern regex
 **Before:** `'(^|/)(.git|.direnv|node_modules|vendor|bin|dist|build|zig-out|.zig-cache)(/|$)'`

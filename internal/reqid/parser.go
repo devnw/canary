@@ -16,7 +16,7 @@ type RequirementID struct {
 	Key    string // e.g., "CBIN"
 	Aspect string // e.g., "CLI", "API" (empty for v1 format)
 	ID     string // e.g., "001", "042"
-	Format string // "v1" (CBIN-XXX) or "v2" (CBIN-<ASPECT>-XXX)
+	Format string // "v1" (CBIN-XXX) or "v2" (CBIN-SECURITY_REVIEW-XXX)
 }
 
 var (

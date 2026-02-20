@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"go.devnw.com/canary/internal/canaryscan"
 )
 
 // TestCANARY_CBIN_103_API_StatusSchema validates the status JSON schema.
@@ -23,12 +25,12 @@ import (
 // - Marshals correctly without errors
 func TestCANARY_CBIN_103_API_StatusSchema(t *testing.T) {
 	// Setup: create report with known data
-	rep := Report{
+	rep := canaryscan.Report{
 		GeneratedAt: "2025-10-15T00:00:00Z",
-		Requirements: []Requirement{
+		Requirements: []canaryscan.Requirement{
 			{
 				ID: "CBIN-101",
-				Features: []Feature{
+				Features: []canaryscan.Feature{
 					{
 						Feature: "ScannerCore",
 						Aspect:  "Engine",
@@ -43,7 +45,7 @@ func TestCANARY_CBIN_103_API_StatusSchema(t *testing.T) {
 			},
 			{
 				ID: "CBIN-102",
-				Features: []Feature{
+				Features: []canaryscan.Feature{
 					{
 						Feature: "VerifyGate",
 						Aspect:  "CLI",
@@ -57,9 +59,9 @@ func TestCANARY_CBIN_103_API_StatusSchema(t *testing.T) {
 				},
 			},
 		},
-		Summary: Summary{
-			ByStatus:           StatusCounts{"TESTED": 2},
-			ByAspect:           AspectCounts{"Engine": 1, "CLI": 1},
+		Summary: canaryscan.Summary{
+			ByStatus:           map[string]int{"TESTED": 2},
+			ByAspect:           map[string]int{"Engine": 1, "CLI": 1},
 			TotalTokens:        2,
 			UniqueRequirements: 2,
 		},
@@ -152,7 +154,7 @@ func Feature%d() {}
 	var hashes []string
 	var jsons []string
 	for run := 0; run < 5; run++ {
-		rep, err := scan(dir, skipDefault, nil, nil)
+		rep, err := canaryscan.Scan(dir, canaryscan.DefaultSkipRegex(), nil, nil)
 		if err != nil {
 			t.Fatalf("scan %d failed: %v", run, err)
 		}
@@ -216,22 +218,22 @@ func Feature%d() {}
 
 // setupLargeReport creates a large report for benchmarking.
 // Returns a report with numReqs requirements, each with featuresPerReq features.
-func setupLargeReport(tb testing.TB, numReqs int, featuresPerReq int) *Report {
+func setupLargeReport(tb testing.TB, numReqs int, featuresPerReq int) *canaryscan.Report {
 	tb.Helper()
-	rep := &Report{
+	rep := &canaryscan.Report{
 		GeneratedAt:  "2025-10-15T00:00:00Z",
-		Requirements: make([]Requirement, numReqs),
-		Summary: Summary{
-			ByStatus:           StatusCounts{},
-			ByAspect:           AspectCounts{},
+		Requirements: make([]canaryscan.Requirement, numReqs),
+		Summary: canaryscan.Summary{
+			ByStatus:           map[string]int{},
+			ByAspect:           map[string]int{},
 			TotalTokens:        numReqs * featuresPerReq,
 			UniqueRequirements: numReqs,
 		},
 	}
 	for i := 0; i < numReqs; i++ {
-		features := make([]Feature, featuresPerReq)
+		features := make([]canaryscan.Feature, featuresPerReq)
 		for j := 0; j < featuresPerReq; j++ {
-			features[j] = Feature{
+			features[j] = canaryscan.Feature{
 				Feature: fmt.Sprintf("Feature%d_%d", i, j),
 				Aspect:  "API",
 				Status:  "IMPL",
@@ -244,7 +246,7 @@ func setupLargeReport(tb testing.TB, numReqs int, featuresPerReq int) *Report {
 			rep.Summary.ByStatus["IMPL"]++
 			rep.Summary.ByAspect["API"]++
 		}
-		rep.Requirements[i] = Requirement{
+		rep.Requirements[i] = canaryscan.Requirement{
 			ID:       fmt.Sprintf("CBIN-%03d", i),
 			Features: features,
 		}
@@ -263,10 +265,10 @@ func BenchmarkCANARY_CBIN_103_API_Emit(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if err := writeJSON(jsonPath, *rep); err != nil {
+		if err := canaryscan.WriteJSON(jsonPath, *rep); err != nil {
 			b.Fatal(err)
 		}
-		if err := writeCSV(csvPath, *rep); err != nil {
+		if err := canaryscan.WriteCSV(csvPath, *rep); err != nil {
 			b.Fatal(err)
 		}
 	}

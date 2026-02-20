@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"go.devnw.com/canary/internal/canaryscan"
 )
 
 // TestCANARY_CBIN_102_CLI_Verify validates the verify gate functionality.
@@ -44,13 +46,13 @@ func TestCANARY_CBIN_102_CLI_Verify(t *testing.T) {
 	}
 
 	// Execute: scan repo
-	rep, err := scan(repoDir, skipDefault, nil, nil)
+	rep, err := canaryscan.Scan(repoDir, canaryscan.DefaultSkipRegex(), nil, nil)
 	if err != nil {
 		t.Fatalf("scan failed: %v", err)
 	}
 
 	// Execute: verify claims
-	diags := verifyClaims(rep, gapFile)
+	diags := canaryscan.VerifyClaims(rep, gapFile)
 
 	// Verify: overclaim detected
 	if len(diags) == 0 {
@@ -78,7 +80,7 @@ func TestCANARY_CBIN_102_CLI_Verify(t *testing.T) {
 
 // setupGAPFixture creates a GAP file and matching report for benchmarking.
 // Returns the GAP file path and a report with numClaims matching requirements.
-func setupGAPFixture(tb testing.TB, numClaims int) (string, *Report) {
+func setupGAPFixture(tb testing.TB, numClaims int) (string, *canaryscan.Report) {
 	tb.Helper()
 	dir := tb.TempDir()
 
@@ -101,20 +103,20 @@ func setupGAPFixture(tb testing.TB, numClaims int) (string, *Report) {
 	}
 
 	// Create matching report with N requirements
-	rep := &Report{
+	rep := &canaryscan.Report{
 		GeneratedAt:  "2025-10-15T00:00:00Z",
-		Requirements: make([]Requirement, numClaims),
-		Summary: Summary{
-			ByStatus:           StatusCounts{"TESTED": numClaims},
-			ByAspect:           AspectCounts{"API": numClaims},
+		Requirements: make([]canaryscan.Requirement, numClaims),
+		Summary: canaryscan.Summary{
+			ByStatus:           map[string]int{"TESTED": numClaims},
+			ByAspect:           map[string]int{"API": numClaims},
 			TotalTokens:        numClaims,
 			UniqueRequirements: numClaims,
 		},
 	}
 	for i := 0; i < numClaims; i++ {
-		rep.Requirements[i] = Requirement{
+		rep.Requirements[i] = canaryscan.Requirement{
 			ID: fmt.Sprintf("CBIN-%03d", i),
-			Features: []Feature{
+			Features: []canaryscan.Feature{
 				{Feature: fmt.Sprintf("Feature%d", i), Aspect: "API", Status: "TESTED", Tests: []string{"TestFoo"}, Updated: "2025-10-15"},
 			},
 		}
@@ -130,6 +132,6 @@ func BenchmarkCANARY_CBIN_102_CLI_Verify(b *testing.B) {
 	gapFile, rep := setupGAPFixture(b, 50)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = verifyClaims(*rep, gapFile)
+		_ = canaryscan.VerifyClaims(*rep, gapFile)
 	}
 }

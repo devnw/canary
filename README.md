@@ -3,14 +3,14 @@
 **Agentic-Coding-Friendly Requirement Tracking System**
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev/)
 [![Build](https://github.com/devnw/canary/actions/workflows/build.yml/badge.svg)](https://github.com/devnw/canary/actions/workflows/build.yml)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 [![Go Reference](https://pkg.go.dev/badge/go.devnw.com/canary.svg)](https://pkg.go.dev/go.devnw.com/canary)
 [![Version](https://img.shields.io/github/v/tag/devnw/canary?sort=semver&style=plastic)](https://github.com/devnw/canary/releases)
 
-CANARY is a requirement tracking system that embeds tokens directly into 
-source code, enabling precise tracking of features, tests, benchmarks, and 
+CANARY is a requirement tracking system that embeds tokens directly into
+source code, enabling precise tracking of features, tests, benchmarks, and
 documentation. This bridges the gap between requirements and implementation,
 ensuring that an agent coding system has not only the ability to be precise
 in the specification and planning phases but the outputs of which can be
@@ -25,6 +25,24 @@ ensuring that quality is prioritized over speed.
 
 ### Installation
 
+#### APT (Debian/Ubuntu) – Recommended
+
+Canary publishes `.deb` packages to the APT repository at `apt.codepros.org` (same pattern as [void](https://gitlab.com/devnw/codepros/oss/void)).
+
+```bash
+# Import the Codepros APT signing key
+curl -fsSL https://apt.codepros.org/codepros-keyring.gpg | sudo tee /usr/share/keyrings/codepros-archive-keyring.gpg > /dev/null
+
+# Add the Codepros APT repository
+echo "deb [signed-by=/usr/share/keyrings/codepros-archive-keyring.gpg] https://apt.codepros.org/ stable main" | sudo tee /etc/apt/sources.list.d/codepros.list
+
+# Update and install
+sudo apt update
+sudo apt install canary
+```
+
+#### From source
+
 ```bash
 # Install from source
 go install go.devnw.com/canary/cmd/canary@latest
@@ -35,7 +53,7 @@ cd canary
 make build
 ```
 
-## Repository
+## Repository (for the pages site)
 
 The code is hosted on GitHub:
 
@@ -92,6 +110,32 @@ func AuthenticateUser(creds *Credentials) (*Session, error) {
 }
 ```
 
+#### Legacy Tokens & Normalization
+
+For backward compatibility the scanner accepts older token patterns and normalizes them:
+
+| Legacy Form | Normalized    |
+| ----------- | ------------- |
+| `CBIN-5`    | `CBIN-005`    |
+| `CBIN-42`   | `CBIN-042`    |
+| `REQ-7`     | `REQ-007`     |
+| `REQ-12`    | `REQ-012`     |
+| `REQ-GQL-4` | `REQ-GQL-004` |
+
+Rules:
+
+1. Bare ID segments (e.g. `REQ-7`) inside a CANARY line are accepted.
+2. When both a bare legacy ID and a canonical `REQ=` key appear, the `REQ=` value wins.
+3. Only the final numeric segment is zero‑padded to three digits.
+
+Use the canonical format in new code:
+
+```go
+// CANARY: REQ=CBIN-005; FEATURE="Parser"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-10-18
+```
+
+Legacy forms are supported for historical tokens but should not be added to new implementations.
+
 **Token Lifecycle:**
 
 ```
@@ -127,14 +171,17 @@ Express dependencies between requirements:
 ## Dependencies
 
 ### Full Dependencies (entire requirement needed)
+
 - CBIN-146 (Multi-Project Support - required for token namespacing)
 
 ### Partial Dependencies (specific features/aspects)
+
 - CBIN-140:GapRepository,GapService (only gap storage needed)
 - CBIN-133:Engine (only Engine aspect required)
 ```
 
 **Features:**
+
 - Circular dependency detection using DFS algorithm
 - Transitive dependency resolution
 - Status-based satisfaction (only TESTED/BENCHED satisfy)
@@ -169,10 +216,12 @@ canary scan --verify GAP_ANALYSIS.md --strict
 # Requirements Gap Analysis
 
 ## Claimed Requirements
+
 ✅ CBIN-101 - Scanner Core
 ✅ CBIN-102 - Verify Gate
 
 ## Gaps
+
 - [ ] CBIN-103 - Status JSON (needs tests)
 ```
 
@@ -288,6 +337,7 @@ Constitutional principles ensure tests before implementation:
 
 ```markdown
 ## Article IV: Test-First Imperative
+
 All features SHALL be implemented using test-first development (TDD).
 Tests MUST be written before implementation code.
 ```
@@ -326,9 +376,7 @@ canary grep Authentication
 Track documentation status with cryptographic hashes:
 
 ```go
-// CANARY: REQ=CBIN-105; FEATURE="FuzzySearch"; ASPECT=Engine; STATUS=TESTED;
-// TEST=TestFuzzySearch; DOC=user:docs/user/search-guide.md;
-// DOC_HASH=a3f5b8c2e1d4a6f9; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-105; FEATURE="FuzzySearch"; ASPECT=Engine; STATUS=TESTED; TEST=TestFuzzySearch; DOC=user:docs/user/search-guide.md; DOC_HASH=a3f5b8c2e1d4a6f9; UPDATED=2025-10-18
 ```
 
 ```bash
@@ -413,6 +461,7 @@ gh copilot suggest "What is the CANARY token format?"
 ```
 
 **Features:**
+
 - ✅ Zero manual configuration required
 - ✅ Preserves custom instructions on re-init
 - ✅ Project key substitution in templates
@@ -561,6 +610,7 @@ Licensed under the terms found in [LICENSE](https://github.com/devnw/canary/blob
 ## Acknowledgments
 
 CANARY was inspired by:
+
 - **spec-kit** methodology for requirement-first development
 - **Test-Driven Development (TDD)** principles
 - **Evidence-based claims** from formal verification
@@ -590,4 +640,4 @@ Built with love by [Developer Network](https://devnw.com).
 
 ---
 
-*CANARY: Making every feature claim searchable, verifiable, and traceable.*
+_CANARY: Making every feature claim searchable, verifiable, and traceable._

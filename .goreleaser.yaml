@@ -6,7 +6,6 @@ before:
   hooks:
     - go mod tidy
 
-
 builds:
   - id: canary
     main: ./cmd/canary
@@ -58,7 +57,6 @@ archives:
       - LICENSE
       - docs/CANARY_POLICY.md
 
-
 checksum:
   name_template: "checksums.txt"
 
@@ -105,15 +103,17 @@ dockers:
     goos: linux
     goarch: amd64
     goamd64: "v2"
-
     ids:
       - canary
-
     image_templates:
+      # GitLab Container Registry (when running in GitLab CI)
+      - '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:{{ .ShortCommit }}-amd64{{ end }}'
+      - '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:v{{ .Major }}-amd64{{ end }}'
+      - '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:{{ .Tag }}-amd64{{ end }}'
+      - '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:latest-amd64{{ end }}'
+      # GitHub Container Registry
       - "ghcr.io/devnw/canary:latest"
-
     dockerfile: "{{ .Env.DOCKERFILE }}"
-
     use: docker
     build_flag_templates:
       - "--pull"
@@ -121,13 +121,11 @@ dockers:
       - "--label=org.opencontainers.image.title={{.ProjectName}}"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--platform=linux/arm64"
-
+      - "--platform=linux/amd64"
     retry:
       attempts: 5
       delay: 5s
       max_delay: 2m
-
     extra_files:
       - LICENSE
       - README.md
@@ -137,6 +135,10 @@ dockers:
     ids:
       - canary
     image_templates:
+      - '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:{{ .ShortCommit }}-arm64{{ end }}'
+      - '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:v{{ .Major }}-arm64{{ end }}'
+      - '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:{{ .Tag }}-arm64{{ end }}'
+      - '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:latest-arm64{{ end }}'
       - "ghcr.io/devnw/canary:latest"
     dockerfile: "{{ .Env.DOCKERFILE }}"
     use: docker
@@ -155,6 +157,24 @@ dockers:
       - LICENSE
       - README.md
 
+docker_manifests:
+  - name_template: '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:{{ .ShortCommit }}{{ end }}'
+    image_templates:
+      - '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:{{ .ShortCommit }}-amd64{{ end }}'
+      - '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:{{ .ShortCommit }}-arm64{{ end }}'
+  - name_template: '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:v{{ .Major }}{{ end }}'
+    image_templates:
+      - '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:v{{ .Major }}-amd64{{ end }}'
+      - '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:v{{ .Major }}-arm64{{ end }}'
+  - name_template: '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:{{ .Tag }}{{ end }}'
+    image_templates:
+      - '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:{{ .Tag }}-amd64{{ end }}'
+      - '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:{{ .Tag }}-arm64{{ end }}'
+  - name_template: '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:latest{{ end }}'
+    image_templates:
+      - '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:latest-amd64{{ end }}'
+      - '{{ if index .Env "CI_REGISTRY_IMAGE" }}{{ .Env.CI_REGISTRY_IMAGE }}:latest-arm64{{ end }}'
+
 release:
   github:
     owner: devnw
@@ -162,16 +182,15 @@ release:
   prerelease: auto
   draft: false
   name_template: "{{ .ProjectName }}-v{{ .Version }}"
-  disable: false
+  # Disable GitHub release when running in GitLab CI (apt and images go to GitLab/apt.codepros.org)
+  disable: '{{ index .Env "GITLAB_CI" }}'
 
 homebrew_casks:
-  -
-    # Name of the cask
+  - # Name of the cask
     #
     # Default: the project name.
     # Templates: allowed.
     name: canary
-
 
     # IDs of the archives to use.
     # Empty means all IDs.
