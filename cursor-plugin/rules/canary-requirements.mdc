@@ -1,0 +1,13 @@
+---
+description: CANARY requirement tracking — use when editing requirements, specs, or CANARY tokens
+globs: ["**/.canary/**", "**/GAP_ANALYSIS.md", "**/*spec*.md", "**/plan.md"]
+alwaysApply: false
+---
+
+# CANARY requirements
+
+This project uses CANARY. For the command you're running, read only that file under `.canary/commands/` (e.g. scan.md for /canary.scan).
+
+- **Scan:** Use the one-line stdout from `canary scan` (CANARY_SCAN tokens=...) for metrics; do not read status.json unless needed.
+- **Verify:** Use stdout CANARY_VERIFY_OK or stderr CANARY_VERIFY_FAIL lines; open GAP_ANALYSIS.md only when fixing claims.
+- **Token format:** `// CANARY: REQ=ID; FEATURE="Name"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD` — status STUB→IMPL→TESTED→BENCHED.
