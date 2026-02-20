@@ -25,6 +25,24 @@ ensuring that quality is prioritized over speed.
 
 ### Installation
 
+#### APT (Debian/Ubuntu) – Recommended
+
+Canary publishes `.deb` packages to the APT repository at `apt.codepros.org` (same pattern as [void](https://gitlab.com/devnw/codepros/oss/void)).
+
+```bash
+# Import the Codepros APT signing key
+curl -fsSL https://apt.codepros.org/codepros-keyring.gpg | sudo tee /usr/share/keyrings/codepros-archive-keyring.gpg > /dev/null
+
+# Add the Codepros APT repository
+echo "deb [signed-by=/usr/share/keyrings/codepros-archive-keyring.gpg] https://apt.codepros.org/ stable main" | sudo tee /etc/apt/sources.list.d/codepros.list
+
+# Update and install
+sudo apt update
+sudo apt install canary
+```
+
+#### From source
+
 ```bash
 # Install from source
 go install go.devnw.com/canary/cmd/canary@latest
