@@ -12,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"go.devnw.com/canary/internal/storage/testutil"
 )
 
@@ -25,7 +26,7 @@ func TestMultiProjectWorkflow(t *testing.T) {
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
 	dbPath := manager.Location()
-	manager.Close()
+	_ = manager.Close()
 
 	// Step 2: Register multiple projects
 	manager2 := NewDatabaseManager()
@@ -46,7 +47,7 @@ func TestMultiProjectWorkflow(t *testing.T) {
 	err = registry.Register(project3)
 	require.NoError(t, err)
 
-	manager2.Close()
+	_ = manager2.Close()
 
 	// Step 3: Switch context to project1 and add tokens
 	manager3 := NewDatabaseManager()
@@ -75,7 +76,7 @@ func TestMultiProjectWorkflow(t *testing.T) {
 	err = db.UpsertToken(token1)
 	require.NoError(t, err)
 
-	manager3.Close()
+	_ = manager3.Close()
 
 	// Step 4: Switch to project2 and add different tokens
 	manager4 := NewDatabaseManager()
@@ -104,13 +105,13 @@ func TestMultiProjectWorkflow(t *testing.T) {
 	err = db2.UpsertToken(token2)
 	require.NoError(t, err)
 
-	manager4.Close()
+	_ = manager4.Close()
 
 	// Step 5: Verify isolation - tokens are separated by project
 	manager5 := NewDatabaseManager()
 	err = manager5.Discover()
 	require.NoError(t, err)
-	defer manager5.Close()
+	defer func() { _ = manager5.Close() }()
 
 	db3 := &DB{conn: manager5.conn, path: dbPath}
 
@@ -159,7 +160,7 @@ func TestLocalAndGlobalDatabaseCoexistence(t *testing.T) {
 	err := managerGlobal.Initialize(GlobalMode)
 	require.NoError(t, err)
 	globalPath := managerGlobal.Location()
-	managerGlobal.Close()
+	_ = managerGlobal.Close()
 
 	// Step 2: Change to project directory and initialize local database
 	restoreDir := testutil.Chdir(t, projectDir)
@@ -169,7 +170,7 @@ func TestLocalAndGlobalDatabaseCoexistence(t *testing.T) {
 	err = managerLocal.Initialize(LocalMode)
 	require.NoError(t, err)
 	localPath := managerLocal.Location()
-	managerLocal.Close()
+	_ = managerLocal.Close()
 
 	// Verify paths are different
 	assert.NotEqual(t, globalPath, localPath)
@@ -185,7 +186,7 @@ func TestLocalAndGlobalDatabaseCoexistence(t *testing.T) {
 	globalProject := &Project{Name: "Global Project", Path: "/global/path"}
 	err = registryGlobal.Register(globalProject)
 	require.NoError(t, err)
-	managerGlobal2.Close()
+	_ = managerGlobal2.Close()
 
 	// Step 4: Register different project in local database
 	managerLocal2 := NewDatabaseManager()
@@ -196,13 +197,13 @@ func TestLocalAndGlobalDatabaseCoexistence(t *testing.T) {
 	localProject := &Project{Name: "Local Project", Path: projectDir}
 	err = registryLocal.Register(localProject)
 	require.NoError(t, err)
-	managerLocal2.Close()
+	_ = managerLocal2.Close()
 
 	// Step 5: Discover should prefer local when in project directory
 	managerDiscover := NewDatabaseManager()
 	err = managerDiscover.Discover()
 	require.NoError(t, err)
-	defer managerDiscover.Close()
+	defer func() { _ = managerDiscover.Close() }()
 
 	assert.Equal(t, LocalMode, managerDiscover.Mode())
 	assert.Equal(t, localPath, managerDiscover.Location())
@@ -224,7 +225,7 @@ func TestProjectContextSwitchingWithTokens(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 	db := &DB{conn: manager.conn, path: manager.path}
@@ -345,7 +346,7 @@ func TestDatabasePersistenceAcrossRestarts(t *testing.T) {
 	err = db1.UpsertToken(token)
 	require.NoError(t, err)
 
-	manager1.Close()
+	_ = manager1.Close()
 
 	// Sleep to ensure file system sync
 	time.Sleep(100 * time.Millisecond)
@@ -354,7 +355,7 @@ func TestDatabasePersistenceAcrossRestarts(t *testing.T) {
 	manager2 := NewDatabaseManager()
 	err = manager2.Discover()
 	require.NoError(t, err)
-	defer manager2.Close()
+	defer func() { _ = manager2.Close() }()
 
 	// Verify project exists
 	registry2 := NewProjectRegistry(manager2)
@@ -388,7 +389,7 @@ func TestCompleteProjectLifecycle(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 	db := &DB{conn: manager.conn, path: manager.path}
@@ -461,7 +462,7 @@ func TestMultipleConnectionsSequentially(t *testing.T) {
 	project1 := &Project{Name: "Project 1", Path: "/path/1"}
 	err = registry1.Register(project1)
 	require.NoError(t, err)
-	manager1.Close()
+	_ = manager1.Close()
 
 	// Open second connection and add another project
 	manager2 := NewDatabaseManager()
@@ -472,13 +473,13 @@ func TestMultipleConnectionsSequentially(t *testing.T) {
 	project2 := &Project{Name: "Project 2", Path: "/path/2"}
 	err = registry2.Register(project2)
 	require.NoError(t, err)
-	manager2.Close()
+	_ = manager2.Close()
 
 	// Open third connection and verify both projects exist
 	manager3 := NewDatabaseManager()
 	err = manager3.Discover()
 	require.NoError(t, err)
-	defer manager3.Close()
+	defer func() { _ = manager3.Close() }()
 
 	registry3 := NewProjectRegistry(manager3)
 	projects, err := registry3.List()

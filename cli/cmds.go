@@ -7,6 +7,7 @@ package cli
 
 import (
 	"github.com/spf13/cobra"
+
 	"go.devnw.com/canary/internal/cmds/bug"
 	"go.devnw.com/canary/internal/cmds/checkpoint"
 	"go.devnw.com/canary/internal/cmds/constitution"

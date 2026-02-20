@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
 	"go.devnw.com/canary/internal/cmds/internal/utils"
 	"go.devnw.com/canary/internal/storage"
 )

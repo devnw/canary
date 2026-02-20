@@ -12,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"go.devnw.com/canary/internal/storage/testutil"
 )
 
@@ -82,7 +83,7 @@ func TestDatabasePrecedence(t *testing.T) {
 	err := globalManager.Initialize(GlobalMode)
 	require.NoError(t, err)
 	globalPath := globalManager.Location()
-	globalManager.Close()
+	_ = globalManager.Close()
 
 	// Change to project directory and create local database
 	restoreDir := testutil.Chdir(t, tmpProject)
@@ -92,7 +93,7 @@ func TestDatabasePrecedence(t *testing.T) {
 	err = localManager.Initialize(LocalMode)
 	require.NoError(t, err)
 	localPath := localManager.Location()
-	localManager.Close()
+	_ = localManager.Close()
 
 	// Test: Discovery should prefer local over global
 	discoveredManager := NewDatabaseManager()
@@ -104,7 +105,7 @@ func TestDatabasePrecedence(t *testing.T) {
 	assert.Equal(t, localPath, discoveredManager.Location())
 	assert.NotEqual(t, globalPath, discoveredManager.Location())
 
-	discoveredManager.Close()
+	_ = discoveredManager.Close()
 }
 
 func TestDatabaseDiscovery(t *testing.T) {
@@ -163,7 +164,7 @@ func TestDatabaseDiscovery(t *testing.T) {
 				globalMgr := NewDatabaseManager()
 				err := globalMgr.Initialize(GlobalMode)
 				require.NoError(t, err)
-				globalMgr.Close()
+				_ = globalMgr.Close()
 			}
 
 			// Setup local if needed
@@ -171,7 +172,7 @@ func TestDatabaseDiscovery(t *testing.T) {
 				localMgr := NewDatabaseManager()
 				err := localMgr.Initialize(LocalMode)
 				require.NoError(t, err)
-				localMgr.Close()
+				_ = localMgr.Close()
 			}
 
 			// Test discovery
@@ -183,7 +184,7 @@ func TestDatabaseDiscovery(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tt.expectedMode, manager.Mode())
-				manager.Close()
+				_ = manager.Close()
 			}
 		})
 	}
@@ -197,7 +198,7 @@ func TestGlobalDatabaseLocation(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	expectedPath := filepath.Join(tmpHome, ".canary", "canary.db")
 	assert.Equal(t, expectedPath, manager.Location())
@@ -213,7 +214,7 @@ func TestLocalDatabaseLocation(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(LocalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	expectedPath := filepath.Join(tmpDir, ".canary", "canary.db")
 	assert.Equal(t, expectedPath, manager.Location())

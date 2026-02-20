@@ -16,6 +16,9 @@ import (
 
 // CANARY: REQ=CBIN-148; FEATURE="CopilotInstructionCreator"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCreateCopilotInstructions; BENCH=BenchmarkCreateCopilotInstructions; UPDATED=2025-10-19
 // createCopilotInstructions generates GitHub Copilot instruction files for the project
+// createCopilotInstructions is kept for potential reuse by init or other callers.
+//
+//nolint:unused
 func createCopilotInstructions(projectPath, projectKey string) error {
 	instructionsDir := filepath.Join(projectPath, ".github", "instructions")
 
@@ -74,10 +77,10 @@ func createCopilotInstructions(projectPath, projectKey string) error {
 		}
 
 		if err := tmpl.Execute(outFile, data); err != nil {
-			outFile.Close()
+			_ = outFile.Close()
 			return fmt.Errorf("execute template %s: %w", templatePath, err)
 		}
-		outFile.Close()
+		_ = outFile.Close()
 	}
 
 	return nil

@@ -103,7 +103,7 @@ func (s *Scanner) ScanRepository(root string) (ScanResult, error) {
 		if err != nil {
 			return nil
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		sc := bufio.NewScanner(f)
 		const maxSize = 1024 * 1024
 		buf := make([]byte, maxSize)

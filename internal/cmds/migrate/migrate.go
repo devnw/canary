@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
 	"go.devnw.com/canary/internal/migrate"
 	"go.devnw.com/canary/internal/storage"
 )

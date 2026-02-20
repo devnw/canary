@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
+
 	"go.devnw.com/canary/internal/cmds/internal/utils"
 	"go.devnw.com/canary/internal/storage"
 )
@@ -41,7 +42,7 @@ Priority affects ordering in list and search results.`,
 			return fmt.Errorf("open database: %w", err)
 		}
 
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		if err := db.UpdatePriority(reqID, feature, priority); err != nil {
 			return fmt.Errorf("update priority: %w", err)

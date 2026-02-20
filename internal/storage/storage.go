@@ -88,7 +88,7 @@ func Open(dbPath string) (*DB, error) {
 
 	// Enable foreign keys
 	if _, err := conn.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("enable foreign keys: %w", err)
 	}
 
@@ -181,7 +181,7 @@ func (db *DB) GetTokensByReqID(reqID string) ([]*Token, error) {
 		return nil, err
 	}
 
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return scanTokens(rows)
 }
@@ -285,7 +285,7 @@ func (db *DB) ListTokens(filters map[string]string, idPattern string, orderBy st
 	}
 
 	// Filter hidden paths by default (unless include_hidden is set)
-	includeHidden, _ := filters["include_hidden"]
+	includeHidden := filters["include_hidden"]
 	if includeHidden != "true" {
 		// Exclude test files
 		query += " AND file_path NOT LIKE '%_test.go%'"
@@ -365,7 +365,7 @@ func (db *DB) ListTokens(filters map[string]string, idPattern string, orderBy st
 		return nil, err
 	}
 
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return scanTokens(rows)
 }
@@ -390,7 +390,7 @@ func (db *DB) SearchTokens(keywords string) ([]*Token, error) {
 		return nil, err
 	}
 
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return scanTokens(rows)
 }
@@ -490,7 +490,7 @@ func (db *DB) GetCheckpoints() ([]*Checkpoint, error) {
 		return nil, err
 	}
 
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var checkpoints []*Checkpoint
 	for rows.Next() {
@@ -643,7 +643,7 @@ func (db *DB) GetTokensByProject(projectID string) ([]*Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return scanTokensWithProject(rows)
 }
@@ -670,7 +670,7 @@ func (db *DB) GetAllTokens() ([]*Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return scanTokensWithProject(rows)
 }
@@ -698,7 +698,7 @@ func (db *DB) GetTokensByReqIDAndProject(reqID, projectID string) ([]*Token, err
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return scanTokensWithProject(rows)
 }

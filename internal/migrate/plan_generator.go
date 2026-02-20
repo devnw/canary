@@ -25,10 +25,10 @@ func GeneratePlan(orphan *OrphanedRequirement) (string, error) {
 	var plan strings.Builder
 
 	// Header
-	plan.WriteString(fmt.Sprintf("# Implementation Plan: %s\n\n", primaryFeature))
-	plan.WriteString(fmt.Sprintf("**Requirement ID:** %s\n", orphan.ReqID))
-	plan.WriteString(fmt.Sprintf("**Generated:** %s (Auto-generated from legacy tokens)\n", today))
-	plan.WriteString(fmt.Sprintf("**Confidence:** %s\n\n", orphan.Confidence))
+	_, _ = fmt.Fprintf(&plan, "# Implementation Plan: %s\n\n", primaryFeature)
+	_, _ = fmt.Fprintf(&plan, "**Requirement ID:** %s\n", orphan.ReqID)
+	_, _ = fmt.Fprintf(&plan, "**Generated:** %s (Auto-generated from legacy tokens)\n", today)
+	_, _ = fmt.Fprintf(&plan, "**Confidence:** %s\n\n", orphan.Confidence)
 
 	if orphan.Confidence == ConfidenceLow || orphan.Confidence == ConfidenceMedium {
 		plan.WriteString("> **⚠️ MIGRATION NOTICE:** This plan was generated from existing code.\n")
@@ -37,7 +37,7 @@ func GeneratePlan(orphan *OrphanedRequirement) (string, error) {
 
 	// Overview
 	plan.WriteString("## Overview\n\n")
-	plan.WriteString(fmt.Sprintf("This plan documents the existing implementation of %s, which was detected in the codebase with %d features.\n\n", primaryFeature, orphan.FeatureCount))
+	_, _ = fmt.Fprintf(&plan, "This plan documents the existing implementation of %s, which was detected in the codebase with %d features.\n\n", primaryFeature, orphan.FeatureCount)
 
 	// Current Implementation Status
 	plan.WriteString("## Current Implementation Status\n\n")
@@ -51,7 +51,7 @@ func GeneratePlan(orphan *OrphanedRequirement) (string, error) {
 	for _, status := range []string{"STUB", "IMPL", "TESTED", "BENCHED"} {
 		count := statusCounts[status]
 		if count > 0 {
-			plan.WriteString(fmt.Sprintf("- %s: %d features\n", status, count))
+			_, _ = fmt.Fprintf(&plan, "- %s: %d features\n", status, count)
 		}
 	}
 	plan.WriteString("\n")

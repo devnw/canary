@@ -16,7 +16,7 @@ func TestCBIN139_AspectScopedIDGen(t *testing.T) {
 	// Create temporary .canary/specs directory
 	tmpDir := t.TempDir()
 	oldDir, _ := os.Getwd()
-	defer os.Chdir(oldDir)
+	defer func() { _ = os.Chdir(oldDir) }()
 
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatalf("Failed to chdir to tmpDir: %v", err)
@@ -28,9 +28,9 @@ func TestCBIN139_AspectScopedIDGen(t *testing.T) {
 	}
 
 	// Create some existing specs
-	os.MkdirAll(filepath.Join(specsDir, "CBIN-CLI-001-feature1"), 0755)
-	os.MkdirAll(filepath.Join(specsDir, "CBIN-CLI-003-feature2"), 0755) // Gap at 002
-	os.MkdirAll(filepath.Join(specsDir, "CBIN-API-001-feature3"), 0755)
+	_ = os.MkdirAll(filepath.Join(specsDir, "CBIN-CLI-001-feature1"), 0755)
+	_ = os.MkdirAll(filepath.Join(specsDir, "CBIN-CLI-003-feature2"), 0755) // Gap at 002
+	_ = os.MkdirAll(filepath.Join(specsDir, "CBIN-API-001-feature3"), 0755)
 
 	tests := []struct {
 		aspect string
@@ -58,7 +58,7 @@ func TestCBIN139_AspectScopedIDGen_NoExistingSpecs(t *testing.T) {
 	// Create temporary .canary/specs directory with no existing specs
 	tmpDir := t.TempDir()
 	oldDir, _ := os.Getwd()
-	defer os.Chdir(oldDir)
+	defer func() { _ = os.Chdir(oldDir) }()
 
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatalf("Failed to chdir to tmpDir: %v", err)
@@ -93,7 +93,7 @@ func TestCBIN139_AspectScopedIDGen_CaseInsensitive(t *testing.T) {
 	// Create temporary directory
 	tmpDir := t.TempDir()
 	oldDir, _ := os.Getwd()
-	defer os.Chdir(oldDir)
+	defer func() { _ = os.Chdir(oldDir) }()
 
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatalf("Failed to chdir to tmpDir: %v", err)

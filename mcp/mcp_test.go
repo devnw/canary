@@ -147,6 +147,8 @@ func TestMCPToolHandlers(t *testing.T) {
 
 			req := &mcp.CallToolRequest{}
 
+			// Type assertions are safe: tt.params is set per test case to the correct type.
+			//nolint:errcheck // second return (result struct) intentionally discarded
 			switch tt.handler {
 			case "list":
 				result, _, err = handleList(ctx, req, tt.params.(*ListParams))

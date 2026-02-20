@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
 	"go.devnw.com/canary/internal/cmds/internal/utils"
 	"go.devnw.com/canary/internal/storage"
 )
@@ -35,7 +36,7 @@ Keywords are matched case-insensitively using LIKE queries.`,
 			return fmt.Errorf("open database: %w", err)
 		}
 
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		tokens, err := db.SearchTokens(keywords)
 		if err != nil {

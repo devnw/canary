@@ -196,15 +196,15 @@ func (s *Service) FormatGapsForInjection(reqID string) (string, error) {
 
 	var output strings.Builder
 	output.WriteString("\n\n## Past Implementation Gaps\n\n")
-	output.WriteString(fmt.Sprintf("The following gaps were identified in previous implementations of %s:\n\n", reqID))
+	_, _ = fmt.Fprintf(&output, "The following gaps were identified in previous implementations of %s:\n\n", reqID)
 
 	for i, gap := range gaps {
-		output.WriteString(fmt.Sprintf("%d. **%s** (%s)\n", i+1, gap.Feature, gap.Category))
-		output.WriteString(fmt.Sprintf("   - **Problem:** %s\n", gap.Description))
+		_, _ = fmt.Fprintf(&output, "%d. **%s** (%s)\n", i+1, gap.Feature, gap.Category)
+		_, _ = fmt.Fprintf(&output, "   - **Problem:** %s\n", gap.Description)
 		if gap.CorrectiveAction != "" {
-			output.WriteString(fmt.Sprintf("   - **Solution:** %s\n", gap.CorrectiveAction))
+			_, _ = fmt.Fprintf(&output, "   - **Solution:** %s\n", gap.CorrectiveAction)
 		}
-		output.WriteString(fmt.Sprintf("   - **Helpfulness:** %d helpful, %d unhelpful\n", gap.HelpfulCount, gap.UnhelpfulCount))
+		_, _ = fmt.Fprintf(&output, "   - **Helpfulness:** %d helpful, %d unhelpful\n", gap.HelpfulCount, gap.UnhelpfulCount)
 		output.WriteString("\n")
 	}
 
@@ -272,7 +272,7 @@ func (s *Service) generateGapID(reqID string) (string, error) {
 		parts := strings.Split(entry.GapID, "-")
 		if len(parts) >= 4 {
 			var num int
-			fmt.Sscanf(parts[3], "%d", &num)
+			_, _ = fmt.Sscanf(parts[3], "%d", &num)
 			if num >= nextNum {
 				nextNum = num + 1
 			}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"go.devnw.com/canary/internal/storage/testutil"
 )
 
@@ -23,7 +24,7 @@ func TestRegisterProject(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	// Create project registry
 	registry := NewProjectRegistry(manager)
@@ -50,7 +51,7 @@ func TestRegisterProjectDuplicate(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 
@@ -78,7 +79,7 @@ func TestListProjects(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 
@@ -116,7 +117,7 @@ func TestRemoveProject(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 
@@ -150,7 +151,7 @@ func TestRemoveNonexistentProject(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 
@@ -166,7 +167,7 @@ func TestProjectSlugGeneration(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 
@@ -217,7 +218,7 @@ func TestProjectSlugCollision(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 
@@ -256,7 +257,7 @@ func TestGetProjectByID(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 
@@ -283,7 +284,7 @@ func TestGetProjectByPath(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 
@@ -311,7 +312,7 @@ func TestProjectTimestamps(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 

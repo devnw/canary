@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"go.devnw.com/canary/internal/storage/testutil"
 )
 
@@ -22,7 +23,7 @@ func TestTokenIsolationBetweenProjects(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 	db := &DB{conn: manager.conn, path: manager.path}
@@ -89,7 +90,7 @@ func TestCrossProjectQuery(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 	db := &DB{conn: manager.conn, path: manager.path}
@@ -157,7 +158,7 @@ func TestGetTokensByReqIDAndProject(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 	db := &DB{conn: manager.conn, path: manager.path}
@@ -223,7 +224,7 @@ func TestTokenUniqueConstraintWithProjects(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 	db := &DB{conn: manager.conn, path: manager.path}
@@ -281,7 +282,7 @@ func TestDefaultProjectForBackwardCompatibility(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	db := &DB{conn: manager.conn, path: manager.path}
 
@@ -316,7 +317,7 @@ func TestProjectScopedTokenOperations(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 	db := &DB{conn: manager.conn, path: manager.path}

@@ -366,14 +366,14 @@ func copyFile(src, dst string) error {
 		return err
 	}
 
-	defer sourceFile.Close()
+	defer func() { _ = sourceFile.Close() }()
 
 	destFile, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
 
-	defer destFile.Close()
+	defer func() { _ = destFile.Close() }()
 
 	if _, err := io.Copy(destFile, sourceFile); err != nil {
 		return err
@@ -391,11 +391,11 @@ func copyFile(src, dst string) error {
 func GetMigrationSummary(plan *MigrationPlan) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("Migration Plan for %s:\n\n", plan.SystemType))
-	sb.WriteString(fmt.Sprintf("Files to copy: %d\n", len(plan.FilesToCopy)))
-	sb.WriteString(fmt.Sprintf("Files to merge: %d\n", len(plan.FilesToMerge)))
-	sb.WriteString(fmt.Sprintf("Files to create: %d\n", len(plan.FilesToCreate)))
-	sb.WriteString(fmt.Sprintf("Warnings: %d\n", len(plan.Warnings)))
+	_, _ = fmt.Fprintf(&sb, "Migration Plan for %s:\n\n", plan.SystemType)
+	_, _ = fmt.Fprintf(&sb, "Files to copy: %d\n", len(plan.FilesToCopy))
+	_, _ = fmt.Fprintf(&sb, "Files to merge: %d\n", len(plan.FilesToMerge))
+	_, _ = fmt.Fprintf(&sb, "Files to create: %d\n", len(plan.FilesToCreate))
+	_, _ = fmt.Fprintf(&sb, "Warnings: %d\n", len(plan.Warnings))
 
 	return sb.String()
 }

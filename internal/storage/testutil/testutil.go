@@ -23,7 +23,7 @@ func TempDir(t *testing.T) (string, func()) {
 	}
 
 	cleanup := func() {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 	}
 
 	return tmpDir, cleanup
@@ -40,14 +40,14 @@ func TempHomeDir(t *testing.T) (string, func()) {
 		t.Fatalf("failed to create temp home dir: %v", err)
 	}
 
-	os.Setenv("HOME", tmpHome)
+	_ = os.Setenv("HOME", tmpHome)
 
 	cleanup := func() {
-		os.RemoveAll(tmpHome)
+		_ = os.RemoveAll(tmpHome)
 		if originalHome != "" {
-			os.Setenv("HOME", originalHome)
+			_ = os.Setenv("HOME", originalHome)
 		} else {
-			os.Unsetenv("HOME")
+			_ = os.Unsetenv("HOME")
 		}
 	}
 
@@ -109,14 +109,14 @@ func TempHomeDirB(b *testing.B) (string, func()) {
 		b.Fatalf("failed to create temp home dir: %v", err)
 	}
 
-	os.Setenv("HOME", tmpHome)
+	_ = os.Setenv("HOME", tmpHome)
 
 	cleanup := func() {
-		os.RemoveAll(tmpHome)
+		_ = os.RemoveAll(tmpHome)
 		if originalHome != "" {
-			os.Setenv("HOME", originalHome)
+			_ = os.Setenv("HOME", originalHome)
 		} else {
-			os.Unsetenv("HOME")
+			_ = os.Unsetenv("HOME")
 		}
 	}
 
@@ -134,7 +134,7 @@ func TempDirB(b *testing.B) (string, func()) {
 	}
 
 	cleanup := func() {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 	}
 
 	return tmpDir, cleanup

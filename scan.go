@@ -72,7 +72,7 @@ func WriteCSV(rep Report, path string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	w := csv.NewWriter(f)
 	defer w.Flush()
 	_ = w.Write([]string{"req", "feature", "aspect", "status", "file", "test", "bench", "owner", "updated"})

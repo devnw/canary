@@ -25,7 +25,7 @@ func TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Insert test tokens
 	testTokens := []*Token{
@@ -133,7 +133,7 @@ func TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID_TokenGrouping(t *testing.T)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Multiple tokens in the same file
 	testTokens := []*Token{
@@ -227,7 +227,7 @@ func TestCANARY_CBIN_CLI_001_Storage_GetTokensByReqID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Insert tokens for multiple requirements
 	testTokens := []*Token{

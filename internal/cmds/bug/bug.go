@@ -16,6 +16,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+
 	"go.devnw.com/canary/internal/canaryscan"
 	"go.devnw.com/canary/internal/storage"
 )

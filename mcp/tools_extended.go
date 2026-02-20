@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"go.devnw.com/canary/internal/storage"
 )
 

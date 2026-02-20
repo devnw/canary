@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/spf13/cobra"
+
 	"go.devnw.com/canary/internal/canaryscan"
 )
 

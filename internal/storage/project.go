@@ -110,7 +110,7 @@ func (pr *ProjectRegistry) List() ([]*Project, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query projects: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var projects []*Project
 	for rows.Next() {

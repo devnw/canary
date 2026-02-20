@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
 	"go.devnw.com/canary/internal/docs"
 	"go.devnw.com/canary/internal/storage"
 )
@@ -182,7 +183,7 @@ Batch Operations:
 		if err != nil {
 			return fmt.Errorf("failed to open database: %w", err)
 		}
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		var tokens []*storage.Token
 
@@ -327,7 +328,7 @@ Status values:
 		if err != nil {
 			return fmt.Errorf("failed to open database: %w", err)
 		}
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		var tokens []*storage.Token
 
@@ -449,7 +450,7 @@ The report includes:
 		if err != nil {
 			return fmt.Errorf("failed to open database: %w", err)
 		}
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		// Get all tokens
 		tokens, err := db.ListTokens(map[string]string{}, "", "req_id ASC", 0)

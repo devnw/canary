@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
 	"go.devnw.com/canary/internal/cmds/internal/utils"
 	"go.devnw.com/canary/internal/storage"
 )
@@ -39,7 +40,7 @@ The database is stored at .canary/canary.db by default.`,
 			return fmt.Errorf("open database: %w", err)
 		}
 
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		// Get git info if in a repo
 		var commitHash, branch string

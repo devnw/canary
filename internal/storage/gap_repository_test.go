@@ -26,7 +26,7 @@ func TestGapRepository_CreateEntry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	repo := NewGapRepository(db)
 
@@ -77,7 +77,7 @@ func TestGapRepository_GetEntriesByReqID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	repo := NewGapRepository(db)
 
@@ -143,7 +143,7 @@ func TestGapRepository_UpdateHelpfulness(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	repo := NewGapRepository(db)
 
@@ -202,7 +202,7 @@ func TestGapRepository_QueryWithFilters(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	repo := NewGapRepository(db)
 
@@ -308,7 +308,7 @@ func TestGapRepository_GetTopGaps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	repo := NewGapRepository(db)
 
@@ -393,7 +393,7 @@ func TestGapRepository_GetCategories(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	repo := NewGapRepository(db)
 
@@ -444,7 +444,7 @@ func TestGapRepository_GetConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	repo := NewGapRepository(db)
 
@@ -478,7 +478,7 @@ func TestGapRepository_UpdateConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	repo := NewGapRepository(db)
 
@@ -528,7 +528,7 @@ func TestGapRepository_PerformanceWith1000Entries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	repo := NewGapRepository(db)
 

@@ -154,7 +154,7 @@ The server runs as an HTTP endpoint that AI assistants can interact with.`,
 			// Health check endpoint
 			mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]string{
+				_ = json.NewEncoder(w).Encode(map[string]string{
 					"status": "healthy",
 					"time":   time.Now().Format(time.RFC3339),
 				})

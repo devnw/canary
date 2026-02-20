@@ -136,7 +136,7 @@ func FormatTokensTable(tokens []*storage.Token, groupBy string) string {
 	sort.Strings(groupNames)
 	var b strings.Builder
 	for _, g := range groupNames {
-		b.WriteString(fmt.Sprintf("## %s\n\n", g))
+		_, _ = fmt.Fprintf(&b, "## %s\n\n", g)
 		for _, t := range groups[g] {
 			fmt.Fprintf(&b, "📌 %s - %s\n", t.ReqID, t.Feature)
 			line := fmt.Sprintf("   Status: %s | Aspect: %s", t.Status, t.Aspect)

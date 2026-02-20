@@ -63,9 +63,8 @@ func TestAcceptance_FixtureSummary(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	os.WriteFile(filepath.Join(root, "a.txt"), []byte("CANARY: REQ=CBIN-10; FEATURE=\"Foo\"; ASPECT=API; STATUS=STUB; UPDATED=2025-09-20\n"), 0o644)
-
-	os.WriteFile(filepath.Join(root, "b.txt"), []byte("CANARY: REQ=CBIN-11; FEATURE=\"Bar\"; ASPECT=API; STATUS=IMPL; UPDATED=2025-09-20\n"), 0o644)
+	_ = os.WriteFile(filepath.Join(root, "a.txt"), []byte("CANARY: REQ=CBIN-10; FEATURE=\"Foo\"; ASPECT=API; STATUS=STUB; UPDATED=2025-09-20\n"), 0o644)
+	_ = os.WriteFile(filepath.Join(root, "b.txt"), []byte("CANARY: REQ=CBIN-11; FEATURE=\"Bar\"; ASPECT=API; STATUS=IMPL; UPDATED=2025-09-20\n"), 0o644)
 	res := run(exe, "--root", root, "--out", filepath.Join(root, "status.json"))
 	if res.code != 0 {
 		t.Fatalf("exit=%d stderr=%s", res.code, res.stderr)
@@ -89,12 +88,10 @@ func TestAcceptance_Overclaim(t *testing.T) {
 	exe := build(t)
 	root := filepath.Join("tools", "canary", "testdata", "overclaim")
 
-	os.MkdirAll(root, 0o755)
-
-	os.WriteFile(filepath.Join(root, "t.txt"), []byte("CANARY: REQ=CBIN-042; FEATURE=\"X\"; ASPECT=API; STATUS=STUB; UPDATED=2025-09-20\n"), 0o644)
+	_ = os.MkdirAll(root, 0o755)
+	_ = os.WriteFile(filepath.Join(root, "t.txt"), []byte("CANARY: REQ=CBIN-042; FEATURE=\"X\"; ASPECT=API; STATUS=STUB; UPDATED=2025-09-20\n"), 0o644)
 	gap := filepath.Join(root, "GAP_ANALYSIS.md")
-
-	os.WriteFile(gap, []byte("✅ CBIN-042\n"), 0o644)
+	_ = os.WriteFile(gap, []byte("✅ CBIN-042\n"), 0o644)
 	res := run(exe, "--root", root, "--verify", gap, "--out", filepath.Join(root, "status.json"))
 	if res.code != 2 {
 		t.Fatalf("expected 2 got %d stderr=%s", res.code, res.stderr)
@@ -109,9 +106,8 @@ func TestAcceptance_Stale(t *testing.T) {
 	exe := build(t)
 	root := filepath.Join("tools", "canary", "testdata", "stale")
 
-	os.MkdirAll(root, 0o755)
-
-	os.WriteFile(filepath.Join(root, "t.txt"), []byte("CANARY: REQ=CBIN-051; FEATURE=\"Y\"; ASPECT=API; STATUS=TESTED; UPDATED=2024-01-01\n"), 0o644)
+	_ = os.MkdirAll(root, 0o755)
+	_ = os.WriteFile(filepath.Join(root, "t.txt"), []byte("CANARY: REQ=CBIN-051; FEATURE=\"Y\"; ASPECT=API; STATUS=TESTED; UPDATED=2024-01-01\n"), 0o644)
 	res := run(exe, "--root", root, "--strict", "--out", filepath.Join(root, "status.json"))
 	if res.code != 2 {
 		t.Fatalf("expected 2 got %d stderr=%s", res.code, res.stderr)

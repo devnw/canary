@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"go.devnw.com/canary/internal/canaryscan"
 	"go.devnw.com/canary/internal/storage"
 )

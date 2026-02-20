@@ -72,7 +72,7 @@ func MigrateDB(dbPath string, steps string) error {
 		return fmt.Errorf("error creating migration instance for database at %s: %w", dbPath, err)
 	}
 
-	defer m.Close()
+	defer func() { _, _ = m.Close() }()
 
 	switch {
 	case steps == MigrateAll:
@@ -122,7 +122,7 @@ func TeardownDB(dbPath string, steps string) error {
 		return fmt.Errorf("error creating migration instance: %w", err)
 	}
 
-	defer m.Close()
+	defer func() { _, _ = m.Close() }()
 
 	switch {
 	case steps == MigrateAll:
@@ -208,7 +208,7 @@ func NeedsMigration(dbPath string) (bool, int, error) {
 		return false, 0, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Check if schema_migrations table exists
 	var tableExists bool

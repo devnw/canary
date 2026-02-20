@@ -69,10 +69,10 @@ func createCopilotInstructions(projectName, projectKey string) error {
 		}
 
 		if err := tmpl.Execute(outFile, data); err != nil {
-			outFile.Close()
+			_ = outFile.Close()
 			return fmt.Errorf("execute template %s: %w", templatePath, err)
 		}
-		outFile.Close()
+		_ = outFile.Close()
 
 		fmt.Printf("✅ Created Copilot instruction: %s\n", targetPath)
 	}

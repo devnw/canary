@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
 	"go.devnw.com/canary/internal/storage"
 )
 
@@ -55,10 +56,10 @@ Examples:
 		if err := manager.Initialize(mode); err != nil {
 			return fmt.Errorf("initialize database: %w", err)
 		}
-		defer manager.Close()
+		defer func() { _ = manager.Close() }()
 
 		// Success message
-		fmt.Fprintf(cmd.OutOrStdout(), "✅ Initialized %s database at: %s\n", modeStr, manager.Location())
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "✅ Initialized %s database at: %s\n", modeStr, manager.Location())
 
 		return nil
 	},
@@ -92,7 +93,7 @@ Examples:
 		if err := manager.Discover(); err != nil {
 			return fmt.Errorf("database not found: %w (run 'canary db init' first)", err)
 		}
-		defer manager.Close()
+		defer func() { _ = manager.Close() }()
 
 		// Register project
 		registry := storage.NewProjectRegistry(manager)
@@ -105,8 +106,8 @@ Examples:
 			return fmt.Errorf("register project: %w", err)
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "✅ Registered project: %s (ID: %s)\n", project.Name, project.ID)
-		fmt.Fprintf(cmd.OutOrStdout(), "   Path: %s\n", project.Path)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "✅ Registered project: %s (ID: %s)\n", project.Name, project.ID)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "   Path: %s\n", project.Path)
 
 		return nil
 	},
@@ -123,7 +124,7 @@ var projectListCmd = &cobra.Command{
 		if err := manager.Discover(); err != nil {
 			return fmt.Errorf("database not found: %w (run 'canary db init' first)", err)
 		}
-		defer manager.Close()
+		defer func() { _ = manager.Close() }()
 
 		// List projects
 		registry := storage.NewProjectRegistry(manager)
@@ -133,19 +134,19 @@ var projectListCmd = &cobra.Command{
 		}
 
 		if len(projects) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "No projects registered.")
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No projects registered.")
 			return nil
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Registered Projects (%d):\n\n", len(projects))
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Registered Projects (%d):\n\n", len(projects))
 		for _, p := range projects {
 			active := ""
 			if p.Active {
 				active = " (active)"
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "  %s: %s%s\n", p.ID, p.Name, active)
-			fmt.Fprintf(cmd.OutOrStdout(), "     Path: %s\n", p.Path)
-			fmt.Fprintln(cmd.OutOrStdout())
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  %s: %s%s\n", p.ID, p.Name, active)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "     Path: %s\n", p.Path)
+			_, _ = fmt.Fprintln(cmd.OutOrStdout())
 		}
 
 		return nil
@@ -170,7 +171,7 @@ Examples:
 		if err := manager.Discover(); err != nil {
 			return fmt.Errorf("database not found: %w", err)
 		}
-		defer manager.Close()
+		defer func() { _ = manager.Close() }()
 
 		// Remove project
 		registry := storage.NewProjectRegistry(manager)
@@ -178,7 +179,7 @@ Examples:
 			return fmt.Errorf("remove project: %w", err)
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "✅ Project removed: %s\n", projectID)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "✅ Project removed: %s\n", projectID)
 
 		return nil
 	},
@@ -204,7 +205,7 @@ Examples:
 		if err := manager.Discover(); err != nil {
 			return fmt.Errorf("database not found: %w", err)
 		}
-		defer manager.Close()
+		defer func() { _ = manager.Close() }()
 
 		// Switch context
 		ctx := storage.NewContextManager(manager)
@@ -219,8 +220,8 @@ Examples:
 			return fmt.Errorf("get project: %w", err)
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "✅ Switched to project: %s\n", project.Name)
-		fmt.Fprintf(cmd.OutOrStdout(), "   Path: %s\n", project.Path)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "✅ Switched to project: %s\n", project.Name)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "   Path: %s\n", project.Path)
 
 		return nil
 	},
@@ -237,19 +238,19 @@ var projectCurrentCmd = &cobra.Command{
 		if err := manager.Discover(); err != nil {
 			return fmt.Errorf("database not found: %w", err)
 		}
-		defer manager.Close()
+		defer func() { _ = manager.Close() }()
 
 		// Get current project
 		ctx := storage.NewContextManager(manager)
 		current, err := ctx.GetCurrent()
 		if err != nil {
-			fmt.Fprintln(cmd.OutOrStdout(), "No active project context set.")
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No active project context set.")
 			return nil
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Current Project: %s\n", current.Name)
-		fmt.Fprintf(cmd.OutOrStdout(), "  ID: %s\n", current.ID)
-		fmt.Fprintf(cmd.OutOrStdout(), "  Path: %s\n", current.Path)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Current Project: %s\n", current.Name)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  ID: %s\n", current.ID)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Path: %s\n", current.Path)
 
 		return nil
 	},

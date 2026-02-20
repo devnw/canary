@@ -20,7 +20,7 @@ func writeOutputs(rep Report, out, csv string) error {
 	if err != nil {
 		return err
 	}
-	defer jf.Close()
+	defer func() { _ = jf.Close() }()
 	enc := json.NewEncoder(jf)
 	enc.SetEscapeHTML(false)
 	if err := enc.Encode(rep); err != nil {

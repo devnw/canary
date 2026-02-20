@@ -51,6 +51,9 @@ func updateMultipleMarkdownSections(filePath string, sections map[string]string)
 
 // CANARY: REQ=CBIN-149; FEATURE="MarkdownSectionUpdater"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
 // removeMarkdownSection removes a gated section from a markdown file
+// removeMarkdownSection is kept for potential future use (e.g. pruning sections).
+//
+//nolint:unused
 func removeMarkdownSection(filePath, sectionKey string) error {
 	return gate.RemoveSection(filePath, sectionKey, markdownOptions...)
 }

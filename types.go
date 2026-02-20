@@ -32,6 +32,9 @@ type summary struct {
 
 // fromScanResult converts a gate.ScanResult into a legacy report (without GeneratedAt).
 // GeneratedAt should be set by caller (e.g., Run). Key ordering and promotion already handled upstream.
+// fromScanResult converts scan result; kept for compatibility.
+//
+//nolint:unused
 func fromScanResult(res interface {
 	GetRequirements() []requirementRow
 	GetSummary() summary

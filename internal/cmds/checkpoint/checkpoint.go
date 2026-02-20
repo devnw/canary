@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
 	"go.devnw.com/canary/internal/cmds/internal/utils"
 	"go.devnw.com/canary/internal/storage"
 )
@@ -43,7 +44,7 @@ Useful for tracking progress over time.`,
 			return fmt.Errorf("open database: %w", err)
 		}
 
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		// Get current commit hash
 		commitHash := ""

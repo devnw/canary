@@ -88,7 +88,7 @@ func (dm *DatabaseManager) Initialize(mode DatabaseMode) error {
 
 	// Enable foreign keys
 	if _, err := conn.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return fmt.Errorf("enable foreign keys: %w", err)
 	}
 
@@ -138,7 +138,7 @@ func (dm *DatabaseManager) open(dbPath string, mode DatabaseMode) error {
 
 	// Enable foreign keys
 	if _, err := conn.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return fmt.Errorf("enable foreign keys: %w", err)
 	}
 

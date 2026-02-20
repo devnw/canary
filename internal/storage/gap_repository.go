@@ -147,7 +147,7 @@ func (r *GapRepository) GetEntriesByReqID(reqID string) ([]*GapEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query gap entries: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return r.scanGapEntries(rows)
 }
@@ -213,7 +213,7 @@ func (r *GapRepository) QueryEntries(filter GapQueryFilter) ([]*GapEntry, error)
 	if err != nil {
 		return nil, fmt.Errorf("query entries: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return r.scanGapEntries(rows)
 }
@@ -252,7 +252,7 @@ func (r *GapRepository) GetTopGaps(reqID string, config *GapConfig) ([]*GapEntry
 	if err != nil {
 		return nil, fmt.Errorf("get top gaps: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return r.scanGapEntries(rows)
 }
@@ -265,7 +265,7 @@ func (r *GapRepository) GetCategories() ([]*GapCategory, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get categories: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var categories []*GapCategory
 	for rows.Next() {
@@ -342,8 +342,8 @@ func (r *GapRepository) GenerateGapReport(reqID string) (string, error) {
 	}
 
 	var report strings.Builder
-	report.WriteString(fmt.Sprintf("# Gap Analysis Report for %s\n\n", reqID))
-	report.WriteString(fmt.Sprintf("Total Gaps: %d\n\n", len(entries)))
+	_, _ = fmt.Fprintf(&report, "# Gap Analysis Report for %s\n\n", reqID)
+	_, _ = fmt.Fprintf(&report, "Total Gaps: %d\n\n", len(entries))
 
 	// Group by category
 	categoryGroups := make(map[string][]*GapEntry)
@@ -352,7 +352,7 @@ func (r *GapRepository) GenerateGapReport(reqID string) (string, error) {
 	}
 
 	for category, catEntries := range categoryGroups {
-		report.WriteString(fmt.Sprintf("## Category: %s (%d)\n\n", category, len(catEntries)))
+		_, _ = fmt.Fprintf(&report, "## Category: %s (%d)\n\n", category, len(catEntries))
 
 		for _, entry := range catEntries {
 			report.WriteString(fmt.Sprintf("### %s - %s\n", entry.GapID, entry.Feature))

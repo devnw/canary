@@ -12,6 +12,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
 	"go.devnw.com/canary/cli"
 	"go.devnw.com/canary/internal/cmds/db"
 	canaryinit "go.devnw.com/canary/internal/cmds/init"

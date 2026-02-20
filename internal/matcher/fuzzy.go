@@ -165,6 +165,9 @@ func abbreviationScore(query, candidate string) int {
 }
 
 // matchesAbbreviation checks if query matches first letters of words in candidate
+// matchesAbbreviation is used for fuzzy matching; kept for future use.
+//
+//nolint:unused
 func matchesAbbreviation(query, candidate string) bool {
 	var abbrev strings.Builder
 	for i, ch := range candidate {

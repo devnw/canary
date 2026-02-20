@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
 	"go.devnw.com/canary/internal/cmds/internal/utils"
 	"go.devnw.com/canary/internal/config"
 	"go.devnw.com/canary/internal/storage"
@@ -175,7 +176,7 @@ func selectNextPriority(dbPath string, filters map[string]string) (*storage.Toke
 		return selectFromFilesystem(filters)
 	}
 
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	return selectFromDatabase(db, filters)
 }
 
@@ -512,7 +513,7 @@ func loadPromptData(token *storage.Token) (*PromptData, error) {
 	// Load dependencies if in database
 	dbPath := ".canary/canary.db"
 	if db, err := storage.Open(dbPath); err == nil {
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 		if token.DependsOn != "" {
 			deps := strings.Split(token.DependsOn, ",")
 			for _, dep := range deps {
@@ -628,6 +629,9 @@ func guessPackageName(aspect string) string {
 
 // extractField extracts a field value from a CANARY token string (already defined in main.go)
 // This is a duplicate for use in next.go - consider moving to shared utility
+// extractFieldInternal is used for internal parsing; kept for compatibility.
+//
+//nolint:unused
 func extractFieldInternal(token, field string) string {
 	// Look for FIELD="value" or FIELD=value
 	pattern := field + `="([^"]+)"`

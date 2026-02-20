@@ -27,7 +27,7 @@ func ParseDependenciesFromFile(sourceReqID, specPath string) ([]Dependency, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to open spec file %s: %w", specPath, err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	return ParseDependencies(sourceReqID, file)
 }

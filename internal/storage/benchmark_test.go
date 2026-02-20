@@ -23,7 +23,7 @@ func BenchmarkProjectRegistration(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 
@@ -49,7 +49,7 @@ func BenchmarkProjectListing(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 
@@ -83,7 +83,7 @@ func BenchmarkContextSwitching(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 	ctx := NewContextManager(manager)
@@ -123,7 +123,7 @@ func BenchmarkTokenInsertionSingleProject(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 	project := &Project{Name: "Benchmark Project", Path: "/bench"}
@@ -163,7 +163,7 @@ func BenchmarkTokenInsertionMultiProject(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 
@@ -212,7 +212,7 @@ func BenchmarkGetTokensByProject(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 	project := &Project{Name: "Benchmark Project", Path: "/bench"}
@@ -260,7 +260,7 @@ func BenchmarkGetTokensByReqIDAndProject(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 
@@ -319,7 +319,7 @@ func BenchmarkGetAllTokens(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 
@@ -378,7 +378,7 @@ func BenchmarkDatabaseInitialization(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		manager.Close()
+		_ = manager.Close()
 
 		b.StopTimer()
 		cleanup()
@@ -397,7 +397,7 @@ func BenchmarkDatabaseDiscovery(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	manager.Close()
+	_ = manager.Close()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -406,7 +406,7 @@ func BenchmarkDatabaseDiscovery(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		manager.Close()
+		_ = manager.Close()
 	}
 }
 
@@ -424,7 +424,7 @@ func BenchmarkProjectScaling(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			defer manager.Close()
+			defer func() { _ = manager.Close() }()
 
 			registry := NewProjectRegistry(manager)
 
@@ -464,7 +464,7 @@ func BenchmarkTokenScaling(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			defer manager.Close()
+			defer func() { _ = manager.Close() }()
 
 			registry := NewProjectRegistry(manager)
 			project := &Project{Name: "Test Project", Path: "/test"}

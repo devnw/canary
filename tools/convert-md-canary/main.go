@@ -39,7 +39,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		var lines []string
 		scanner := bufio.NewScanner(file)
@@ -60,7 +60,7 @@ func main() {
 		if err := scanner.Err(); err != nil {
 			return err
 		}
-		file.Close()
+		_ = file.Close()
 
 		// Write back if modified
 		if modified {

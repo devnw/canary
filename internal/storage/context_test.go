@@ -12,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"go.devnw.com/canary/internal/storage/testutil"
 )
 
@@ -23,7 +24,7 @@ func TestDetectProjectFromPath(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 
@@ -60,7 +61,7 @@ func TestDetectProjectFromSubdirectory(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 
@@ -99,7 +100,7 @@ func TestDetectProjectNoMatch(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	ctx := NewContextManager(manager)
 
@@ -122,7 +123,7 @@ func TestSwitchProjectContext(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 	ctx := NewContextManager(manager)
@@ -162,7 +163,7 @@ func TestSwitchToNonexistentProject(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	ctx := NewContextManager(manager)
 
@@ -190,13 +191,13 @@ func TestContextPersistence(t *testing.T) {
 	require.NoError(t, err)
 
 	// Close first manager
-	manager1.Close()
+	_ = manager1.Close()
 
 	// Open new manager and context
 	manager2 := NewDatabaseManager()
 	err = manager2.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager2.Close()
+	defer func() { _ = manager2.Close() }()
 
 	ctx2 := NewContextManager(manager2)
 
@@ -213,7 +214,7 @@ func TestGetCurrentNoContext(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	ctx := NewContextManager(manager)
 
@@ -229,7 +230,7 @@ func TestSetActiveFlag(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 	ctx := NewContextManager(manager)
@@ -286,7 +287,7 @@ func TestDetectProjectWithLocalDatabase(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(LocalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 
@@ -313,7 +314,7 @@ func TestGetCurrentProject(t *testing.T) {
 	manager := NewDatabaseManager()
 	err := manager.Initialize(GlobalMode)
 	require.NoError(t, err)
-	defer manager.Close()
+	defer func() { _ = manager.Close() }()
 
 	registry := NewProjectRegistry(manager)
 	ctx := NewContextManager(manager)

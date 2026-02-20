@@ -35,6 +35,7 @@ func TestPartialFeatureDependency(t *testing.T) {
 	assert.Len(t, dep.RequiredFeatures, 2)
 	assert.Contains(t, dep.RequiredFeatures, "ProjectRegistry")
 	assert.Contains(t, dep.RequiredFeatures, "ContextManagement")
+	assert.Equal(t, "Only needs project registry and context management", dep.Description)
 }
 
 // CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestPartialAspectDependency; UPDATED=2025-10-18
@@ -50,6 +51,7 @@ func TestPartialAspectDependency(t *testing.T) {
 	assert.Equal(t, "CBIN-129", dep.Target)
 	assert.Equal(t, DependencyTypePartialAspect, dep.Type)
 	assert.Equal(t, "Storage", dep.RequiredAspect)
+	assert.Equal(t, "Only needs Storage aspect of database migrations", dep.Description)
 }
 
 // CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyStatusCreation; UPDATED=2025-10-18

@@ -11,6 +11,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+
 	"go.devnw.com/canary/internal/cmds/internal/utils"
 	"go.devnw.com/canary/internal/storage"
 )
@@ -54,7 +55,7 @@ Examples:
 			fmt.Fprintf(os.Stderr, "   Suggestion: Run 'canary index' to build database\n\n")
 			return fmt.Errorf("open database: %w", err)
 		}
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		// Query tokens
 		tokens, err := db.GetTokensByReqID(reqID)

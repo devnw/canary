@@ -34,29 +34,29 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 	if cfg.ProjectOnly {
 		projCfg, err := LoadProjectConfig(cfg.Root)
 		if err != nil {
-			fmt.Fprintf(stderr, "Warning: --project-only specified but failed to load .canary/project.yaml: %v\n", err)
-			fmt.Fprintf(stderr, "Scanning all requirements. Run 'canary init' to create project config.\n")
+			_, _ = fmt.Fprintf(stderr, "Warning: --project-only specified but failed to load .canary/project.yaml: %v\n", err)
+			_, _ = fmt.Fprintf(stderr, "Scanning all requirements. Run 'canary init' to create project config.\n")
 		} else if projCfg != nil && projCfg.Requirements.IDPattern != "" {
 			projectFilter, err = regexp.Compile(projCfg.Requirements.IDPattern)
 			if err != nil {
-				fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
+				_, _ = fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
 				return 3
 			}
-			fmt.Fprintf(stderr, "Filtering by project pattern: %s\n", projCfg.Requirements.IDPattern)
+			_, _ = fmt.Fprintf(stderr, "Filtering by project pattern: %s\n", projCfg.Requirements.IDPattern)
 		}
 	}
 
 	ignorePatterns, err := LoadCanaryIgnore(cfg.Root)
 	if err != nil {
-		fmt.Fprintf(stderr, "Warning: failed to load .canaryignore: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "Warning: failed to load .canaryignore: %v\n", err)
 	}
 	if ignorePatterns != nil {
-		fmt.Fprintf(stderr, "Loaded .canaryignore patterns\n")
+		_, _ = fmt.Fprintf(stderr, "Loaded .canaryignore patterns\n")
 	}
 
 	rep, err := Scan(cfg.Root, cfg.SkipRegex, projectFilter, ignorePatterns)
 	if err != nil {
-		fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
+		_, _ = fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
 		return 3
 	}
 
@@ -69,33 +69,33 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 		if len(staleDiags) > 0 {
 			updatedFiles, err := UpdateStaleTokens(cfg.Root, cfg.SkipRegex, staleDiags)
 			if err != nil {
-				fmt.Fprintf(stderr, "CANARY_UPDATE_ERROR: %v\n", err)
+				_, _ = fmt.Fprintf(stderr, "CANARY_UPDATE_ERROR: %v\n", err)
 				return 3
 			}
-			fmt.Fprintf(stderr, "Updated %d stale tokens in %d files\n", len(staleDiags), len(updatedFiles))
+			_, _ = fmt.Fprintf(stderr, "Updated %d stale tokens in %d files\n", len(staleDiags), len(updatedFiles))
 			rep, err = Scan(cfg.Root, cfg.SkipRegex, projectFilter, ignorePatterns)
 			if err != nil {
-				fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
+				_, _ = fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
 				return 3
 			}
 		} else {
-			fmt.Fprintln(stderr, "No stale tokens found")
+			_, _ = fmt.Fprintln(stderr, "No stale tokens found")
 		}
 	}
 
 	if err := WriteJSON(cfg.Out, rep); err != nil {
-		fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
+		_, _ = fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
 		return 3
 	}
 	if cfg.CSV != "" {
 		if err := WriteCSV(cfg.CSV, rep); err != nil {
-			fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
+			_, _ = fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
 			return 3
 		}
 	}
 
 	// One-line stdout summary so agents get metrics without reading status.json.
-	fmt.Fprintln(stdout, ScanSummaryLine(rep))
+	_, _ = fmt.Fprintln(stdout, ScanSummaryLine(rep))
 
 	var diags []string
 	if cfg.VerifyPath != "" {
@@ -106,15 +106,15 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 	}
 	if len(diags) > 0 {
 		for _, d := range diags {
-			fmt.Fprintln(stderr, d)
+			_, _ = fmt.Fprintln(stderr, d)
 		}
 		if cfg.VerifyPath != "" {
-			fmt.Fprintf(stdout, "CANARY_VERIFY_FAIL count=%d\n", len(diags))
+			_, _ = fmt.Fprintf(stdout, "CANARY_VERIFY_FAIL count=%d\n", len(diags))
 		}
 		return 2
 	}
 	if cfg.VerifyPath != "" {
-		fmt.Fprintln(stdout, "CANARY_VERIFY_OK")
+		_, _ = fmt.Fprintln(stdout, "CANARY_VERIFY_OK")
 	}
 	return 0
 }
@@ -127,7 +127,7 @@ func RunFromArgs(root, out, csv, verifyPath, skipExpr string, strict, updateStal
 		var err error
 		skip, err = regexp.Compile(skipExpr)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "CANARY_PARSE_ERROR err=%q\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "CANARY_PARSE_ERROR err=%q\n", err)
 			return 3
 		}
 	}
