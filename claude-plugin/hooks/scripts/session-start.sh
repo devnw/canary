@@ -10,12 +10,10 @@ fi
 
 echo "canary is available: $(command -v canary)"
 
-# Print version if available
-if canary version &>/dev/null 2>&1; then
-  echo ""
-  echo "Version:"
-  canary version 2>/dev/null || true
-fi
+# Print version
+echo ""
+echo "Version:"
+canary --version 2>/dev/null || true
 
 # Check for project configuration
 if [ -f ".canary/project.yaml" ]; then

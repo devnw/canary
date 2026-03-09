@@ -70,31 +70,13 @@ description: Generate a technical implementation plan from a CANARY requirement 
 * **Security Gate:** Threats + mitigations listed or justified `n/a`.
 * **Performance Gate:** Targets + how to measure (or justified `n/a`).
 
-### 7) CANARY Snapshot Protocol (compact; low-token)
-
-Emit a snapshot when **context >= 70%**, after **spec load**, and post-**plan write**:
-
-```bash
-canary log --kind state --data '{
-  "t":"<ISO8601>","s":"plan|verify",
-  "f":[[".canary/specs/<REQ_ID>-<slug>/spec.md",1,999],[".canary/specs/<REQ_ID>-<slug>/plan.md",1,999]],
-  "k":["req:<REQ_ID>","feature:<FeatureName>","tests:first","parallel:CG-1..N"],
-  "fp":["<disproven assumption>"],
-  "iss":["<tracker-ids-or-n/a>"],
-  "nx":["write plan.md","validate gates","update tracking"]
-}'
-```
-
-**Fields:** `t` time | `s` stage | `f` file+line spans | `k` key facts | `fp` false-positives to avoid retry failures | `iss` issues | `nx` next actions.
-*(Compact keys minimize tokens.)*
-
-### 8) Tracking Update
+### 7) Tracking Update
 
 Append or edit in `.canary/requirements.md`:
 
 * `- [ ] <REQ_ID> - <FeatureName> (STATUS=STUB -> ready for implementation)`
 
-### 9) Output Contract (strict)
+### 8) Output Contract (strict)
 
 Return **both** artifacts in this order:
 
@@ -122,12 +104,11 @@ End with:
     "performance": "pass|n/a|fail"
   },
   "parallelism": { "groups": ["CG-1", "CG-2", "CG-3"], "has_joins": true },
-  "risks": ["..."],
-  "canary": { "emitted": true, "last_id": "<id-or-n/a>" }
+  "risks": ["..."]
 }
 ```
 
-### 10) Failure Modes (return one, with reason + remediation)
+### 9) Failure Modes (return one, with reason + remediation)
 
 * `ERROR_NOT_FOUND(req_id|stub)`
 * `ERROR_UNCLARIFIED(markers=[{line,excerpt}])`
@@ -135,9 +116,8 @@ End with:
 * `ERROR_CONSTITUTION(load|violation)`
 * `ERROR_UNSUPPORTED_ARG(arg_name)`
 
-### 11) Quality Checklist (auto-verify before output)
+### 10) Quality Checklist (auto-verify before output)
 
 * Tech decisions justified | Work DAG present with parallel groups | Token placement explicit
 * Test-first phases complete | Gates evaluated | Security/Perf addressed (or `n/a` with rationale)
 * Plan is implementable by `/canary.implement` with no mocks or simulated steps
-* CANARY snapshot emitted (when required)

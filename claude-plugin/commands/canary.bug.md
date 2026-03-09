@@ -92,22 +92,7 @@ Use a Work-DAG with concurrency groups; **join** before shared writes (no specul
 //         REPRO=<k>/<n>; UPDATED=<YYYY-MM-DD>
 ```
 
-### 5) CANARY Snapshot Protocol (compact; low-token)
-
-Emit after **ID selection** and after **report write**:
-
-```bash
-canary log --kind state --data '{
-  "t":"<ISO8601>","s":"bug|id|write",
-  "f":[[".canary/bugs/<BUG-ID>-<slug>/report.md",1,999]],
-  "k":["bug:<BUG-ID>","title:<slug>","aspect:<ASPECT>","sev:<S#>","prio:<P#>","repro:<k>/<n>"],
-  "fp":["<disproven assumption>"],
-  "iss":["<linked-REQ-IDs-or-n/a>"],
-  "nx":["triage","assign","create failing test"]
-}'
-```
-
-### 6) Output Contract (strict)
+### 5) Output Contract (strict)
 
 Return artifacts **in order** (JSON **not** in code fences).
 **A. BUG_REPORT_MARKDOWN** -- delimiters:
@@ -147,12 +132,11 @@ Return artifacts **in order** (JSON **not** in code fences).
     "repro_present": "pass|fail",
     "privacy_sanitized": "pass|fail",
     "duplicate_checked": "pass|fail"
-  },
-  "canary": { "emitted": true, "last_id": "<id-or-n/a>" }
+  }
 }
 ```
 
-### 7) Validation Gates (compute & report)
+### 6) Validation Gates (compute & report)
 
 * **One-Issue Gate:** report addresses exactly one problem.
 * **Summary Gate:** 10 words or fewer, problem-focused title.
@@ -165,7 +149,7 @@ Return artifacts **in order** (JSON **not** in code fences).
 * **Privacy Gate:** secrets scrubbed from logs/screens.
 * **Schema Gate:** `SUMMARY_JSON` conforms exactly.
 
-### 8) Failure Modes (return one + remediation)
+### 7) Failure Modes (return one + remediation)
 
 * `ERROR_DESCRIPTION_REQUIRED()`
 * `ERROR_PATH_MISSING(path)`
@@ -175,15 +159,13 @@ Return artifacts **in order** (JSON **not** in code fences).
 * `ERROR_REPORT_WRITE(path,reason)`
 * `ERROR_PARSE_OUTPUT(reason)`
 
-### 9) Quality Checklist (auto-verify)
+### 8) Quality Checklist (auto-verify)
 
 * Real script executed (**no mocked creation**).
 * Title concise; steps reproducible; *Expected vs Actual* included; environment complete.
 * Visuals/logs attached when helpful; tone factual and audience-appropriate.
 * Reduced testcase or regression window provided when applicable.
-* CANARY snapshots emitted as specified.
-
-### 10) Example HUMAN_TEXT (operator-friendly; optional)
+### 9) Example HUMAN_TEXT (operator-friendly; optional)
 
 ```
 === HUMAN_TEXT BEGIN ===
@@ -193,7 +175,7 @@ Next: assign owner, add failing test, link fix MR.
 === HUMAN_TEXT END ===
 ```
 
-### 11) Example `report.md` skeleton (WHAT happened; not HOW to fix)
+### 10) Example `report.md` skeleton (WHAT happened; not HOW to fix)
 
 ```
 === BUG_REPORT_MARKDOWN BEGIN ===
