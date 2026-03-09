@@ -156,7 +156,8 @@ Examples:
 		}
 
 		// Install/update slash commands to agent directories
-		if err := installSlashCommands(projectName, agentsList, allAgents, localInstall); err != nil {
+		slashCommandNotes, err := installSlashCommands(projectName, agentsList, allAgents, localInstall)
+		if err != nil {
 			return fmt.Errorf("install slash commands: %w", err)
 		}
 
@@ -313,19 +314,19 @@ Examples:
 		}
 
 		if len(installedAgents) > 0 {
-			installType := "local"
-			if !localInstall {
-				installType = "global"
-			}
-			fmt.Printf("  ✅ AI Agent Integration (%d systems with %s commands):\n", len(installedAgents), installType)
+			fmt.Printf("  ✅ AI Agent Integration (%d systems configured):\n", len(installedAgents))
 			for _, agent := range installedAgents {
-				fmt.Printf("     • %s (commands + agent files)\n", agent)
+				fmt.Printf("     • %s\n", agent)
+			}
+			for _, note := range slashCommandNotes {
+				fmt.Printf("     • %s\n", note)
 			}
 		}
 
 		if !isUpdate {
 			fmt.Println("  ✅ README_CANARY.md - Token format specification")
 			fmt.Println("  ✅ GAP_ANALYSIS.md - Requirements tracking template")
+			fmt.Println("  ✅ AGENTS.md - Codex / repository instructions")
 			fmt.Println("  ✅ CLAUDE.md - Claude Code / Claude plugins")
 			fmt.Println("  ✅ CURSOR.md - Cursor IDE / Cursor plugins")
 			fmt.Println("  ✅ .cursor/rules/canary-requirements.mdc - Cursor rule (apply when editing requirements)")

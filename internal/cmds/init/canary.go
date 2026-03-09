@@ -102,28 +102,42 @@ type AgentConfig struct {
 	Prefix string // Prefix for command files (e.g., "canary.")
 }
 
+func codexPromptsDir() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("get home directory: %w", err)
+	}
+	return filepath.Join(homeDir, ".codex", "prompts"), nil
+}
+
 // installSlashCommands copies slash commands to agent systems based on selection mode
 // agentsList: specific agents to install for (e.g., ["claude", "cursor"])
 // allAgentsFlag: if true, install for all supported agents
 // localInstall: if true, install in project directory; if false, install globally in home directory
 // If both are empty/false, auto-detect existing agent directories
-func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag bool, localInstall bool) error {
+func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag bool, localInstall bool) ([]string, error) {
 	sourceDir := filepath.Join(targetDir, ".canary", "templates", "commands")
+	notes := []string{}
 
 	// Determine base directory for installation
 	var baseDir string
 	if localInstall {
 		// Local installation: use project directory
 		baseDir = targetDir
-		fmt.Println("📍 Installing commands locally in project directory...")
+		fmt.Println("📍 Installing commands in project-local locations where supported...")
 	} else {
 		// Global installation: use home directory
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
-			return fmt.Errorf("get home directory: %w", err)
+			return nil, fmt.Errorf("get home directory: %w", err)
 		}
 		baseDir = homeDir
 		fmt.Println("🌍 Installing commands globally in home directory...")
+	}
+
+	codexDir, err := codexPromptsDir()
+	if err != nil {
+		return nil, err
 	}
 
 	// Agent configurations - matching spec-kit-repo structure
@@ -135,7 +149,7 @@ func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag b
 		"kilocode":  {Dir: filepath.Join(baseDir, ".kilocode", "rules"), Prefix: "canary-"},
 		"roo":       {Dir: filepath.Join(baseDir, ".roo", "rules"), Prefix: "canary-"},
 		"opencode":  {Dir: filepath.Join(baseDir, ".opencode", "command"), Prefix: "canary-"},
-		"codex":     {Dir: filepath.Join(baseDir, ".codex", "commands"), Prefix: "canary."},
+		"codex":     {Dir: codexDir, Prefix: "canary."},
 		"auggie":    {Dir: filepath.Join(baseDir, ".augment", "rules"), Prefix: "canary-"},
 		"codebuddy": {Dir: filepath.Join(baseDir, ".codebuddy", "commands"), Prefix: "canary."},
 		"amazonq":   {Dir: filepath.Join(baseDir, ".amazonq", "prompts"), Prefix: "canary-"},
@@ -149,7 +163,7 @@ func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag b
 		"kilocode":  filepath.Join(baseDir, ".kilocode"),
 		"roo":       filepath.Join(baseDir, ".roo"),
 		"opencode":  filepath.Join(baseDir, ".opencode"),
-		"codex":     filepath.Join(baseDir, ".codex"),
+		"codex":     filepath.Dir(codexDir),
 		"auggie":    filepath.Join(baseDir, ".augment"),
 		"codebuddy": filepath.Join(baseDir, ".codebuddy"),
 		"amazonq":   filepath.Join(baseDir, ".amazonq"),
@@ -168,7 +182,7 @@ func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag b
 			if config, ok := allAgents[agentName]; ok {
 				selectedAgents[agentName] = config
 			} else {
-				return fmt.Errorf("unknown agent: %s (valid: claude, cursor, copilot, windsurf, kilocode, roo, opencode, codex, auggie, codebuddy, amazonq)", agentName)
+				return nil, fmt.Errorf("unknown agent: %s (valid: claude, cursor, copilot, windsurf, kilocode, roo, opencode, codex, auggie, codebuddy, amazonq)", agentName)
 			}
 		}
 	} else {
@@ -185,20 +199,26 @@ func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag b
 	if len(selectedAgents) == 0 {
 		fmt.Println("⚠️  No AI agent directories detected - skipping slash command installation")
 		fmt.Println("   Create an agent directory (e.g., .claude/, .cursor/) or use --agents or --all-agents flag")
-		return nil
+		return nil, nil
+	}
+
+	if localInstall {
+		if _, ok := selectedAgents["codex"]; ok {
+			notes = append(notes, fmt.Sprintf("Codex custom prompts were installed globally in %s because the current Codex CLI scans ~/.codex/prompts instead of project-local prompt directories.", codexDir))
+		}
 	}
 
 	// Read all command files from source
 	entries, err := os.ReadDir(sourceDir)
 	if err != nil {
-		return fmt.Errorf("read commands directory: %w", err)
+		return nil, fmt.Errorf("read commands directory: %w", err)
 	}
 
 	// Install commands for selected agents
 	for agentName, config := range selectedAgents {
 		// Create agent directory
 		if err := os.MkdirAll(config.Dir, 0755); err != nil {
-			return fmt.Errorf("create %s directory: %w", agentName, err)
+			return nil, fmt.Errorf("create %s directory: %w", agentName, err)
 		}
 
 		// Copy each command file with appropriate prefix
@@ -217,17 +237,17 @@ func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag b
 			// Read source file
 			content, err := os.ReadFile(sourcePath)
 			if err != nil {
-				return fmt.Errorf("read command file %s: %w", entry.Name(), err)
+				return nil, fmt.Errorf("read command file %s: %w", entry.Name(), err)
 			}
 
 			// Write to target with prefix
 			if err := os.WriteFile(targetPath, content, 0644); err != nil {
-				return fmt.Errorf("write command file %s for %s: %w", targetName, agentName, err)
+				return nil, fmt.Errorf("write command file %s for %s: %w", targetName, agentName, err)
 			}
 		}
 	}
 
-	return nil
+	return notes, nil
 }
 
 // CANARY: REQ=CBIN-105; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17
@@ -414,6 +434,7 @@ func updateAgentContextFiles(projectName string) error {
 	// Get CANARY content for each file
 	claudeContent := createClaudeMD()
 	cursorContent := createCursorMD()
+	codexContent := createCodexAGENTSMD()
 	agentContextContent, err := utils.ReadEmbeddedFile("base/AGENT_CONTEXT.md")
 	if err != nil {
 		return fmt.Errorf("read AGENT_CONTEXT.md: %w", err)
@@ -429,6 +450,12 @@ func updateAgentContextFiles(projectName string) error {
 	cursorPath := filepath.Join(projectName, "CURSOR.md")
 	if err := updateMarkdownSection(cursorPath, cursorContent); err != nil {
 		return fmt.Errorf("update CURSOR.md: %w", err)
+	}
+
+	// Update AGENTS.md for Codex / repository-scoped instructions
+	agentsPath := filepath.Join(projectName, "AGENTS.md")
+	if err := updateMarkdownSection(agentsPath, codexContent); err != nil {
+		return fmt.Errorf("update AGENTS.md: %w", err)
 	}
 
 	// Update .canary/AGENT_CONTEXT.md (embedded file is already correct)
@@ -530,6 +557,30 @@ func createCursorMD() string {
 	return createClaudeMD() + "\n\n## Cursor-specific\n\n" +
 		"- **Project rules:** CANARY rule is in " + bt + ".cursor/rules/canary-requirements.mdc" + bt + " (apply when working on requirements or specs).\n" +
 		"- **MCP:** Optional " + bt + ".cursor/mcp.json" + bt + " is created by " + bt + "canary init" + bt + "; start " + bt + "canary mcp" + bt + " in a terminal, then Cursor can use list/show/scan tools.\n"
+}
+
+// createCodexAGENTSMD generates the CANARY section for AGENTS.md (Codex / repository-scoped instructions).
+func createCodexAGENTSMD() string {
+	bt := "`"
+	return "# Repository Guidelines\n\n" +
+		"This project uses CANARY requirement tracking. Load only the context you need.\n\n" +
+		"## Slash Commands\n\n" +
+		"- " + bt + "/canary.constitution" + bt + " -> " + bt + ".canary/commands/constitution.md" + bt + "\n" +
+		"- " + bt + "/canary.specify" + bt + " -> " + bt + ".canary/commands/specify.md" + bt + "\n" +
+		"- " + bt + "/canary.plan" + bt + " -> " + bt + ".canary/commands/plan.md" + bt + "\n" +
+		"- " + bt + "/canary.scan" + bt + " -> " + bt + ".canary/commands/scan.md" + bt + "\n" +
+		"- " + bt + "/canary.verify" + bt + " -> " + bt + ".canary/commands/verify.md" + bt + "\n" +
+		"- " + bt + "/canary.update-stale" + bt + " -> " + bt + ".canary/commands/update-stale.md" + bt + "\n\n" +
+		"Read only the command file for the slash command you are running. Do not load " + bt + ".canary/AGENT_CONTEXT.md" + bt + ", the full constitution, or " + bt + "GAP_ANALYSIS.md" + bt + " unless the task requires it.\n\n" +
+		"## Scan and verify\n\n" +
+		"- " + bt + "canary scan --root . --out status.json" + bt + " -> use the one-line stdout summary (" + bt + "CANARY_SCAN ..." + bt + ") for metrics.\n" +
+		"- " + bt + "canary scan --root . --verify GAP_ANALYSIS.md --strict" + bt + " -> use stdout/stderr results before opening extra files.\n\n" +
+		"## Token format\n\n" +
+		bt + "// CANARY: REQ=CBIN-###; FEATURE=\"Name\"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD" + bt + "\n" +
+		"Status: STUB -> IMPL -> TESTED -> BENCHED.\n\n" +
+		"## Codex\n\n" +
+		"- Custom prompts are installed by " + bt + "canary init" + bt + " in " + bt + "~/.codex/prompts/" + bt + ".\n" +
+		"- Keep repository-specific guidance in this file; " + bt + "canary init" + bt + " preserves content outside the CANARY gated section.\n"
 }
 
 // CANARY: REQ=CBIN-149; FEATURE="AgentContextUpdate"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
