@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "canary": {
+      "type": "url",
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}
