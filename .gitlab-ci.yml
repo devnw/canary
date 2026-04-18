@@ -14,6 +14,10 @@ variables:
   GO_VERSION: "1.24"
 
 # Include CI catalog components
+default:
+  tags:
+    - company
+
 include:
   # Build stage
   - component: gitlab.com/devnw/ci-catalog/go-build@v1.11.0
@@ -78,7 +82,7 @@ include:
 # Override goreleaser-release for SaaS runners and GitLab Container Registry
 goreleaser-release:
   tags:
-    - saas-linux-medium-amd64
+    - company
   id_tokens:
     VAULT_ID_TOKEN:
       aud: https://pki.devnw.com
