@@ -163,8 +163,9 @@ The server runs as an HTTP endpoint that AI assistants can interact with.`,
 			// Create HTTP server
 			addr := fmt.Sprintf("%s:%d", host, port)
 			httpServer := &http.Server{
-				Addr:    addr,
-				Handler: mux,
+				Addr:              addr,
+				Handler:           mux,
+				ReadHeaderTimeout: 10 * time.Second,
 			}
 
 			// Start server in a goroutine

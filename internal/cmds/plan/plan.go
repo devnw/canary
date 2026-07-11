@@ -143,7 +143,7 @@ tech stack decisions, and CANARY token placement instructions.`,
 			}
 		}
 
-		if err := os.WriteFile(planFile, []byte(content), 0644); err != nil {
+		if err := os.WriteFile(planFile, []byte(content), 0640); err != nil {
 			return fmt.Errorf("write plan file: %w", err)
 		}
 

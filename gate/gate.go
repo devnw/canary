@@ -273,7 +273,7 @@ func UpdateMultiple(filePath string, sections map[string]string, opts ...Option)
 			buf.WriteString(content)
 			buf.WriteString("\n" + buildEndMarker(o, key) + "\n\n")
 		}
-		return os.WriteFile(filePath, buf.Bytes(), 0644)
+		return os.WriteFile(filePath, buf.Bytes(), 0640)
 	}
 
 	scanner := bufio.NewScanner(bytes.NewReader(existing))
@@ -327,7 +327,7 @@ func UpdateMultiple(filePath string, sections map[string]string, opts ...Option)
 	if !strings.HasSuffix(updated, "\n") {
 		updated += "\n"
 	}
-	return os.WriteFile(filePath, []byte(updated), 0644)
+	return os.WriteFile(filePath, []byte(updated), 0640)
 }
 
 // RemoveSection removes a keyed section.
@@ -367,7 +367,7 @@ func RemoveSection(filePath, key string, opts ...Option) error {
 	if !strings.HasSuffix(updated, "\n") {
 		updated += "\n"
 	}
-	return os.WriteFile(filePath, []byte(updated), 0644)
+	return os.WriteFile(filePath, []byte(updated), 0640)
 }
 
 // internal helper for unnamed single section update
@@ -376,7 +376,7 @@ func updateSectionInternal(filePath, startMarker, endMarker, content string, ens
 	if err != nil {
 		if os.IsNotExist(err) {
 			out := fmt.Sprintf("%s\n%s\n%s\n", startMarker, content, endMarker)
-			return os.WriteFile(filePath, []byte(out), 0644)
+			return os.WriteFile(filePath, []byte(out), 0640)
 		}
 		return fmt.Errorf("read file: %w", err)
 	}
@@ -410,7 +410,7 @@ func updateSectionInternal(filePath, startMarker, endMarker, content string, ens
 		result = append(result, startMarker, content, endMarker)
 	}
 	updated := strings.Join(result, "\n")
-	return os.WriteFile(filePath, []byte(updated), 0644)
+	return os.WriteFile(filePath, []byte(updated), 0640)
 }
 
 // matchStart attempts to parse a start marker returning the section key.

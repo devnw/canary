@@ -287,7 +287,7 @@ func ExecuteMigration(rootDir string, plan *MigrationPlan, dryRun bool) error {
 		if dryRun {
 			fmt.Printf("Would create: %s\n", dir)
 		} else {
-			if err := os.MkdirAll(dirPath, 0755); err != nil {
+			if err := os.MkdirAll(dirPath, 0750); err != nil {
 				return fmt.Errorf("failed to create directory %s: %w", dir, err)
 			}
 			fmt.Printf("✅ Created: %s\n", dir)
@@ -302,7 +302,7 @@ func ExecuteMigration(rootDir string, plan *MigrationPlan, dryRun bool) error {
 		if dryRun {
 			fmt.Printf("Would copy: %s -> %s\n", fc.Source, fc.Dest)
 		} else {
-			if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+			if err := os.MkdirAll(filepath.Dir(destPath), 0750); err != nil {
 				return fmt.Errorf("failed to create destination directory for %s: %w", fc.Dest, err)
 			}
 			if err := copyFile(srcPath, destPath); err != nil {
@@ -328,11 +328,11 @@ func ExecuteMigration(rootDir string, plan *MigrationPlan, dryRun bool) error {
 				return fmt.Errorf("failed to read embedded template %s: %w", embeddedPath, err)
 			}
 
-			if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+			if err := os.MkdirAll(filepath.Dir(destPath), 0750); err != nil {
 				return fmt.Errorf("failed to create directory for %s: %w", filename, err)
 			}
 
-			if err := os.WriteFile(destPath, content, 0644); err != nil {
+			if err := os.WriteFile(destPath, content, 0640); err != nil {
 				return fmt.Errorf("failed to create file %s: %w", filename, err)
 			}
 

@@ -40,7 +40,7 @@ var ErrDatabaseNotPopulated = errors.New("database not migrated")
 func InitDB(dbPath string) (*sqlx.DB, error) {
 	slog.Info("Initializing database", "path", dbPath)
 	dir := filepath.Dir(dbPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return nil, fmt.Errorf("failed to create database directory at %s: %w", dir, err)
 	}
 	db, err := sqlx.Open(DBDriver, dbPath)
@@ -58,7 +58,7 @@ func MigrateDB(dbPath string, steps string) error {
 	slog.Info("Migrating database", "path", dbPath, "steps", steps)
 
 	// Ensure the database directory exists before migrating
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0750); err != nil {
 		return fmt.Errorf("failed to create database directory at %s: %w", filepath.Dir(dbPath), err)
 	}
 

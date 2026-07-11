@@ -29,12 +29,12 @@ If arguments are provided, updates or adds specific principles.`,
 			}
 
 			// Ensure directory exists
-			if err := os.MkdirAll(filepath.Dir(constitutionPath), 0755); err != nil {
+			if err := os.MkdirAll(filepath.Dir(constitutionPath), 0750); err != nil {
 				return fmt.Errorf("create memory directory: %w", err)
 			}
 
 			// Write constitution
-			if err := os.WriteFile(constitutionPath, content, 0644); err != nil {
+			if err := os.WriteFile(constitutionPath, content, 0640); err != nil {
 				return fmt.Errorf("write constitution: %w", err)
 			}
 

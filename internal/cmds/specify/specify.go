@@ -63,7 +63,7 @@ creates a spec directory, and populates it with a specification template.`,
 		specFile := filepath.Join(specDir, "spec.md")
 
 		// Create directory
-		if err := os.MkdirAll(specDir, 0755); err != nil {
+		if err := os.MkdirAll(specDir, 0750); err != nil {
 			return fmt.Errorf("create spec directory: %w", err)
 		}
 
@@ -79,7 +79,7 @@ creates a spec directory, and populates it with a specification template.`,
 		content = strings.ReplaceAll(content, "YYYY-MM-DD", time.Now().UTC().Format("2006-01-02"))
 		content = strings.ReplaceAll(content, "SECURITY_REVIEW", aspect)
 
-		if err := os.WriteFile(specFile, []byte(content), 0644); err != nil {
+		if err := os.WriteFile(specFile, []byte(content), 0640); err != nil {
 			return fmt.Errorf("write spec file: %w", err)
 		}
 

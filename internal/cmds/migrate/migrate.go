@@ -206,7 +206,7 @@ Use --dry-run to preview changes without creating files.`,
 
 		// Perform migration
 		specsDir := filepath.Join(rootDir, ".canary", "specs")
-		if err := os.MkdirAll(specsDir, 0755); err != nil {
+		if err := os.MkdirAll(specsDir, 0750); err != nil {
 			return fmt.Errorf("failed to create specs directory: %w", err)
 		}
 
@@ -233,21 +233,21 @@ Use --dry-run to preview changes without creating files.`,
 			dirName := orphan.ReqID + "-" + slugify(primaryFeature)
 			specDir := filepath.Join(specsDir, dirName)
 
-			if err := os.MkdirAll(specDir, 0755); err != nil {
+			if err := os.MkdirAll(specDir, 0750); err != nil {
 				fmt.Printf("⚠️  Failed to create directory for %s: %v\n", orphan.ReqID, err)
 				continue
 			}
 
 			// Write spec
 			specPath := filepath.Join(specDir, "spec.md")
-			if err := os.WriteFile(specPath, []byte(specContent), 0644); err != nil {
+			if err := os.WriteFile(specPath, []byte(specContent), 0640); err != nil {
 				fmt.Printf("⚠️  Failed to write spec for %s: %v\n", orphan.ReqID, err)
 				continue
 			}
 
 			// Write plan
 			planPath := filepath.Join(specDir, "plan.md")
-			if err := os.WriteFile(planPath, []byte(planContent), 0644); err != nil {
+			if err := os.WriteFile(planPath, []byte(planContent), 0640); err != nil {
 				fmt.Printf("⚠️  Failed to write plan for %s: %v\n", orphan.ReqID, err)
 				continue
 			}

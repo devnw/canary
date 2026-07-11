@@ -111,12 +111,12 @@ The command will:
 		}
 
 		// Create output directory if needed
-		if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(outputPath), 0750); err != nil {
 			return fmt.Errorf("failed to create output directory: %w", err)
 		}
 
 		// Write documentation file
-		if err := os.WriteFile(outputPath, templateContent, 0644); err != nil {
+		if err := os.WriteFile(outputPath, templateContent, 0640); err != nil {
 			return fmt.Errorf("failed to write documentation file: %w", err)
 		}
 

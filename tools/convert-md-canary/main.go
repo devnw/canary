@@ -65,7 +65,7 @@ func main() {
 		// Write back if modified
 		if modified {
 			output := strings.Join(lines, "\n") + "\n"
-			if err := os.WriteFile(path, []byte(output), 0644); err != nil {
+			if err := os.WriteFile(path, []byte(output), 0640); err != nil {
 				return err
 			}
 			count++

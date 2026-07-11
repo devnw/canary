@@ -59,7 +59,7 @@ func SetupProjectDir(t *testing.T, dir string) error {
 	t.Helper()
 
 	canaryDir := filepath.Join(dir, ".canary")
-	if err := os.MkdirAll(canaryDir, 0755); err != nil {
+	if err := os.MkdirAll(canaryDir, 0750); err != nil {
 		return err
 	}
 

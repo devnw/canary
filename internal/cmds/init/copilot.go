@@ -15,7 +15,7 @@ func createCopilotInstructions(projectName, projectKey string) error {
 	instructionsDir := filepath.Join(projectName, ".github", "instructions")
 
 	// Create .github/instructions/ directory structure
-	if err := os.MkdirAll(instructionsDir, 0755); err != nil {
+	if err := os.MkdirAll(instructionsDir, 0750); err != nil {
 		return fmt.Errorf("create .github/instructions: %w", err)
 	}
 
@@ -46,7 +46,7 @@ func createCopilotInstructions(projectName, projectKey string) error {
 		}
 
 		// Create parent directories for path-specific instructions
-		if err := os.MkdirAll(filepath.Dir(fullTargetPath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(fullTargetPath), 0750); err != nil {
 			return fmt.Errorf("create directory for %s: %w", targetPath, err)
 		}
 

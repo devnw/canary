@@ -60,7 +60,7 @@ Examples:
 
 		// Create project directory if needed
 		if projectName != "." {
-			if err := os.MkdirAll(projectName, 0755); err != nil {
+			if err := os.MkdirAll(projectName, 0750); err != nil {
 				return fmt.Errorf("create project dir: %w", err)
 			}
 		}
@@ -117,7 +117,7 @@ Examples:
 		canaryignoreContent, err := utils.ReadEmbeddedFile("base/.canaryignore")
 		if err == nil {
 			canaryignorePath := filepath.Join(projectName, ".canaryignore")
-			if err := os.WriteFile(canaryignorePath, canaryignoreContent, 0644); err != nil {
+			if err := os.WriteFile(canaryignorePath, canaryignoreContent, 0640); err != nil {
 				return fmt.Errorf("write .canaryignore: %w", err)
 			}
 		}
@@ -229,7 +229,7 @@ Examples:
 			"canary scan --root . --update-stale\n" +
 			"```\n"
 		readmePath := filepath.Join(projectName, "README_CANARY.md")
-		if err := os.WriteFile(readmePath, []byte(readme), 0644); err != nil {
+		if err := os.WriteFile(readmePath, []byte(readme), 0640); err != nil {
 			return fmt.Errorf("write README: %w", err)
 		}
 
@@ -252,7 +252,7 @@ Examples:
 			"- ✅ Verify claimed requirements are TESTED or BENCHED\n" +
 			"- ❌ Fail with exit code 2 if claims are overclaimed\n"
 		gapPath := filepath.Join(projectName, "GAP_ANALYSIS.md")
-		if err := os.WriteFile(gapPath, []byte(gap), 0644); err != nil {
+		if err := os.WriteFile(gapPath, []byte(gap), 0640); err != nil {
 			return fmt.Errorf("write GAP_ANALYSIS.md: %w", err)
 		}
 

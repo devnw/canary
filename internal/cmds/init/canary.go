@@ -16,7 +16,7 @@ func copyCanaryStructure(targetDir string) error {
 	targetCanary := filepath.Join(targetDir, ".canary")
 
 	// Create root .canary directory
-	if err := os.MkdirAll(targetCanary, 0755); err != nil {
+	if err := os.MkdirAll(targetCanary, 0750); err != nil {
 		return err
 	}
 
@@ -46,11 +46,11 @@ func copyCanaryStructure(targetDir string) error {
 		targetPath := filepath.Join(targetCanary, relPath)
 
 		if d.IsDir() {
-			return os.MkdirAll(targetPath, 0755)
+			return os.MkdirAll(targetPath, 0750)
 		}
 
 		// Ensure parent directory exists
-		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(targetPath), 0750); err != nil {
 			return err
 		}
 
@@ -88,7 +88,7 @@ func customizeProjectYaml(path, projectName, projectKey string) error {
 	text = strings.ReplaceAll(text, "{{PROJECT_DESCRIPTION}}", fmt.Sprintf("%s project with CANARY requirement tracking", projectName))
 	text = strings.ReplaceAll(text, "{{PROJECT_KEY}}", projectKey)
 
-	if err := os.WriteFile(path, []byte(text), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(text), 0640); err != nil {
 		return fmt.Errorf("write project.yaml: %w", err)
 	}
 
@@ -217,7 +217,7 @@ func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag b
 	// Install commands for selected agents
 	for agentName, config := range selectedAgents {
 		// Create agent directory
-		if err := os.MkdirAll(config.Dir, 0755); err != nil {
+		if err := os.MkdirAll(config.Dir, 0750); err != nil {
 			return nil, fmt.Errorf("create %s directory: %w", agentName, err)
 		}
 
@@ -241,7 +241,7 @@ func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag b
 			}
 
 			// Write to target with prefix
-			if err := os.WriteFile(targetPath, content, 0644); err != nil {
+			if err := os.WriteFile(targetPath, content, 0640); err != nil {
 				return nil, fmt.Errorf("write command file %s for %s: %w", targetName, agentName, err)
 			}
 		}
@@ -259,7 +259,7 @@ func copyAndProcessAgentFiles(targetDir, agentPrefix, agentModel, agentColor str
 	targetAgentsDir := filepath.Join(targetDir, ".canary", "agents")
 
 	// Create target agents directory
-	if err := os.MkdirAll(targetAgentsDir, 0755); err != nil {
+	if err := os.MkdirAll(targetAgentsDir, 0750); err != nil {
 		return fmt.Errorf("create agents directory: %w", err)
 	}
 
@@ -294,7 +294,7 @@ func copyAndProcessAgentFiles(targetDir, agentPrefix, agentModel, agentColor str
 		processedContent = string(utils.FilterCanaryTokens([]byte(processedContent)))
 
 		// Write processed content to target
-		if err := os.WriteFile(targetPath, []byte(processedContent), 0644); err != nil {
+		if err := os.WriteFile(targetPath, []byte(processedContent), 0640); err != nil {
 			return fmt.Errorf("write agent file %s: %w", entry.Name(), err)
 		}
 	}
@@ -390,7 +390,7 @@ func installAgentFilesToSystems(targetDir string, agentsList []string, allAgents
 	// Install agent files for selected agents
 	for agentName, agentDir := range selectedAgents {
 		// Create agents directory
-		if err := os.MkdirAll(agentDir, 0755); err != nil {
+		if err := os.MkdirAll(agentDir, 0750); err != nil {
 			return fmt.Errorf("create %s agents directory: %w", agentName, err)
 		}
 
@@ -419,7 +419,7 @@ func installAgentFilesToSystems(targetDir string, agentsList []string, allAgents
 			processedContent = string(utils.FilterCanaryTokens([]byte(processedContent)))
 
 			// Write to target
-			if err := os.WriteFile(targetPath, []byte(processedContent), 0644); err != nil {
+			if err := os.WriteFile(targetPath, []byte(processedContent), 0640); err != nil {
 				return fmt.Errorf("write agent file %s for %s: %w", entry.Name(), agentName, err)
 			}
 		}
@@ -462,7 +462,7 @@ func updateAgentContextFiles(projectName string) error {
 	agentContextPath := filepath.Join(projectName, ".canary", "AGENT_CONTEXT.md")
 	// Filter out internal CANARY tokens
 	filteredContent := utils.FilterCanaryTokens(agentContextContent)
-	if err := os.WriteFile(agentContextPath, filteredContent, 0644); err != nil {
+	if err := os.WriteFile(agentContextPath, filteredContent, 0640); err != nil {
 		return fmt.Errorf("write AGENT_CONTEXT.md: %w", err)
 	}
 
@@ -489,7 +489,7 @@ func updateAgentContextFiles(projectName string) error {
 func createCursorRuleAndMCP(projectName string) error {
 	cursorDir := filepath.Join(projectName, ".cursor")
 	rulesDir := filepath.Join(cursorDir, "rules")
-	if err := os.MkdirAll(rulesDir, 0755); err != nil {
+	if err := os.MkdirAll(rulesDir, 0750); err != nil {
 		return err
 	}
 
@@ -501,7 +501,7 @@ func createCursorRuleAndMCP(projectName string) error {
 		"- **Scan:** Use the one-line stdout from `canary scan` (CANARY_SCAN tokens=...) for metrics; do not read status.json unless needed.\n" +
 		"- **Verify:** Use stdout CANARY_VERIFY_OK or stderr CANARY_VERIFY_FAIL lines; open GAP_ANALYSIS.md only when fixing claims.\n" +
 		"- **Token format:** `// CANARY: REQ=ID; FEATURE=\"Name\"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD` — status STUB→IMPL→TESTED→BENCHED.\n"
-	if err := os.WriteFile(rulePath, []byte(ruleContent), 0644); err != nil {
+	if err := os.WriteFile(rulePath, []byte(ruleContent), 0640); err != nil {
 		return err
 	}
 
@@ -519,7 +519,7 @@ func createCursorRuleAndMCP(projectName string) error {
 }
 `
 	// Cursor may expect streamable HTTP; url alone is often enough. User must run `canary mcp` first.
-	if err := os.WriteFile(mcpPath, []byte(mcpContent), 0644); err != nil {
+	if err := os.WriteFile(mcpPath, []byte(mcpContent), 0640); err != nil {
 		return err
 	}
 	return nil
