@@ -6,7 +6,7 @@
 // Package sources resolves requirement-ID prefixes to their origin: a local
 // flatfile series (e.g. CBIN-105) or an external ticket system (JIRA, GitLab,
 // GitHub) configured in .canary/project.yaml under `sources:`.
-// CANARY: REQ=CBIN-201; FEATURE="TicketSources"; ASPECT=Engine; STATUS=IMPL; TEST=TestCANARY_CBIN_201_RegistryPattern; UPDATED=2026-08-28
+// CANARY: REQ=CBIN-201; FEATURE="TicketSources"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_201_RegistryPattern; UPDATED=2026-08-28
 package sources
 
 import (
@@ -74,7 +74,7 @@ func Default() *Registry {
 
 // FromProjectConfig builds a registry from a parsed project config. When the
 // config declares no sources, a flatfile source is synthesized from
-// project.key (default "CBIN") so existing projects keep working unchanged.
+// project.key; if the key is empty or invalid, falls back to Default() (CBIN).
 func FromProjectConfig(cfg *config.ProjectConfig) *Registry {
 	if cfg == nil {
 		return Default()

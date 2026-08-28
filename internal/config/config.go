@@ -16,7 +16,7 @@ import (
 
 // SourceConfig describes one requirement-ID source: a flatfile prefix or an
 // external ticket system (jira, github, gitlab) whose keys appear in REQ= fields.
-// CANARY: REQ=CBIN-201; FEATURE="TicketSources"; ASPECT=Storage; STATUS=IMPL; TEST=TestCANARY_CBIN_201_LoadSources; UPDATED=2026-08-28
+// CANARY: REQ=CBIN-201; FEATURE="TicketSources"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_201_LoadSources; UPDATED=2026-08-28
 type SourceConfig struct {
 	Name string `yaml:"name"`
 	Type string `yaml:"type"` // flatfile | jira | github | gitlab
