@@ -599,3 +599,136 @@ func TestCANARY_CBIN_205_SearchTotalLowerBound(t *testing.T) {
 		t.Errorf("expected summary text to mention '100+ matches', got: %q", text.Text)
 	}
 }
+
+// TestCANARY_CBIN_204_MCPView verifies handleView aggregates tokens, files,
+// tests, deps, and diagram refs for a requirement into a single bounded
+// result, with a one-line text summary suitable for agent consumption.
+func TestCANARY_CBIN_204_MCPView(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+
+	toks := []*storage.Token{
+		{ReqID: "CBIN-105", Feature: "Scanner", Aspect: "Engine", Status: "TESTED",
+			FilePath: "scan.go", LineNumber: 10, Test: "TestScan", DependsOn: "CBIN-101"},
+		{ReqID: "CBIN-105", Feature: "ScannerCLI", Aspect: "CLI", Status: "IMPL",
+			FilePath: "cli.go", LineNumber: 5},
+	}
+	for _, tok := range toks {
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatalf("failed to insert test token: %v", err)
+		}
+	}
+	if err := db.ReplaceRefs("diagram", []storage.Ref{
+		{ReqID: "CBIN-105", Kind: "diagram", FilePath: "docs/arch.md", LineNumber: 7},
+	}); err != nil {
+		t.Fatalf("failed to insert diagram ref: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	result, out, err := handleView(ctx, req, &ViewParams{ReqID: "CBIN-105"})
+	if err != nil {
+		t.Fatalf("handleView failed: %v", err)
+	}
+	if out == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	if out.ReqID != "CBIN-105" {
+		t.Errorf("ReqID = %q, want CBIN-105", out.ReqID)
+	}
+	if out.Completion != 50 {
+		t.Errorf("Completion = %d, want 50", out.Completion)
+	}
+	if out.FilesTotal != 2 {
+		t.Errorf("FilesTotal = %d, want 2", out.FilesTotal)
+	}
+	if len(out.Tests) != 1 || out.Tests[0] != "TestScan" {
+		t.Errorf("Tests = %v", out.Tests)
+	}
+	if len(out.Diagrams) != 1 || out.Diagrams[0] != "docs/arch.md:7" {
+		t.Errorf("Diagrams = %v", out.Diagrams)
+	}
+	if len(out.DependsOn) != 1 || out.DependsOn[0] != "CBIN-101" {
+		t.Errorf("DependsOn = %v", out.DependsOn)
+	}
+
+	if result == nil || len(result.Content) == 0 {
+		t.Fatal("expected content")
+	}
+	text, ok := result.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatalf("expected TextContent, got %T", result.Content[0])
+	}
+	if strings.Count(text.Text, "\n") != 0 {
+		t.Errorf("expected a single-line summary, got: %q", text.Text)
+	}
+	if !strings.Contains(text.Text, "CBIN-105") ||
+		!strings.Contains(text.Text, "50% complete") ||
+		!strings.Contains(text.Text, "depends on CBIN-101") {
+		t.Errorf("summary missing expected fields: %q", text.Text)
+	}
+}
+
+// TestCANARY_CBIN_204_MCPViewUnknown verifies handleView returns an error
+// (not a panic, not an empty success) when the requirement has no tokens.
+func TestCANARY_CBIN_204_MCPViewUnknown(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	result, out, err := handleView(ctx, req, &ViewParams{ReqID: "CBIN-999"})
+	if err == nil {
+		t.Fatal("expected error for unknown requirement, got nil")
+	}
+	if out != nil {
+		t.Errorf("expected nil result on error, got %+v", out)
+	}
+	if result != nil {
+		t.Errorf("expected nil CallToolResult on error, got %+v", result)
+	}
+}
+
+// TestCANARY_CBIN_204_MCPDepsForward verifies handleDeps returns the
+// forward dependency IDs (what a requirement depends on), with no token
+// payloads and a matching Count.
+func TestCANARY_CBIN_204_MCPDepsForward(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	// deps.BuildGraph walks .canary/specs/*/spec.md; an empty (but present)
+	// specs dir is the minimal honest seed for "no dependencies declared"
+	// rather than relying on missing-directory tolerance.
+	if err := os.MkdirAll(filepath.Join(".canary", "specs"), 0o750); err != nil {
+		t.Fatalf("failed to create empty specs dir: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	result, out, err := handleDeps(ctx, req, &DepsParams{ReqID: "CBIN-105"})
+	if err != nil {
+		t.Fatalf("handleDeps failed: %v", err)
+	}
+	if out == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if out.ReqID != "CBIN-105" {
+		t.Errorf("ReqID = %q, want CBIN-105", out.ReqID)
+	}
+	if out.Direction != "forward" {
+		t.Errorf("Direction = %q, want forward (default)", out.Direction)
+	}
+	if out.Count != 0 || len(out.Dependencies) != 0 {
+		t.Errorf("expected no dependencies, got %v (count %d)", out.Dependencies, out.Count)
+	}
+	if result == nil || len(result.Content) == 0 {
+		t.Fatal("expected content")
+	}
+}

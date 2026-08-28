@@ -159,7 +159,7 @@ Example:
 			}
 
 			// Build graph from all specs
-			graph, err := buildDependencyGraph()
+			graph, err := BuildGraph()
 			if err != nil {
 				return fmt.Errorf("failed to build dependency graph: %w", err)
 			}
@@ -221,7 +221,7 @@ Example:
 			reqID := args[0]
 
 			// Build graph from all specs
-			graph, err := buildDependencyGraph()
+			graph, err := BuildGraph()
 			if err != nil {
 				return fmt.Errorf("failed to build dependency graph: %w", err)
 			}
@@ -281,7 +281,7 @@ Example:
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Build graph from all specs
-			graph, err := buildDependencyGraph()
+			graph, err := BuildGraph()
 			if err != nil {
 				return fmt.Errorf("failed to build dependency graph: %w", err)
 			}
@@ -343,8 +343,10 @@ func findSpecFile(reqID string) (string, error) {
 	return "", fmt.Errorf("spec file not found for %s", reqID)
 }
 
-// buildDependencyGraph builds the complete dependency graph from all specs
-func buildDependencyGraph() (*specs.DependencyGraph, error) {
+// BuildGraph builds the complete dependency graph from all specs under
+// .canary/specs/. It is exported so callers outside this package (e.g. the
+// MCP deps tool) can reuse it without reconstructing the spec-walk logic.
+func BuildGraph() (*specs.DependencyGraph, error) {
 	graph := specs.NewDependencyGraph()
 
 	// Find all spec directories

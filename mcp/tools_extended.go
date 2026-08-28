@@ -19,6 +19,9 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"go.devnw.com/canary/internal/cmds/deps"
+	"go.devnw.com/canary/internal/cmds/view"
+	"go.devnw.com/canary/internal/specs"
 	"go.devnw.com/canary/internal/storage"
 )
 
@@ -581,6 +584,95 @@ func handleBugCreate(ctx context.Context, req *mcp.CallToolRequest, params *BugC
 				Text: fmt.Sprintf("Created bug %s: %s", bugID, params.Title),
 			},
 		},
+	}, result, nil
+}
+
+// ========== VIEW TOOL ==========
+
+// ViewParams identifies the requirement to aggregate.
+type ViewParams struct {
+	ReqID string `json:"reqId" jsonschema:"description:requirement ID e.g. CBIN-105 or PLAT-4521,required"`
+	Limit int    `json:"limit,omitempty" jsonschema:"description:max entries per list section (default 10)"`
+}
+
+// handleView returns the full bounded picture of one requirement: status,
+// files, tests, deps, spec/plan, diagrams, and ticket URL, in one call.
+// CANARY: REQ=CBIN-204; FEATURE="RequirementView"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_204_MCPView,TestCANARY_CBIN_204_MCPViewUnknown; UPDATED=2026-08-28
+func handleView(ctx context.Context, req *mcp.CallToolRequest, params *ViewParams) (*mcp.CallToolResult, *view.View, error) {
+	if params.ReqID == "" {
+		return nil, nil, fmt.Errorf("reqId is required")
+	}
+
+	v, err := view.BuildView(".canary/canary.db", ".", params.ReqID, params.Limit)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	summary := fmt.Sprintf("%s: %d%% complete, %d files, %d tests, %d diagrams",
+		v.ReqID, v.Completion, v.FilesTotal, len(v.Tests), len(v.Diagrams))
+	if len(v.DependsOn) > 0 {
+		summary += ", depends on " + strings.Join(v.DependsOn, ",")
+	}
+	if v.TicketURL != "" {
+		summary += ", ticket " + v.TicketURL
+	}
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: summary}},
+	}, v, nil
+}
+
+// ========== DEPS TOOL ==========
+
+// DepsParams selects a requirement and traversal direction.
+type DepsParams struct {
+	ReqID     string `json:"reqId" jsonschema:"description:requirement ID,required"`
+	Direction string `json:"direction,omitempty" jsonschema:"description:forward (what it depends on, default) or reverse (what depends on it)"`
+}
+
+// DepsResult carries dependency IDs only -- deliberately no token payloads.
+type DepsResult struct {
+	ReqID        string   `json:"reqId"`
+	Direction    string   `json:"direction"`
+	Dependencies []string `json:"dependencies"`
+	Count        int      `json:"count"`
+}
+
+// handleDeps returns dependency IDs for a requirement, forward (what it
+// depends on) or reverse (what depends on it). IDs only; callers use the
+// view tool for detail on any returned ID.
+// CANARY: REQ=CBIN-204; FEATURE="RequirementDeps"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_204_MCPDepsForward; UPDATED=2026-08-28
+func handleDeps(ctx context.Context, req *mcp.CallToolRequest, params *DepsParams) (*mcp.CallToolResult, *DepsResult, error) {
+	if params.ReqID == "" {
+		return nil, nil, fmt.Errorf("reqId is required")
+	}
+
+	dir := params.Direction
+	if dir == "" {
+		dir = "forward"
+	}
+	if dir != "forward" && dir != "reverse" {
+		return nil, nil, fmt.Errorf("invalid direction %q: must be \"forward\" or \"reverse\"", dir)
+	}
+
+	graph, err := deps.BuildGraph()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var ids []string
+	if dir == "reverse" {
+		for _, d := range graph.GetReverseDependencies(params.ReqID) {
+			ids = append(ids, d.Source)
+		}
+	} else {
+		gg := specs.NewGraphGenerator(nil)
+		ids = gg.GetTransitiveDependencies(graph, params.ReqID)
+	}
+
+	result := &DepsResult{ReqID: params.ReqID, Direction: dir, Dependencies: ids, Count: len(ids)}
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("%s %s deps: %d", params.ReqID, dir, len(ids))}},
 	}, result, nil
 }
 
