@@ -10,6 +10,8 @@ import (
 
 	ignore "github.com/sabhiram/go-gitignore"
 	"gopkg.in/yaml.v3"
+
+	"go.devnw.com/canary/internal/sources"
 )
 
 // ProjectConfig is the .canary/project.yaml shape.
@@ -171,6 +173,27 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 		reqs = append(reqs, Requirement{ID: id, Features: feats})
 	}
 	sort.Slice(reqs, func(i, j int) bool { return reqs[i].ID < reqs[j].ID })
+
+	// Attach mermaid diagram references (Task CBIN-202).
+	reg := activeRegistry
+	if reg == nil {
+		reg = sources.Default()
+	}
+	diagRefs, _ := ScanDiagramRefs(root, skip, reg)
+	byID := map[string]map[string]struct{}{}
+	for _, r := range diagRefs {
+		key := fmt.Sprintf("%s:%d", r.File, r.Line)
+		if byID[r.ReqID] == nil {
+			byID[r.ReqID] = map[string]struct{}{}
+		}
+		byID[r.ReqID][key] = struct{}{}
+	}
+	for i := range reqs {
+		if set, ok := byID[reqs[i].ID]; ok {
+			reqs[i].Diagrams = mapKeys(set)
+		}
+	}
+
 	return Report{
 		GeneratedAt:  getTimestamp(),
 		Requirements: reqs,
