@@ -19,10 +19,10 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"go.devnw.com/canary/internal/cmds/deps"
-	"go.devnw.com/canary/internal/cmds/view"
-	"go.devnw.com/canary/internal/specs"
-	"go.devnw.com/canary/internal/storage"
+	"go.devnw.com/canary/pkg/cmds/deps"
+	"go.devnw.com/canary/pkg/cmds/view"
+	"go.devnw.com/canary/pkg/specs"
+	"go.devnw.com/canary/pkg/storage"
 )
 
 // ========== SPECIFY TOOL ==========

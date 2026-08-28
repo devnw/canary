@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.devnw.com/canary/internal/canaryscan"
+	"go.devnw.com/canary/pkg/canaryscan"
 )
 
 // TestCANARY_CBIN_102_CLI_Verify validates the verify gate functionality.

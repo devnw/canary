@@ -11,7 +11,7 @@ import (
 	"flag"
 	"os"
 
-	"go.devnw.com/canary/internal/canaryscan"
+	"go.devnw.com/canary/pkg/canaryscan"
 )
 
 func main() {

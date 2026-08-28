@@ -13,8 +13,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"go.devnw.com/canary/internal/canaryscan"
-	"go.devnw.com/canary/internal/storage"
+	"go.devnw.com/canary/pkg/canaryscan"
+	"go.devnw.com/canary/pkg/storage"
 )
 
 // CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_205_SearchCapped; UPDATED=2026-08-28

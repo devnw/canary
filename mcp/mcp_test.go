@@ -15,7 +15,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"go.devnw.com/canary/internal/storage"
+	"go.devnw.com/canary/pkg/storage"
 )
 
 func TestMCPToolHandlers(t *testing.T) {
