@@ -97,6 +97,33 @@ func TestCANARY_CBIN_204_BuildView_FileCap(t *testing.T) {
 	}
 }
 
+func TestCANARY_CBIN_204_BuildView_DiagramCap(t *testing.T) {
+	dbPath, root := seedDB(t)
+
+	// Add extra diagram refs to test the cap
+	db, err := storage.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+
+	if err := db.ReplaceRefs("diagram", []storage.Ref{
+		{ReqID: "CBIN-105", Kind: "diagram", FilePath: "docs/arch.md", LineNumber: 7},
+		{ReqID: "CBIN-105", Kind: "diagram", FilePath: "docs/design.md", LineNumber: 12},
+		{ReqID: "CBIN-105", Kind: "diagram", FilePath: "docs/flow.md", LineNumber: 5},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	v, err := BuildView(dbPath, root, "CBIN-105", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(v.Diagrams) != 1 || v.DiagramsTotal != 3 {
+		t.Errorf("cap not applied: diagrams=%v total=%d", v.Diagrams, v.DiagramsTotal)
+	}
+}
+
 func TestCANARY_CBIN_204_BuildView_NotFound(t *testing.T) {
 	dbPath, root := seedDB(t)
 	if _, err := BuildView(dbPath, root, "CBIN-999", 10); err == nil {

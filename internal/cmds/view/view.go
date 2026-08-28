@@ -28,22 +28,23 @@ import (
 // spec/plan location, diagram refs, and (when configured) the owning ticket
 // system — in one bounded call.
 type View struct {
-	ReqID      string         `json:"req_id"`
-	Source     string         `json:"source,omitempty"`
-	TicketURL  string         `json:"ticket_url,omitempty"`
-	Statuses   map[string]int `json:"statuses"`       // status -> token count
-	Completion int            `json:"completion_pct"` // TESTED+BENCHED tokens / total
-	Features   []string       `json:"features"`       // "Feature (ASPECT, STATUS)"
-	Files      []string       `json:"files"`          // capped at limit
-	FilesTotal int            `json:"files_total"`
-	Tests      []string       `json:"tests"`
-	Benches    []string       `json:"benches,omitempty"`
-	DependsOn  []string       `json:"depends_on,omitempty"`
-	Blocks     []string       `json:"blocks,omitempty"`
-	RelatedTo  []string       `json:"related_to,omitempty"`
-	SpecPath   string         `json:"spec_path,omitempty"`
-	PlanPath   string         `json:"plan_path,omitempty"`
-	Diagrams   []string       `json:"diagrams,omitempty"` // "file:line"
+	ReqID         string         `json:"req_id"`
+	Source        string         `json:"source,omitempty"`
+	TicketURL     string         `json:"ticket_url,omitempty"`
+	Statuses      map[string]int `json:"statuses"`       // status -> token count
+	Completion    int            `json:"completion_pct"` // TESTED+BENCHED tokens / total
+	Features      []string       `json:"features"`       // "Feature (ASPECT, STATUS)"
+	Files         []string       `json:"files"`          // capped at limit
+	FilesTotal    int            `json:"files_total"`
+	Tests         []string       `json:"tests"`
+	Benches       []string       `json:"benches,omitempty"`
+	DependsOn     []string       `json:"depends_on,omitempty"`
+	Blocks        []string       `json:"blocks,omitempty"`
+	RelatedTo     []string       `json:"related_to,omitempty"`
+	SpecPath      string         `json:"spec_path,omitempty"`
+	PlanPath      string         `json:"plan_path,omitempty"`
+	Diagrams      []string       `json:"diagrams,omitempty"` // "file:line"
+	DiagramsTotal int            `json:"diagrams_total,omitempty"`
 }
 
 // DefaultViewLimit bounds list sections (files, diagrams) by default; agents
@@ -136,6 +137,7 @@ func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
 		for _, r := range refs {
 			v.Diagrams = append(v.Diagrams, fmt.Sprintf("%s:%d", r.FilePath, r.LineNumber))
 		}
+		v.DiagramsTotal = len(v.Diagrams)
 		if len(v.Diagrams) > limit {
 			v.Diagrams = v.Diagrams[:limit]
 		}
@@ -237,6 +239,10 @@ func printView(cmd *cobra.Command, v *View, limit int) {
 		fmt.Fprintf(out, "Plan:     %s\n", v.PlanPath)
 	}
 	if len(v.Diagrams) > 0 {
-		fmt.Fprintf(out, "Diagrams: %s\n", strings.Join(v.Diagrams, ", "))
+		fmt.Fprintf(out, "Diagrams: %s", strings.Join(v.Diagrams, ", "))
+		if v.DiagramsTotal > len(v.Diagrams) {
+			fmt.Fprintf(out, " … +%d more (use --limit %d)", v.DiagramsTotal-len(v.Diagrams), v.DiagramsTotal)
+		}
+		fmt.Fprintln(out)
 	}
 }
