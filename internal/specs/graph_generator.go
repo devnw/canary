@@ -2,6 +2,7 @@ package specs
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -248,4 +249,70 @@ func (gg *GraphGenerator) FormatDependencySummary(graph *DependencyGraph, reqID 
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+// CANARY: REQ=CBIN-203; FEATURE="MermaidGraph"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_203_FormatMermaid,TestCANARY_CBIN_203_FormatMermaid_CycleSafe; UPDATED=2026-08-28
+
+// mermaidNodeID converts a requirement ID to a mermaid-safe node identifier.
+// Mermaid node identifiers may not contain characters commonly found in
+// requirement IDs (dashes, dots, slashes, hashes), so they are replaced
+// with underscores. The original requirement ID is preserved verbatim as
+// the node's display label.
+func mermaidNodeID(reqID string) string {
+	return strings.NewReplacer("-", "_", ".", "_", "/", "_", "#", "_").Replace(reqID)
+}
+
+// FormatMermaid renders the dependency graph rooted at rootReqID as a mermaid
+// flowchart (flowchart TD). Node identifiers are sanitized via mermaidNodeID;
+// node labels are the raw requirement IDs. Edges are deduped and traversal is
+// cycle-safe (each edge is only ever emitted once, so a cycle cannot cause
+// unbounded recursion). urlFor is optional; when it returns a non-empty URL
+// for a requirement ID, a mermaid `click` directive is emitted for that node
+// so viewers can jump straight to the ticket/doc. Click lines are emitted in
+// sorted (deterministic) order.
+func (gg *GraphGenerator) FormatMermaid(graph *DependencyGraph, rootReqID string, urlFor func(string) string) string {
+	var b strings.Builder
+	b.WriteString("flowchart TD\n")
+
+	seenNode := map[string]bool{}
+	seenEdge := map[string]bool{}
+
+	declare := func(id string) {
+		if seenNode[id] {
+			return
+		}
+		seenNode[id] = true
+		fmt.Fprintf(&b, "    %s[\"%s\"]\n", mermaidNodeID(id), id)
+	}
+
+	var walk func(id string)
+	walk = func(id string) {
+		declare(id)
+		for _, dep := range graph.Nodes[id] {
+			edge := dep.Source + "->" + dep.Target
+			if seenEdge[edge] {
+				continue
+			}
+			seenEdge[edge] = true
+			declare(dep.Target)
+			fmt.Fprintf(&b, "    %s --> %s\n", mermaidNodeID(dep.Source), mermaidNodeID(dep.Target))
+			walk(dep.Target)
+		}
+	}
+	walk(rootReqID)
+
+	if urlFor != nil {
+		ids := make([]string, 0, len(seenNode))
+		for id := range seenNode {
+			ids = append(ids, id)
+		}
+		sort.Strings(ids)
+		for _, id := range ids {
+			if u := urlFor(id); u != "" {
+				fmt.Fprintf(&b, "    click %s \"%s\"\n", mermaidNodeID(id), u)
+			}
+		}
+	}
+
+	return b.String()
 }

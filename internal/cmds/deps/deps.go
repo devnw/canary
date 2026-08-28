@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"go.devnw.com/canary/internal/sources"
 	"go.devnw.com/canary/internal/specs"
 	"go.devnw.com/canary/internal/storage"
 )
@@ -126,10 +127,12 @@ Example:
 }
 
 // CANARY: REQ=CBIN-147; FEATURE="DepsGraphCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsGraphCommand; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-203; FEATURE="MermaidGraph"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_203_FormatMermaid; UPDATED=2026-08-28
 
 // createDepsGraphCommand creates the deps graph command
 func createDepsGraphCommand() *cobra.Command {
 	var showStatus bool
+	var format string
 
 	cmd := &cobra.Command{
 		Use:   "graph <req-id>",
@@ -140,12 +143,20 @@ The tree shows both direct and transitive dependencies with Unicode
 box-drawing characters. When --status is used, shows whether each
 dependency is satisfied (✅) or blocking (❌).
 
+Use --format mermaid to render the graph as a mermaid flowchart instead,
+with click-through links to tickets where a source is configured.
+
 Example:
   canary deps graph CBIN-147
-  canary deps graph CBIN-147 --status`,
+  canary deps graph CBIN-147 --status
+  canary deps graph CBIN-147 --format mermaid`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reqID := args[0]
+
+			if format != "ascii" && format != "mermaid" {
+				return fmt.Errorf("invalid --format %q: must be \"ascii\" or \"mermaid\"", format)
+			}
 
 			// Build graph from all specs
 			graph, err := buildDependencyGraph()
@@ -155,6 +166,12 @@ Example:
 
 			// Create generator
 			generator := specs.NewGraphGenerator(nil)
+
+			if format == "mermaid" {
+				reg := sources.LoadFromRoot(".")
+				cmd.Println(generator.FormatMermaid(graph, reqID, reg.TicketURL))
+				return nil
+			}
 
 			// Add status checker if requested
 			if showStatus {
@@ -181,6 +198,7 @@ Example:
 	}
 
 	cmd.Flags().BoolVar(&showStatus, "status", false, "Show dependency satisfaction status")
+	cmd.Flags().StringVar(&format, "format", "ascii", "Output format: ascii or mermaid")
 
 	return cmd
 }

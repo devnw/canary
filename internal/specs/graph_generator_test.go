@@ -222,3 +222,58 @@ type MockStatusChecker struct {
 func (m *MockStatusChecker) IsDependencySatisfied(dep Dependency) bool {
 	return m.statuses[dep.Target]
 }
+
+// CANARY: REQ=CBIN-203; FEATURE="MermaidGraph"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_203_FormatMermaid; UPDATED=2026-08-28
+func TestCANARY_CBIN_203_FormatMermaid(t *testing.T) {
+	// Build a two-level graph: CBIN-300 -> CBIN-200 -> CBIN-100, CBIN-300 -> PLAT-4521
+	graph := &DependencyGraph{
+		Nodes: map[string][]Dependency{
+			"CBIN-300": {
+				{Source: "CBIN-300", Target: "CBIN-200", Type: DependencyTypeFull, Description: "storage"},
+				{Source: "CBIN-300", Target: "PLAT-4521", Type: DependencyTypeFull, Description: "upstream"},
+			},
+			"CBIN-200": {
+				{Source: "CBIN-200", Target: "CBIN-100", Type: DependencyTypeFull},
+			},
+		},
+	}
+	gg := NewGraphGenerator(nil)
+	urlFor := func(id string) string {
+		if id == "PLAT-4521" {
+			return "https://company.atlassian.net/browse/PLAT-4521"
+		}
+		return ""
+	}
+	out := gg.FormatMermaid(graph, "CBIN-300", urlFor)
+
+	for _, want := range []string{
+		"flowchart TD",
+		`CBIN_300["CBIN-300"]`,
+		"CBIN_300 --> CBIN_200",
+		"CBIN_300 --> PLAT_4521",
+		"CBIN_200 --> CBIN_100",
+		`click PLAT_4521 "https://company.atlassian.net/browse/PLAT-4521"`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("mermaid output missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, `click CBIN_300`) {
+		t.Error("no click line should be emitted for empty URLs")
+	}
+}
+
+// CANARY: REQ=CBIN-203; FEATURE="MermaidGraph"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_203_FormatMermaid_CycleSafe; UPDATED=2026-08-28
+func TestCANARY_CBIN_203_FormatMermaid_CycleSafe(t *testing.T) {
+	graph := &DependencyGraph{
+		Nodes: map[string][]Dependency{
+			"CBIN-100": {{Source: "CBIN-100", Target: "CBIN-200", Type: DependencyTypeFull}},
+			"CBIN-200": {{Source: "CBIN-200", Target: "CBIN-100", Type: DependencyTypeFull}},
+		},
+	}
+	gg := NewGraphGenerator(nil)
+	out := gg.FormatMermaid(graph, "CBIN-100", nil) // must terminate
+	if c := strings.Count(out, "CBIN_100 --> CBIN_200"); c != 1 {
+		t.Errorf("edge emitted %d times, want 1", c)
+	}
+}
