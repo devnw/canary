@@ -179,7 +179,10 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 	if reg == nil {
 		reg = sources.Default()
 	}
-	diagRefs, _ := ScanDiagramRefs(root, skip, reg)
+	diagRefs, derr := ScanDiagramRefs(root, skip, reg, ignorePatterns)
+	if derr != nil {
+		fmt.Fprintf(os.Stderr, "Warning: diagram ref scan failed: %v\n", derr)
+	}
 	byID := map[string]map[string]struct{}{}
 	for _, r := range diagRefs {
 		key := fmt.Sprintf("%s:%d", r.File, r.Line)

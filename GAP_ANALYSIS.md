@@ -17,6 +17,13 @@ List requirements that are planned or in progress:
 
 - [ ] Follow-up: DB-side filtering for MCP bug-list/grep field queries (currently Go-side over full fetch)
 - [ ] Follow-up: MCP next lacks the CLI's project id_pattern filter
+- [ ] Follow-up: thread registry through Scan signature (remove activeRegistry global; fixes direct-Scan normalization bypass)
+- [ ] Follow-up: nested four-backtick mermaid fence handling
+- [ ] Follow-up: next-command candidate-window undershoot with id_pattern
+- [ ] Follow-up: --order-by allowlist in storage
+- [ ] Follow-up: --db flag parity for canary view
+- [ ] Follow-up: align MCP list tool with capLimit/Total convention
+- [ ] Follow-up: strict-gate stale-token cleanup (multi-segment IDs like CBIN-CLI-001 unsupported by update-stale regex)
 
 ## Verification
 

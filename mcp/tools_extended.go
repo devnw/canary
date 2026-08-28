@@ -603,7 +603,11 @@ func handleView(ctx context.Context, req *mcp.CallToolRequest, params *ViewParam
 		return nil, nil, fmt.Errorf("reqId is required")
 	}
 
-	v, err := view.BuildView(".canary/canary.db", ".", params.ReqID, params.Limit)
+	limit := params.Limit
+	if limit > maxToolLimit {
+		limit = maxToolLimit
+	}
+	v, err := view.BuildView(".canary/canary.db", ".", params.ReqID, limit)
 	if err != nil {
 		return nil, nil, err
 	}

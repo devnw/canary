@@ -176,7 +176,14 @@ The database is stored at .canary/canary.db by default.`,
 
 		// Index diagram references (mermaid) so `canary view` can answer without grepping.
 		reg := sources.LoadFromRoot(rootPath)
-		diagRefs, derr := canaryscan.ScanDiagramRefs(rootPath, nil, reg)
+		ignorePatterns, ierr := canaryscan.LoadCanaryIgnore(rootPath)
+		if ierr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to load .canaryignore: %v\n", ierr)
+		}
+		diagRefs, derr := canaryscan.ScanDiagramRefs(rootPath, nil, reg, ignorePatterns)
+		if derr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: diagram ref scan failed: %v\n", derr)
+		}
 		if derr == nil {
 			refs := make([]storage.Ref, 0, len(diagRefs))
 			for _, r := range diagRefs {

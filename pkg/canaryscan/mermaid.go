@@ -13,6 +13,8 @@ import (
 	"regexp"
 	"strings"
 
+	ignore "github.com/sabhiram/go-gitignore"
+
 	"devnw.dev/canary/pkg/sources"
 )
 
@@ -74,8 +76,10 @@ func ExtractDiagramRefs(relPath, content string, reg *sources.Registry) []Diagra
 
 // ScanDiagramRefs walks root for .md/.markdown/.mmd files and extracts all
 // requirement-ID mentions inside mermaid diagrams. Paths in the result are
-// root-relative with forward slashes.
-func ScanDiagramRefs(root string, skip *regexp.Regexp, reg *sources.Registry) ([]DiagramRef, error) {
+// root-relative with forward slashes. ignorePatterns (from LoadCanaryIgnore)
+// is honored the same way Scan honors it: relative path matched first, dirs
+// skipped via SkipDir; nil means no .canaryignore patterns apply.
+func ScanDiagramRefs(root string, skip *regexp.Regexp, reg *sources.Registry, ignorePatterns *ignore.GitIgnore) ([]DiagramRef, error) {
 	if skip == nil {
 		skip = DefaultSkipRegex()
 	}
@@ -83,6 +87,16 @@ func ScanDiagramRefs(root string, skip *regexp.Regexp, reg *sources.Registry) ([
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		relPath, _ := filepath.Rel(root, path)
+		if relPath == "" {
+			relPath = "."
+		}
+		if ignorePatterns != nil && ignorePatterns.MatchesPath(relPath) {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 		if d.IsDir() {
 			if skip.MatchString(path) {

@@ -8,6 +8,7 @@ package cli
 import (
 	"github.com/spf13/cobra"
 
+	"devnw.dev/canary/mcp"
 	"devnw.dev/canary/pkg/cmds/bug"
 	"devnw.dev/canary/pkg/cmds/checkpoint"
 	"devnw.dev/canary/pkg/cmds/constitution"
@@ -35,7 +36,6 @@ import (
 	"devnw.dev/canary/pkg/cmds/specs"
 	"devnw.dev/canary/pkg/cmds/status"
 	"devnw.dev/canary/pkg/cmds/view"
-	"devnw.dev/canary/mcp"
 )
 
 // Commands returns all top-level commands for the canary CLI.
