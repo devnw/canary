@@ -38,7 +38,8 @@ include:
   - component: gitlab.com/devnw/ci-catalog/go-lint@v1.11.0
     inputs:
       stage: lint
-      golangci_version: "v2.8.0"
+      # v2.13+ is built with go1.27; older images refuse go 1.27 modules
+      golangci_version: "v2.13.2"
       lint_flags: "--timeout 5m"
       config_file: ".golangci.yml"
       allow_failure: false
