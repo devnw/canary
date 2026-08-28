@@ -11,23 +11,33 @@ stages:
   - publish
 
 variables:
+  # go.mod requires Go >= 1.27.0. CI runs the golang:$GO_VERSION image with
+  # GOTOOLCHAIN=local, so the image Go must satisfy that floor.
   GO_VERSION: "1.27"
 
-# Include CI catalog components
+# Route jobs to the OVH Dedicated Runners pool. The bare `company` tag also
+# matches the Hosted Windows Runners pool [company, windows, dedicated, x86],
+# which has no Go toolchain and runs PowerShell — a bare-tagged go-build
+# landed there and failed with "go: not recognized" (pipeline 2801146876).
+# `[company, dedicated, linux]` uniquely selects OVH Dedicated (Lab Servers
+# lacks `dedicated`, Company Cluster lacks `dedicated`, Windows lacks
+# `linux`). Same routing rationale as void's .gitlab-ci.yml.
 default:
   tags:
     - company
+    - dedicated
+    - linux
 
 include:
   # Build stage
-  - component: gitlab.com/devnw/ci-catalog/go-build@v1.11.0
+  - component: gitlab.com/devnw/ci-catalog/go-build@v1.43.0
     inputs:
       stage: build
       go_version: $GO_VERSION
       build_flags: "-v"
 
   # Test stage
-  - component: gitlab.com/devnw/ci-catalog/go-test@v1.11.0
+  - component: gitlab.com/devnw/ci-catalog/go-test@v1.43.0
     inputs:
       stage: test
       go_version: $GO_VERSION
@@ -35,7 +45,7 @@ include:
       coverage_report: true
 
   # Lint stage
-  - component: gitlab.com/devnw/ci-catalog/go-lint@v1.11.0
+  - component: gitlab.com/devnw/ci-catalog/go-lint@v1.43.0
     inputs:
       stage: lint
       # v2.13+ is built with go1.27; older images refuse go 1.27 modules
@@ -45,19 +55,19 @@ include:
       allow_failure: false
 
   # Security scanning - gosec
-  - component: gitlab.com/devnw/ci-catalog/gosec@v1.11.0
+  - component: gitlab.com/devnw/ci-catalog/gosec@v1.43.0
     inputs:
       stage: security
       allow_failure: false
 
   # Security scanning - govulncheck
-  - component: gitlab.com/devnw/ci-catalog/govulncheck@v1.11.0
+  - component: gitlab.com/devnw/ci-catalog/govulncheck@v1.43.0
     inputs:
       stage: security
       allow_failure: false
 
   # Release stage - goreleaser
-  - component: gitlab.com/devnw/ci-catalog/goreleaser-release@v1.11.0
+  - component: gitlab.com/devnw/ci-catalog/goreleaser-release@v1.43.0
     inputs:
       stage: release
       goreleaser_version: "v2.6.1"
@@ -67,7 +77,7 @@ include:
       tag_only: true
 
   # APT repository publishing (apt.codepros.org)
-  - component: gitlab.com/devnw/ci-catalog/apt-publish@v1.14.0
+  - component: gitlab.com/devnw/ci-catalog/apt-publish@v1.43.0
     inputs:
       stage: publish
       apt_domain: apt.codepros.org
@@ -80,10 +90,29 @@ include:
       sign_needs: goreleaser-release
       allow_failure: false
 
-# Override goreleaser-release for SaaS runners and GitLab Container Registry
+# Override the govulncheck scanner image so the stdlib it analyzes tracks the
+# module's Go version rather than the (lagging) ci-catalog go image. Same
+# rationale as void's override.
+govulncheck:
+  image: golang:1.27
+
+# Override goreleaser-release: run goreleaser DIRECTLY in the job container
+# instead of the catalog's nested `docker run goreleaser/goreleaser` pattern.
+# The nested pattern fails on these runners because the build dir is a
+# runner-managed Docker volume, not host-visible — `-v $PWD:/workspace` mounts
+# an empty dir and goreleaser dies with "open .goreleaser.yaml: no such file
+# or directory" (canary v0.2.1 pipeline 2801146868, same failure void hit at
+# v0.1.27). Ported from void's proven override; canary differences: no
+# Homebrew tap, and .goreleaser.yaml templates `dockerfile:` from
+# $DOCKERFILE, so it is exported here.
 goreleaser-release:
   tags:
     - company
+    - dedicated
+    - docker
+    - linux
+  # OVH Dedicated Runners bind-mount /var/run/docker.sock; no dind needed.
+  services: []
   id_tokens:
     VAULT_ID_TOKEN:
       aud: https://pki.devnw.com
@@ -92,13 +121,18 @@ goreleaser-release:
     VAULT_ADDR: https://pki.devnw.com
     VAULT_AUTH_ROLE: codepros-ci
     VAULT_MOUNT: devnw
-    VAULT_SECRET_PATH: codepros/oss/dockerhub
+    VAULT_DOCKERHUB_SECRET_PATH: codepros/oss/dockerhub
+    # Force docker CLI to use the host's daemon via the bind-mounted socket.
+    DOCKER_HOST: "unix:///var/run/docker.sock"
+    DOCKERFILE: "Dockerfile"
   before_script:
     - apk add --no-cache curl jq > /dev/null
     - |
+      # Unset GITHUB_TOKEN so goreleaser doesn't detect multiple tokens.
       unset GITHUB_TOKEN
 
-      if [ -n "$VAULT_AUTH_ROLE" ] && [ -n "$VAULT_SECRET_PATH" ]; then
+      # Authenticate to Vault (Docker Hub credentials; optional)
+      if [ -n "$VAULT_AUTH_ROLE" ]; then
         echo "Authenticating to Vault at $VAULT_ADDR..."
         AUTH_RESPONSE=$(curl -sS --request POST \
           --data "{\"role\": \"$VAULT_AUTH_ROLE\", \"jwt\": \"$VAULT_ID_TOKEN\"}" \
@@ -113,50 +147,127 @@ goreleaser-release:
         fi
         echo "Vault authentication successful"
 
-        echo "Reading secret from: ${VAULT_MOUNT}/data/${VAULT_SECRET_PATH}"
-        VAULT_RESPONSE=$(curl -sS --header "X-Vault-Token: $VAULT_TOKEN" \
-          "$VAULT_ADDR/v1/${VAULT_MOUNT}/data/$VAULT_SECRET_PATH")
+        if [ -n "$VAULT_DOCKERHUB_SECRET_PATH" ]; then
+          echo "Reading Docker Hub secret from: ${VAULT_MOUNT}/data/${VAULT_DOCKERHUB_SECRET_PATH}"
+          VAULT_RESPONSE=$(curl -sS --header "X-Vault-Token: $VAULT_TOKEN" \
+            "$VAULT_ADDR/v1/${VAULT_MOUNT}/data/$VAULT_DOCKERHUB_SECRET_PATH")
 
-        export DOCKERHUB_USERNAME=$(echo "$VAULT_RESPONSE" | jq -r '.data.data.username // empty')
-        export DOCKERHUB_TOKEN=$(echo "$VAULT_RESPONSE" | jq -r '.data.data.token // empty')
+          export DOCKERHUB_USERNAME=$(echo "$VAULT_RESPONSE" | jq -r '.data.data.username // empty')
+          export DOCKERHUB_TOKEN=$(echo "$VAULT_RESPONSE" | jq -r '.data.data.token // empty')
 
-        if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
-          echo "WARNING: Docker Hub credentials not found"
-        else
-          echo "Docker Hub credentials loaded for user: $DOCKERHUB_USERNAME"
+          if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
+            echo "WARNING: Docker Hub credentials not found at expected keys (username, token)"
+          else
+            echo "Docker Hub credentials loaded for user: $DOCKERHUB_USERNAME"
+          fi
         fi
       fi
 
-      docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD" "$DOCKER_REGISTRY"
+      # Runner-injected DOCKER_AUTH_CONFIG takes precedence over `docker
+      # login`; remove it so the job-scoped credential below is
+      # authoritative (see void v0.3.3 trace).
+      unset DOCKER_AUTH_CONFIG
 
+      # Job-local DOCKER_CONFIG in /tmp: keeps credentials off the runner
+      # host (poisons later jobs) and outside the repo tree (goreleaser
+      # dirty-tree check).
+      export DOCKER_CONFIG=/tmp/.docker
+      mkdir -p "$DOCKER_CONFIG"
+
+      # CI_JOB_TOKEN always has push access to this project's own registry.
+      echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+
+      # Login to Docker Hub (optional)
       if [ -n "${DOCKERHUB_USERNAME:-}" ] && [ -n "${DOCKERHUB_TOKEN:-}" ]; then
+        echo "Logging into Docker Hub..."
         echo "$DOCKERHUB_TOKEN" | docker login docker.io -u "$DOCKERHUB_USERNAME" --password-stdin
+      else
+        echo "WARNING: Skipping Docker Hub login (no credentials)"
       fi
   script:
     - |
-      GORELEASER_IMAGE="goreleaser/goreleaser:${GORELEASER_VERSION:-v2.6.1}"
+      GORELEASER_VERSION_PIN="${GORELEASER_VERSION:-v2.6.1}"
+      # Known-good SHA-256 of goreleaser_Linux_x86_64.tar.gz for the pinned
+      # version (from the release's checksums.txt). Update in lockstep with
+      # GORELEASER_VERSION_PIN — a mismatch fails the job closed.
+      GORELEASER_SHA256_v2_6_1="517bc6422ed3fc4ae12900216cdab047dbb1dc60610174a170f7b760f171e27f"
+
       RELEASE_ARGS="${GORELEASER_RELEASE_ARGS:---clean}"
       RELEASE_ARGS="$RELEASE_ARGS --config .goreleaser.yaml"
 
       echo "Running GoReleaser with: release $RELEASE_ARGS"
 
-      docker run --rm --privileged \
-        -v "$PWD:/workspace" \
-        -w /workspace \
-        -v /var/run/docker.sock:/var/run/docker.sock \
-        -v /root/.docker:/root/.docker \
-        -e DOCKER_REGISTRY \
-        -e DOCKER_USERNAME \
-        -e DOCKER_PASSWORD \
-        -e GITLAB_TOKEN \
-        -e CI_JOB_TOKEN \
-        -e CI_REGISTRY_IMAGE \
-        -e CI_COMMIT_TAG \
-        -e CI_COMMIT_BRANCH \
-        -e CI_DEFAULT_BRANCH \
-        -e CI_PROJECT_URL \
-        -e CI_API_V4_URL \
-        -e CI_PROJECT_ID \
-        -e GITLAB_CI \
-        -e DOCKERFILE=Dockerfile \
-        "$GORELEASER_IMAGE" release $RELEASE_ARGS
+      # GitHub release is disabled via .goreleaser.yaml's
+      # `release: disable: {{ index .Env "GITLAB_CI" }}`; no SCM token needed.
+      # Drop the catalog's GITLAB_TOKEN default so goreleaser doesn't probe it.
+      unset GITLAB_TOKEN
+
+      # go: .goreleaser.yaml's `before:` hook runs `go mod tidy`; the
+      # docker:latest job image has no Go toolchain.
+      apk add --no-cache go
+
+      # Download goreleaser, verify against the pinned SHA-256, then extract.
+      case "$GORELEASER_VERSION_PIN" in
+        v2.6.1) GORELEASER_SHA256="$GORELEASER_SHA256_v2_6_1" ;;
+        *)
+          echo "ERROR: no pinned SHA-256 for goreleaser $GORELEASER_VERSION_PIN; add it before releasing." >&2
+          exit 1
+          ;;
+      esac
+      GORELEASER_TARBALL="/tmp/goreleaser_Linux_x86_64.tar.gz"
+      curl -fsSL "https://github.com/goreleaser/goreleaser/releases/download/${GORELEASER_VERSION_PIN}/goreleaser_Linux_x86_64.tar.gz" \
+        -o "$GORELEASER_TARBALL"
+      echo "${GORELEASER_SHA256}  ${GORELEASER_TARBALL}" | sha256sum -c -
+      tar xz -C /usr/local/bin -f "$GORELEASER_TARBALL" goreleaser
+      go version
+      goreleaser --version
+
+      # Register qemu emulators so the arm64 leg of the multi-arch build can
+      # run under emulation (idempotent).
+      docker run --rm --privileged tonistiigi/binfmt --install all
+
+      goreleaser release $RELEASE_ARGS
+
+# apt-publish overrides: clear the aws-cli entrypoint and route the apt jobs
+# to the k8s Company Cluster pool [company, k8s, linux] — OVH Dedicated fails
+# apt GPG verification and Lab Servers fails DNS (see void's .gitlab-ci.yml
+# for the full runner history). before_script lines stay single-line: block
+# scalars crash the detect-secrets pre-commit YAML parser.
+apt-publish-apt-codepros-org:
+  tags:
+    - company
+    - k8s
+    - linux
+  image:
+    name: amazon/aws-cli:latest
+    entrypoint: [""]
+
+apt-sign-apt-codepros-org:
+  tags:
+    - company
+    - k8s
+    - linux
+  before_script:
+    - "mkdir -p /etc/apt/apt.conf.d"
+    - "echo 'Acquire::http::No-Cache \"true\";' > /etc/apt/apt.conf.d/99-ciah-no-cache"
+    - "echo 'Acquire::https::No-Cache \"true\";' >> /etc/apt/apt.conf.d/99-ciah-no-cache"
+    - "echo 'Acquire::http::Pipeline-Depth \"0\";' >> /etc/apt/apt.conf.d/99-ciah-no-cache"
+    - "echo 'Acquire::Retries \"3\";' >> /etc/apt/apt.conf.d/99-ciah-no-cache"
+    - "echo 'Acquire::BrokenProxy \"true\";' >> /etc/apt/apt.conf.d/99-ciah-no-cache"
+    - "unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY || true"
+    - "apt-get update -qq && apt-get install -qq -y gnupg dpkg-dev curl jq ca-certificates > /dev/null"
+
+apt-repo-apt-codepros-org:
+  tags:
+    - company
+    - k8s
+    - linux
+  before_script:
+    - "mkdir -p /etc/apt/apt.conf.d"
+    - "echo 'Acquire::http::No-Cache \"true\";' > /etc/apt/apt.conf.d/99-ciah-no-cache"
+    - "echo 'Acquire::https::No-Cache \"true\";' >> /etc/apt/apt.conf.d/99-ciah-no-cache"
+    - "echo 'Acquire::http::Pipeline-Depth \"0\";' >> /etc/apt/apt.conf.d/99-ciah-no-cache"
+    - "echo 'Acquire::Retries \"3\";' >> /etc/apt/apt.conf.d/99-ciah-no-cache"
+    - "echo 'Acquire::BrokenProxy \"true\";' >> /etc/apt/apt.conf.d/99-ciah-no-cache"
+    - "unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY || true"
+    - "apt-get update -qq && apt-get install -qq -y gnupg dpkg-dev xz-utils gzip coreutils curl jq ca-certificates awscli > /dev/null"
