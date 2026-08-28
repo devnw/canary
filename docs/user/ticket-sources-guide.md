@@ -38,7 +38,7 @@ sources:
 | `key` | The prefix used in `REQ=` fields for this source (e.g. `PLAT`). |
 | `url` | Optional URL template. `{id}` = full ID (e.g. `PLAT-4521`), `{num}` = numeric part only (e.g. `4521`). Not needed for `flatfile`. |
 
-The `core`/`flatfile` source is always present by default even if omitted.
+If the `sources:` section is omitted entirely, a `flatfile` source is synthesized from `project.key` (default `CBIN`). Once you declare a `sources:` list, exactly the listed sources are used — include a `flatfile` entry explicitly if you still want local requirement IDs.
 
 ## Referencing Tickets in Tokens
 
