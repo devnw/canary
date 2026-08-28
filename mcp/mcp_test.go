@@ -7,9 +7,14 @@ package mcp
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"go.devnw.com/canary/internal/storage"
 )
 
 func TestMCPToolHandlers(t *testing.T) {
@@ -213,5 +218,210 @@ func TestMCPCommandCreation(t *testing.T) {
 
 	if cmd.Flags().Lookup("host") == nil {
 		t.Error("MCP command should have --host flag")
+	}
+}
+
+// setupMCPTestDB chdirs into a fresh temp project directory, opens and
+// migrates the hardcoded ".canary/canary.db" the handlers expect, and
+// restores the original working directory on cleanup. Returns the open
+// database handle for seeding; callers should Close() it before invoking a
+// handler so the handler's own connection isn't contending with an open one.
+func setupMCPTestDB(t *testing.T) *storage.DB {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(originalDir) })
+
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".canary"), 0o755); err != nil {
+		t.Fatalf("failed to create .canary dir: %v", err)
+	}
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir into temp dir: %v", err)
+	}
+
+	dbPath := ".canary/canary.db"
+	db, err := storage.Open(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open database: %v", err)
+	}
+	if err := storage.AutoMigrate(dbPath); err != nil {
+		t.Fatalf("failed to migrate database: %v", err)
+	}
+
+	return db
+}
+
+// TestCANARY_CBIN_205_SearchCapped verifies handleSearch truncates results to
+// the default limit of 20 while reporting the true match count via Total.
+func TestCANARY_CBIN_205_SearchCapped(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+
+	for i := 0; i < 30; i++ {
+		tok := &storage.Token{
+			ReqID:    fmt.Sprintf("CBIN-N%03d", i),
+			Feature:  fmt.Sprintf("NeedleFeature%03d", i),
+			Aspect:   "API",
+			Status:   "IMPL",
+			Priority: i + 1,
+			FilePath: fmt.Sprintf("file%03d.go", i),
+			Keywords: "needle",
+		}
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatalf("failed to insert test token %d: %v", i, err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	_, result, err := handleSearch(ctx, req, &SearchParams{Keywords: "needle"})
+	if err != nil {
+		t.Fatalf("handleSearch failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	if len(result.Tokens) != 20 {
+		t.Errorf("expected 20 tokens (default cap), got %d", len(result.Tokens))
+	}
+	if result.Total != 30 {
+		t.Errorf("expected Total=30, got %d", result.Total)
+	}
+}
+
+// TestCANARY_CBIN_205_SearchLimitRaised verifies an explicit Limit above the
+// default (but within the hard ceiling) returns all matches.
+func TestCANARY_CBIN_205_SearchLimitRaised(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+
+	for i := 0; i < 30; i++ {
+		tok := &storage.Token{
+			ReqID:    fmt.Sprintf("CBIN-N%03d", i),
+			Feature:  fmt.Sprintf("NeedleFeature%03d", i),
+			Aspect:   "API",
+			Status:   "IMPL",
+			Priority: i + 1,
+			FilePath: fmt.Sprintf("file%03d.go", i),
+			Keywords: "needle",
+		}
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatalf("failed to insert test token %d: %v", i, err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	_, result, err := handleSearch(ctx, req, &SearchParams{Keywords: "needle", Limit: 100})
+	if err != nil {
+		t.Fatalf("handleSearch failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	if len(result.Tokens) != 30 {
+		t.Errorf("expected 30 tokens (Limit=100 raised above match count), got %d", len(result.Tokens))
+	}
+}
+
+// TestCANARY_CBIN_205_NextDefaultFindsWork verifies handleNext with no
+// filters finds a seeded STUB token rather than reporting "all complete".
+func TestCANARY_CBIN_205_NextDefaultFindsWork(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+
+	tok := &storage.Token{
+		ReqID:    "CBIN-900",
+		Feature:  "NextTargetFeature",
+		Aspect:   "API",
+		Status:   "STUB",
+		Priority: 1,
+		FilePath: "next900.go",
+	}
+	if err := db.UpsertToken(tok); err != nil {
+		t.Fatalf("failed to insert test token: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	_, result, err := handleNext(ctx, req, &NextParams{})
+	if err != nil {
+		t.Fatalf("handleNext failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	if result.Message != "" {
+		t.Errorf("expected a token to be found, got message: %q", result.Message)
+	}
+	if result.ReqID != "CBIN-900" {
+		t.Errorf("expected ReqID=CBIN-900, got %q", result.ReqID)
+	}
+}
+
+// TestCANARY_CBIN_205_BugListOnlyBugs verifies handleBugList returns only
+// BUG-prefixed tokens, excluding other requirements in the same database.
+func TestCANARY_CBIN_205_BugListOnlyBugs(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+
+	tokens := []*storage.Token{
+		{
+			ReqID:    "BUG-001",
+			Feature:  "SomeBug",
+			Aspect:   "API",
+			Status:   "OPEN",
+			Priority: 1,
+			FilePath: "bug1.go",
+		},
+		{
+			ReqID:    "CBIN-100",
+			Feature:  "NotABug",
+			Aspect:   "API",
+			Status:   "IMPL",
+			Priority: 1,
+			FilePath: "cbin100.go",
+		},
+	}
+	for _, tok := range tokens {
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatalf("failed to insert test token %s: %v", tok.ReqID, err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	_, result, err := handleBugList(ctx, req, &BugListParams{})
+	if err != nil {
+		t.Fatalf("handleBugList failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	if result.Count != 1 {
+		t.Errorf("expected Count=1, got %d", result.Count)
+	}
+	if len(result.Bugs) != 1 {
+		t.Fatalf("expected 1 bug, got %d", len(result.Bugs))
+	}
+	if result.Bugs[0].ReqID != "BUG-001" {
+		t.Errorf("expected Bugs[0].ReqID=BUG-001, got %q", result.Bugs[0].ReqID)
 	}
 }

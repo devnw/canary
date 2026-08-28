@@ -16,6 +16,25 @@ import (
 	"go.devnw.com/canary/internal/storage"
 )
 
+// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_205_SearchCapped; UPDATED=2026-08-28
+const (
+	defaultToolLimit = 20  // small by default to protect agent context
+	maxToolLimit     = 100 // explicit ceiling even when the agent asks for more
+)
+
+// capLimit clamps a requested result count to [1, maxToolLimit], falling
+// back to defaultToolLimit when the caller didn't ask for anything specific.
+func capLimit(requested int) int {
+	switch {
+	case requested <= 0:
+		return defaultToolLimit
+	case requested > maxToolLimit:
+		return maxToolLimit
+	default:
+		return requested
+	}
+}
+
 // ListParams defines parameters for the list tool
 type ListParams struct {
 	Status string `json:"status,omitempty" jsonschema:"description:Filter by status (STUB IMPL TESTED BENCHED)"`
@@ -108,6 +127,7 @@ func tokensShortSummary(tokens []*storage.Token, max int) string {
 // ShowParams defines parameters for the show tool
 type ShowParams struct {
 	ReqID string `json:"reqId" jsonschema:"description:Requirement ID (e.g. CBIN-123),required"`
+	Limit int    `json:"limit,omitempty" jsonschema:"description:Maximum results (default 20, max 100)"`
 }
 
 // ShowResult defines the output for the show tool
@@ -115,6 +135,7 @@ type ShowResult struct {
 	ReqID  string           `json:"reqId"`
 	Tokens []*storage.Token `json:"tokens"`
 	Count  int              `json:"count"`
+	Total  int              `json:"total"`
 }
 
 // handleShow implements the show tool handler
@@ -135,10 +156,17 @@ func handleShow(ctx context.Context, req *mcp.CallToolRequest, params *ShowParam
 		return nil, nil, fmt.Errorf("get tokens: %w", err)
 	}
 
+	total := len(tokens)
+	limit := capLimit(params.Limit)
+	if len(tokens) > limit {
+		tokens = tokens[:limit]
+	}
+
 	result := &ShowResult{
 		ReqID:  params.ReqID,
 		Tokens: tokens,
 		Count:  len(tokens),
+		Total:  total,
 	}
 
 	text := showSummaryLine(params.ReqID, tokens)
@@ -243,6 +271,7 @@ type StatusResult struct {
 	Stats         StatusStats      `json:"stats"`
 	CompletionPct int              `json:"completionPct"`
 	Tokens        []*storage.Token `json:"tokens"`
+	Total         int              `json:"total"`
 }
 
 // StatusStats holds progress statistics
@@ -297,11 +326,20 @@ func handleStatus(ctx context.Context, req *mcp.CallToolRequest, params *StatusP
 		completionPct = (stats.Completed * 100) / stats.Total
 	}
 
+	// Stats and completion are computed over ALL tokens above; only the
+	// embedded token array is truncated to keep the response small.
+	total := len(tokens)
+	limit := capLimit(0)
+	if len(tokens) > limit {
+		tokens = tokens[:limit]
+	}
+
 	result := &StatusResult{
 		ReqID:         params.ReqID,
 		Stats:         stats,
 		CompletionPct: completionPct,
 		Tokens:        tokens,
+		Total:         total,
 	}
 
 	return &mcp.CallToolResult{
@@ -317,6 +355,7 @@ func handleStatus(ctx context.Context, req *mcp.CallToolRequest, params *StatusP
 // SearchParams defines parameters for the search tool
 type SearchParams struct {
 	Keywords string `json:"keywords" jsonschema:"description:Search keywords,required"`
+	Limit    int    `json:"limit,omitempty" jsonschema:"description:Maximum results (default 20, max 100)"`
 }
 
 // SearchResult defines the output for the search tool
@@ -324,6 +363,7 @@ type SearchResult struct {
 	Keywords string           `json:"keywords"`
 	Tokens   []*storage.Token `json:"tokens"`
 	Count    int              `json:"count"`
+	Total    int              `json:"total"`
 }
 
 // handleSearch implements the search tool handler
@@ -339,18 +379,26 @@ func handleSearch(ctx context.Context, req *mcp.CallToolRequest, params *SearchP
 	}
 	defer db.Close()
 
-	tokens, err := db.SearchTokens(params.Keywords, 0)
+	all, err := db.SearchTokens(params.Keywords, maxToolLimit+1)
 	if err != nil {
 		return nil, nil, fmt.Errorf("search tokens: %w", err)
+	}
+
+	total := len(all)
+	limit := capLimit(params.Limit)
+	tokens := all
+	if len(tokens) > limit {
+		tokens = tokens[:limit]
 	}
 
 	result := &SearchResult{
 		Keywords: params.Keywords,
 		Tokens:   tokens,
 		Count:    len(tokens),
+		Total:    total,
 	}
 
-	text := fmt.Sprintf("Found %d tokens matching %q: %s", len(tokens), params.Keywords, tokensShortSummary(tokens, 5))
+	text := fmt.Sprintf("Found %d tokens matching %q (showing %d): %s", total, params.Keywords, len(tokens), tokensShortSummary(tokens, 5))
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{Text: text},
@@ -384,22 +432,38 @@ func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParam
 	}
 	defer db.Close()
 
-	filters := make(map[string]string)
+	var tokens []*storage.Token
 	if params.Status != "" {
+		filters := make(map[string]string)
 		filters["status"] = params.Status
+		if params.Aspect != "" {
+			filters["aspect"] = params.Aspect
+		}
+
+		tokens, err = db.ListTokens(filters, "", "priority ASC, updated_at DESC", 1)
+		if err != nil {
+			return nil, nil, fmt.Errorf("query tokens: %w", err)
+		}
 	} else {
-		// Default to incomplete statuses
-		filters["status"] = "STUB,IMPL"
-	}
+		// No status filter: query STUB first, then IMPL if none found,
+		// mirroring the CLI's next command (internal/cmds/next/next.go).
+		// A single filters["status"] = "STUB,IMPL" never matches anything
+		// since ListTokens does an exact equality comparison.
+		for _, status := range []string{"STUB", "IMPL"} {
+			filters := make(map[string]string)
+			filters["status"] = status
+			if params.Aspect != "" {
+				filters["aspect"] = params.Aspect
+			}
 
-	if params.Aspect != "" {
-		filters["aspect"] = params.Aspect
-	}
-
-	// Get highest priority token
-	tokens, err := db.ListTokens(filters, "", "priority ASC, updated_at DESC", 1)
-	if err != nil {
-		return nil, nil, fmt.Errorf("query tokens: %w", err)
+			tokens, err = db.ListTokens(filters, "", "priority ASC, updated_at DESC", 1)
+			if err != nil {
+				return nil, nil, fmt.Errorf("query tokens: %w", err)
+			}
+			if len(tokens) > 0 {
+				break
+			}
+		}
 	}
 
 	if len(tokens) == 0 {

@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -357,6 +358,7 @@ func handlePrioritize(ctx context.Context, req *mcp.CallToolRequest, params *Pri
 type GrepParams struct {
 	Pattern string `json:"pattern" jsonschema:"description:Pattern to search for in token fields,required"`
 	Field   string `json:"field,omitempty" jsonschema:"description:Field to search (feature aspect owner or all)"`
+	Limit   int    `json:"limit,omitempty" jsonschema:"description:Maximum results (default 20, max 100)"`
 }
 
 // GrepResult defines the output for the grep tool
@@ -365,6 +367,25 @@ type GrepResult struct {
 	Field   string           `json:"field"`
 	Tokens  []*storage.Token `json:"tokens"`
 	Count   int              `json:"count"`
+	Total   int              `json:"total"`
+}
+
+// grepFieldValue returns the value of the named token field for field-scoped
+// grep matching. An unrecognized field yields the empty string so it never
+// matches, rather than silently falling back to "all" behavior.
+func grepFieldValue(tok *storage.Token, field string) string {
+	switch field {
+	case "req":
+		return tok.ReqID
+	case "feature":
+		return tok.Feature
+	case "aspect":
+		return tok.Aspect
+	case "owner":
+		return tok.Owner
+	default:
+		return ""
+	}
 }
 
 // handleGrep implements the grep tool handler
@@ -385,10 +406,32 @@ func handleGrep(ctx context.Context, req *mcp.CallToolRequest, params *GrepParam
 	}
 	defer db.Close()
 
-	// Search tokens based on field
-	tokens, err := db.SearchTokens(params.Pattern, 0)
-	if err != nil {
-		return nil, nil, fmt.Errorf("search tokens: %w", err)
+	var all []*storage.Token
+	if field == "all" {
+		all, err = db.SearchTokens(params.Pattern, maxToolLimit+1)
+		if err != nil {
+			return nil, nil, fmt.Errorf("search tokens: %w", err)
+		}
+	} else {
+		// SearchTokens only matches keywords/feature/req_id/file_path/test/
+		// bench, so it can't be reused for owner/aspect scoping. Fetch the
+		// candidate set and filter in Go on the exact named field instead.
+		candidates, err := db.ListTokens(nil, "", "", 0)
+		if err != nil {
+			return nil, nil, fmt.Errorf("list tokens: %w", err)
+		}
+		for _, tok := range candidates {
+			if strings.Contains(grepFieldValue(tok, field), params.Pattern) {
+				all = append(all, tok)
+			}
+		}
+	}
+
+	total := len(all)
+	limit := capLimit(params.Limit)
+	tokens := all
+	if len(tokens) > limit {
+		tokens = tokens[:limit]
 	}
 
 	result := &GrepResult{
@@ -396,12 +439,13 @@ func handleGrep(ctx context.Context, req *mcp.CallToolRequest, params *GrepParam
 		Field:   field,
 		Tokens:  tokens,
 		Count:   len(tokens),
+		Total:   total,
 	}
 
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{
-				Text: fmt.Sprintf("Found %d tokens matching pattern '%s'", len(tokens), params.Pattern),
+				Text: fmt.Sprintf("Found %d tokens matching pattern '%s' (showing %d)", total, params.Pattern, len(tokens)),
 			},
 		},
 	}, result, nil
@@ -420,6 +464,7 @@ type BugListParams struct {
 type BugListResult struct {
 	Bugs  []*storage.Token `json:"bugs"`
 	Count int              `json:"count"`
+	Total int              `json:"total"`
 }
 
 // handleBugList implements the bug list tool handler
@@ -436,28 +481,38 @@ func handleBugList(ctx context.Context, req *mcp.CallToolRequest, params *BugLis
 		filters["status"] = params.Status
 	}
 
-	// Filter for BUG- prefix tokens
-	filters["req_id_prefix"] = "BUG-"
-
-	limit := params.Limit
-	if limit == 0 {
-		limit = 100
-	}
-
-	tokens, err := db.ListTokens(filters, "", "updated_at DESC", limit)
+	// ListTokens has no "req_id_prefix" filter key; a bogus filter entry is
+	// simply ignored, which previously made this return ALL tokens instead
+	// of just bugs. Fetch the candidate set and filter for the BUG- prefix
+	// in Go instead.
+	tokens, err := db.ListTokens(filters, "", "updated_at DESC", 0)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list bugs: %w", err)
 	}
 
+	var bugs []*storage.Token
+	for _, tok := range tokens {
+		if strings.HasPrefix(tok.ReqID, "BUG-") {
+			bugs = append(bugs, tok)
+		}
+	}
+
+	total := len(bugs)
+	limit := capLimit(params.Limit)
+	if len(bugs) > limit {
+		bugs = bugs[:limit]
+	}
+
 	result := &BugListResult{
-		Bugs:  tokens,
-		Count: len(tokens),
+		Bugs:  bugs,
+		Count: len(bugs),
+		Total: total,
 	}
 
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{
-				Text: fmt.Sprintf("Found %d bugs", len(tokens)),
+				Text: fmt.Sprintf("Found %d bugs (showing %d)", total, len(bugs)),
 			},
 		},
 	}, result, nil
