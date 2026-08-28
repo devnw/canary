@@ -235,7 +235,6 @@ func TestParseDependencies_PreservesDescription(t *testing.T) {
 	assert.Contains(t, deps[0].Description, "special chars!")
 }
 
-// CANARY: REQ=CBIN-201; FEATURE="TicketPrefixDependencies"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_201_ParseDependencies_TicketPrefixes; UPDATED=2026-08-28
 func TestCANARY_CBIN_201_ParseDependencies_TicketPrefixes(t *testing.T) {
 	specContent := `# Spec
 ## Dependencies
