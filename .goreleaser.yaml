@@ -197,6 +197,11 @@ homebrew_casks:
     ids:
       - canary-archives
 
+    # Skip the tap push in GitLab CI: the cask repository push needs a
+    # GitHub token, which CI deliberately does not carry (same gate as
+    # release.disable below).
+    skip_upload: '{{ index .Env "GITLAB_CI" }}'
+
     # Binary name inside the cask
     #
     # Default: the cask name.

@@ -70,7 +70,8 @@ include:
   - component: gitlab.com/devnw/ci-catalog/goreleaser-release@v1.43.0
     inputs:
       stage: release
-      goreleaser_version: "v2.6.1"
+      # v2.6.1 predates .goreleaser.yaml's dockers.retry and homebrew_casks
+      goreleaser_version: "v2.18.0"
       docker_enabled: true
       dockerhub_enabled: false
       dockerhub_image: codeprosorg/canary
@@ -186,11 +187,12 @@ goreleaser-release:
       fi
   script:
     - |
-      GORELEASER_VERSION_PIN="${GORELEASER_VERSION:-v2.6.1}"
+      GORELEASER_VERSION_PIN="${GORELEASER_VERSION:-v2.18.0}"
       # Known-good SHA-256 of goreleaser_Linux_x86_64.tar.gz for the pinned
       # version (from the release's checksums.txt). Update in lockstep with
       # GORELEASER_VERSION_PIN — a mismatch fails the job closed.
       GORELEASER_SHA256_v2_6_1="517bc6422ed3fc4ae12900216cdab047dbb1dc60610174a170f7b760f171e27f"
+      GORELEASER_SHA256_v2_18_0="41cdf49b653784b03a08013dd99e382cd5d463049e915c2d818eaed182ae6197"
 
       RELEASE_ARGS="${GORELEASER_RELEASE_ARGS:---clean}"
       RELEASE_ARGS="$RELEASE_ARGS --config .goreleaser.yaml"
@@ -209,6 +211,7 @@ goreleaser-release:
       # Download goreleaser, verify against the pinned SHA-256, then extract.
       case "$GORELEASER_VERSION_PIN" in
         v2.6.1) GORELEASER_SHA256="$GORELEASER_SHA256_v2_6_1" ;;
+        v2.18.0) GORELEASER_SHA256="$GORELEASER_SHA256_v2_18_0" ;;
         *)
           echo "ERROR: no pinned SHA-256 for goreleaser $GORELEASER_VERSION_PIN; add it before releasing." >&2
           exit 1
