@@ -14,12 +14,24 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// SourceConfig describes one requirement-ID source: a flatfile prefix or an
+// external ticket system (jira, github, gitlab) whose keys appear in REQ= fields.
+// CANARY: REQ=CBIN-201; FEATURE="TicketSources"; ASPECT=Storage; STATUS=IMPL; TEST=TestCANARY_CBIN_201_LoadSources; UPDATED=2026-08-28
+type SourceConfig struct {
+	Name string `yaml:"name"`
+	Type string `yaml:"type"` // flatfile | jira | github | gitlab
+	Key  string `yaml:"key"`  // ID prefix, e.g. "CBIN", "PLAT", "GH"
+	URL  string `yaml:"url,omitempty"`
+}
+
 // ProjectConfig represents the .canary/project.yaml configuration
 type ProjectConfig struct {
 	Project struct {
 		Name        string `yaml:"name"`
 		Description string `yaml:"description"`
+		Key         string `yaml:"key"`
 	} `yaml:"project"`
+	Sources      []SourceConfig `yaml:"sources"`
 	Requirements struct {
 		IDPattern string `yaml:"id_pattern"`
 	} `yaml:"requirements"`
