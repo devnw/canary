@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // CANARY: REQ=CBIN-212; FEATURE="OpsExtraction"; ASPECT=API; STATUS=TESTED; TEST=TestOpsExtraction_GrepAndGrouping; UPDATED=2025-11-02

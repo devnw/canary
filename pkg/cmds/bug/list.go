@@ -13,8 +13,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.devnw.com/canary/pkg/cmds/internal/utils"
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/cmds/internal/utils"
+	"devnw.dev/canary/pkg/storage"
 )
 
 var bugListCmd = &cobra.Command{

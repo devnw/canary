@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go.devnw.com/canary/pkg/cmds/internal/utils"
+	"devnw.dev/canary/pkg/cmds/internal/utils"
 )
 
 // CANARY: REQ=CBIN-105; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16

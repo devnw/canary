@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // TestBugTokenIntegration tests that BUG- tokens work with all canary commands

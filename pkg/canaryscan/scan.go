@@ -11,7 +11,7 @@ import (
 	ignore "github.com/sabhiram/go-gitignore"
 	"gopkg.in/yaml.v3"
 
-	"go.devnw.com/canary/pkg/sources"
+	"devnw.dev/canary/pkg/sources"
 )
 
 // ProjectConfig is the .canary/project.yaml shape.

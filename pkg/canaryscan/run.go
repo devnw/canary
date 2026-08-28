@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"time"
 
-	"go.devnw.com/canary/pkg/sources"
+	"devnw.dev/canary/pkg/sources"
 )
 
 // AnnotateSources stamps each requirement with its source name and ticket URL.

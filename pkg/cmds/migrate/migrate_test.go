@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	"go.devnw.com/canary/pkg/migrate"
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/migrate"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // Helper function for string containment checks

@@ -10,7 +10,7 @@ package migrate
 import (
 	"testing"
 
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // TestCANARY_CBIN_145_Engine_PlanTemplate verifies plan generation uses correct template

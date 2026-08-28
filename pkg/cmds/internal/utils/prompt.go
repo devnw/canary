@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"go.devnw.com/canary/pkg/prompts"
+	"devnw.dev/canary/pkg/prompts"
 )
 
 // LoadPrompt loads a custom prompt from file or embedded prompt name.

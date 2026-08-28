@@ -17,8 +17,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.devnw.com/canary/pkg/docs"
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/docs"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // CANARY: REQ=CBIN-136; FEATURE="DocParentCommand"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-16

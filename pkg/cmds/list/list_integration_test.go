@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // CANARY: REQ=CBIN-135; FEATURE="ListIntegration"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_135_Integration_EndToEnd; UPDATED=2025-10-17

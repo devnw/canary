@@ -17,8 +17,8 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
-	"go.devnw.com/canary/pkg/canaryscan"
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/canaryscan"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // BugCmd is the parent command for bug-related operations

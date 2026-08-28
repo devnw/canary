@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_205_ListDefaultLimitIsSmall; UPDATED=2026-08-28

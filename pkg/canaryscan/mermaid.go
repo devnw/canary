@@ -13,7 +13,7 @@ import (
 	"regexp"
 	"strings"
 
-	"go.devnw.com/canary/pkg/sources"
+	"devnw.dev/canary/pkg/sources"
 )
 
 // DiagramRef records one requirement-ID mention inside a mermaid diagram.

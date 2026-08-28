@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"go.devnw.com/canary/pkg/cmds/internal/utils"
+	"devnw.dev/canary/pkg/cmds/internal/utils"
 )
 
 // CANARY: REQ=CBIN-148; FEATURE="CopilotInstructionCreator"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCreateCopilotInstructions; BENCH=BenchmarkCreateCopilotInstructions; UPDATED=2025-10-19

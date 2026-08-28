@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	copilot "go.devnw.com/canary/pkg/cmds/init"
+	copilot "devnw.dev/canary/pkg/cmds/init"
 )
 
 // TestCreateCopilotInstructions verifies that Copilot instruction files are created correctly

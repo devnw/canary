@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.devnw.com/canary/pkg/migrate"
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/migrate"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // TestCANARY_CBIN_145_CLI_EndToEnd verifies complete migration workflow

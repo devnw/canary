@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.devnw.com/canary/pkg/cmds/internal/utils"
+	"devnw.dev/canary/pkg/cmds/internal/utils"
 )
 
 // CANARY: REQ=CBIN-119; FEATURE="ConstitutionCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16

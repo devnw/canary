@@ -15,8 +15,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.devnw.com/canary/pkg/migrate"
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/migrate"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // CANARY: REQ=CBIN-145; FEATURE="MigrateParentCommand"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17

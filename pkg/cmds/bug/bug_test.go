@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"testing"
 
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // Test bug ID generation

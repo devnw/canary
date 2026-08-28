@@ -19,8 +19,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.devnw.com/canary/pkg/sources"
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/sources"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // View is the aggregate answer for one requirement: everything an agent or a

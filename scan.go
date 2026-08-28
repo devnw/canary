@@ -11,7 +11,7 @@ import (
 	"sort"
 	"time"
 
-	"go.devnw.com/canary/gate"
+	"devnw.dev/canary/gate"
 )
 
 // Scan now delegates to the generic gate.Scanner, converting the result into the legacy report.

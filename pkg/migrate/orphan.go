@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // DetectOrphans finds all requirements with tokens but no specification

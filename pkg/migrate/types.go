@@ -7,7 +7,7 @@
 
 package migrate
 
-import "go.devnw.com/canary/pkg/storage"
+import "devnw.dev/canary/pkg/storage"
 
 // Confidence levels for orphan detection
 const (

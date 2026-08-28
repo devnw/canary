@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	"go.devnw.com/canary/pkg/storage/testutil"
+	"devnw.dev/canary/pkg/storage/testutil"
 )
 
 // BenchmarkProjectRegistration measures project registration performance

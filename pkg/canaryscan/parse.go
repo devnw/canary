@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"go.devnw.com/canary/pkg/sources"
+	"devnw.dev/canary/pkg/sources"
 )
 
 var (

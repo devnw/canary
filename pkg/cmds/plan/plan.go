@@ -9,10 +9,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.devnw.com/canary/pkg/cmds/internal/utils"
-	"go.devnw.com/canary/pkg/gap"
-	"go.devnw.com/canary/pkg/reqid"
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/cmds/internal/utils"
+	"devnw.dev/canary/pkg/gap"
+	"devnw.dev/canary/pkg/reqid"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // CANARY: REQ=CBIN-121; FEATURE="PlanCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16

@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.devnw.com/canary/pkg/migrate"
+	"devnw.dev/canary/pkg/migrate"
 )
 
 // CANARY: REQ=CBIN-131; FEATURE="MigrateFromCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16

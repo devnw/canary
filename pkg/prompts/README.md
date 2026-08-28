@@ -74,7 +74,7 @@ prompts/
 ### Go API
 
 ```go
-import "go.devnw.com/canary/prompts"
+import "devnw.dev/canary/prompts"
 
 // Get a specific command prompt
 content, err := prompts.GetCommand("scan")

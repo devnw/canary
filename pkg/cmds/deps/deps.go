@@ -8,9 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.devnw.com/canary/pkg/sources"
-	"go.devnw.com/canary/pkg/specs"
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/sources"
+	"devnw.dev/canary/pkg/specs"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // CANARY: REQ=CBIN-147; FEATURE="DepsParentCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsParentCommand; UPDATED=2025-10-18

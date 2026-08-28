@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // TestCANARY_CBIN_132_CLI_NextPrioritySelection verifies priority-based selection logic

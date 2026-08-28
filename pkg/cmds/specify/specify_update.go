@@ -13,8 +13,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.devnw.com/canary/pkg/specs"
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/specs"
+	"devnw.dev/canary/pkg/storage"
 )
 
 var updateCmd = &cobra.Command{

@@ -16,7 +16,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - go.devnw.com/canary
+        - devnw.dev/canary
 
 linters:
   default: none

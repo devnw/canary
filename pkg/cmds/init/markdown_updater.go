@@ -1,7 +1,7 @@
 package init
 
 import (
-	"go.devnw.com/canary/gate"
+	"devnw.dev/canary/gate"
 )
 
 const CommentPrefix = "<!--"

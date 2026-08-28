@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // CheckStaleness compares documentation file hash to token DOC_HASH field.

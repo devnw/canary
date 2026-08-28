@@ -10,10 +10,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.devnw.com/canary/pkg/canaryscan"
-	"go.devnw.com/canary/pkg/cmds/internal/utils"
-	"go.devnw.com/canary/pkg/sources"
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/canaryscan"
+	"devnw.dev/canary/pkg/cmds/internal/utils"
+	"devnw.dev/canary/pkg/sources"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // CANARY: REQ=CBIN-124; FEATURE="IndexCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16

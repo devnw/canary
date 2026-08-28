@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.devnw.com/canary/pkg/config"
+	"devnw.dev/canary/pkg/config"
 )
 
 func testRegistry(t *testing.T) *Registry {

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // CANARY: REQ=CBIN-140; FEATURE="GapServiceTests"; ASPECT=Engine; STATUS=IMPL; TEST=TestService_MarkGap; UPDATED=2025-10-17

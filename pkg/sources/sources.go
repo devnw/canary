@@ -14,7 +14,7 @@ import (
 	"regexp"
 	"strings"
 
-	"go.devnw.com/canary/pkg/config"
+	"devnw.dev/canary/pkg/config"
 )
 
 // Source is one configured requirement-ID origin.

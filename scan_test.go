@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.devnw.com/canary"
+	"devnw.dev/canary"
 )
 
 func TestAcceptance_ParseAndSummarizeFixture_WithPromotion(t *testing.T) {

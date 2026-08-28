@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.devnw.com/canary/pkg/cmds/internal/utils"
-	"go.devnw.com/canary/pkg/reqid"
+	"devnw.dev/canary/pkg/cmds/internal/utils"
+	"devnw.dev/canary/pkg/reqid"
 )
 
 // CANARY: REQ=CBIN-120; FEATURE="SpecifyCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16

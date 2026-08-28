@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.devnw.com/canary/pkg/storage/testutil"
+	"devnw.dev/canary/pkg/storage/testutil"
 )
 
 func TestTokenIsolationBetweenProjects(t *testing.T) {

@@ -11,8 +11,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"go.devnw.com/canary/pkg/matcher"
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/matcher"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // FindSpecByID locates spec.md file by exact requirement ID

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.devnw.com/canary/pkg/docs"
+	"devnw.dev/canary/pkg/docs"
 )
 
 // TestCANARY_CBIN_136_Engine_HashCalculation verifies deterministic SHA256 hash calculation

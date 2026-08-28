@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.devnw.com/canary/pkg/sources"
+	"devnw.dev/canary/pkg/sources"
 )
 
 func ticketRegistry(t *testing.T) *sources.Registry {

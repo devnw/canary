@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.devnw.com/canary/pkg/canaryscan"
+	"devnw.dev/canary/pkg/canaryscan"
 )
 
 // TestCANARY_CBIN_103_API_StatusSchema validates the status JSON schema.

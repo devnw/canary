@@ -13,7 +13,7 @@ import (
 	"runtime"
 	"strings"
 
-	"go.devnw.com/canary/pkg/config"
+	"devnw.dev/canary/pkg/config"
 )
 
 // FilterCanaryTokens removes CANARY tokens with OWNER=canary from file content

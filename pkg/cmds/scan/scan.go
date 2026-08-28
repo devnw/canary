@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.devnw.com/canary/pkg/canaryscan"
+	"devnw.dev/canary/pkg/canaryscan"
 )
 
 // CANARY: REQ=CBIN-111; FEATURE="ScanCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17

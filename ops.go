@@ -14,7 +14,7 @@ import (
 	"sort"
 	"strings"
 
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=API; STATUS=IMPL; UPDATED=2026-08-28

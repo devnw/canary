@@ -9,7 +9,7 @@ package matcher_test
 import (
 	"testing"
 
-	"go.devnw.com/canary/pkg/matcher"
+	"devnw.dev/canary/pkg/matcher"
 )
 
 // TestCANARY_CBIN_133_Engine_Levenshtein verifies Levenshtein distance calculation

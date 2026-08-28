@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // TestCANARY_CBIN_145_Engine_PathFilter verifies path filtering logic

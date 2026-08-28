@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.devnw.com/canary"
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // CANARY: REQ=CBIN-CLI-001; FEATURE="GrepCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_GrepCmd; UPDATED=2025-10-16

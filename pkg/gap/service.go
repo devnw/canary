@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // Service provides gap analysis business logic

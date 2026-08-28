@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.devnw.com/canary/pkg/matcher"
+	"devnw.dev/canary/pkg/matcher"
 )
 
 // validAspects defines all valid aspect values with their canonical casing

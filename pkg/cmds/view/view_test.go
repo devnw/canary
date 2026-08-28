@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/storage"
 )
 
 func seedDB(t *testing.T) (dbPath, root string) {

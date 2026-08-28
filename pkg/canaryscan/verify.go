@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"go.devnw.com/canary/pkg/sources"
+	"devnw.dev/canary/pkg/sources"
 )
 
 // VerifyClaims reads the GAP file and returns diagnostics for claimed-but-not-

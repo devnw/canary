@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.devnw.com/canary/pkg/docs"
-	"go.devnw.com/canary/pkg/storage"
+	"devnw.dev/canary/pkg/docs"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // TestCANARY_CBIN_136_Engine_StalenessDetection verifies documentation staleness checking
