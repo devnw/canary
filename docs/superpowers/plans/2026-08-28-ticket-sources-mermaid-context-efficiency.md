@@ -2530,6 +2530,87 @@ git commit -m "docs: ticket sources config, view-first agent guidance, small-lim
 2. **Placeholder scan:** Task 12/13 Step 1 test bodies are deliberately behavioral sketches with exact assertions named, because `mcp/mcp_test.go`'s helper conventions must be read first — the assertions to encode are fully specified. Everything else contains full code.
 3. **Type consistency:** `sources.Registry` methods (`Pattern/ClaimPattern/Resolve/TicketURL/Normalize/Sources`) used in Tasks 3, 4, 6, 9, 10 match Task 2's definitions. `storage.Ref`+`ReplaceRefs`+`GetRefsByReqID` (Task 9) match Task 10/13 usage. `view.BuildView(dbPath, root, reqID, limit)` (Task 10) matches Task 13. `SearchTokens(kw, limit)` (Task 7) matches Tasks 11/12. Field names on `storage.Token` are flagged for verification against the real struct in Tasks 7 and 10.
 
+### Task 15: Promote `internal/` packages to importable `pkg/` tree
+
+**Files:**
+- Move: every directory under `internal/` → `pkg/` (`git mv internal/canaryscan pkg/canaryscan` etc. for: canaryscan, cmds, config, docs, embedded, gap, matcher, migrate, prompts, reqid, sources, specs, storage). `internal/cmds/internal/utils` stays nested (`pkg/cmds/internal/utils`).
+- Modify: every `.go` file importing `go.devnw.com/canary/internal/...` → `go.devnw.com/canary/pkg/...`.
+- Test: no new tests — the full existing suite is the gate.
+
+**Why `pkg/` and not top-level:** `internal/docs` collides with the markdown `docs/` directory and `internal/embedded` collides with the root `embedded/` directory. `pkg/` is outside `internal/`, so all packages become importable by other systems, which is the requirement.
+
+- [ ] **Step 1: Move and rewrite imports**
+
+```bash
+mkdir -p pkg
+for d in internal/*/; do git mv "$d" "pkg/$(basename $d)"; done
+grep -rl 'go.devnw.com/canary/internal/' --include='*.go' . | xargs sed -i 's|go.devnw.com/canary/internal/|go.devnw.com/canary/pkg/|g'
+```
+
+Also grep non-Go references: `grep -rn "canary/internal/" --include='*.md' --include='*.yaml' --include='*.yml' .` — update stale doc references in CLAUDE.md/docs if they name import paths (prose mentions of file paths in historical docs may stay).
+
+Check `//go:embed` directives still resolve (embedded assets moved with their packages — `pkg/cmds/init/base/**`, `pkg/storage/migrations/*.sql`, `pkg/prompts/...`).
+
+- [ ] **Step 2: Verify**
+
+Run: `go build ./... && go vet ./... && go test ./... -count=1`
+Expected: all green, zero remaining `canary/internal` imports (`grep -rn "canary/internal" --include='*.go' .` is empty).
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add -A
+git commit -m "refactor: promote internal packages to importable pkg/ tree"
+```
+
+---
+
+### Task 16: Module rename to devnw.dev/canary + dependency updates
+
+**Files:**
+- Modify: `go.mod` (module line), every `.go` import of `go.devnw.com/canary/...` → `devnw.dev/canary/...`, `go.sum` (via tidy).
+- Modify: non-Go references to the module path (`CLAUDE.md`, `README*.md`, docs, plugin manifests) — `grep -rn "go.devnw.com/canary" .` and update remaining hits that describe the import path.
+
+- [ ] **Step 1: Rename module**
+
+```bash
+go mod edit -module devnw.dev/canary
+grep -rl 'go.devnw.com/canary' --include='*.go' . | xargs sed -i 's|go.devnw.com/canary|devnw.dev/canary|g'
+```
+
+- [ ] **Step 2: Update all dependencies**
+
+```bash
+go get -u ./... && go mod tidy
+```
+
+If a major-version bump breaks the build, pin that one dependency back (`go get dep@<previous>`) and note it in the commit message rather than fighting an upstream API migration in this task.
+
+- [ ] **Step 3: Verify**
+
+Run: `go build ./... && go vet ./... && go test ./... -count=1`
+Expected: all green; `grep -rn "go.devnw.com/canary" --include='*.go' .` empty.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add -A
+git commit -m "feat!: rename module to devnw.dev/canary and update dependencies"
+```
+
+---
+
+### Task 17: Publish (controller-executed — not a subagent task)
+
+Preconditions verified during planning: `origin` = git@gitlab.com:devnw/codepros/oss/canary.git, `gh` = github.com/devnw/canary (SSH). `~/.netrc` does NOT exist in this environment. `devnw.dev/canary?go-get=1` currently returns "not found" (no vanity meta); `go.devnw.com/canary` meta points at github.com/devnw/canary.
+
+- [ ] Merge feature branch to main (after final whole-branch review), push to `origin` and `gh`.
+- [ ] Tag the release: next semver from `git tag --list` (breaking module rename → major or minor bump per existing scheme), annotated tag, push to both remotes.
+- [ ] Attempt public index: `GOPROXY=https://proxy.golang.org GONOSUMDB= go mod download devnw.dev/canary@<tag>` — EXPECTED TO FAIL until devnw.dev serves `<meta name="go-import" content="devnw.dev/canary git https://github.com/devnw/canary">`. Report this to the user as their infra step, with the exact meta tag needed.
+- [ ] Confirm the GitHub repo is public (`gh repo view devnw/canary --json visibility` or curl the repo URL unauthenticated).
+
+---
+
 ## Known adaptation points (implementers: verify, don't assume)
 
 - `storage.DB`'s sqlx handle field name (Task 9), `testutil` helper names (Tasks 7, 9), `storage.Token` field names for Test/Bench/DependsOn/Blocks/RelatedTo (Tasks 7, 10), `DependencyGraph` field/constant names (Task 6), `mcp/mcp_test.go` seeding conventions (Tasks 12, 13), exact constructor name `CreateListCommand` (Task 11), whether `storage.Open` auto-migrates (Task 10).
