@@ -52,7 +52,7 @@ func TestCANARY_CBIN_102_CLI_Verify(t *testing.T) {
 	}
 
 	// Execute: verify claims
-	diags := canaryscan.VerifyClaims(rep, gapFile)
+	diags := canaryscan.VerifyClaims(rep, gapFile, nil)
 
 	// Verify: overclaim detected
 	if len(diags) == 0 {
@@ -132,6 +132,6 @@ func BenchmarkCANARY_CBIN_102_CLI_Verify(b *testing.B) {
 	gapFile, rep := setupGAPFixture(b, 50)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = canaryscan.VerifyClaims(*rep, gapFile)
+		_ = canaryscan.VerifyClaims(*rep, gapFile, nil)
 	}
 }

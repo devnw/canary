@@ -6,7 +6,22 @@ import (
 	"os"
 	"regexp"
 	"time"
+
+	"go.devnw.com/canary/internal/sources"
 )
+
+// AnnotateSources stamps each requirement with its source name and ticket URL.
+func AnnotateSources(rep *Report, reg *sources.Registry) {
+	if reg == nil {
+		return
+	}
+	for i := range rep.Requirements {
+		if s, ok := reg.Resolve(rep.Requirements[i].ID); ok {
+			rep.Requirements[i].Source = s.Name
+			rep.Requirements[i].TicketURL = reg.TicketURL(rep.Requirements[i].ID)
+		}
+	}
+}
 
 // ScanSummaryLine returns a single parseable line for rep so agents get metrics without reading status.json.
 func ScanSummaryLine(rep Report) string {
@@ -29,6 +44,10 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 	if cfg.Out == "" {
 		cfg.Out = "status.json"
 	}
+
+	reg := sources.LoadFromRoot(cfg.Root)
+	activeRegistry = reg
+	defer func() { activeRegistry = nil }()
 
 	var projectFilter *regexp.Regexp
 	if cfg.ProjectOnly {
@@ -59,6 +78,7 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 		_, _ = fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
 		return 3
 	}
+	AnnotateSources(&rep, reg)
 
 	refTime := RefTimeFromEnv()
 	if refTime.IsZero() {
@@ -78,6 +98,7 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 				_, _ = fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
 				return 3
 			}
+			AnnotateSources(&rep, reg)
 		} else {
 			_, _ = fmt.Fprintln(stderr, "No stale tokens found")
 		}
@@ -99,7 +120,7 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 
 	var diags []string
 	if cfg.VerifyPath != "" {
-		diags = append(diags, VerifyClaims(rep, cfg.VerifyPath)...)
+		diags = append(diags, VerifyClaims(rep, cfg.VerifyPath, reg)...)
 	}
 	if cfg.Strict && !cfg.UpdateStale {
 		diags = append(diags, Stale(rep, 30*24*time.Hour, refTime)...)

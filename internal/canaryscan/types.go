@@ -9,8 +9,11 @@ type Report struct {
 
 // Requirement groups features by requirement ID.
 type Requirement struct {
-	ID       string    `json:"id"`
-	Features []Feature `json:"features"`
+	ID        string    `json:"id"`
+	Source    string    `json:"source,omitempty"`
+	TicketURL string    `json:"ticket_url,omitempty"`
+	Diagrams  []string  `json:"diagrams,omitempty"` // filled by Task 4
+	Features  []Feature `json:"features"`
 }
 
 // Feature is one feature/aspect/status aggregation.

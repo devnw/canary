@@ -5,15 +5,23 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"go.devnw.com/canary/internal/sources"
 )
 
-// VerifyClaims reads the GAP file and returns diagnostics for claimed-but-not-TESTED/BENCHED requirements.
-func VerifyClaims(rep Report, gapPath string) []string {
+// VerifyClaims reads the GAP file and returns diagnostics for claimed-but-not-
+// TESTED/BENCHED requirements. Claims are lines like "✅ <ID>" where <ID>
+// matches any configured source key; a nil registry means the default (CBIN).
+// CANARY: REQ=CBIN-201; FEATURE="TicketSources"; ASPECT=Engine; STATUS=IMPL; TEST=TestCANARY_CBIN_201_VerifyClaimsTicketSource; UPDATED=2026-08-28
+func VerifyClaims(rep Report, gapPath string, reg *sources.Registry) []string {
+	if reg == nil {
+		reg = sources.Default()
+	}
 	b, err := os.ReadFile(gapPath)
 	if err != nil {
 		return []string{fmt.Sprintf("CANARY_PARSE_ERROR file=%s err=%q", gapPath, err)}
 	}
-	matches := claimRe.FindAllStringSubmatch(string(b), -1)
+	matches := reg.ClaimPattern().FindAllStringSubmatch(string(b), -1)
 	claimed := map[string]struct{}{}
 	for _, m := range matches {
 		claimed[m[1]] = struct{}{}

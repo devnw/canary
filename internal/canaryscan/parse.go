@@ -7,12 +7,13 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"go.devnw.com/canary/internal/sources"
 )
 
 var (
 	tokenLineRe = regexp.MustCompile(`(?m)^[ \t]*(?:\/\/|#|\/\*)?[ \t]*CANARY:\s*(.*)$`)
 	kvRe        = regexp.MustCompile(`\s*([A-Za-z_]+)\s*=\s*([^;]+)\s*`)
-	claimRe     = regexp.MustCompile(`(?m)^\s*✅\s+(CBIN-\d{3})\b`)
 )
 
 const defaultSkipPattern = `(^|/)(.git|node_modules|vendor|bin|dist|build|zig-out|.zig-cache|canary-new)(/|$)`
@@ -101,10 +102,26 @@ func unquote(v string) string {
 	return v
 }
 
+// activeRegistry is the package-level registry used by parse-time
+// normalization; it is set by Run for the duration of a scan.
+var activeRegistry *sources.Registry
+
 func normalizeREQ(v string) string {
+	return normalizeREQWithRegistry(v, activeRegistry)
+}
+
+func normalizeREQWithRegistry(v string, reg *sources.Registry) string {
 	v = strings.TrimSpace(v)
 	v = strings.ReplaceAll(v, "‑", "-")
 	v = strings.ReplaceAll(v, "–", "-")
+	if reg != nil {
+		if s, ok := reg.Resolve(v); ok {
+			if s.Type == "flatfile" {
+				return reg.Normalize(v)
+			}
+			return v // external ticket IDs are verbatim, never padded
+		}
+	}
 	pad := func(prefix, num string) string {
 		for len(num) < 3 {
 			num = "0" + num
