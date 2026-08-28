@@ -13,7 +13,7 @@ import (
 // Only updates TESTED/BENCHED tokens. Returns files that were modified.
 func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string) (map[string]bool, error) {
 	staleReqs := make(map[string]bool)
-	reqRe := regexp.MustCompile(`REQ=([A-Z]+-\d{3})`)
+	reqRe := regexp.MustCompile(`REQ=([A-Z][A-Z0-9]*-\d+)`)
 	for _, diag := range staleDiags {
 		matches := reqRe.FindStringSubmatch(diag)
 		if len(matches) > 1 {
