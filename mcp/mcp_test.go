@@ -732,3 +732,87 @@ func TestCANARY_CBIN_204_MCPDepsForward(t *testing.T) {
 		t.Fatal("expected content")
 	}
 }
+
+// TestCANARY_CBIN_204_MCPDepsReverse verifies handleDeps returns the reverse
+// dependency IDs (what depends on a requirement) by walking spec.md files
+// under .canary/specs/ for a "## Dependencies" declaration.
+// CANARY: REQ=CBIN-204; FEATURE="RequirementDeps"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_204_MCPDepsReverse; UPDATED=2026-08-28
+func TestCANARY_CBIN_204_MCPDepsReverse(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	// deps.BuildGraph walks .canary/specs/<REQ-ID>-<slug>/spec.md, extracting
+	// the REQ-ID from the directory name and dependencies from a "##
+	// Dependencies" section within the file.
+	baseDir := filepath.Join(".canary", "specs", "CBIN-100-base")
+	if err := os.MkdirAll(baseDir, 0o750); err != nil {
+		t.Fatalf("failed to create base spec dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(baseDir, "spec.md"), []byte("# CBIN-100 Base\n\nNo dependencies.\n"), 0o600); err != nil {
+		t.Fatalf("failed to write base spec: %v", err)
+	}
+
+	childDir := filepath.Join(".canary", "specs", "CBIN-200-child")
+	if err := os.MkdirAll(childDir, 0o750); err != nil {
+		t.Fatalf("failed to create child spec dir: %v", err)
+	}
+	childSpec := "# CBIN-200 Child\n\n## Dependencies\n\n- CBIN-100 (needs base)\n"
+	if err := os.WriteFile(filepath.Join(childDir, "spec.md"), []byte(childSpec), 0o600); err != nil {
+		t.Fatalf("failed to write child spec: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	result, out, err := handleDeps(ctx, req, &DepsParams{ReqID: "CBIN-100", Direction: "reverse"})
+	if err != nil {
+		t.Fatalf("handleDeps failed: %v", err)
+	}
+	if out == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if out.Direction != "reverse" {
+		t.Errorf("Direction = %q, want reverse", out.Direction)
+	}
+	if out.Count != 1 || len(out.Dependencies) != 1 || out.Dependencies[0] != "CBIN-200" {
+		t.Errorf("Dependencies = %v (count %d), want [CBIN-200] (count 1)", out.Dependencies, out.Count)
+	}
+	if result == nil || len(result.Content) == 0 {
+		t.Fatal("expected content")
+	}
+}
+
+// TestCANARY_CBIN_204_MCPViewEmptyReqID verifies handleView rejects an empty
+// reqId before touching the database.
+func TestCANARY_CBIN_204_MCPViewEmptyReqID(t *testing.T) {
+	ctx := context.Background()
+	req := &mcp.CallToolRequest{}
+	result, out, err := handleView(ctx, req, &ViewParams{ReqID: ""})
+	if err == nil {
+		t.Fatal("expected error for empty reqId, got nil")
+	}
+	if out != nil {
+		t.Errorf("expected nil result on error, got %+v", out)
+	}
+	if result != nil {
+		t.Errorf("expected nil CallToolResult on error, got %+v", result)
+	}
+}
+
+// TestCANARY_CBIN_204_MCPDepsInvalidDirection verifies handleDeps rejects an
+// unrecognized direction value.
+func TestCANARY_CBIN_204_MCPDepsInvalidDirection(t *testing.T) {
+	ctx := context.Background()
+	req := &mcp.CallToolRequest{}
+	result, out, err := handleDeps(ctx, req, &DepsParams{ReqID: "CBIN-100", Direction: "sideways"})
+	if err == nil {
+		t.Fatal("expected error for invalid direction, got nil")
+	}
+	if out != nil {
+		t.Errorf("expected nil result on error, got %+v", out)
+	}
+	if result != nil {
+		t.Errorf("expected nil CallToolResult on error, got %+v", result)
+	}
+}

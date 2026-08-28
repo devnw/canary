@@ -597,7 +597,7 @@ type ViewParams struct {
 
 // handleView returns the full bounded picture of one requirement: status,
 // files, tests, deps, spec/plan, diagrams, and ticket URL, in one call.
-// CANARY: REQ=CBIN-204; FEATURE="RequirementView"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_204_MCPView,TestCANARY_CBIN_204_MCPViewUnknown; UPDATED=2026-08-28
+// CANARY: REQ=CBIN-204; FEATURE="RequirementView"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_204_MCPView,TestCANARY_CBIN_204_MCPViewUnknown,TestCANARY_CBIN_204_MCPViewEmptyReqID; UPDATED=2026-08-28
 func handleView(ctx context.Context, req *mcp.CallToolRequest, params *ViewParams) (*mcp.CallToolResult, *view.View, error) {
 	if params.ReqID == "" {
 		return nil, nil, fmt.Errorf("reqId is required")
@@ -608,8 +608,18 @@ func handleView(ctx context.Context, req *mcp.CallToolRequest, params *ViewParam
 		return nil, nil, err
 	}
 
+	// v.DiagramsTotal is the full diagram count (set from the un-truncated
+	// list in BuildView), while v.Diagrams is capped at the request limit --
+	// same relationship as FilesTotal/Files. Prefer DiagramsTotal so the
+	// summary reports the true count even when the list section is capped;
+	// it's only 0 when there are truly no diagrams (or none were queried),
+	// in which case len(v.Diagrams) is also 0, so the fallback is safe.
+	diagramsTotal := v.DiagramsTotal
+	if diagramsTotal == 0 {
+		diagramsTotal = len(v.Diagrams)
+	}
 	summary := fmt.Sprintf("%s: %d%% complete, %d files, %d tests, %d diagrams",
-		v.ReqID, v.Completion, v.FilesTotal, len(v.Tests), len(v.Diagrams))
+		v.ReqID, v.Completion, v.FilesTotal, len(v.Tests), diagramsTotal)
 	if len(v.DependsOn) > 0 {
 		summary += ", depends on " + strings.Join(v.DependsOn, ",")
 	}
@@ -641,7 +651,7 @@ type DepsResult struct {
 // handleDeps returns dependency IDs for a requirement, forward (what it
 // depends on) or reverse (what depends on it). IDs only; callers use the
 // view tool for detail on any returned ID.
-// CANARY: REQ=CBIN-204; FEATURE="RequirementDeps"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_204_MCPDepsForward; UPDATED=2026-08-28
+// CANARY: REQ=CBIN-204; FEATURE="RequirementDeps"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_204_MCPDepsForward,TestCANARY_CBIN_204_MCPDepsReverse,TestCANARY_CBIN_204_MCPDepsInvalidDirection; UPDATED=2026-08-28
 func handleDeps(ctx context.Context, req *mcp.CallToolRequest, params *DepsParams) (*mcp.CallToolResult, *DepsResult, error) {
 	if params.ReqID == "" {
 		return nil, nil, fmt.Errorf("reqId is required")
