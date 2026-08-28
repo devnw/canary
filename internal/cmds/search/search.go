@@ -16,7 +16,7 @@ import (
 var SearchCmd = &cobra.Command{
 	Use:   "search <keywords>",
 	Short: "Search CANARY tokens by keywords",
-	Long: `Search tokens by keywords in feature names, requirement IDs, and keyword tags.
+	Long: `Search tokens by keywords across feature names, requirement IDs, keyword tags, file paths, test names, and bench names.
 
 Keywords are matched case-insensitively using LIKE queries.`,
 	Args: cobra.MinimumNArgs(1),
