@@ -34,6 +34,7 @@ import (
 	"go.devnw.com/canary/internal/cmds/specify"
 	"go.devnw.com/canary/internal/cmds/specs"
 	"go.devnw.com/canary/internal/cmds/status"
+	"go.devnw.com/canary/internal/cmds/view"
 	"go.devnw.com/canary/mcp"
 )
 
@@ -68,6 +69,7 @@ func Commands() []*cobra.Command {
 		files.FilesCmd,
 		status.StatusCmd,
 		grep.GrepCmd,
+		view.CreateViewCommand(),
 
 		// Management commands
 		prioritize.PrioritizeCmd,
