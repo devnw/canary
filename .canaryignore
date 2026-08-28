@@ -68,3 +68,10 @@ status.csv
 *.swp
 *.swo
 *~
+
+# Superpowers SDD working files (review diffs contain CANARY-like text)
+.superpowers/
+
+# Plugin template/example content (contains example tokens)
+claude-plugin/
+cursor-plugin/
