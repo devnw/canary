@@ -234,3 +234,29 @@ func TestParseDependencies_PreservesDescription(t *testing.T) {
 	assert.Contains(t, deps[0].Description, "This is a detailed description")
 	assert.Contains(t, deps[0].Description, "special chars!")
 }
+
+// CANARY: REQ=CBIN-201; FEATURE="TicketPrefixDependencies"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_201_ParseDependencies_TicketPrefixes; UPDATED=2026-08-28
+func TestCANARY_CBIN_201_ParseDependencies_TicketPrefixes(t *testing.T) {
+	specContent := `# Spec
+## Dependencies
+- PLAT-4521 (JIRA upstream ingest)
+- GL-88:Auth (GitLab auth feature)
+- CBIN-105 (core scanner)
+## Next Section
+- OTHER-1 (outside the section, ignored)
+`
+
+	deps, err := ParseDependencies("PLAT-9000", strings.NewReader(specContent))
+	require.NoError(t, err)
+	require.Len(t, deps, 3)
+
+	targets := make(map[string]bool)
+	for _, d := range deps {
+		targets[d.Target] = true
+		assert.Equal(t, "PLAT-9000", d.Source)
+	}
+
+	for _, want := range []string{"PLAT-4521", "GL-88", "CBIN-105"} {
+		assert.True(t, targets[want], "missing dependency target %s", want)
+	}
+}

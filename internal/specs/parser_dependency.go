@@ -9,15 +9,17 @@ import (
 	"strings"
 )
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_FullDependency,TestParseDependencies_PartialFeatures,TestParseDependencies_PartialAspect,TestParseDependencies_MixedTypes; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_FullDependency,TestParseDependencies_PartialFeatures,TestParseDependencies_PartialAspect,TestParseDependencies_MixedTypes,TestCANARY_CBIN_201_ParseDependencies_TicketPrefixes; UPDATED=2026-08-28
 
 var (
-	// Regex patterns for parsing dependency lines
-	// Format: "- CBIN-123 (Description)" for full dependencies
-	// Format: "- CBIN-123:Feature1,Feature2 (Description)" for partial feature dependencies
-	// Format: "- CBIN-123:AspectName (Description)" for partial aspect dependencies
-	fullDependencyPattern    = regexp.MustCompile(`^-\s+(CBIN-\d+)\s*(?:\(([^)]+)\))?`)
-	partialDependencyPattern = regexp.MustCompile(`^-\s+(CBIN-\d+):([^(\s]+)\s*(?:\(([^)]+)\))?`)
+	// Regex patterns for parsing dependency lines. Any configured requirement
+	// prefix is accepted ([A-Z][A-Z0-9]*-digits), not just CBIN — ticket-system
+	// IDs (JIRA PLAT-4521, GitLab GL-88, GitHub GH-7) are valid dependencies.
+	// Format: "- PREFIX-123 (Description)" for full dependencies
+	// Format: "- PREFIX-123:Feature1,Feature2 (Description)" for partial feature dependencies
+	// Format: "- PREFIX-123:AspectName (Description)" for partial aspect dependencies
+	fullDependencyPattern    = regexp.MustCompile(`^-\s+([A-Z][A-Z0-9]*-\d+)\s*(?:\(([^)]+)\))?`)
+	partialDependencyPattern = regexp.MustCompile(`^-\s+([A-Z][A-Z0-9]*-\d+):([^(\s]+)\s*(?:\(([^)]+)\))?`)
 )
 
 // ParseDependenciesFromFile reads a spec.md file and extracts all dependencies.
