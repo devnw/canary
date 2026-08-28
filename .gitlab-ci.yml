@@ -126,6 +126,10 @@ goreleaser-release:
     # Force docker CLI to use the host's daemon via the bind-mounted socket.
     DOCKER_HOST: "unix:///var/run/docker.sock"
     DOCKERFILE: "Dockerfile"
+    # Alpine's packaged Go (apk add go) lags go.mod's floor; let the
+    # toolchain auto-download go1.27.0 for the `go mod tidy` before-hook
+    # instead of failing under GOTOOLCHAIN=local.
+    GOTOOLCHAIN: "auto"
   before_script:
     - apk add --no-cache curl jq > /dev/null
     - |
