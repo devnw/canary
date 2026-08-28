@@ -357,7 +357,7 @@ func handlePrioritize(ctx context.Context, req *mcp.CallToolRequest, params *Pri
 // GrepParams defines parameters for the grep tool
 type GrepParams struct {
 	Pattern string `json:"pattern" jsonschema:"description:Pattern to search for in token fields,required"`
-	Field   string `json:"field,omitempty" jsonschema:"description:Field to search (feature aspect owner or all)"`
+	Field   string `json:"field,omitempty" jsonschema:"description:Field to search (req feature aspect owner or all)"`
 	Limit   int    `json:"limit,omitempty" jsonschema:"description:Maximum results (default 20, max 100)"`
 }
 
@@ -368,6 +368,10 @@ type GrepResult struct {
 	Tokens  []*storage.Token `json:"tokens"`
 	Count   int              `json:"count"`
 	Total   int              `json:"total"`
+	// TotalIsLowerBound is true when the underlying overfetch hit its ceiling
+	// (maxToolLimit+1 rows came back for an "all"-field search), meaning
+	// Total is a floor, not an exact count.
+	TotalIsLowerBound bool `json:"total_is_lower_bound,omitempty"`
 }
 
 // grepFieldValue returns the value of the named token field for field-scoped
@@ -428,6 +432,10 @@ func handleGrep(ctx context.Context, req *mcp.CallToolRequest, params *GrepParam
 	}
 
 	total := len(all)
+	// Only the "all"-field branch overfetches with a capped query
+	// (maxToolLimit+1); the field-scoped branch lists everything with no
+	// cap, so its Total is always exact.
+	lowerBound := field == "all" && total > maxToolLimit
 	limit := capLimit(params.Limit)
 	tokens := all
 	if len(tokens) > limit {
@@ -435,17 +443,22 @@ func handleGrep(ctx context.Context, req *mcp.CallToolRequest, params *GrepParam
 	}
 
 	result := &GrepResult{
-		Pattern: params.Pattern,
-		Field:   field,
-		Tokens:  tokens,
-		Count:   len(tokens),
-		Total:   total,
+		Pattern:           params.Pattern,
+		Field:             field,
+		Tokens:            tokens,
+		Count:             len(tokens),
+		Total:             total,
+		TotalIsLowerBound: lowerBound,
 	}
 
+	totalText := fmt.Sprintf("%d matches", total)
+	if lowerBound {
+		totalText = fmt.Sprintf("%d+ matches", maxToolLimit)
+	}
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{
-				Text: fmt.Sprintf("Found %d tokens matching pattern '%s' (showing %d)", total, params.Pattern, len(tokens)),
+				Text: fmt.Sprintf("Found %s for pattern '%s' (showing %d)", totalText, params.Pattern, len(tokens)),
 			},
 		},
 	}, result, nil
@@ -457,7 +470,7 @@ func handleGrep(ctx context.Context, req *mcp.CallToolRequest, params *GrepParam
 type BugListParams struct {
 	Status   string `json:"status,omitempty" jsonschema:"description:Filter by status (OPEN INVESTIGATING FIXED WONTFIX)"`
 	Severity string `json:"severity,omitempty" jsonschema:"description:Filter by severity (CRITICAL HIGH MEDIUM LOW)"`
-	Limit    int    `json:"limit,omitempty" jsonschema:"description:Maximum number of results"`
+	Limit    int    `json:"limit,omitempty" jsonschema:"description:Maximum results (default 20, max 100)"`
 }
 
 // BugListResult defines the output for the bug list tool

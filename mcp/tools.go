@@ -8,6 +8,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -364,6 +365,10 @@ type SearchResult struct {
 	Tokens   []*storage.Token `json:"tokens"`
 	Count    int              `json:"count"`
 	Total    int              `json:"total"`
+	// TotalIsLowerBound is true when the underlying overfetch hit its ceiling
+	// (maxToolLimit+1 rows came back), meaning Total is a floor, not an exact
+	// count -- there may be more matches than reported.
+	TotalIsLowerBound bool `json:"total_is_lower_bound,omitempty"`
 }
 
 // handleSearch implements the search tool handler
@@ -385,6 +390,7 @@ func handleSearch(ctx context.Context, req *mcp.CallToolRequest, params *SearchP
 	}
 
 	total := len(all)
+	lowerBound := total > maxToolLimit
 	limit := capLimit(params.Limit)
 	tokens := all
 	if len(tokens) > limit {
@@ -392,13 +398,18 @@ func handleSearch(ctx context.Context, req *mcp.CallToolRequest, params *SearchP
 	}
 
 	result := &SearchResult{
-		Keywords: params.Keywords,
-		Tokens:   tokens,
-		Count:    len(tokens),
-		Total:    total,
+		Keywords:          params.Keywords,
+		Tokens:            tokens,
+		Count:             len(tokens),
+		Total:             total,
+		TotalIsLowerBound: lowerBound,
 	}
 
-	text := fmt.Sprintf("Found %d tokens matching %q (showing %d): %s", total, params.Keywords, len(tokens), tokensShortSummary(tokens, 5))
+	totalText := fmt.Sprintf("%d matches", total)
+	if lowerBound {
+		totalText = fmt.Sprintf("%d+ matches", maxToolLimit)
+	}
+	text := fmt.Sprintf("Found %s for %q (showing %d): %s", totalText, params.Keywords, len(tokens), tokensShortSummary(tokens, 5))
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{Text: text},
@@ -423,6 +434,12 @@ type NextResult struct {
 	Message  string         `json:"message,omitempty"`
 }
 
+// nextCandidateFetchLimit mirrors the CLI's next command
+// (selectFromDatabase in internal/cmds/next/next.go), which fetches up to 50
+// priority-ordered candidates per status so it can skip blocked tokens
+// without missing unblocked work further down the list.
+const nextCandidateFetchLimit = 50
+
 // handleNext implements the next tool handler
 func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParams) (*mcp.CallToolResult, *NextResult, error) {
 	dbPath := ".canary/canary.db"
@@ -432,7 +449,7 @@ func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParam
 	}
 	defer db.Close()
 
-	var tokens []*storage.Token
+	var token *storage.Token
 	if params.Status != "" {
 		filters := make(map[string]string)
 		filters["status"] = params.Status
@@ -440,10 +457,11 @@ func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParam
 			filters["aspect"] = params.Aspect
 		}
 
-		tokens, err = db.ListTokens(filters, "", "priority ASC, updated_at DESC", 1)
+		candidates, err := db.ListTokens(filters, "", "priority ASC, updated_at DESC", nextCandidateFetchLimit)
 		if err != nil {
 			return nil, nil, fmt.Errorf("query tokens: %w", err)
 		}
+		token = firstUnblocked(db, candidates)
 	} else {
 		// No status filter: query STUB first, then IMPL if none found,
 		// mirroring the CLI's next command (internal/cmds/next/next.go).
@@ -456,17 +474,18 @@ func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParam
 				filters["aspect"] = params.Aspect
 			}
 
-			tokens, err = db.ListTokens(filters, "", "priority ASC, updated_at DESC", 1)
+			candidates, err := db.ListTokens(filters, "", "priority ASC, updated_at DESC", nextCandidateFetchLimit)
 			if err != nil {
 				return nil, nil, fmt.Errorf("query tokens: %w", err)
 			}
-			if len(tokens) > 0 {
+			token = firstUnblocked(db, candidates)
+			if token != nil {
 				break
 			}
 		}
 	}
 
-	if len(tokens) == 0 {
+	if token == nil {
 		result := &NextResult{
 			Message: "No unimplemented requirements found",
 		}
@@ -479,7 +498,6 @@ func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParam
 		}, result, nil
 	}
 
-	token := tokens[0]
 	result := &NextResult{
 		Token:    token,
 		ReqID:    token.ReqID,
@@ -497,6 +515,54 @@ func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParam
 			},
 		},
 	}, result, nil
+}
+
+// firstUnblocked returns the first candidate (already priority-ordered) whose
+// dependencies are all resolved, or nil if every candidate is blocked.
+func firstUnblocked(db *storage.DB, candidates []*storage.Token) *storage.Token {
+	for _, tok := range candidates {
+		if !hasUnresolvedDependencies(db, tok) {
+			return tok
+		}
+	}
+	return nil
+}
+
+// hasUnresolvedDependencies reports whether tok names a DEPENDS_ON
+// requirement whose tokens are not all TESTED/BENCHED. This is a minimal
+// replica of the CLI's unexported helper of the same name in
+// internal/cmds/next/next.go (hasUnresolvedDependencies, ~line 257) -- kept
+// in sync manually since it can't be imported directly.
+func hasUnresolvedDependencies(db *storage.DB, tok *storage.Token) bool {
+	if tok.DependsOn == "" {
+		return false
+	}
+
+	deps := strings.Split(tok.DependsOn, ",")
+	for _, dep := range deps {
+		dep = strings.TrimSpace(dep)
+		if dep == "" {
+			continue
+		}
+
+		depTokens, err := db.GetTokensByReqID(dep)
+		if err != nil || len(depTokens) == 0 {
+			return true // Dependency not found = blocking
+		}
+
+		allComplete := true
+		for _, depToken := range depTokens {
+			if depToken.Status != "TESTED" && depToken.Status != "BENCHED" {
+				allComplete = false
+				break
+			}
+		}
+		if !allComplete {
+			return true // Dependency incomplete = blocking
+		}
+	}
+
+	return false
 }
 
 // ScanParams defines parameters for the scan tool

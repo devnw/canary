@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -423,5 +424,178 @@ func TestCANARY_CBIN_205_BugListOnlyBugs(t *testing.T) {
 	}
 	if result.Bugs[0].ReqID != "BUG-001" {
 		t.Errorf("expected Bugs[0].ReqID=BUG-001, got %q", result.Bugs[0].ReqID)
+	}
+}
+
+// TestCANARY_CBIN_205_BugListTruncates verifies handleBugList caps its
+// returned Bugs slice to the default limit (20) while Total reflects the
+// real BUG-prefixed count, and non-BUG tokens never leak into the results.
+func TestCANARY_CBIN_205_BugListTruncates(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+
+	const bugCount = 25
+	for i := 0; i < bugCount; i++ {
+		tok := &storage.Token{
+			ReqID:    fmt.Sprintf("BUG-%03d", i),
+			Feature:  fmt.Sprintf("BugFeature%03d", i),
+			Aspect:   "API",
+			Status:   "OPEN",
+			Priority: i + 1,
+			FilePath: fmt.Sprintf("bug%03d.go", i),
+		}
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatalf("failed to insert bug token %d: %v", i, err)
+		}
+	}
+	for i := 0; i < 5; i++ {
+		tok := &storage.Token{
+			ReqID:    fmt.Sprintf("CBIN-B%03d", i),
+			Feature:  fmt.Sprintf("NotABug%03d", i),
+			Aspect:   "API",
+			Status:   "IMPL",
+			Priority: i + 1,
+			FilePath: fmt.Sprintf("notabug%03d.go", i),
+		}
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatalf("failed to insert non-bug token %d: %v", i, err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	_, result, err := handleBugList(ctx, req, &BugListParams{})
+	if err != nil {
+		t.Fatalf("handleBugList failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	if len(result.Bugs) != 20 {
+		t.Errorf("expected 20 bugs (default cap), got %d", len(result.Bugs))
+	}
+	if result.Total != bugCount {
+		t.Errorf("expected Total=%d, got %d", bugCount, result.Total)
+	}
+	for _, bug := range result.Bugs {
+		if !strings.HasPrefix(bug.ReqID, "BUG-") {
+			t.Errorf("expected only BUG- prefixed tokens, got %q", bug.ReqID)
+		}
+	}
+}
+
+// TestCANARY_CBIN_205_NextSkipsBlockedWork verifies handleNext skips a STUB
+// token whose DEPENDS_ON requirement isn't fully TESTED/BENCHED, and returns
+// the next unblocked (dependency-free) candidate instead -- mirroring the
+// CLI's blocked-work filtering in internal/cmds/next/next.go.
+func TestCANARY_CBIN_205_NextSkipsBlockedWork(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+
+	// Dependency requirement whose only token is IMPL (not TESTED/BENCHED),
+	// so anything depending on it is blocked.
+	dep := &storage.Token{
+		ReqID:    "CBIN-800",
+		Feature:  "DependencyFeature",
+		Aspect:   "API",
+		Status:   "IMPL",
+		Priority: 1,
+		FilePath: "dep800.go",
+	}
+	// Blocked token: highest priority (lowest number) but depends on CBIN-800.
+	blocked := &storage.Token{
+		ReqID:     "CBIN-801",
+		Feature:   "BlockedFeature",
+		Aspect:    "API",
+		Status:    "STUB",
+		Priority:  1,
+		FilePath:  "blocked801.go",
+		DependsOn: "CBIN-800",
+	}
+	// Unblocked token: lower priority (higher number) but no dependencies.
+	unblocked := &storage.Token{
+		ReqID:    "CBIN-802",
+		Feature:  "UnblockedFeature",
+		Aspect:   "API",
+		Status:   "STUB",
+		Priority: 2,
+		FilePath: "unblocked802.go",
+	}
+
+	for _, tok := range []*storage.Token{dep, blocked, unblocked} {
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatalf("failed to insert test token %s: %v", tok.ReqID, err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	_, result, err := handleNext(ctx, req, &NextParams{})
+	if err != nil {
+		t.Fatalf("handleNext failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	if result.ReqID != "CBIN-802" {
+		t.Errorf("expected next to skip blocked CBIN-801 and return CBIN-802, got %q", result.ReqID)
+	}
+}
+
+// TestCANARY_CBIN_205_SearchTotalLowerBound verifies that when the overfetch
+// hits its ceiling, Total is reported as a lower bound rather than an exact
+// count, and the summary text reflects that.
+func TestCANARY_CBIN_205_SearchTotalLowerBound(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+
+	for i := 0; i < 120; i++ {
+		tok := &storage.Token{
+			ReqID:    fmt.Sprintf("CBIN-L%03d", i),
+			Feature:  fmt.Sprintf("LotsFeature%03d", i),
+			Aspect:   "API",
+			Status:   "IMPL",
+			Priority: i + 1,
+			FilePath: fmt.Sprintf("lots%03d.go", i),
+			Keywords: "haystack",
+		}
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatalf("failed to insert test token %d: %v", i, err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	result, out, err := handleSearch(ctx, req, &SearchParams{Keywords: "haystack"})
+	if err != nil {
+		t.Fatalf("handleSearch failed: %v", err)
+	}
+	if out == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	if !out.TotalIsLowerBound {
+		t.Error("expected TotalIsLowerBound=true when overfetch is exhausted")
+	}
+	if out.Total != maxToolLimit+1 {
+		t.Errorf("expected Total=%d (overfetch ceiling), got %d", maxToolLimit+1, out.Total)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected content")
+	}
+	text, ok := result.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatalf("expected TextContent, got %T", result.Content[0])
+	}
+	if !strings.Contains(text.Text, "100+ matches") {
+		t.Errorf("expected summary text to mention '100+ matches', got: %q", text.Text)
 	}
 }
