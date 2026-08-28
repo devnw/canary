@@ -18,42 +18,24 @@ import (
 )
 
 // GrepTokens returns tokens whose feature/file/test/bench/reqID match pattern (case-insensitive substring).
+//
+// NOTE: SearchTokens' SQL already matches keywords, feature, req_id, file_path,
+// test, and bench columns (bounded by LIMIT), so a single bounded call covers
+// every column this function's contract advertises. Previously this loaded the
+// entire token table via db.ListTokens(nil, "", "", 0) to catch file/test/bench
+// matches that the old (narrower) SearchTokens couldn't produce; that full-table
+// union is no longer needed now that SearchTokens covers those columns itself.
 func GrepTokens(db *storage.DB, pattern string) ([]*storage.Token, error) {
 	if pattern == "" {
 		return []*storage.Token{}, nil
 	}
 
-	// Primary keyword search (feature/req_id/keywords)
-	tokens, err := db.SearchTokens(pattern)
+	tokens, err := db.SearchTokens(pattern, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	// Secondary scan of all tokens for path/test/bench matches
-	all, err := db.ListTokens(nil, "", "", 0)
-	if err != nil {
-		return nil, err
-	}
-	lower := strings.ToLower(pattern)
-	index := map[string]*storage.Token{}
-	key := func(t *storage.Token) string {
-		return fmt.Sprintf("%s:%s:%s:%d", t.ReqID, t.Feature, t.FilePath, t.LineNumber)
-	}
-	for _, t := range tokens {
-		index[key(t)] = t
-	}
-	for _, t := range all {
-		if strings.Contains(strings.ToLower(t.FilePath), lower) ||
-			strings.Contains(strings.ToLower(t.Test), lower) ||
-			strings.Contains(strings.ToLower(t.Bench), lower) {
-			index[key(t)] = t
-		}
-	}
-	out := make([]*storage.Token, 0, len(index))
-	for _, t := range index {
-		out = append(out, t)
-	}
-	return out, nil
+	return tokens, nil
 }
 
 // FormatGrepResults returns human readable list output for grep tokens.

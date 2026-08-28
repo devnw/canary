@@ -38,7 +38,7 @@ Keywords are matched case-insensitively using LIKE queries.`,
 
 		defer func() { _ = db.Close() }()
 
-		tokens, err := db.SearchTokens(keywords)
+		tokens, err := db.SearchTokens(keywords, 0)
 		if err != nil {
 			return fmt.Errorf("search tokens: %w", err)
 		}

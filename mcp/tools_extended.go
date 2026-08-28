@@ -386,7 +386,7 @@ func handleGrep(ctx context.Context, req *mcp.CallToolRequest, params *GrepParam
 	defer db.Close()
 
 	// Search tokens based on field
-	tokens, err := db.SearchTokens(params.Pattern)
+	tokens, err := db.SearchTokens(params.Pattern, 0)
 	if err != nil {
 		return nil, nil, fmt.Errorf("search tokens: %w", err)
 	}

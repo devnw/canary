@@ -9,6 +9,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -263,26 +264,11 @@ func (db *DB) ListTokens(filters map[string]string, idPattern string, orderBy st
 	`
 	args := []interface{}{}
 
-	// Apply ID pattern filter using GLOB (SQLite pattern matching)
-	// Convert regex pattern to GLOB pattern for common cases
-	if idPattern != "" {
-		// Support both CBIN and BUG patterns
-		// For pattern like "CBIN-[1-9][0-9]{2,}", match CBIN-100 and above
-		// For BUG patterns, match BUG-ASPECT-NNN format
-		// Use GLOB which supports ? (any char) and * (any chars)
-		// Since we can't easily convert regex to GLOB, we'll use a SQL filter
-		// that excludes common placeholder patterns
-		query += " AND req_id NOT LIKE 'CBIN-XXX%'"
-		query += " AND req_id NOT LIKE 'CBIN-###%'"
-		query += " AND req_id NOT LIKE '{{%'"
-		query += " AND req_id NOT LIKE 'REQ-XXX%'"
-		// Match both CBIN and BUG patterns
-		// Match 3+ digit CBIN IDs (CBIN-100 and above) OR BUG-ASPECT-NNN format
-		query += " AND ("
-		query += "  (req_id GLOB 'CBIN-[0-9][0-9][0-9]*' AND req_id NOT GLOB 'CBIN-0[0-9][0-9]*')" // CBIN-100 and above
-		query += "  OR req_id GLOB 'BUG-*-[0-9][0-9][0-9]*'"                                       // BUG-ASPECT-NNN format
-		query += " )"
-	}
+	// Exclude template/placeholder tokens regardless of project prefix.
+	// idPattern (a Go regexp) is applied to req_id in Go, after the query
+	// runs, so it works for any requirement-ID scheme (CBIN, ticket-source
+	// prefixes like GL-, PLAT-, etc.) rather than being hardcoded to CBIN.
+	query += " AND req_id NOT LIKE '%XXX%' AND req_id NOT LIKE '%###%' AND req_id NOT LIKE '{{%' AND req_id NOT LIKE '%}}%'"
 
 	// Filter hidden paths by default (unless include_hidden is set)
 	includeHidden := filters["include_hidden"]
@@ -367,11 +353,47 @@ func (db *DB) ListTokens(filters map[string]string, idPattern string, orderBy st
 
 	defer func() { _ = rows.Close() }()
 
-	return scanTokens(rows)
+	tokens, err := scanTokens(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply the requirement-ID pattern in Go (post-query) so callers can use
+	// arbitrary regexp syntax rather than being limited to what SQLite's
+	// GLOB/LIKE operators can express. Note: when a SQL LIMIT was applied
+	// above and the pattern filters rows out, results can undershoot limit;
+	// that's acceptable rather than over-engineering with SQL regexp.
+	if idPattern != "" {
+		re, err := regexp.Compile(idPattern)
+		if err != nil {
+			return nil, fmt.Errorf("invalid id pattern %q: %w", idPattern, err)
+		}
+		filtered := tokens[:0]
+		for _, tok := range tokens {
+			if re.MatchString(tok.ReqID) {
+				filtered = append(filtered, tok)
+			}
+		}
+		tokens = filtered
+	}
+
+	return tokens, nil
 }
 
-// SearchTokens searches by keywords
-func (db *DB) SearchTokens(keywords string) ([]*Token, error) {
+// DefaultSearchLimit caps keyword searches to protect agent context.
+// Deliberately small; callers raise it explicitly (--limit / limit param)
+// when they need more.
+const DefaultSearchLimit = 25
+
+// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_205_SearchTokensLimit; UPDATED=2026-08-28
+// SearchTokens searches by keywords across keyword tags, feature names,
+// requirement IDs, file paths, test names, and bench names, bounded by
+// limit (or DefaultSearchLimit when limit <= 0).
+func (db *DB) SearchTokens(keywords string, limit int) ([]*Token, error) {
+	if limit <= 0 {
+		limit = DefaultSearchLimit
+	}
+
 	query := `
 		SELECT id, req_id, feature, aspect, status, file_path, line_number,
 			test, bench, owner, priority, phase, keywords, spec_status,
@@ -381,11 +403,13 @@ func (db *DB) SearchTokens(keywords string) ([]*Token, error) {
 			doc_path, doc_hash, doc_type, doc_checked_at, doc_status
 		FROM tokens
 		WHERE keywords LIKE ? OR feature LIKE ? OR req_id LIKE ?
+			OR file_path LIKE ? OR test LIKE ? OR bench LIKE ?
 		ORDER BY priority ASC
+		LIMIT ?
 	`
 
 	pattern := "%" + keywords + "%"
-	rows, err := db.conn.Query(query, pattern, pattern, pattern)
+	rows, err := db.conn.Query(query, pattern, pattern, pattern, pattern, pattern, pattern, limit)
 	if err != nil {
 		return nil, err
 	}

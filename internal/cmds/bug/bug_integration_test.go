@@ -96,8 +96,11 @@ func TestBugTokenIntegration(t *testing.T) {
 	}
 
 	t.Run("ListTokens with idPattern includes BUG tokens", func(t *testing.T) {
-		// List with idPattern (should include both CBIN and BUG tokens)
-		tokens, err := db.ListTokens(nil, "CBIN-[1-9][0-9]{2,}", "", 0)
+		// idPattern is now applied as a literal Go regexp against req_id
+		// (Go-side, post-query) instead of a hardcoded SQL GLOB that matched
+		// both CBIN-NNN and BUG-ASPECT-NNN regardless of the pattern text.
+		// Use an alternation to explicitly request both prefixes.
+		tokens, err := db.ListTokens(nil, "CBIN-[1-9][0-9]{2,}|BUG-", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}
@@ -129,7 +132,7 @@ func TestBugTokenIntegration(t *testing.T) {
 
 	t.Run("SearchTokens finds BUG tokens", func(t *testing.T) {
 		// Search for a BUG feature
-		tokens, err := db.SearchTokens("freezes")
+		tokens, err := db.SearchTokens("freezes", 0)
 		if err != nil {
 			t.Fatalf("SearchTokens failed: %v", err)
 		}
@@ -143,7 +146,7 @@ func TestBugTokenIntegration(t *testing.T) {
 		}
 
 		// Search by BUG ID
-		tokens, err = db.SearchTokens("BUG-API")
+		tokens, err = db.SearchTokens("BUG-API", 0)
 		if err != nil {
 			t.Fatalf("SearchTokens failed: %v", err)
 		}
@@ -189,9 +192,11 @@ func TestBugTokenIntegration(t *testing.T) {
 	})
 
 	t.Run("Filter BUG tokens by status", func(t *testing.T) {
-		// Filter BUG tokens with FIXED status
+		// Filter BUG tokens with FIXED status. Use an alternation pattern that
+		// matches both CBIN and BUG prefixes (see comment above: idPattern is
+		// now a literal Go regexp, not an implicit CBIN+BUG SQL GLOB).
 		filters := map[string]string{"status": "FIXED"}
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "", 0)
+		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}|BUG-", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens with filter failed: %v", err)
 		}

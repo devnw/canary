@@ -339,7 +339,7 @@ func handleSearch(ctx context.Context, req *mcp.CallToolRequest, params *SearchP
 	}
 	defer db.Close()
 
-	tokens, err := db.SearchTokens(params.Keywords)
+	tokens, err := db.SearchTokens(params.Keywords, 0)
 	if err != nil {
 		return nil, nil, fmt.Errorf("search tokens: %w", err)
 	}

@@ -6,6 +6,7 @@
 package storage
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 )
@@ -282,5 +283,100 @@ func TestCANARY_CBIN_CLI_001_Storage_GetTokensByReqID(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// CANARY: REQ=CBIN-201; FEATURE="PatternDrivenStorageQueries"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_201_ListTokensHonorsIDPattern; UPDATED=2026-08-28
+func TestCANARY_CBIN_201_ListTokensHonorsIDPattern(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	if err := MigrateDB(dbPath, "all"); err != nil {
+		t.Fatalf("Failed to migrate database: %v", err)
+	}
+
+	db, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Failed to open database: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	seed := []*Token{
+		{ReqID: "CBIN-105", Feature: "A", Aspect: "API", Status: "IMPL", FilePath: "a.go", LineNumber: 1},
+		{ReqID: "PLAT-4521", Feature: "B", Aspect: "API", Status: "IMPL", FilePath: "b.go", LineNumber: 1},
+		{ReqID: "GL-88", Feature: "C", Aspect: "API", Status: "IMPL", FilePath: "c.go", LineNumber: 1},
+		{ReqID: "CBIN-XXX", Feature: "Tmpl", Aspect: "API", Status: "IMPL", FilePath: "t.go", LineNumber: 1},
+	}
+	for _, tok := range seed {
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Pattern matching two prefixes
+	got, err := db.ListTokens(nil, `^(CBIN|PLAT)-\d+$`, "", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := map[string]bool{}
+	for _, tok := range got {
+		ids[tok.ReqID] = true
+	}
+	if !ids["CBIN-105"] || !ids["PLAT-4521"] || ids["GL-88"] {
+		t.Errorf("pattern filter wrong: %v", ids)
+	}
+
+	// Empty pattern: everything except placeholders
+	got, err = db.ListTokens(nil, "", "", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids = map[string]bool{}
+	for _, tok := range got {
+		ids[tok.ReqID] = true
+	}
+	if !ids["GL-88"] {
+		t.Error("empty pattern must include ticket-source tokens (GL-88)")
+	}
+	if ids["CBIN-XXX"] {
+		t.Error("placeholder CBIN-XXX must stay excluded")
+	}
+}
+
+// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_205_SearchTokensLimit; UPDATED=2026-08-28
+func TestCANARY_CBIN_205_SearchTokensLimit(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	if err := MigrateDB(dbPath, "all"); err != nil {
+		t.Fatalf("Failed to migrate database: %v", err)
+	}
+
+	db, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Failed to open database: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	for i := 0; i < 30; i++ {
+		tok := &Token{ReqID: fmt.Sprintf("CBIN-%03d", 100+i), Feature: "needle", Aspect: "API",
+			Status: "IMPL", FilePath: fmt.Sprintf("f%d.go", i), LineNumber: 1}
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := db.SearchTokens("needle", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 10 {
+		t.Errorf("len = %d, want 10", len(got))
+	}
+	got, err = db.SearchTokens("needle", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != DefaultSearchLimit {
+		t.Errorf("limit 0 should apply DefaultSearchLimit(%d), got %d of 30", DefaultSearchLimit, len(got))
 	}
 }
