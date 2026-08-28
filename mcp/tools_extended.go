@@ -15,10 +15,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"go.devnw.com/canary/internal/storage"
+	"devnw.dev/canary/pkg/cmds/deps"
+	"devnw.dev/canary/pkg/cmds/view"
+	"devnw.dev/canary/pkg/specs"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // ========== SPECIFY TOOL ==========
@@ -356,7 +360,8 @@ func handlePrioritize(ctx context.Context, req *mcp.CallToolRequest, params *Pri
 // GrepParams defines parameters for the grep tool
 type GrepParams struct {
 	Pattern string `json:"pattern" jsonschema:"description:Pattern to search for in token fields,required"`
-	Field   string `json:"field,omitempty" jsonschema:"description:Field to search (feature aspect owner or all)"`
+	Field   string `json:"field,omitempty" jsonschema:"description:Field to search (req feature aspect owner or all)"`
+	Limit   int    `json:"limit,omitempty" jsonschema:"description:Maximum results (default 20, max 100)"`
 }
 
 // GrepResult defines the output for the grep tool
@@ -365,6 +370,29 @@ type GrepResult struct {
 	Field   string           `json:"field"`
 	Tokens  []*storage.Token `json:"tokens"`
 	Count   int              `json:"count"`
+	Total   int              `json:"total"`
+	// TotalIsLowerBound is true when the underlying overfetch hit its ceiling
+	// (maxToolLimit+1 rows came back for an "all"-field search), meaning
+	// Total is a floor, not an exact count.
+	TotalIsLowerBound bool `json:"total_is_lower_bound,omitempty"`
+}
+
+// grepFieldValue returns the value of the named token field for field-scoped
+// grep matching. An unrecognized field yields the empty string so it never
+// matches, rather than silently falling back to "all" behavior.
+func grepFieldValue(tok *storage.Token, field string) string {
+	switch field {
+	case "req":
+		return tok.ReqID
+	case "feature":
+		return tok.Feature
+	case "aspect":
+		return tok.Aspect
+	case "owner":
+		return tok.Owner
+	default:
+		return ""
+	}
 }
 
 // handleGrep implements the grep tool handler
@@ -385,23 +413,55 @@ func handleGrep(ctx context.Context, req *mcp.CallToolRequest, params *GrepParam
 	}
 	defer db.Close()
 
-	// Search tokens based on field
-	tokens, err := db.SearchTokens(params.Pattern)
-	if err != nil {
-		return nil, nil, fmt.Errorf("search tokens: %w", err)
+	var all []*storage.Token
+	if field == "all" {
+		all, err = db.SearchTokens(params.Pattern, maxToolLimit+1)
+		if err != nil {
+			return nil, nil, fmt.Errorf("search tokens: %w", err)
+		}
+	} else {
+		// SearchTokens only matches keywords/feature/req_id/file_path/test/
+		// bench, so it can't be reused for owner/aspect scoping. Fetch the
+		// candidate set and filter in Go on the exact named field instead.
+		candidates, err := db.ListTokens(nil, "", "", 0)
+		if err != nil {
+			return nil, nil, fmt.Errorf("list tokens: %w", err)
+		}
+		for _, tok := range candidates {
+			if strings.Contains(grepFieldValue(tok, field), params.Pattern) {
+				all = append(all, tok)
+			}
+		}
+	}
+
+	total := len(all)
+	// Only the "all"-field branch overfetches with a capped query
+	// (maxToolLimit+1); the field-scoped branch lists everything with no
+	// cap, so its Total is always exact.
+	lowerBound := field == "all" && total > maxToolLimit
+	limit := capLimit(params.Limit)
+	tokens := all
+	if len(tokens) > limit {
+		tokens = tokens[:limit]
 	}
 
 	result := &GrepResult{
-		Pattern: params.Pattern,
-		Field:   field,
-		Tokens:  tokens,
-		Count:   len(tokens),
+		Pattern:           params.Pattern,
+		Field:             field,
+		Tokens:            tokens,
+		Count:             len(tokens),
+		Total:             total,
+		TotalIsLowerBound: lowerBound,
 	}
 
+	totalText := fmt.Sprintf("%d matches", total)
+	if lowerBound {
+		totalText = fmt.Sprintf("%d+ matches", maxToolLimit)
+	}
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{
-				Text: fmt.Sprintf("Found %d tokens matching pattern '%s'", len(tokens), params.Pattern),
+				Text: fmt.Sprintf("Found %s for pattern '%s' (showing %d)", totalText, params.Pattern, len(tokens)),
 			},
 		},
 	}, result, nil
@@ -413,13 +473,14 @@ func handleGrep(ctx context.Context, req *mcp.CallToolRequest, params *GrepParam
 type BugListParams struct {
 	Status   string `json:"status,omitempty" jsonschema:"description:Filter by status (OPEN INVESTIGATING FIXED WONTFIX)"`
 	Severity string `json:"severity,omitempty" jsonschema:"description:Filter by severity (CRITICAL HIGH MEDIUM LOW)"`
-	Limit    int    `json:"limit,omitempty" jsonschema:"description:Maximum number of results"`
+	Limit    int    `json:"limit,omitempty" jsonschema:"description:Maximum results (default 20, max 100)"`
 }
 
 // BugListResult defines the output for the bug list tool
 type BugListResult struct {
 	Bugs  []*storage.Token `json:"bugs"`
 	Count int              `json:"count"`
+	Total int              `json:"total"`
 }
 
 // handleBugList implements the bug list tool handler
@@ -436,28 +497,38 @@ func handleBugList(ctx context.Context, req *mcp.CallToolRequest, params *BugLis
 		filters["status"] = params.Status
 	}
 
-	// Filter for BUG- prefix tokens
-	filters["req_id_prefix"] = "BUG-"
-
-	limit := params.Limit
-	if limit == 0 {
-		limit = 100
-	}
-
-	tokens, err := db.ListTokens(filters, "", "updated_at DESC", limit)
+	// ListTokens has no "req_id_prefix" filter key; a bogus filter entry is
+	// simply ignored, which previously made this return ALL tokens instead
+	// of just bugs. Fetch the candidate set and filter for the BUG- prefix
+	// in Go instead.
+	tokens, err := db.ListTokens(filters, "", "updated_at DESC", 0)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list bugs: %w", err)
 	}
 
+	var bugs []*storage.Token
+	for _, tok := range tokens {
+		if strings.HasPrefix(tok.ReqID, "BUG-") {
+			bugs = append(bugs, tok)
+		}
+	}
+
+	total := len(bugs)
+	limit := capLimit(params.Limit)
+	if len(bugs) > limit {
+		bugs = bugs[:limit]
+	}
+
 	result := &BugListResult{
-		Bugs:  tokens,
-		Count: len(tokens),
+		Bugs:  bugs,
+		Count: len(bugs),
+		Total: total,
 	}
 
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{
-				Text: fmt.Sprintf("Found %d bugs", len(tokens)),
+				Text: fmt.Sprintf("Found %d bugs (showing %d)", total, len(bugs)),
 			},
 		},
 	}, result, nil
@@ -513,6 +584,109 @@ func handleBugCreate(ctx context.Context, req *mcp.CallToolRequest, params *BugC
 				Text: fmt.Sprintf("Created bug %s: %s", bugID, params.Title),
 			},
 		},
+	}, result, nil
+}
+
+// ========== VIEW TOOL ==========
+
+// ViewParams identifies the requirement to aggregate.
+type ViewParams struct {
+	ReqID string `json:"reqId" jsonschema:"description:requirement ID e.g. CBIN-105 or PLAT-4521,required"`
+	Limit int    `json:"limit,omitempty" jsonschema:"description:max entries per list section (default 10)"`
+}
+
+// handleView returns the full bounded picture of one requirement: status,
+// files, tests, deps, spec/plan, diagrams, and ticket URL, in one call.
+// CANARY: REQ=CBIN-204; FEATURE="RequirementView"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_204_MCPView,TestCANARY_CBIN_204_MCPViewUnknown,TestCANARY_CBIN_204_MCPViewEmptyReqID; UPDATED=2026-08-28
+func handleView(ctx context.Context, req *mcp.CallToolRequest, params *ViewParams) (*mcp.CallToolResult, *view.View, error) {
+	if params.ReqID == "" {
+		return nil, nil, fmt.Errorf("reqId is required")
+	}
+
+	limit := params.Limit
+	if limit > maxToolLimit {
+		limit = maxToolLimit
+	}
+	v, err := view.BuildView(".canary/canary.db", ".", params.ReqID, limit)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// v.DiagramsTotal is the full diagram count (set from the un-truncated
+	// list in BuildView), while v.Diagrams is capped at the request limit --
+	// same relationship as FilesTotal/Files. Prefer DiagramsTotal so the
+	// summary reports the true count even when the list section is capped;
+	// it's only 0 when there are truly no diagrams (or none were queried),
+	// in which case len(v.Diagrams) is also 0, so the fallback is safe.
+	diagramsTotal := v.DiagramsTotal
+	if diagramsTotal == 0 {
+		diagramsTotal = len(v.Diagrams)
+	}
+	summary := fmt.Sprintf("%s: %d%% complete, %d files, %d tests, %d diagrams",
+		v.ReqID, v.Completion, v.FilesTotal, len(v.Tests), diagramsTotal)
+	if len(v.DependsOn) > 0 {
+		summary += ", depends on " + strings.Join(v.DependsOn, ",")
+	}
+	if v.TicketURL != "" {
+		summary += ", ticket " + v.TicketURL
+	}
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: summary}},
+	}, v, nil
+}
+
+// ========== DEPS TOOL ==========
+
+// DepsParams selects a requirement and traversal direction.
+type DepsParams struct {
+	ReqID     string `json:"reqId" jsonschema:"description:requirement ID,required"`
+	Direction string `json:"direction,omitempty" jsonschema:"description:forward (what it depends on, default) or reverse (what depends on it)"`
+}
+
+// DepsResult carries dependency IDs only -- deliberately no token payloads.
+type DepsResult struct {
+	ReqID        string   `json:"reqId"`
+	Direction    string   `json:"direction"`
+	Dependencies []string `json:"dependencies"`
+	Count        int      `json:"count"`
+}
+
+// handleDeps returns dependency IDs for a requirement, forward (what it
+// depends on) or reverse (what depends on it). IDs only; callers use the
+// view tool for detail on any returned ID.
+// CANARY: REQ=CBIN-204; FEATURE="RequirementDeps"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_204_MCPDepsForward,TestCANARY_CBIN_204_MCPDepsReverse,TestCANARY_CBIN_204_MCPDepsInvalidDirection; UPDATED=2026-08-28
+func handleDeps(ctx context.Context, req *mcp.CallToolRequest, params *DepsParams) (*mcp.CallToolResult, *DepsResult, error) {
+	if params.ReqID == "" {
+		return nil, nil, fmt.Errorf("reqId is required")
+	}
+
+	dir := params.Direction
+	if dir == "" {
+		dir = "forward"
+	}
+	if dir != "forward" && dir != "reverse" {
+		return nil, nil, fmt.Errorf("invalid direction %q: must be \"forward\" or \"reverse\"", dir)
+	}
+
+	graph, err := deps.BuildGraph()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var ids []string
+	if dir == "reverse" {
+		for _, d := range graph.GetReverseDependencies(params.ReqID) {
+			ids = append(ids, d.Source)
+		}
+	} else {
+		gg := specs.NewGraphGenerator(nil)
+		ids = gg.GetTransitiveDependencies(graph, params.ReqID)
+	}
+
+	result := &DepsResult{ReqID: params.ReqID, Direction: dir, Dependencies: ids, Count: len(ids)}
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("%s %s deps: %d", params.ReqID, dir, len(ids))}},
 	}, result, nil
 }
 

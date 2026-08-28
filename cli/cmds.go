@@ -8,33 +8,34 @@ package cli
 import (
 	"github.com/spf13/cobra"
 
-	"go.devnw.com/canary/internal/cmds/bug"
-	"go.devnw.com/canary/internal/cmds/checkpoint"
-	"go.devnw.com/canary/internal/cmds/constitution"
-	"go.devnw.com/canary/internal/cmds/create"
-	"go.devnw.com/canary/internal/cmds/db"
-	"go.devnw.com/canary/internal/cmds/deps"
-	"go.devnw.com/canary/internal/cmds/doc"
-	"go.devnw.com/canary/internal/cmds/files"
-	"go.devnw.com/canary/internal/cmds/gap"
-	"go.devnw.com/canary/internal/cmds/grep"
-	"go.devnw.com/canary/internal/cmds/implement"
-	"go.devnw.com/canary/internal/cmds/index"
-	canaryinit "go.devnw.com/canary/internal/cmds/init"
-	"go.devnw.com/canary/internal/cmds/legacy"
-	"go.devnw.com/canary/internal/cmds/list"
-	"go.devnw.com/canary/internal/cmds/migrate"
-	"go.devnw.com/canary/internal/cmds/next"
-	"go.devnw.com/canary/internal/cmds/plan"
-	"go.devnw.com/canary/internal/cmds/prioritize"
-	"go.devnw.com/canary/internal/cmds/project"
-	"go.devnw.com/canary/internal/cmds/scan"
-	"go.devnw.com/canary/internal/cmds/search"
-	"go.devnw.com/canary/internal/cmds/show"
-	"go.devnw.com/canary/internal/cmds/specify"
-	"go.devnw.com/canary/internal/cmds/specs"
-	"go.devnw.com/canary/internal/cmds/status"
-	"go.devnw.com/canary/mcp"
+	"devnw.dev/canary/mcp"
+	"devnw.dev/canary/pkg/cmds/bug"
+	"devnw.dev/canary/pkg/cmds/checkpoint"
+	"devnw.dev/canary/pkg/cmds/constitution"
+	"devnw.dev/canary/pkg/cmds/create"
+	"devnw.dev/canary/pkg/cmds/db"
+	"devnw.dev/canary/pkg/cmds/deps"
+	"devnw.dev/canary/pkg/cmds/doc"
+	"devnw.dev/canary/pkg/cmds/files"
+	"devnw.dev/canary/pkg/cmds/gap"
+	"devnw.dev/canary/pkg/cmds/grep"
+	"devnw.dev/canary/pkg/cmds/implement"
+	"devnw.dev/canary/pkg/cmds/index"
+	canaryinit "devnw.dev/canary/pkg/cmds/init"
+	"devnw.dev/canary/pkg/cmds/legacy"
+	"devnw.dev/canary/pkg/cmds/list"
+	"devnw.dev/canary/pkg/cmds/migrate"
+	"devnw.dev/canary/pkg/cmds/next"
+	"devnw.dev/canary/pkg/cmds/plan"
+	"devnw.dev/canary/pkg/cmds/prioritize"
+	"devnw.dev/canary/pkg/cmds/project"
+	"devnw.dev/canary/pkg/cmds/scan"
+	"devnw.dev/canary/pkg/cmds/search"
+	"devnw.dev/canary/pkg/cmds/show"
+	"devnw.dev/canary/pkg/cmds/specify"
+	"devnw.dev/canary/pkg/cmds/specs"
+	"devnw.dev/canary/pkg/cmds/status"
+	"devnw.dev/canary/pkg/cmds/view"
 )
 
 // Commands returns all top-level commands for the canary CLI.
@@ -68,6 +69,7 @@ func Commands() []*cobra.Command {
 		files.FilesCmd,
 		status.StatusCmd,
 		grep.GrepCmd,
+		view.CreateViewCommand(),
 
 		// Management commands
 		prioritize.PrioritizeCmd,

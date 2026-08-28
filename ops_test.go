@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.devnw.com/canary/internal/storage"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // CANARY: REQ=CBIN-212; FEATURE="OpsExtraction"; ASPECT=API; STATUS=TESTED; TEST=TestOpsExtraction_GrepAndGrouping; UPDATED=2025-11-02
@@ -37,7 +37,7 @@ func TestOpsExtraction_GrepAndGrouping(t *testing.T) {
 		}
 	}
 
-	res, err := GrepTokens(db, "Alpha")
+	res, err := GrepTokens(db, "Alpha", 0)
 	if err != nil {
 		t.Fatalf("grep: %v", err)
 	}

@@ -43,3 +43,6 @@ bin_canary
 .cursor/                 
 .opencode/               
 .roo/
+
+# Superpowers SDD scratch
+.superpowers/

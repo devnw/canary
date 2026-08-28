@@ -13,12 +13,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.devnw.com/canary/cli"
-	"go.devnw.com/canary/internal/cmds/db"
-	canaryinit "go.devnw.com/canary/internal/cmds/init"
-	"go.devnw.com/canary/internal/cmds/legacy"
-	"go.devnw.com/canary/internal/cmds/next"
-	"go.devnw.com/canary/internal/storage"
+	"devnw.dev/canary/cli"
+	"devnw.dev/canary/pkg/cmds/db"
+	canaryinit "devnw.dev/canary/pkg/cmds/init"
+	"devnw.dev/canary/pkg/cmds/legacy"
+	"devnw.dev/canary/pkg/cmds/next"
+	"devnw.dev/canary/pkg/storage"
 )
 
 var (

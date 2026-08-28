@@ -142,6 +142,14 @@ The server runs as an HTTP endpoint that AI assistants can interact with.`,
 				Description: "Mark gap analysis claim as helpful or unhelpful",
 			}, handleGapMark)
 
+			// One-call hierarchical context
+			mcp.AddTool(server, &mcp.Tool{Name: "view",
+				Description: "Full picture of one requirement: status, files, tests, deps, spec/plan, diagrams, ticket URL. Use this FIRST instead of separate show/status/files calls."},
+				handleView)
+			mcp.AddTool(server, &mcp.Tool{Name: "deps",
+				Description: "Dependency IDs for a requirement (forward or reverse). IDs only; follow up with view for detail."},
+				handleDeps)
+
 			// Create HTTP handler for MCP
 			handler := mcp.NewStreamableHTTPHandler(func(r *http.Request) *mcp.Server {
 				return server

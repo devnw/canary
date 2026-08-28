@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"go.devnw.com/canary/internal/canaryscan"
+	"devnw.dev/canary/pkg/canaryscan"
 )
 
 // TestCANARY_CBIN_101_Engine_ScanBasic validates the core scanning functionality.

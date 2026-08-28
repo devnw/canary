@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"go.devnw.com/canary/internal/canaryscan"
+	"devnw.dev/canary/pkg/canaryscan"
 )
 
 // CANARY: REQ=CBIN-211; FEATURE="BugOpenStatusTest"; ASPECT=Engine; STATUS=TESTED; TEST=TestBUGOpenStatus; OWNER=canary; UPDATED=2025-11-02

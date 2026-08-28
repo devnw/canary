@@ -1,0 +1,59 @@
+package prioritize
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/spf13/cobra"
+
+	"devnw.dev/canary/pkg/cmds/internal/utils"
+	"devnw.dev/canary/pkg/storage"
+)
+
+// CANARY: REQ=CBIN-127; FEATURE="PrioritizeCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+var PrioritizeCmd = &cobra.Command{
+	Use:   "prioritize <REQ-ID> <feature> <priority>",
+	Short: "Update priority of a CANARY token",
+	Long: `Update the priority of a specific token (1=highest, 10=lowest).
+
+Priority affects ordering in list and search results.`,
+	Args: cobra.ExactArgs(3),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		prompt, _ := cmd.Flags().GetString("prompt")
+		if prompt != "" {
+			if _, err := utils.LoadPrompt(prompt); err != nil {
+				return err
+			}
+		}
+		dbPath, _ := cmd.Flags().GetString("db")
+		reqID := args[0]
+		feature := args[1]
+		priority, err := strconv.Atoi(args[2])
+		if err != nil {
+			return fmt.Errorf("invalid priority: %s (must be 1-10)", args[2])
+		}
+
+		if priority < 1 || priority > 10 {
+			return fmt.Errorf("priority must be between 1 (highest) and 10 (lowest)")
+		}
+
+		db, err := storage.Open(dbPath)
+		if err != nil {
+			return fmt.Errorf("open database: %w", err)
+		}
+
+		defer func() { _ = db.Close() }()
+
+		if err := db.UpdatePriority(reqID, feature, priority); err != nil {
+			return fmt.Errorf("update priority: %w", err)
+		}
+
+		fmt.Printf("✅ Updated priority for %s/%s to %d\n", reqID, feature, priority)
+		return nil
+	},
+}
+
+func init() {
+	PrioritizeCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
+	PrioritizeCmd.Flags().String("db", ".canary/canary.db", "path to database file")
+}

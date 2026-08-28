@@ -11,7 +11,7 @@ stages:
   - publish
 
 variables:
-  GO_VERSION: "1.24"
+  GO_VERSION: "1.27"
 
 # Include CI catalog components
 default:

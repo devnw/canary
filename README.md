@@ -6,7 +6,7 @@
 [![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev/)
 [![Build](https://github.com/devnw/canary/actions/workflows/build.yml/badge.svg)](https://github.com/devnw/canary/actions/workflows/build.yml)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
-[![Go Reference](https://pkg.go.dev/badge/go.devnw.com/canary.svg)](https://pkg.go.dev/go.devnw.com/canary)
+[![Go Reference](https://pkg.go.dev/badge/devnw.dev/canary.svg)](https://pkg.go.dev/devnw.dev/canary)
 [![Version](https://img.shields.io/github/v/tag/devnw/canary?sort=semver&style=plastic)](https://github.com/devnw/canary/releases)
 
 CANARY is a requirement tracking system that embeds tokens directly into
@@ -45,7 +45,7 @@ sudo apt install canary
 
 ```bash
 # Install from source
-go install go.devnw.com/canary/cmd/canary@latest
+go install devnw.dev/canary/cmd/canary@latest
 
 # Or clone and build
 git clone https://github.com/devnw/canary.git
@@ -58,7 +58,7 @@ make build
 The code is hosted on GitHub:
 
 - Repository: [Github](https://github.com/devnw/canary)
-- Code Ref: [pkg.go.dev](https://pkg.go.dev/go.devnw.com/canary)
+- Code Ref: [pkg.go.dev](https://pkg.go.dev/devnw.dev/canary)
 
 ### Initialize Your Project
 
@@ -636,7 +636,7 @@ Built with love by [Developer Network](https://devnw.com).
 
 **For AI Agents** → [CLAUDE.md](CLAUDE.md)
 
-**For API Documentation** → [pkg.go.dev](https://pkg.go.dev/go.devnw.com/canary)
+**For API Documentation** → [pkg.go.dev](https://pkg.go.dev/devnw.dev/canary)
 
 ---
 
