@@ -10,7 +10,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"go.devnw.com/canary/internal/canaryscan"
 	"go.devnw.com/canary/internal/cmds/internal/utils"
+	"go.devnw.com/canary/internal/sources"
 	"go.devnw.com/canary/internal/storage"
 )
 
@@ -170,6 +172,21 @@ The database is stored at .canary/canary.db by default.`,
 			}
 
 			indexed++
+		}
+
+		// Index diagram references (mermaid) so `canary view` can answer without grepping.
+		reg := sources.LoadFromRoot(rootPath)
+		diagRefs, derr := canaryscan.ScanDiagramRefs(rootPath, nil, reg)
+		if derr == nil {
+			refs := make([]storage.Ref, 0, len(diagRefs))
+			for _, r := range diagRefs {
+				refs = append(refs, storage.Ref{ReqID: r.ReqID, Kind: "diagram", FilePath: r.File, LineNumber: r.Line})
+			}
+			if err := db.ReplaceRefs("diagram", refs); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to index diagram refs: %v\n", err)
+			} else if len(refs) > 0 {
+				fmt.Printf("Indexed %d diagram reference(s)\n", len(refs))
+			}
 		}
 
 		fmt.Printf("\n✅ Indexed %d CANARY tokens\n", indexed)

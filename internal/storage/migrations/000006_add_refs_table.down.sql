@@ -1,0 +1,3 @@
+DROP INDEX IF EXISTS idx_refs_kind;
+DROP INDEX IF EXISTS idx_refs_req_id;
+DROP TABLE IF EXISTS refs;
