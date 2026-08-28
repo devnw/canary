@@ -29,6 +29,8 @@ Keywords are matched case-insensitively using LIKE queries.`,
 		}
 		dbPath, _ := cmd.Flags().GetString("db")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
+		limit, _ := cmd.Flags().GetInt("limit")
+		effLimit := utils.EffectiveLimit(limit, defaultSearchLimit)
 		keywords := strings.Join(args, " ")
 
 		db, err := storage.Open(dbPath)
@@ -38,7 +40,7 @@ Keywords are matched case-insensitively using LIKE queries.`,
 
 		defer func() { _ = db.Close() }()
 
-		tokens, err := db.SearchTokens(keywords, 0)
+		tokens, err := db.SearchTokens(keywords, effLimit)
 		if err != nil {
 			return fmt.Errorf("search tokens: %w", err)
 		}
@@ -50,7 +52,6 @@ Keywords are matched case-insensitively using LIKE queries.`,
 
 		if jsonOutput {
 			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "  ")
 			return enc.Encode(tokens)
 		}
 
@@ -65,12 +66,22 @@ Keywords are matched case-insensitively using LIKE queries.`,
 			fmt.Println()
 		}
 
+		if effLimit > 0 && len(tokens) == effLimit {
+			fmt.Printf("(showing %d; use --limit -1 for all)\n", effLimit)
+		}
+
 		return nil
 	},
 }
+
+// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-28
+// defaultSearchLimit caps search output to protect agent context.
+// Deliberately small; pass --limit -1 to explicitly request everything.
+const defaultSearchLimit = 20
 
 func init() {
 	SearchCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	SearchCmd.Flags().String("db", ".canary/canary.db", "path to database file")
 	SearchCmd.Flags().Bool("json", false, "output as JSON")
+	SearchCmd.Flags().Int("limit", defaultSearchLimit, "maximum number of results (default 20 to protect agent context; -1 = unlimited)")
 }

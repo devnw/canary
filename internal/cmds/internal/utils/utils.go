@@ -91,6 +91,22 @@ func LoadProjectConfig() (*config.ProjectConfig, error) {
 	return config.Load(".")
 }
 
+// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_205_EffectiveLimit; UPDATED=2026-08-28
+// EffectiveLimit maps CLI --limit semantics (0/unset => def, -1 => unlimited)
+// to the storage layer's convention (0 => unlimited). Defaults are
+// deliberately small to protect agent context; callers pass -1 to
+// explicitly request everything.
+func EffectiveLimit(flag, def int) int {
+	switch {
+	case flag < 0:
+		return 0
+	case flag == 0:
+		return def
+	default:
+		return flag
+	}
+}
+
 // ExtractField extracts a field value from a CANARY token string
 func ExtractField(token, field string) string {
 	// Look for FIELD="value" or FIELD=value

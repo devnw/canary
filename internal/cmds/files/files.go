@@ -6,8 +6,10 @@
 package files
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/spf13/cobra"
 
@@ -15,6 +17,12 @@ import (
 	"go.devnw.com/canary/internal/cmds/internal/utils"
 	"go.devnw.com/canary/internal/storage"
 )
+
+// filesJSON is the compact --json shape for the files command.
+type filesJSON struct {
+	ReqID string              `json:"req_id"`
+	Files map[string][]string `json:"files"`
+}
 
 // CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_FilesCmd; UPDATED=2025-10-16
 var FilesCmd = &cobra.Command{
@@ -39,6 +47,7 @@ Examples:
 		reqID := args[0]
 		includeAll, _ := cmd.Flags().GetBool("all")
 		dbPath, _ := cmd.Flags().GetString("db")
+		jsonOutput, _ := cmd.Flags().GetBool("json")
 
 		// Open database
 		db, err := storage.Open(dbPath)
@@ -57,11 +66,20 @@ Examples:
 		}
 
 		if len(fileGroups) == 0 {
+			if jsonOutput {
+				enc := json.NewEncoder(os.Stdout)
+				return enc.Encode(filesJSON{ReqID: reqID, Files: map[string][]string{}})
+			}
 			fmt.Printf("No implementation files found for %s\n", reqID)
 			if !includeAll {
 				fmt.Println("\nTip: Use --all to include spec/template files")
 			}
 			return fmt.Errorf("no files found")
+		}
+
+		if jsonOutput {
+			enc := json.NewEncoder(os.Stdout)
+			return enc.Encode(buildFilesJSON(reqID, fileGroups))
 		}
 
 		// Format output
@@ -72,9 +90,29 @@ Examples:
 	},
 }
 
+// buildFilesJSON groups files by aspect (mirroring canary.FormatFilesList's
+// grouping) for the compact --json output.
+func buildFilesJSON(reqID string, fileGroups map[string][]*storage.Token) filesJSON {
+	aspectFiles := map[string][]string{}
+	for file, toks := range fileGroups {
+		aspects := map[string]struct{}{}
+		for _, t := range toks {
+			aspects[t.Aspect] = struct{}{}
+		}
+		for a := range aspects {
+			aspectFiles[a] = append(aspectFiles[a], file)
+		}
+	}
+	for a := range aspectFiles {
+		sort.Strings(aspectFiles[a])
+	}
+	return filesJSON{ReqID: reqID, Files: aspectFiles}
+}
+
 // formatFilesList formats file groups by aspect
 func init() {
 	FilesCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	FilesCmd.Flags().Bool("all", false, "Include spec and template files")
 	FilesCmd.Flags().String("db", ".canary/canary.db", "Path to database file")
+	FilesCmd.Flags().Bool("json", false, "output as compact JSON")
 }

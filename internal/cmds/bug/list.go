@@ -42,13 +42,14 @@ Examples:
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 		noColor, _ := cmd.Flags().GetBool("no-color")
 		limit, _ := cmd.Flags().GetInt("limit")
+		effLimit := utils.EffectiveLimit(limit, defaultBugListLimit)
 		dbPath, _ := cmd.Flags().GetString("db")
 
 		// Open database
 		db, err := storage.Open(dbPath)
 		if err != nil {
 			// Fallback to filesystem search if no database
-			return listBugsFromFilesystem(aspect, status, severity, priority, jsonOutput, noColor, limit)
+			return listBugsFromFilesystem(aspect, status, severity, priority, jsonOutput, noColor, effLimit)
 		}
 		defer db.Close()
 
@@ -80,8 +81,9 @@ Examples:
 		filteredTokens := filterBugTokens(tokens, severity, priority)
 
 		// Apply limit if specified
-		if limit > 0 && len(filteredTokens) > limit {
-			filteredTokens = filteredTokens[:limit]
+		truncated := effLimit > 0 && len(filteredTokens) > effLimit
+		if truncated {
+			filteredTokens = filteredTokens[:effLimit]
 		}
 
 		if jsonOutput {
@@ -97,9 +99,17 @@ Examples:
 		}
 
 		formatBugList(filteredTokens, noColor)
+		if truncated {
+			fmt.Printf("(showing %d; use --limit -1 for all)\n", effLimit)
+		}
 		return nil
 	},
 }
+
+// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-28
+// defaultBugListLimit caps bug list output to protect agent context.
+// Deliberately small; pass --limit -1 to explicitly request everything.
+const defaultBugListLimit = 20
 
 func init() {
 	bugListCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
@@ -109,6 +119,6 @@ func init() {
 	bugListCmd.Flags().String("priority", "", "Filter by priority (P0, P1, P2, P3)")
 	bugListCmd.Flags().Bool("json", false, "Output in JSON format")
 	bugListCmd.Flags().Bool("no-color", false, "Disable colored output")
-	bugListCmd.Flags().Int("limit", 0, "Limit number of results (0 = unlimited)")
+	bugListCmd.Flags().Int("limit", defaultBugListLimit, "Limit number of results (default 20 to protect agent context; -1 = unlimited)")
 	bugListCmd.Flags().String("db", ".canary/canary.db", "Path to database file")
 }

@@ -12,6 +12,22 @@ import (
 	"go.devnw.com/canary/internal/storage"
 )
 
+// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_205_ListDefaultLimitIsSmall; UPDATED=2026-08-28
+// TestCANARY_CBIN_205_ListDefaultLimitIsSmall asserts the list command's
+// --limit flag defaults to a small value (20) to protect agent context.
+// NOTE: the brief's suggested constructor name CreateListCommand() does not
+// exist in this package -- ListCmd is a package-level *cobra.Command var
+// with flags registered in init(), so we inspect that directly.
+func TestCANARY_CBIN_205_ListDefaultLimitIsSmall(t *testing.T) {
+	f := ListCmd.Flags().Lookup("limit")
+	if f == nil {
+		t.Fatal("list must have a --limit flag")
+	}
+	if f.DefValue != "20" {
+		t.Errorf("--limit default = %s, want 20 (small-by-default for agent context)", f.DefValue)
+	}
+}
+
 // CANARY: REQ=CBIN-135; FEATURE="ListCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_135_CLI_ListCommand; UPDATED=2025-10-17
 func TestCANARY_CBIN_135_CLI_ListCommand(t *testing.T) {
 	// Setup: Create temporary database

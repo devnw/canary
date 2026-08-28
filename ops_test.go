@@ -37,7 +37,7 @@ func TestOpsExtraction_GrepAndGrouping(t *testing.T) {
 		}
 	}
 
-	res, err := GrepTokens(db, "Alpha")
+	res, err := GrepTokens(db, "Alpha", 0)
 	if err != nil {
 		t.Fatalf("grep: %v", err)
 	}

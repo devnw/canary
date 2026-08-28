@@ -251,7 +251,8 @@ func listBugsFromFilesystem(aspect, status, severity, priority string, jsonOutpu
 	}
 
 	filtered := filterBugTokens(tokens, severity, priority)
-	if limit > 0 && len(filtered) > limit {
+	truncated := limit > 0 && len(filtered) > limit
+	if truncated {
 		filtered = filtered[:limit]
 	}
 
@@ -265,6 +266,9 @@ func listBugsFromFilesystem(aspect, status, severity, priority string, jsonOutpu
 		return nil
 	}
 	formatBugList(filtered, noColor)
+	if truncated {
+		fmt.Printf("(showing %d; use --limit -1 for all)\n", limit)
+	}
 	return nil
 }
 

@@ -47,6 +47,8 @@ Examples:
 		pattern := args[0]
 		dbPath, _ := cmd.Flags().GetString("db")
 		groupBy, _ := cmd.Flags().GetString("group-by")
+		limit, _ := cmd.Flags().GetInt("limit")
+		effLimit := utils.EffectiveLimit(limit, defaultGrepLimit)
 
 		// Open database
 		db, err := storage.Open(dbPath)
@@ -58,7 +60,7 @@ Examples:
 		defer db.Close()
 
 		// Search for matching tokens
-		tokens, err := canary.GrepTokens(db, pattern)
+		tokens, err := canary.GrepTokens(db, pattern, effLimit)
 		if err != nil {
 			return fmt.Errorf("search tokens: %w", err)
 		}
@@ -77,13 +79,23 @@ Examples:
 			fmt.Print(canary.FormatGrepResults(tokens))
 		}
 
+		if effLimit > 0 && len(tokens) == effLimit {
+			fmt.Printf("(showing %d; use --limit -1 for all)\n", effLimit)
+		}
+
 		return nil
 	},
 }
+
+// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-28
+// defaultGrepLimit caps grep output to protect agent context. Deliberately
+// small; pass --limit -1 to explicitly request everything.
+const defaultGrepLimit = 20
 
 // grepTokens searches for tokens matching the pattern
 func init() {
 	GrepCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	GrepCmd.Flags().String("db", ".canary/canary.db", "Path to database file")
 	GrepCmd.Flags().String("group-by", "none", "Group results (none, requirement)")
+	GrepCmd.Flags().Int("limit", defaultGrepLimit, "maximum number of results (default 20 to protect agent context; -1 = unlimited)")
 }

@@ -45,6 +45,7 @@ Use --include-hidden to show all requirements including hidden ones.`,
 		priorityMax, _ := cmd.Flags().GetInt("priority-max")
 		orderBy, _ := cmd.Flags().GetString("order-by")
 		limit, _ := cmd.Flags().GetInt("limit")
+		effLimit := utils.EffectiveLimit(limit, defaultListLimit)
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 		includeHidden, _ := cmd.Flags().GetBool("include-hidden")
 
@@ -92,7 +93,7 @@ Use --include-hidden to show all requirements including hidden ones.`,
 			filters["include_hidden"] = "true"
 		}
 
-		tokens, err := db.ListTokens(filters, idPattern, orderBy, limit)
+		tokens, err := db.ListTokens(filters, idPattern, orderBy, effLimit)
 		if err != nil {
 			return fmt.Errorf("list tokens: %w", err)
 		}
@@ -104,7 +105,6 @@ Use --include-hidden to show all requirements including hidden ones.`,
 
 		if jsonOutput {
 			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "  ")
 			return enc.Encode(tokens)
 		}
 
@@ -130,9 +130,18 @@ Use --include-hidden to show all requirements including hidden ones.`,
 			fmt.Println()
 		}
 
+		if effLimit > 0 && len(tokens) == effLimit {
+			fmt.Printf("(showing %d; use --limit -1 for all)\n", effLimit)
+		}
+
 		return nil
 	},
 }
+
+// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_205_ListDefaultLimitIsSmall; UPDATED=2026-08-28
+// defaultListLimit caps list output to protect agent context. Deliberately
+// small; pass --limit -1 to explicitly request everything.
+const defaultListLimit = 20
 
 func init() {
 	ListCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
@@ -145,7 +154,7 @@ func init() {
 	ListCmd.Flags().Int("priority-min", 0, "filter by minimum priority (0 = no minimum)")
 	ListCmd.Flags().Int("priority-max", 0, "filter by maximum priority (0 = no maximum)")
 	ListCmd.Flags().String("order-by", "", "custom ORDER BY clause (default: priority ASC, updated_at DESC)")
-	ListCmd.Flags().Int("limit", 0, "maximum number of results (0 = no limit)")
+	ListCmd.Flags().Int("limit", defaultListLimit, "maximum number of results (default 20 to protect agent context; -1 = unlimited)")
 	ListCmd.Flags().Bool("json", false, "output as JSON")
 	ListCmd.Flags().Bool("include-hidden", false, "include hidden requirements (test files, templates, examples)")
 }

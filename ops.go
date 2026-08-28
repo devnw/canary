@@ -17,7 +17,10 @@ import (
 	"go.devnw.com/canary/internal/storage"
 )
 
-// GrepTokens returns tokens whose feature/file/test/bench/reqID match pattern (case-insensitive substring).
+// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=API; STATUS=IMPL; UPDATED=2026-08-28
+// GrepTokens returns tokens whose feature/file/test/bench/reqID match pattern
+// (case-insensitive substring), bounded by limit (<=0 uses the storage
+// layer's own small default; see storage.DefaultSearchLimit).
 //
 // NOTE: SearchTokens' SQL already matches keywords, feature, req_id, file_path,
 // test, and bench columns (bounded by LIMIT), so a single bounded call covers
@@ -25,14 +28,20 @@ import (
 // entire token table via db.ListTokens(nil, "", "", 0) to catch file/test/bench
 // matches that the old (narrower) SearchTokens couldn't produce; that full-table
 // union is no longer needed now that SearchTokens covers those columns itself.
-func GrepTokens(db *storage.DB, pattern string) ([]*storage.Token, error) {
+func GrepTokens(db *storage.DB, pattern string, limit int) ([]*storage.Token, error) {
 	if pattern == "" {
 		return []*storage.Token{}, nil
 	}
 
-	tokens, err := db.SearchTokens(pattern, 0)
+	tokens, err := db.SearchTokens(pattern, limit)
 	if err != nil {
 		return nil, err
+	}
+
+	// SearchTokens already truncates via SQL LIMIT; this is a defensive
+	// backstop in case limit semantics change upstream.
+	if limit > 0 && len(tokens) > limit {
+		tokens = tokens[:limit]
 	}
 
 	return tokens, nil

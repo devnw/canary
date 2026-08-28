@@ -6,6 +6,7 @@
 package status
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -15,6 +16,19 @@ import (
 	"go.devnw.com/canary/internal/cmds/internal/utils"
 	"go.devnw.com/canary/internal/storage"
 )
+
+// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-28
+// maxStatusJSONIncomplete caps the "incomplete" list in --json output to
+// protect agent context.
+const maxStatusJSONIncomplete = 20
+
+// statusJSON is the compact --json shape for the status command.
+type statusJSON struct {
+	ReqID         string         `json:"req_id"`
+	CompletionPct int            `json:"completion_pct"`
+	ByStatus      map[string]int `json:"by_status"`
+	Incomplete    []string       `json:"incomplete"`
+}
 
 // CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_StatusCmd; UPDATED=2025-10-16
 var StatusCmd = &cobra.Command{
@@ -42,6 +56,7 @@ Examples:
 		reqID := args[0]
 		noColor, _ := cmd.Flags().GetBool("no-color")
 		dbPath, _ := cmd.Flags().GetString("db")
+		jsonOutput, _ := cmd.Flags().GetBool("json")
 
 		// Disable colors if requested
 		if noColor {
@@ -71,11 +86,49 @@ Examples:
 		// Calculate statistics
 		stats := calculateStats(tokens)
 
+		if jsonOutput {
+			enc := json.NewEncoder(os.Stdout)
+			return enc.Encode(buildStatusJSON(reqID, stats, tokens))
+		}
+
 		// Display summary
 		displayStatusSummary(reqID, stats, tokens)
 
 		return nil
 	},
+}
+
+// buildStatusJSON assembles the compact --json payload from already-computed
+// stats and tokens, capping the incomplete list to protect agent context.
+func buildStatusJSON(reqID string, stats *StatusStats, tokens []*storage.Token) statusJSON {
+	completionPct := 0
+	if stats.Total > 0 {
+		completionPct = (stats.Completed * 100) / stats.Total
+	}
+
+	out := statusJSON{
+		ReqID:         reqID,
+		CompletionPct: completionPct,
+		ByStatus: map[string]int{
+			"STUB":    stats.Stub,
+			"IMPL":    stats.Impl,
+			"TESTED":  stats.Tested,
+			"BENCHED": stats.Benched,
+		},
+		Incomplete: []string{},
+	}
+
+	for _, token := range tokens {
+		if token.Status != "STUB" && token.Status != "IMPL" {
+			continue
+		}
+		if len(out.Incomplete) >= maxStatusJSONIncomplete {
+			break
+		}
+		out.Incomplete = append(out.Incomplete, fmt.Sprintf("%s %s - %s", token.Status, token.Feature, token.FilePath))
+	}
+
+	return out
 }
 
 // StatusStats holds progress statistics
@@ -191,4 +244,5 @@ func init() {
 	StatusCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	StatusCmd.Flags().Bool("no-color", false, "Disable colored output")
 	StatusCmd.Flags().String("db", ".canary/canary.db", "Path to database file")
+	StatusCmd.Flags().Bool("json", false, "output as compact JSON")
 }

@@ -97,7 +97,7 @@ func TestCANARY_CBIN_CLI_001_CLI_GrepCmd(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tokens, err := canary.GrepTokens(db, tt.pattern)
+			tokens, err := canary.GrepTokens(db, tt.pattern, 0)
 			if err != nil {
 				t.Fatalf("grepTokens failed: %v", err)
 			}
@@ -163,7 +163,7 @@ func TestCANARY_CBIN_CLI_001_CLI_GrepCmd_CaseInsensitive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.pattern, func(t *testing.T) {
-			tokens, err := canary.GrepTokens(db, tt.pattern)
+			tokens, err := canary.GrepTokens(db, tt.pattern, 0)
 			if err != nil {
 				t.Fatalf("grepTokens failed: %v", err)
 			}
@@ -192,7 +192,7 @@ func TestCANARY_CBIN_CLI_001_CLI_GrepCmd_EmptyPattern(t *testing.T) {
 	defer db.Close()
 
 	// Empty pattern should return no results
-	tokens, err := canary.GrepTokens(db, "")
+	tokens, err := canary.GrepTokens(db, "", 0)
 	if err != nil {
 		t.Fatalf("grepTokens failed: %v", err)
 	}

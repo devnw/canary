@@ -11,9 +11,15 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"go.devnw.com/canary/internal/cmds/internal/utils"
 	"go.devnw.com/canary/internal/gap"
 	"go.devnw.com/canary/internal/storage"
 )
+
+// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-28
+// defaultGapQueryLimit caps gap query output to protect agent context.
+// Deliberately small; pass --limit -1 to explicitly request everything.
+const defaultGapQueryLimit = 20
 
 // CANARY: REQ=CBIN-140; FEATURE="GapMarkCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 var GapCmd = &cobra.Command{
@@ -140,6 +146,7 @@ Examples:
 		aspect, _ := cmd.Flags().GetString("aspect")
 		category, _ := cmd.Flags().GetString("category")
 		limit, _ := cmd.Flags().GetInt("limit")
+		effLimit := utils.EffectiveLimit(limit, defaultGapQueryLimit)
 
 		// Open database
 		db, err := storage.Open(dbPath)
@@ -153,7 +160,7 @@ Examples:
 		service := gap.NewService(repo)
 
 		// Query gaps
-		gaps, err := service.QueryGaps(reqID, feature, aspect, category, limit)
+		gaps, err := service.QueryGaps(reqID, feature, aspect, category, effLimit)
 		if err != nil {
 			return fmt.Errorf("query gaps: %w", err)
 		}
@@ -178,6 +185,10 @@ Examples:
 			fmt.Printf("   Helpful: %d | Unhelpful: %d\n", g.HelpfulCount, g.UnhelpfulCount)
 			fmt.Printf("   Created: %s by %s\n", g.CreatedAt.Format("2006-01-02"), g.CreatedBy)
 			fmt.Println()
+		}
+
+		if effLimit > 0 && len(gaps) == effLimit {
+			fmt.Printf("(showing %d; use --limit -1 for all)\n", effLimit)
 		}
 
 		return nil
@@ -443,7 +454,7 @@ func init() {
 	gapQueryCmd.Flags().String("feature", "", "filter by feature name")
 	gapQueryCmd.Flags().String("aspect", "", "filter by aspect")
 	gapQueryCmd.Flags().String("category", "", "filter by category")
-	gapQueryCmd.Flags().Int("limit", 0, "maximum number of results (0 = no limit)")
+	gapQueryCmd.Flags().Int("limit", defaultGapQueryLimit, "maximum number of results (default 20 to protect agent context; -1 = unlimited)")
 
 	// gapConfigCmd flags
 	gapConfigCmd.Flags().Int("max-gaps", 10, "maximum gaps to inject into planning")
