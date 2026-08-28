@@ -66,10 +66,6 @@ Examples:
 		}
 
 		if len(fileGroups) == 0 {
-			if jsonOutput {
-				enc := json.NewEncoder(os.Stdout)
-				return enc.Encode(filesJSON{ReqID: reqID, Files: map[string][]string{}})
-			}
 			fmt.Printf("No implementation files found for %s\n", reqID)
 			if !includeAll {
 				fmt.Println("\nTip: Use --all to include spec/template files")

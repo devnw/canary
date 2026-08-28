@@ -3,6 +3,7 @@ package search
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 
@@ -30,7 +31,12 @@ Keywords are matched case-insensitively using LIKE queries.`,
 		dbPath, _ := cmd.Flags().GetString("db")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 		limit, _ := cmd.Flags().GetInt("limit")
-		effLimit := utils.EffectiveLimit(limit, defaultSearchLimit)
+		var effLimit int
+		if limit < 0 {
+			effLimit = math.MaxInt32
+		} else {
+			effLimit = utils.EffectiveLimit(limit, defaultSearchLimit)
+		}
 		keywords := strings.Join(args, " ")
 
 		db, err := storage.Open(dbPath)

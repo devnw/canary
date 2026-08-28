@@ -7,6 +7,7 @@ package grep
 
 import (
 	"fmt"
+	"math"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -48,7 +49,12 @@ Examples:
 		dbPath, _ := cmd.Flags().GetString("db")
 		groupBy, _ := cmd.Flags().GetString("group-by")
 		limit, _ := cmd.Flags().GetInt("limit")
-		effLimit := utils.EffectiveLimit(limit, defaultGrepLimit)
+		var effLimit int
+		if limit < 0 {
+			effLimit = math.MaxInt32
+		} else {
+			effLimit = utils.EffectiveLimit(limit, defaultGrepLimit)
+		}
 
 		// Open database
 		db, err := storage.Open(dbPath)
