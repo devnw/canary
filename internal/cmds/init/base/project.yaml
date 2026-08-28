@@ -49,3 +49,23 @@ verification:
 
   # Staleness threshold in days (for --strict mode)
   staleness_days: 30
+
+# Requirement-ID sources. Every prefix used in REQ= fields should be declared.
+# type: flatfile (local series) | jira | github | gitlab
+# url templates: {id} = full ID (PLAT-4521), {num} = numeric part (4521)
+sources:
+  - name: core
+    type: flatfile
+    key: "{{PROJECT_KEY}}"
+#  - name: platform
+#    type: jira
+#    key: "PLAT"
+#    url: "https://company.atlassian.net/browse/{id}"
+#  - name: app
+#    type: gitlab
+#    key: "GL"
+#    url: "https://gitlab.com/group/project/-/issues/{num}"
+#  - name: oss
+#    type: github
+#    key: "GH"
+#    url: "https://github.com/owner/repo/issues/{num}"

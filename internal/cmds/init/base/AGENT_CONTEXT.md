@@ -19,6 +19,8 @@ This project uses CANARY requirement tracking with spec-kit-inspired workflows.
 - `/canary.scan` - Scan for CANARY tokens
 - `/canary.verify` - Verify GAP_ANALYSIS.md claims
 - `/canary.update-stale` - Update stale tokens
+- `canary view <REQ-ID>` — **use this first**: one bounded call returns status, files, tests, deps, spec/plan paths, diagrams, ticket URL. `--json` for structured. Avoid separate show/status/files calls and avoid grep.
+- All list commands default to 20 results; raise with `--limit N` (or `--limit -1` for all) only when needed.
 
 ### Development Workflow
 

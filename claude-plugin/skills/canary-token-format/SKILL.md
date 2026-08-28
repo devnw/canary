@@ -109,12 +109,16 @@ Link documentation with type prefixes:
 
 Documentation types: `user`, `api`, `technical`, `feature`, `architecture`
 
+## Ticket-System IDs
+
+`REQ=` accepts any configured source key, not just the local flatfile series: `REQ=PLAT-4521` (JIRA), `REQ=GH-7` (GitHub), `REQ=GL-88` (GitLab). Sources are declared in `.canary/project.yaml` under `sources:` (name, type, key, and an optional `url` template). External IDs are written verbatim — never zero-padded.
+
 ## Bug Tokens
 
 Bug tokens use a different format:
 
 ```go
-// CANARY: BUG=BUG-API-123; TITLE="Login fails on first attempt"; ASPECT=API; STATUS=OPEN; SEVERITY=S2; PRIORITY=P1; REPRO=3/5; UPDATED=2025-10-18
+// CANARY: BUG=BUG-API-<NNN>; TITLE="Login fails on first attempt"; ASPECT=API; STATUS=OPEN; SEVERITY=S2; PRIORITY=P1; REPRO=3/5; UPDATED=2025-10-18
 ```
 
 ## Creating Tokens via CLI

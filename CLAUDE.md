@@ -17,6 +17,7 @@ Read **only** the command file for the slash command you are running. Do not loa
 
 - **Scan:** Run `canary scan --root . --out status.json`. Use the **one line** on stdout (`CANARY_SCAN tokens=N requirements=M STUB=...`) for metrics. Do not read `status.json` unless you need per-requirement detail.
 - **Verify:** Run `canary scan --root . --verify GAP_ANALYSIS.md --strict`. Use stdout (`CANARY_VERIFY_OK` or `CANARY_VERIFY_FAIL count=N`) and stderr for failures. Open `GAP_ANALYSIS.md` only when fixing or updating claims.
+- **Requirement lookup:** run `canary view <REQ-ID>` (one bounded call: files, tests, deps, diagrams, ticket). Do not grep the tree for requirement context.
 
 ## Token format
 
@@ -51,6 +52,7 @@ Read **only** the command file for the slash command you are running. Do not loa
 
 - **Scan:** Run `canary scan --root . --out status.json`. Use the **one line** on stdout (`CANARY_SCAN tokens=N requirements=M STUB=...`) for metrics. Do not read `status.json` unless you need per-requirement detail.
 - **Verify:** Run `canary scan --root . --verify GAP_ANALYSIS.md --strict`. Use stdout (`CANARY_VERIFY_OK` or `CANARY_VERIFY_FAIL count=N`) and stderr for failures. Open `GAP_ANALYSIS.md` only when fixing or updating claims.
+- **Requirement lookup:** run `canary view <REQ-ID>` (one bounded call: files, tests, deps, diagrams, ticket). Do not grep the tree for requirement context.
 
 ## Token format
 
