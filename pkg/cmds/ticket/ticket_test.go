@@ -336,11 +336,12 @@ func TestCANARY_ENG_3958_Sync_ApplyWithDestinationSource_NoProjectFlag(t *testin
 }
 
 // TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge proves that
-// remoteStatusForSources fetches and merges remote status for every
-// jira-type source with a configured Project, without one source's fetch
-// clobbering another's (their issue-key spaces are disjoint by prefix, as
-// they always are for distinct sources).
+// remoteStatusForSources merges remote status across multiple jira sources
+// and documents the merge semantics: when the SAME issue key appears in
+// results from multiple sources (in source order), last-write-wins — the
+// final source's status value persists.
 func TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge(t *testing.T) {
+	var searchCalls int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.Method != http.MethodGet || r.URL.Path != "/rest/api/3/search" {
@@ -348,11 +349,15 @@ func TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+		searchCalls++
 		switch r.URL.Query().Get("jql") {
 		case "project=PLATPROJ":
-			_, _ = w.Write([]byte(`{"issues":[{"key":"PLAT-1","fields":{"status":{"name":"To Do"}}}],"total":1,"startAt":0,"maxResults":50}`))
+			// Platform source returns both X-1 and X-2
+			_, _ = w.Write([]byte(`{"issues":[{"key":"X-1","fields":{"status":{"name":"Done"}}},{"key":"X-2","fields":{"status":{"name":"In Progress"}}}],"total":2,"startAt":0,"maxResults":50}`))
 		case "project=SECPROJ":
-			_, _ = w.Write([]byte(`{"issues":[{"key":"SEC-9","fields":{"status":{"name":"Done"}}}],"total":1,"startAt":0,"maxResults":50}`))
+			// Security source returns X-1 (same key!) with DIFFERENT status
+			// and X-3. When merged, X-1 should have Security's value (last-write-wins)
+			_, _ = w.Write([]byte(`{"issues":[{"key":"X-1","fields":{"status":{"name":"To Do"}}},{"key":"X-3","fields":{"status":{"name":"Blocked"}}}],"total":2,"startAt":0,"maxResults":50}`))
 		default:
 			t.Errorf("unexpected jql: %s", r.URL.Query().Get("jql"))
 			w.WriteHeader(http.StatusBadRequest)
@@ -374,14 +379,78 @@ func TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("remoteStatusForSources: %v", err)
 	}
-	want := map[string]string{"PLAT-1": "To Do", "SEC-9": "Done"}
+
+	// Verify both project searches were made
+	if searchCalls != 2 {
+		t.Errorf("searchCalls = %d, want 2 (PLATPROJ + SECPROJ)", searchCalls)
+	}
+
+	// Verify merge results: X-1 should have "To Do" (Security source's value, last-write-wins)
+	// X-2 and X-3 come from their respective sources
+	want := map[string]string{"X-1": "To Do", "X-2": "In Progress", "X-3": "Blocked"}
 	if len(merged) != len(want) {
 		t.Fatalf("merged = %+v, want %+v", merged, want)
 	}
 	for k, v := range want {
 		if merged[k] != v {
-			t.Errorf("merged[%q] = %q, want %q (no clobbering across sources)", k, merged[k], v)
+			t.Errorf("merged[%q] = %q, want %q", k, merged[k], v)
 		}
+	}
+	// Specifically verify the merge semantics: X-1 from Security (last source)
+	// overwrites X-1 from Platform
+	if merged["X-1"] != "To Do" {
+		t.Errorf("X-1 merge semantics: got %q, want Security's 'To Do' (last-write-wins)", merged["X-1"])
+	}
+}
+
+// TestCANARY_ENG_3958_RemoteStatusForSources_SharedProjectSingleFetch proves that
+// when multiple jira sources are configured with the SAME project value,
+// remoteStatusForSources fetches that project exactly once, not repeatedly,
+// deduplicating via the fetched map.
+func TestCANARY_ENG_3958_RemoteStatusForSources_SharedProjectSingleFetch(t *testing.T) {
+	var searchCalls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method != http.MethodGet || r.URL.Path != "/rest/api/3/search" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		searchCalls++
+		jql := r.URL.Query().Get("jql")
+		if jql == "project=SHARED" {
+			_, _ = w.Write([]byte(`{"issues":[{"key":"SHARED-42","fields":{"status":{"name":"In Progress"}}}],"total":1,"startAt":0,"maxResults":50}`))
+		} else {
+			t.Errorf("unexpected jql: %s", jql)
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	defer srv.Close()
+
+	// Two jira sources pointing to the same project
+	reg, err := sources.NewRegistry([]sources.Source{
+		{Name: "core", Type: "flatfile", Key: "CBIN"},
+		{Name: "alpha", Type: "jira", Key: "ALPHA", Project: "SHARED"},
+		{Name: "beta", Type: "jira", Key: "BETA", Project: "SHARED"},
+	})
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+
+	client := &ticket.JiraClient{BaseURL: srv.URL, Email: "agent@example.com", Token: "sekret"}
+	merged, err := remoteStatusForSources(client, reg, "")
+	if err != nil {
+		t.Fatalf("remoteStatusForSources: %v", err)
+	}
+
+	// Verify exactly ONE fetch despite two sources pointing to SHARED
+	if searchCalls != 1 {
+		t.Errorf("searchCalls = %d, want 1 (deduped even with two sources for project=SHARED)", searchCalls)
+	}
+
+	// Verify the results are there
+	if merged["SHARED-42"] != "In Progress" {
+		t.Errorf("merged[SHARED-42] = %q, want In Progress", merged["SHARED-42"])
 	}
 }
 

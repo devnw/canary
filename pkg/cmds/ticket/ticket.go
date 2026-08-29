@@ -285,7 +285,12 @@ func hasUnresolvedCreateProject(actions []ticket.Action) bool {
 // A given project is only fetched once even when shared by multiple
 // sources. Sources (and the fallback) that resolve to no project at all are
 // skipped — they contribute nothing to merge.
-// CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge; UPDATED=2026-08-29
+//
+// Merge semantics (last-write-wins): when the same issue key appears in
+// results from multiple sources, the last source in registry order's status
+// value overwrites earlier ones. This allows a canonical source for a key to
+// appear later in the registry and take precedence.
+// CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge,TestCANARY_ENG_3958_RemoteStatusForSources_SharedProjectSingleFetch; UPDATED=2026-08-29
 func remoteStatusForSources(client *ticket.JiraClient, reg *sources.Registry, fallbackProject string) (map[string]string, error) {
 	if reg == nil {
 		return nil, nil
