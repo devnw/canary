@@ -122,8 +122,13 @@ func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string) (u
 // (the text captured after "CANARY:" by tokenLineRe) when it lacks an
 // UPDATED= attribute. Mirrors pkg/upgrade's addUpdatedContent: CRLF-safe,
 // and inserts before a trailing "*/" or "-->" comment closer rather than
-// after it. Callers must have already confirmed UPDATED= is absent.
+// after it. Defensive: refuses to touch content that already carries any
+// UPDATED= attribute (even a malformed one), so it can never append a
+// duplicate.
 func addMissingUpdated(content, today string) (string, bool) {
+	if strings.Contains(content, "UPDATED=") {
+		return content, false
+	}
 	cr := ""
 	body := content
 	if strings.HasSuffix(body, "\r") {
