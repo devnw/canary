@@ -117,7 +117,7 @@ tech stack decisions, and CANARY token placement instructions.`,
 		aspect = reqid.NormalizeAspect(aspect)
 
 		content := string(templateContent)
-		content = strings.ReplaceAll(content, "CBIN-XXX", reqID)
+		content = strings.ReplaceAll(content, "REQID-XXX", reqID)
 		content = strings.ReplaceAll(content, "[FEATURE NAME]", featureName)
 		content = strings.ReplaceAll(content, "YYYY-MM-DD", time.Now().UTC().Format("2006-01-02"))
 		content = strings.ReplaceAll(content, "SECURITY_REVIEW", aspect)

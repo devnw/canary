@@ -74,7 +74,7 @@ creates a spec directory, and populates it with a specification template.`,
 		}
 
 		content := string(templateContent)
-		content = strings.ReplaceAll(content, "CBIN-XXX", generatedID)
+		content = strings.ReplaceAll(content, "REQID-XXX", generatedID)
 		content = strings.ReplaceAll(content, "[FEATURE NAME]", featureDesc)
 		content = strings.ReplaceAll(content, "YYYY-MM-DD", time.Now().UTC().Format("2006-01-02"))
 		content = strings.ReplaceAll(content, "SECURITY_REVIEW", aspect)

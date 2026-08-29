@@ -32,12 +32,12 @@ Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days 
 
    The following CANARY tokens need updating:
 
-   - {{.ReqID}}-API-001: UserAuth (288 days old)
+   - <PROJECT_KEY>-API-001: UserAuth (288 days old)
      - File: src/api/auth.go:10
      - Current: UPDATED=2024-01-01
      - New: UPDATED=2025-10-16
 
-   - {{.ReqID}}-Engine-004: CacheOptimization (288 days old)
+   - <PROJECT_KEY>-Engine-004: CacheOptimization (288 days old)
      - File: internal/cache/cache.go:15
      - Current: UPDATED=2024-01-01
      - New: UPDATED=2025-10-16
@@ -71,8 +71,8 @@ Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days 
    **Tokens Updated:** N
 
    ### Updated Tokens
-   - ✅ {{.ReqID}}-API-001: src/api/auth.go (2024-01-01 → 2025-10-16)
-   - ✅ {{.ReqID}}-Engine-004: internal/cache/cache.go (2024-01-01 → 2025-10-16)
+   - ✅ <PROJECT_KEY>-API-001: src/api/auth.go (2024-01-01 → 2025-10-16)
+   - ✅ <PROJECT_KEY>-Engine-004: internal/cache/cache.go (2024-01-01 → 2025-10-16)
 
    ### Files Modified
    - src/api/auth.go
@@ -92,8 +92,8 @@ Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days 
    git commit -m "chore: update stale CANARY tokens
 
    Updated UPDATED field for N stale tokens:
-   - {{.ReqID}}-SECURITY_REVIEW-001: UserAuth
-   - {{.ReqID}}-SECURITY_REVIEW-004: CacheOptimization
+   - <PROJECT_KEY>-<ASPECT>-001: UserAuth
+   - <PROJECT_KEY>-<ASPECT>-004: CacheOptimization
 
    All TESTED/BENCHED requirements now current (within 30 days).
    "
@@ -109,12 +109,12 @@ Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days 
 
 ### Before Update
 ```go
-// CANARY: REQ={{.ReqID}}-SECURITY_REVIEW-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2024-01-01
+// CANARY: REQ=<PROJECT_KEY>-<ASPECT>-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2024-01-01
 ```
 
 ### After Update
 ```go
-// CANARY: REQ={{.ReqID}}-API-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2025-10-16
+// CANARY: REQ=<PROJECT_KEY>-API-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2025-10-16
 ```
 
 ### Files Modified

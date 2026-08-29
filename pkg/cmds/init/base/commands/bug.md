@@ -2,7 +2,7 @@
 
 ```yaml
 ---
-description: Create a new BUG-SECURITY_REVIEW-XXX CANARY + actionable bug report from natural-language input; enforce best-practice bug reporting; no-mock/no-simulate
+description: Create a new BUG-<ASPECT>-XXX CANARY + actionable bug report from natural-language input; enforce best-practice bug reporting; no-mock/no-simulate
 command: BugCmd
 version: 1.0
 subcommands: [bug]
@@ -14,12 +14,12 @@ outputs:
 runtime_guarantees:
   no_mock_data: true
   no_simulation_of_results: true
-  canary_logging: required_when(context_usage>=0.7 || on_milestones)
+  checkpointing: required_when(context_usage>=0.7 || on_milestones)
 defaults:
   bugs_root: .canary/bugs
   template_report: .canary/templates/bug-report-template.md
   id_lockfile: .canary/.bug.id.lock
-  bug_id_regex: '^BUG-[A-Za-z]+-[0-9]{3}$'
+  bug_id_regex: '^BUG(-[A-Za-z]+)?-[0-9]{3,}$'
   aspect_vocab: ["API","CLI","Engine","Storage","Security","Docs","Frontend","Data","Infra"]
   severity_vocab: ["S1-Critical","S2-High","S3-Medium","S4-Low"]
   priority_vocab: ["P0","P1","P2","P3"]
@@ -31,7 +31,7 @@ defaults:
 ### 1) Inputs
 
 * **User Arguments (raw):** `$ARGUMENTS` — natural‑language defect report from user/agent.
-  Optional flags: `--title "..."`, `--aspect SECURITY_REVIEW`, `--severity S1..S4`, `--priority P0..P3`, `--labels <csv>`, `--related <BUG-ID|REQ-ID>...`.
+  Optional flags: `--title "..."`, `--aspect <ASPECT>`, `--severity S1..S4`, `--priority P0..P3`, `--labels <csv>`, `--related <BUG-ID|REQ-ID>...`.
   **MANDATORY:** If `$ARGUMENTS` is empty → `ERROR_DESCRIPTION_REQUIRED()`.
 
 ### 2) Preconditions & Resolution
@@ -46,7 +46,7 @@ defaults:
    ```
 
    Identify candidate duplicates (same summary keywords; same files/stack; same component). If a high‑similarity existing BUG is found, return as `DUPLICATE_CANDIDATE` with links; **do not create a new ID** unless user insists. Bugzilla guidance: check for existing reports; one issue per bug. ([Bugzilla][1])
-5. **ID generation (collision‑safe):** Acquire `id_lockfile`; scan `bugs_root` for `BUG-SECURITY_REVIEW-NNN`; pick next zero‑padded NNN; if dir exists, increment & retry; release lock.
+5. **ID generation (collision‑safe):** Acquire `id_lockfile`; scan `bugs_root` for `BUG-<ASPECT>-NNN`; pick next zero‑padded NNN; if dir exists, increment & retry; release lock.
 
 ### 3) Planning & Parallelism
 
@@ -81,25 +81,18 @@ Use a Work‑DAG with concurrency groups; **join** before shared writes (no spec
 **CANARY token (paste into nearest code touchpoint or failing test):**
 
 ```go
-// CANARY: BUG=BUG-SECURITY_REVIEW-NNN; TITLE="<ShortProblemSummary>";
-//         ASPECT=SECURITY_REVIEW; STATUS=OPEN;
+// CANARY: BUG=BUG-<ASPECT>-NNN; TITLE="<ShortProblemSummary>";
+//         ASPECT=<ASPECT>; STATUS=OPEN;
 //         SEVERITY=<S1|S2|S3|S4>; PRIORITY=<P0|P1|P2|P3>;
 //         REPRO=<k>/<n>; UPDATED=<YYYY-MM-DD>
 ```
 
-### 5) CANARY Snapshot Protocol (compact; low‑token)
+### 5) Checkpoint Protocol (compact; low‑token)
 
-Emit after **ID selection** and after **report write**:
+Emit after **ID selection** and after **report write** when context usage is high or a milestone is reached:
 
 ```bash
-canary log --kind state --data '{
-  "t":"<ISO8601>","s":"bug|id|write",
-  "f":[[".canary/bugs/<BUG-ID>-<slug>/report.md",1,999]],
-  "k":["bug:<BUG-ID>","title:<slug>","aspect:SECURITY_REVIEW","sev:<S#>","prio:<P#>","repro:<k>/<n>"],
-  "fp":["<disproven assumption>"],   # prior false positives to avoid retrying failures
-  "iss":["<linked-REQ-IDs-or-n/a>"],
-  "nx":["triage","assign","create failing test"]
-}'
+canary checkpoint "bug-<BUG-ID>" "id selected | report written"
 ```
 
 ### 6) Output Contract (strict)
@@ -232,7 +225,7 @@ Retry succeeds on second attempt.
 - Reduced testcase: artifacts/login-retry.html
 
 ## Related / Dependencies
-REQ: {{.ProjectKey}}-API-134 (UserOnboarding)
+REQ: <PROJECT_KEY>-API-134 (UserOnboarding)
 
 ## Next Actions (Triage)
 Assign API team • Add failing test • Investigate session initialization race.

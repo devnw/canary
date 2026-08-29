@@ -21,8 +21,8 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
 
 2. **Parse claimed requirements**:
    - Find lines starting with `✅` followed by requirement ID
-   - Extract all claimed {{.ProjectKey}}-XXX identifiers
-   - Example: `✅ {{.ProjectKey}}-001 - UserAuth fully implemented`
+   - Extract all claimed <PROJECT_KEY>-XXX identifiers
+   - Example: `✅ <PROJECT_KEY>-001 - UserAuth fully implemented`
 
 3. **Run verification scan**:
 
@@ -50,10 +50,10 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
 
    ### Claimed Requirements: N
 
-   - ✅ {{.ProjectKey}}-001: UserAuth (BENCHED, verified)
-   - ✅ {{.ProjectKey}}-002: DataValidation (TESTED, verified)
-   - ❌ {{.ProjectKey}}-003: ReportGen (IMPL only, overclaim)
-   - ⚠️ {{.ProjectKey}}-004: Cache (TESTED but stale, 288 days old)
+   - ✅ <PROJECT_KEY>-001: UserAuth (BENCHED, verified)
+   - ✅ <PROJECT_KEY>-002: DataValidation (TESTED, verified)
+   - ❌ <PROJECT_KEY>-003: ReportGen (IMPL only, overclaim)
+   - ⚠️ <PROJECT_KEY>-004: Cache (TESTED but stale, 288 days old)
 
    ### Verification Summary
 
@@ -67,9 +67,9 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
    ```
 
 6. **Provide remediation steps** (if verification failed):
-   - For overclaims: "Add TEST= field and create test function for {{.ProjectKey}}-XXX"
+   - For overclaims: "Add TEST= field and create test function for <PROJECT_KEY>-XXX"
    - For stale tokens: "Run `canary scan --update-stale` to refresh UPDATED fields"
-   - For missing tokens: "Remove ✅ {{.ProjectKey}}-XXX from GAP_ANALYSIS.md (not found in code)"
+   - For missing tokens: "Remove ✅ <PROJECT_KEY>-XXX from GAP_ANALYSIS.md (not found in code)"
 
 ## Verification Rules
 
@@ -92,17 +92,17 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
 
 ## Verified Requirements
 
-✅ {{.ProjectKey}}-001 - User authentication fully tested
-✅ {{.ProjectKey}}-002 - Data validation with comprehensive tests
-✅ {{.ProjectKey}}-003 - Report generation functional
+✅ <PROJECT_KEY>-001 - User authentication fully tested
+✅ <PROJECT_KEY>-002 - Data validation with comprehensive tests
+✅ <PROJECT_KEY>-003 - Report generation functional
 ```
 
 **Verification scan finds:**
 
 ```
-✅ {{.ProjectKey}}-001: STATUS=BENCHED, UPDATED=2025-10-15 → Valid
-✅ {{.ProjectKey}}-002: STATUS=TESTED, UPDATED=2025-10-14 → Valid
-❌ {{.ProjectKey}}-003: STATUS=IMPL, missing TEST= field → Overclaim!
+✅ <PROJECT_KEY>-001: STATUS=BENCHED, UPDATED=2025-10-15 → Valid
+✅ <PROJECT_KEY>-002: STATUS=TESTED, UPDATED=2025-10-14 → Valid
+❌ <PROJECT_KEY>-003: STATUS=IMPL, missing TEST= field → Overclaim!
 ```
 
 **Report:**
@@ -114,13 +114,13 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
 
 ### Verification Details
 
-- ✅ {{.ProjectKey}}-001: UserAuth (BENCHED, verified)
-- ✅ {{.ProjectKey}}-002: DataValidation (TESTED, verified)
-- ❌ {{.ProjectKey}}-003: ReportGen (IMPL only, overclaim detected)
+- ✅ <PROJECT_KEY>-001: UserAuth (BENCHED, verified)
+- ✅ <PROJECT_KEY>-002: DataValidation (TESTED, verified)
+- ❌ <PROJECT_KEY>-003: ReportGen (IMPL only, overclaim detected)
 
 ### Action Required
 
-1. Add tests for {{.ProjectKey}}-003:
+1. Add tests for <PROJECT_KEY>-003:
    - Create test function: `TestReportGeneration`
    - Add to token: `TEST=TestReportGeneration`
    - Ensure test passes
@@ -129,7 +129,7 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
 OR
 
 2. Update GAP_ANALYSIS.md:
-   - Remove `✅` marker from {{.ProjectKey}}-003
+   - Remove `✅` marker from <PROJECT_KEY>-003
    - Move to "In Progress" section
 ```
 

@@ -9,7 +9,7 @@ This project uses the CANARY requirement tracking system. All command workflows 
 All features must include a CANARY token:
 
 ```
-// CANARY: REQ={{.ProjectKey}}-###; FEATURE="Name"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD
+// CANARY: REQ=<PROJECT_KEY>-###; FEATURE="Name"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD
 ```
 
 **Status Progression**: STUB → IMPL → TESTED → BENCHED
@@ -63,7 +63,7 @@ See `.canary/memory/constitution.md` for complete governing principles:
 1. Read `.canary/commands/specify.md` for the workflow
 2. Run `/canary.specify <description>`
 3. Read `.canary/commands/plan.md` for planning
-4. Run `/canary.plan {{.ProjectKey}}-XXX`
+4. Run `/canary.plan <PROJECT_KEY>-XXX`
 5. Follow test-first development (Article IV)
 6. Place CANARY tokens as you implement
 7. Run `/canary.scan` to verify

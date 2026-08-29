@@ -75,3 +75,10 @@ status.csv
 # Plugin template/example content (contains example tokens)
 claude-plugin/
 cursor-plugin/
+
+# Init asset templates: spec-template.md/plan-template.md embed literal
+# REQID-XXX example CANARY tokens (with placeholder UPDATED=YYYY-MM-DD dates)
+# that specify.go/plan.go substitute via strings.ReplaceAll at generation
+# time. They are not real project requirements.
+pkg/cmds/init/base/templates/spec-template.md
+pkg/cmds/init/base/templates/plan-template.md

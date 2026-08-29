@@ -15,7 +15,7 @@ You are working in the `.canary/` directory - the heart of the CANARY requiremen
 │   ├── scan.md
 │   └── ... (all commands)
 ├── specs/                  # Requirement specifications (WHAT/WHY)
-│   └── {{.ProjectKey}}-XXX-feature/
+│   └── <PROJECT_KEY>-XXX-feature/
 │       ├── spec.md        # Requirement specification
 │       └── plan.md        # Technical implementation plan (HOW)
 ├── templates/              # Templates for specs, plans, commands
@@ -44,7 +44,7 @@ Project governing principles. **Read this before implementing any feature.**
 
 **Always read the command file before executing that command.**
 
-### specs/{{.ProjectKey}}-XXX-feature/
+### specs/<PROJECT_KEY>-XXX-feature/
 Each requirement has its own directory containing:
 - **spec.md** - WHAT users need and WHY (technology-agnostic)
 - **plan.md** - HOW to implement (technical details)
@@ -60,7 +60,7 @@ Each requirement has its own directory containing:
 /canary.specify "feature description"
 
 # Or use CLI
-canary create {{.ProjectKey}}-XXX "FeatureName"
+canary create <PROJECT_KEY>-XXX "FeatureName"
 ```
 
 ### Planning Implementation
@@ -69,7 +69,7 @@ canary create {{.ProjectKey}}-XXX "FeatureName"
 
 ```bash
 # Use slash command
-/canary.plan {{.ProjectKey}}-XXX
+/canary.plan <PROJECT_KEY>-XXX
 
 # Creates plan.md with architecture and TDD phases
 ```
@@ -80,7 +80,7 @@ canary create {{.ProjectKey}}-XXX "FeatureName"
 
 ```bash
 # Use slash command
-/canary.implement {{.ProjectKey}}-XXX
+/canary.implement <PROJECT_KEY>-XXX
 
 # Follow test-first approach from plan
 ```
@@ -103,7 +103,7 @@ CANARY tokens track requirement status directly in source code.
 
 **Token Format:**
 ```
-// CANARY: REQ={{.ProjectKey}}-###; FEATURE="Name"; ASPECT=API; STATUS=TESTED; TEST=TestName; UPDATED=YYYY-MM-DD
+// CANARY: REQ=<PROJECT_KEY>-###; FEATURE="Name"; ASPECT=API; STATUS=TESTED; TEST=TestName; UPDATED=YYYY-MM-DD
 ```
 
 **Status Progression:**

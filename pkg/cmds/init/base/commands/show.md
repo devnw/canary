@@ -15,7 +15,7 @@ $ARGUMENTS
 Display all CANARY tokens for a specific requirement, organized by aspect or status.
 
 1. **Parse requirement ID**:
-   - Extract REQ-ID from arguments (e.g., {{.ReqID}}-SECURITY_REVIEW-133)
+   - Extract REQ-ID from arguments (e.g., <PROJECT_KEY>-<ASPECT>-133)
    - Validate format (should match XXXX-NNN pattern)
 
 2. **Run canary show command**:
@@ -51,27 +51,27 @@ Display all CANARY tokens for a specific requirement, organized by aspect or sta
 ## Example Output
 
 ```markdown
-## Tokens for {{.ReqID}}-API-133
+## Tokens for <PROJECT_KEY>-API-133
 
 ### API Aspect
 
-📌 {{.ReqID}}-API-133 - UserAuthentication
+📌 <PROJECT_KEY>-API-133 - UserAuthentication
    Status: TESTED | Aspect: API | Priority: 1
    Location: src/api/auth.go:25
-   Test: TestCANARY_{{.ReqID}}_133_API_UserAuthentication
+   Test: TestCANARY_<PROJECT_KEY>_133_API_UserAuthentication
    Owner: api-team
 
-📌 {{.ReqID}}-API-133 - ValidationMiddleware
+📌 <PROJECT_KEY>-API-133 - ValidationMiddleware
    Status: IMPL | Aspect: API | Priority: 2
    Location: src/api/middleware.go:45
 
 ### Storage Aspect
 
-📌 {{.ReqID}}-Storage-133 - SessionStore
+📌 <PROJECT_KEY>-Storage-133 - SessionStore
    Status: BENCHED | Aspect: Storage | Priority: 1
    Location: internal/storage/session.go:67
-   Test: TestCANARY_{{.ReqID}}_Storage_133_SessionStore
-   Bench: BenchCANARY_{{.ReqID}}_Storage_133_SessionStore
+   Test: TestCANARY_<PROJECT_KEY>_Storage_133_SessionStore
+   Bench: BenchCANARY_<PROJECT_KEY>_Storage_133_SessionStore
    Owner: backend-team
 
 **Summary:**
@@ -81,7 +81,7 @@ Display all CANARY tokens for a specific requirement, organized by aspect or sta
 - IMPL: 1 (33%)
 
 **Recommendations:**
-- {{.ReqID}}-API-133/ValidationMiddleware: Add tests for IMPL status token
+- <PROJECT_KEY>-API-133/ValidationMiddleware: Add tests for IMPL status token
 ```
 
 ## Guidelines

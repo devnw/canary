@@ -33,7 +33,7 @@ List CANARY requirements with priority-based ordering and comprehensive filterin
    - `--spec-status <value>`: Filter by spec status (draft, approved, in-progress, completed, archived)
 
    **Output control:**
-   - `--limit N`: Maximum results (0 = unlimited, default: 10 for agent context)
+   - `--limit N`: Maximum results (default: 20; `0` also means the default 20; `-1` = unlimited — use deliberately)
    - `--order-by <clause>`: Custom SQL ORDER BY clause
    - `--json`: Output as JSON for parsing
    - `--include-hidden`: Show test files, templates, and examples (hidden by default)
@@ -41,7 +41,7 @@ List CANARY requirements with priority-based ordering and comprehensive filterin
    **Default behavior:**
    - Hides test files, templates, and AI agent directories
    - Orders by: priority ASC, updated_at DESC
-   - Limit: unlimited (use --limit 10 for typical agent queries)
+   - Limit: 20 (use `--limit -1` only when you deliberately need every result)
 
 3. **Display results**:
    - Show requirement ID and feature name
@@ -73,7 +73,7 @@ List CANARY requirements with priority-based ordering and comprehensive filterin
 
    **View all work for an aspect:**
    ```bash
-   canary list --aspect CLI --limit 0
+   canary list --aspect CLI --limit -1
    ```
 
 5. **Analyze and recommend**:
@@ -89,35 +89,35 @@ List CANARY requirements with priority-based ordering and comprehensive filterin
 
 Found 10 requirements (showing top 10):
 
-📌 {{.ReqID}}-API-134 - UserOnboarding
+📌 <PROJECT_KEY>-API-134 - UserOnboarding
    Status: STUB | Aspect: API | Priority: 1
-   Location: .canary/specs/{{.ReqID}}-API-134-user-onboarding/spec.md:1
+   Location: .canary/specs/<PROJECT_KEY>-API-134-user-onboarding/spec.md:1
 
-📌 {{.ReqID}}-Engine-140 - ValidationRules
+📌 <PROJECT_KEY>-Engine-140 - ValidationRules
    Status: STUB | Aspect: Engine | Priority: 1
-   Location: .canary/specs/{{.ReqID}}-Engine-140-validation-rules/spec.md:1
+   Location: .canary/specs/<PROJECT_KEY>-Engine-140-validation-rules/spec.md:1
 
-📌 {{.ReqID}}-API-105 - RegistrationFlow
+📌 <PROJECT_KEY>-API-105 - RegistrationFlow
    Status: IMPL | Aspect: API | Priority: 2
    Location: src/api/registration.go:45
 
-📌 {{.ReqID}}-Engine-142 - AsyncQueue
+📌 <PROJECT_KEY>-Engine-142 - AsyncQueue
    Status: IMPL | Aspect: Engine | Priority: 2
    Location: internal/queue/processor.go:78
 
-📌 {{.ReqID}}-Security-115 - SecurityAudit
+📌 <PROJECT_KEY>-Security-115 - SecurityAudit
    Status: TESTED | Aspect: Security | Priority: 3
    Location: internal/security/audit.go:34
-   Test: TestCANARY_{{.ReqID}}_Security_115_Audit
+   Test: TestCANARY_<PROJECT_KEY>_Security_115_Audit
 
 **Analysis:**
-- **Highest Priority STUB**: {{.ReqID}}-API-134 (UserOnboarding)
-- **Needs Tests**: {{.ReqID}}-API-105, {{.ReqID}}-Engine-142 (IMPL status)
+- **Highest Priority STUB**: <PROJECT_KEY>-API-134 (UserOnboarding)
+- **Needs Tests**: <PROJECT_KEY>-API-105, <PROJECT_KEY>-Engine-142 (IMPL status)
 - **Completed**: 1 of 10 shown
 
 **Recommendations:**
-1. Start with `/canary.plan {{.ReqID}}-API-134` for highest priority STUB
-2. Add tests for {{.ReqID}}-API-105 and {{.ReqID}}-Engine-142
+1. Start with `/canary.plan <PROJECT_KEY>-API-134` for highest priority STUB
+2. Add tests for <PROJECT_KEY>-API-105 and <PROJECT_KEY>-Engine-142
 3. Use `/canary.next` to automatically select next priority work
 ```
 
@@ -132,7 +132,7 @@ canary list --status STUB --limit 3
 canary list --limit 10
 
 # Comprehensive view (higher token usage)
-canary list --limit 0
+canary list --limit -1
 ```
 
 **Workflow Queries:**

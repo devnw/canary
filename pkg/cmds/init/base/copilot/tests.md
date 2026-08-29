@@ -17,7 +17,7 @@ You are working in a test directory. This project follows **strict Test-Driven D
 ### 1. Write the Test FIRST (Red Phase)
 
 ```go
-// CANARY: REQ={{.ProjectKey}}-###; FEATURE="FeatureName"; ASPECT=API; STATUS=STUB; TEST=TestFeatureName; UPDATED=YYYY-MM-DD
+// CANARY: REQ=<PROJECT_KEY>-###; FEATURE="FeatureName"; ASPECT=API; STATUS=STUB; TEST=TestFeatureName; UPDATED=YYYY-MM-DD
 func TestFeatureName(t *testing.T) {
     // Arrange
     input := "test data"
@@ -49,7 +49,7 @@ Write minimal code to make the test pass.
 ### 4. Update Token Status
 
 ```go
-// CANARY: REQ={{.ProjectKey}}-###; FEATURE="FeatureName"; ASPECT=API; STATUS=TESTED; TEST=TestFeatureName; UPDATED=YYYY-MM-DD
+// CANARY: REQ=<PROJECT_KEY>-###; FEATURE="FeatureName"; ASPECT=API; STATUS=TESTED; TEST=TestFeatureName; UPDATED=YYYY-MM-DD
 ```
 
 ## Integration Testing (Article VI)

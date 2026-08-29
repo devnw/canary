@@ -16,7 +16,7 @@ This constitution establishes the governing principles for development using the
 Every feature MUST begin with a CANARY token. No implementation shall exist without a corresponding requirement identifier.
 
 ```
-// CANARY: REQ={{.ProjectKey}}-###; FEATURE="Name"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD
+// CANARY: REQ=<PROJECT_KEY>-###; FEATURE="Name"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD
 ```
 
 **Section 1.2: Evidence-Based Promotion**

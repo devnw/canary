@@ -6,13 +6,13 @@ description: Generate a technical implementation plan from a CANARY requirement 
 command: PlanCmd
 version: 2.1
 outputs:
-  - plan_markdown: .canary/specs/<REQ_ID>-SECURITY_REVIEW-<slug>/plan.md
+  - plan_markdown: .canary/specs/<REQ_ID>-<slug>/plan.md
   - summary_json: STDOUT (unwrapped JSON, strict schema below)
 runtime_guarantees:
   no_mock_data: true
   no_simulation_of_results: true
   test_first_required: true
-  canary_logging: required_when(context_usage>=0.7 || on_milestones)
+  checkpointing: required_when(context_usage>=0.7 || on_milestones)
 ---
 ```
 
@@ -22,7 +22,7 @@ runtime_guarantees:
 
 * **User Arguments (raw):** `$ARGUMENTS`
   Parse into:
-  `req_id?` (e.g., `{{.ReqID}}-SECURITY_REVIEW-113`) • `preferences?` (tech stack, perf/security constraints) • `notes?`.
+  `req_id?` (e.g., `<PROJECT_KEY>-<ASPECT>-113`) • `preferences?` (tech stack, perf/security constraints) • `notes?`.
 * **Repository Layout (assumed):**
 
   * Specs: `.canary/specs/<REQ_ID>-<slug>/spec.md`
@@ -82,23 +82,13 @@ runtime_guarantees:
 * **Security Gate:** Threats + mitigations listed or justified `n/a`.
 * **Performance Gate:** Targets + how to measure (or justified `n/a`).
 
-### 7) CANARY Snapshot Protocol (compact; low‑token)
+### 7) Checkpoint Protocol (compact; low‑token)
 
-Emit a snapshot when **context ≥70%**, after **spec load**, and post‑**plan write**:
+Emit a checkpoint when **context ≥70%**, after **spec load**, and post‑**plan write**:
 
 ```bash
-canary log --kind state --data '{
-  "t":"<ISO8601>","s":"plan|verify",
-  "f":[[".canary/specs/<REQ_ID>-<slug>/spec.md",1,999],[".canary/specs/<REQ_ID>-<slug>/plan.md",1,999]],
-  "k":["req:<REQ_ID>","feature:<FeatureName>","tests:first","parallel:CG-1..N"],
-  "fp":["<disproven assumption>"],
-  "iss":["<tracker-ids-or-n/a>"],
-  "nx":["write plan.md","validate gates","update tracking"]
-}'
+canary checkpoint "plan-<REQ_ID>" "spec loaded | plan written"
 ```
-
-**Fields:** `t` time • `s` stage • `f` file+line spans • `k` key facts • `fp` false‑positives to avoid retry failures • `iss` issues • `nx` next actions.
-*(Compact keys minimize tokens.)*
 
 ### 8) Tracking Update
 
@@ -121,9 +111,9 @@ End with:
 
 ```json
 {
-  "req_id": "{{.ReqID}}-SECURITY_REVIEW-XXX",
+  "req_id": "<PROJECT_KEY>-<ASPECT>-XXX",
   "feature_name": "PlanCmd",
-  "plan_path": ".canary/specs/{{.ReqID}}-SECURITY_REVIEW-XXX-<slug>/plan.md",
+  "plan_path": ".canary/specs/<PROJECT_KEY>-<ASPECT>-XXX-<slug>/plan.md",
   "status": "ready-for-implementation",
   "gates": {
     "article_I": "pass|fail",
