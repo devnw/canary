@@ -15,9 +15,11 @@
 //
 // Every rule is independently selectable (Options.Rules) and independently
 // safe: rules never touch CANARY:MIGRATE / CANARY:START / CANARY:END lines,
-// and — except for the md-heading rule's own target — never touch lines
-// inside fenced code blocks in markdown files.
-// CANARY: REQ=CBIN-302; FEATURE="TokenUpgrade"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_302_Rules,TestCANARY_CBIN_302_Combined,TestCANARY_CBIN_302_Remap,TestCANARY_CBIN_302_Idempotent; UPDATED=2026-08-29
+// and — including the md-heading rule — never touch lines inside fenced
+// code blocks in markdown files: a fenced `# CANARY:` heading is a
+// documentation example, not a live token, so it is left alone like every
+// other rule's fenced content.
+// CANARY: REQ=CBIN-302; FEATURE="TokenUpgrade"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_302_AtomicWrite,TestCANARY_CBIN_302_CRLF,TestCANARY_CBIN_302_Combined,TestCANARY_CBIN_302_FenceProtection,TestCANARY_CBIN_302_Idempotent,TestCANARY_CBIN_302_MDHeadingFenceProtection,TestCANARY_CBIN_302_MigrateGuard,TestCANARY_CBIN_302_PlaceholderGuard,TestCANARY_CBIN_302_Remap,TestCANARY_CBIN_302_RemapCollision,TestCANARY_CBIN_302_Rules,TestCANARY_CBIN_302_RuleFiltering,TestCANARY_CBIN_302_UnicodeHyphenProse,TestCANARY_CBIN_302_ValidRule; UPDATED=2026-08-29
 package upgrade
 
 import (
@@ -175,12 +177,46 @@ func Run(o Options) ([]Change, error) {
 		}
 		all = append(all, changes...)
 		if o.Write && newContent != content {
-			if werr := os.WriteFile(path, []byte(newContent), info.Mode()); werr != nil {
+			if werr := atomicWriteFile(path, []byte(newContent), info.Mode()); werr != nil {
 				return all, fmt.Errorf("write %s: %w", path, werr)
 			}
 		}
 	}
 	return all, nil
+}
+
+// atomicWriteFile replaces path's content without ever leaving it truncated:
+// it writes to a temp file in the same directory (so the final rename is
+// same-filesystem and atomic on POSIX), chmods the temp file to mode, closes
+// it, then renames it over path. On any error the temp file is removed and
+// the original at path is left untouched.
+func atomicWriteFile(path string, data []byte, mode fs.FileMode) (err error) {
+	dir := filepath.Dir(path)
+	tmp, cerr := os.CreateTemp(dir, ".canary-upgrade-*")
+	if cerr != nil {
+		return cerr
+	}
+	tmpPath := tmp.Name()
+	defer func() {
+		if err != nil {
+			_ = tmp.Close()
+			_ = os.Remove(tmpPath)
+		}
+	}()
+
+	if _, werr := tmp.Write(data); werr != nil {
+		return fmt.Errorf("write temp file: %w", werr)
+	}
+	if cherr := tmp.Chmod(mode); cherr != nil {
+		return fmt.Errorf("chmod temp file: %w", cherr)
+	}
+	if cerr := tmp.Close(); cerr != nil {
+		return fmt.Errorf("close temp file: %w", cerr)
+	}
+	if rerr := os.Rename(tmpPath, path); rerr != nil {
+		return fmt.Errorf("rename temp file: %w", rerr)
+	}
+	return nil
 }
 
 // resolveToday implements Options.Today's documented fallback chain.
@@ -231,9 +267,8 @@ var (
 	// legacyReqRe mirrors parse.go's bare-ID pattern.
 	legacyReqRe = regexp.MustCompile(`^((?:REQ|TASK|BUG)(?:-[A-Z]+)?-?\d{1,4})$`)
 
-	reCBINPad = regexp.MustCompile(`^(CBIN-)(\d{1,3})$`)
-	reReqPad  = regexp.MustCompile(`^(REQ(?:-[A-Z]+)?-)(\d{1,3})$`)
-	reTBPad   = regexp.MustCompile(`^((?:TASK|BUG)-)(\d{1,3})$`)
+	reReqPad = regexp.MustCompile(`^(REQ(?:-[A-Z]+)?-)(\d{1,3})$`)
+	reTBPad  = regexp.MustCompile(`^((?:TASK|BUG)-)(\d{1,3})$`)
 
 	unicodeHyphenReplacer = strings.NewReplacer("‑", "-", "–", "-")
 
@@ -283,15 +318,18 @@ func isPureKVList(s string) bool {
 	return any
 }
 
+// padNumeric zero-pads a bare legacy ID's numeric suffix to at least 3
+// digits. Its only caller (bareIDContent) only ever passes ids matched by
+// bareRe's `(?:REQ|TASK|BUG)(?:-[A-Z]+)?-?\d{1,4}` shape — a bare "CBIN-N"
+// segment is never a legacy shape this rule handles (CBIN ids only ever
+// appear keyed, e.g. "REQ=CBIN-101", which pad-flatfile handles instead) —
+// so only the REQ and TASK/BUG branches are reachable here.
 func padNumeric(id string) string {
 	pad := func(prefix, num string) string {
 		for len(num) < 3 {
 			num = "0" + num
 		}
 		return prefix + num
-	}
-	if m := reCBINPad.FindStringSubmatch(id); len(m) == 3 {
-		return pad(m[1], m[2])
 	}
 	if m := reReqPad.FindStringSubmatch(id); len(m) == 3 {
 		return pad(m[1], m[2])
@@ -395,13 +433,15 @@ func applyJoinMultiline(lines []string, fence []bool) ([]string, []Change) {
 }
 
 // applyMDHeading converts `# CANARY:` markdown headings into
-// `<!-- CANARY: ... -->` HTML comments. This is the one rule allowed to
-// touch fenced lines — real headings never appear inside a fence, so the
-// fence mask is deliberately not consulted here.
-func applyMDHeading(lines []string) []Change {
+// `<!-- CANARY: ... -->` HTML comments. A `# CANARY:` line inside a fenced
+// code block is a documentation example showing the old shape (e.g. a
+// skill's "here's what a legacy heading looked like" sample), not a live
+// token, so — like every other rule — it consults the fence mask and
+// leaves fenced content untouched.
+func applyMDHeading(lines []string, fence []bool) []Change {
 	var changes []Change
 	for i, line := range lines {
-		if isGuardedLine(line) {
+		if isGuardedLine(line) || (fence != nil && fence[i]) {
 			continue
 		}
 		if !strings.HasPrefix(line, "# CANARY:") {
@@ -555,16 +595,27 @@ func padFlatfileContent(content string, reg *sources.Registry) (string, bool) {
 }
 
 func addUpdatedContent(content, today string) (string, bool) {
+	// A CRLF file, split on "\n" alone, leaves a trailing "\r" attached to
+	// this line's content. Strip it before any suffix/whitespace analysis
+	// and re-append it at the very end, or it ends up embedded mid-line
+	// (e.g. "...STATUS=IMPL\r; UPDATED=...") instead of trailing the line.
+	cr := ""
+	body0 := content
+	if strings.HasSuffix(body0, "\r") {
+		cr = "\r"
+		body0 = strings.TrimSuffix(body0, "\r")
+	}
+
 	kvRe := regexp.MustCompile(`(?i)^\s*UPDATED\s*=`)
-	for _, seg := range strings.Split(content, ";") {
+	for _, seg := range strings.Split(body0, ";") {
 		if kvRe.MatchString(seg) {
 			return content, false
 		}
 	}
-	if strings.TrimSpace(content) == "" {
+	if strings.TrimSpace(body0) == "" {
 		return content, false
 	}
-	body := content
+	body := body0
 	suffix := ""
 	trimmedRight := strings.TrimRight(body, " \t")
 	for _, suf := range []string{"*/", "-->"} {
@@ -584,7 +635,7 @@ func addUpdatedContent(content, today string) (string, bool) {
 	if suffix != "" {
 		body += " " + suffix
 	}
-	return body, true
+	return body + cr, true
 }
 
 func remapTokenContent(content string, idMap map[string]string) (string, bool) {
@@ -674,7 +725,7 @@ func upgradeFile(content, ext string, enabled map[string]bool, reg *sources.Regi
 	}
 
 	if isMD && enabled["md-heading"] {
-		changes := applyMDHeading(lines)
+		changes := applyMDHeading(lines, fenceMask(lines))
 		all = append(all, changes...)
 	}
 
