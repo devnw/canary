@@ -13,7 +13,7 @@ canary create CBIN-105 "FeatureName" --aspect API --status IMPL
 
 ## Output
 ```
-// CANARY: REQ=CBIN-105; FEATURE="FeatureName"; ASPECT=API; STATUS=IMPL; UPDATED=2025-11-01
+// CANARY: REQ=<REQ-ID>; FEATURE="FeatureName"; ASPECT=API; STATUS=IMPL; UPDATED=<YYYY-MM-DD>
 ```
 
 ## Options

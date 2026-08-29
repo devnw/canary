@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_FullDependency,TestParseDependencies_PartialFeatures,TestParseDependencies_PartialAspect,TestParseDependencies_MixedTypes,TestCANARY_CBIN_201_ParseDependencies_TicketPrefixes; UPDATED=2026-08-29
+// CANARY: REQ=CP-262; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_FullDependency,TestParseDependencies_PartialFeatures,TestParseDependencies_PartialAspect,TestParseDependencies_MixedTypes,TestCANARY_CBIN_201_ParseDependencies_TicketPrefixes; UPDATED=2026-08-29
 
 var (
 	// Regex patterns for parsing dependency lines. Any configured requirement

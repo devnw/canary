@@ -1,4 +1,4 @@
--- CANARY: REQ=CBIN-139; FEATURE="AspectBasedReqIDSchema"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
+-- CANARY: REQ=CP-256; FEATURE="AspectBasedReqIDSchema"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
 -- Extend req_id to support aspect-based format: CBIN-SECURITY_REVIEW-XXX
 
 -- SQLite TEXT type already supports variable length strings

@@ -86,3 +86,7 @@ cursor-plugin/
 # time. They are not real project requirements.
 pkg/cmds/init/base/templates/spec-template.md
 pkg/cmds/init/base/templates/plan-template.md
+
+# Root README teaching examples (not real tokens)
+/README.md
+/README_CANARY.md
