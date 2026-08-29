@@ -193,7 +193,17 @@ Example:
 
 			if format == "mermaid" {
 				reg := sources.LoadFromRoot(".")
+				tokenProvider, _ := createTokenProvider()
+				// Local tokens always win: a node with at least one local
+				// CANARY token in the index is never styled as external,
+				// even when its id also matches a configured external
+				// source's key -- external.Resolve is consulted only when
+				// zero local tokens exist for the node. Mirrors the same
+				// rule in countExternalDeps and view.annotateExternal.
 				isExternal := func(id string) bool {
+					if tokenProvider != nil && len(tokenProvider.GetTokensByReqID(id)) > 0 {
+						return false
+					}
 					return external.Resolve(id, reg, ".").IsExternal()
 				}
 				cmd.Println(generator.FormatMermaid(graph, reqID, reg.TicketURL, isExternal))
@@ -337,10 +347,23 @@ Example:
 			// Validate
 			result := validator.Validate()
 
-			satisfied, unsatisfied, unknown := countExternalDeps(graph, reg)
+			tokenProvider, err := createTokenProvider()
+			if err != nil {
+				return fmt.Errorf("failed to create token provider: %w", err)
+			}
+			satisfied, unsatisfied, unknown := countExternalDeps(graph, reg, tokenProvider)
 			externalLine := fmt.Sprintf("external: satisfied=%d unsatisfied=%d unknown=%d", satisfied, unsatisfied, unknown)
 			externalFailing := strictExternal && (unsatisfied > 0 || unknown > 0)
 
+			// deps validate is a REPORTING gate, not a blocking gate: by
+			// design, an unsatisfied or unknown external dependency never
+			// fails validate in default (non-strict) mode -- it only shows
+			// up in externalLine below. Blocking on external dependency
+			// status is `next`'s job (hasUnresolvedDependencies) and
+			// `deps check`'s job, both of which already treat unsatisfied
+			// as blocking unconditionally. --strict-external is the opt-in
+			// that makes validate itself fail on unsatisfied/unknown
+			// externals; this asymmetry vs next/check is intentional.
 			if result.IsValid && !externalFailing {
 				cmd.Println("✅ All dependencies are valid")
 				cmd.Println(fmt.Sprintf("Validated %d requirements with %d dependencies",
@@ -480,7 +503,15 @@ func countTotalDependencies(graph *specs.DependencyGraph) int {
 // satisfied/unsatisfied/unknown counts for `deps validate`'s summary line.
 // Local/flatfile/unconfigured targets (Detail "not external") are excluded;
 // those are covered by the validator's own missing-requirement check.
-func countExternalDeps(graph *specs.DependencyGraph, reg *sources.Registry) (satisfied, unsatisfied, unknown int) {
+//
+// Local tokens always win: a target with at least one local CANARY token in
+// tokenProvider is excluded from this count entirely -- it's a local
+// requirement (tracked by the validator's own missing/satisfied logic), not
+// an external one, even when its id also matches a configured external
+// source's key. external.Resolve is consulted only when tokenProvider
+// reports zero local tokens for the target. tokenProvider may be nil (no
+// local-token gate applied) for callers without one.
+func countExternalDeps(graph *specs.DependencyGraph, reg *sources.Registry, tokenProvider specs.TokenProvider) (satisfied, unsatisfied, unknown int) {
 	checked := map[string]bool{}
 	for _, deps := range graph.Nodes {
 		for _, dep := range deps {
@@ -489,6 +520,10 @@ func countExternalDeps(graph *specs.DependencyGraph, reg *sources.Registry) (sat
 				continue
 			}
 			checked[target] = true
+
+			if tokenProvider != nil && len(tokenProvider.GetTokensByReqID(target)) > 0 {
+				continue
+			}
 
 			res := external.Resolve(target, reg, ".")
 			if !res.IsExternal() {

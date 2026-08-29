@@ -113,3 +113,48 @@ func TestCANARY_ENG_3960_MCP_Next_LocalMissingDep_StillBlocking(t *testing.T) {
 		t.Error("missing local (flatfile) dependency must still block")
 	}
 }
+
+// TestCANARY_ENG_3960_MCP_Next_LocalTokensWinOverExternalCache_IMPLBlocks
+// proves the MCP next mirror uses local TESTED/BENCHED logic for a
+// dependency id that has real local CANARY tokens, even when the id also
+// matches an external (ticket) source's key and the cache reports a
+// done-equivalent status: a local IMPL token still blocks.
+func TestCANARY_ENG_3960_MCP_Next_LocalTokensWinOverExternalCache_IMPLBlocks(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := external.SaveCache(".", map[string]string{"ENG-1": "Done"}, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	db, tok := mcpTestDB(t, "ENG-1")
+	if err := db.UpsertToken(&storage.Token{
+		ReqID: "ENG-1", Feature: "Upstream", Aspect: "API", Status: "IMPL", FilePath: "upstream.go",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	reg := mcpEngRegistry(t)
+
+	if !hasUnresolvedDependencies(db, tok, reg, map[string]bool{}) {
+		t.Error("local IMPL token must block even though cached remote status is Done")
+	}
+}
+
+// TestCANARY_ENG_3960_MCP_Next_LocalTokensWinOverExternalCache_TESTEDPasses
+// proves the inverse in the MCP mirror: a local TESTED token satisfies the
+// dependency even though the cached remote status ("In Progress") would
+// otherwise be unsatisfied.
+func TestCANARY_ENG_3960_MCP_Next_LocalTokensWinOverExternalCache_TESTEDPasses(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := external.SaveCache(".", map[string]string{"ENG-1": "In Progress"}, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	db, tok := mcpTestDB(t, "ENG-1")
+	if err := db.UpsertToken(&storage.Token{
+		ReqID: "ENG-1", Feature: "Upstream", Aspect: "API", Status: "TESTED", FilePath: "upstream.go",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	reg := mcpEngRegistry(t)
+
+	if hasUnresolvedDependencies(db, tok, reg, map[string]bool{}) {
+		t.Error("local TESTED token must satisfy the dependency even though cached remote status is In Progress")
+	}
+}

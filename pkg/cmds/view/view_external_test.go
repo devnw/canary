@@ -103,3 +103,45 @@ func TestCANARY_ENG_3960_View_DependsOn_LocalUnchanged(t *testing.T) {
 		t.Errorf("unknown external DependsOn entry = %q", v.DependsOn[1])
 	}
 }
+
+// TestCANARY_ENG_3960_View_DependsOn_LocalTokensWinOverExternalCache proves
+// that a DependsOn id with real local CANARY tokens is rendered plain --
+// never annotated with "(external: ...)" -- even when it also matches a
+// configured external (ticket-source) prefix AND the remote-status cache
+// holds a "done" entry for it. Local tokens always win over
+// external.Resolve; see the comment on annotateExternal.
+func TestCANARY_ENG_3960_View_DependsOn_LocalTokensWinOverExternalCache(t *testing.T) {
+	dbPath, root := seedDBWithSources(t)
+
+	// ENG-12 matches the "eng" jira source AND has a local IMPL token.
+	db, err := storage.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.UpsertToken(&storage.Token{
+		ReqID: "ENG-12", Feature: "Upstream", Aspect: "API", Status: "IMPL",
+		FilePath: "upstream.go", LineNumber: 5,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Close()
+
+	if err := external.SaveCache(root, map[string]string{"ENG-12": "Done"}, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+
+	v, err := BuildView(dbPath, root, "CBIN-105", 10)
+	if err != nil {
+		t.Fatalf("BuildView: %v", err)
+	}
+
+	want := []string{"CBIN-101", "ENG-12"}
+	if len(v.DependsOn) != len(want) {
+		t.Fatalf("DependsOn = %v, want %v", v.DependsOn, want)
+	}
+	for i := range want {
+		if v.DependsOn[i] != want[i] {
+			t.Errorf("DependsOn[%d] = %q, want %q (local tokens must suppress external annotation)", i, v.DependsOn[i], want[i])
+		}
+	}
+}

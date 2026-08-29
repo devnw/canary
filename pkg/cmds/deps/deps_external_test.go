@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"devnw.dev/canary/pkg/external"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // depsTestRoot lays out a temp project root with:
@@ -191,3 +192,83 @@ func TestCANARY_ENG_3960_DepsGraph_MermaidExternalClass(t *testing.T) {
 }
 
 func mustFreshTime() time.Time { return time.Now().UTC() }
+
+// seedLocalToken migrates a .canary/canary.db under the current working
+// directory (expected to already be a depsTestRoot) and upserts a single
+// local CANARY token for reqID with the given status. Used to prove that a
+// dependency id with real local tokens uses local status even when it also
+// matches a configured external (ticket-source) prefix.
+func seedLocalToken(t *testing.T, reqID, status string) {
+	t.Helper()
+	dbPath := filepath.Join(".canary", "canary.db")
+	require.NoError(t, storage.MigrateDB(dbPath, "all"))
+	db, err := storage.Open(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+	require.NoError(t, db.UpsertToken(&storage.Token{
+		ReqID: reqID, Feature: "Upstream", Aspect: "API", Status: status,
+		FilePath: "upstream.go", LineNumber: 1,
+	}))
+}
+
+// TestCANARY_ENG_3960_DepsValidate_DefaultUnsatisfiedExitsZero proves `deps
+// validate` is a REPORTING gate, not a blocking gate: an unsatisfied
+// external dependency shows up in the "external:" summary line but does not
+// fail validate in default (non-strict) mode. Blocking on external
+// dependency status is next's and deps check's job; only --strict-external
+// makes validate itself fail. See the comment above this check in
+// createDepsValidateCommand.
+func TestCANARY_ENG_3960_DepsValidate_DefaultUnsatisfiedExitsZero(t *testing.T) {
+	root := depsTestRoot(t, "ENG-13 (upstream)")
+	require.NoError(t, external.SaveCache(root, map[string]string{"ENG-13": "In Progress"}, mustFreshTime()))
+
+	var buf bytes.Buffer
+	cmd := createDepsValidateCommand()
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+	cmd.SetArgs([]string{})
+	err := cmd.Execute()
+
+	assert.NoError(t, err, "default (non-strict) validate must exit 0 even with an unsatisfied external dependency")
+	assert.Contains(t, buf.String(), "external: satisfied=0 unsatisfied=1 unknown=0")
+}
+
+// TestCANARY_ENG_3960_DepsValidate_LocalTokensWinOverExternalCache proves
+// countExternalDeps (deps validate's summary line) excludes a dependency id
+// that has real local CANARY tokens, even when the id also matches an
+// external source's key and the cache reports an unsatisfied status for it.
+// The id must not be double counted as "external unsatisfied" -- it's a
+// local requirement.
+func TestCANARY_ENG_3960_DepsValidate_LocalTokensWinOverExternalCache(t *testing.T) {
+	root := depsTestRoot(t, "ENG-12 (upstream)")
+	seedLocalToken(t, "ENG-12", "IMPL")
+	require.NoError(t, external.SaveCache(root, map[string]string{"ENG-12": "In Progress"}, mustFreshTime()))
+
+	var buf bytes.Buffer
+	cmd := createDepsValidateCommand()
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+	cmd.SetArgs([]string{})
+	_ = cmd.Execute()
+
+	assert.Contains(t, buf.String(), "external: satisfied=0 unsatisfied=0 unknown=0")
+}
+
+// TestCANARY_ENG_3960_DepsGraph_MermaidExternalClass_LocalTokensWin proves
+// the `deps graph --format mermaid` isExternal closure never styles a node
+// as external when it has real local CANARY tokens, even though its id also
+// matches the configured "eng" jira source's key.
+func TestCANARY_ENG_3960_DepsGraph_MermaidExternalClass_LocalTokensWin(t *testing.T) {
+	depsTestRoot(t, "ENG-12 (upstream)")
+	seedLocalToken(t, "ENG-12", "TESTED")
+
+	var buf bytes.Buffer
+	cmd := createDepsGraphCommand()
+	cmd.SetOut(&buf)
+	cmd.SetArgs([]string{"CBIN-147", "--format", "mermaid"})
+	require.NoError(t, cmd.Execute())
+
+	output := buf.String()
+	assert.NotContains(t, output, "classDef external")
+	assert.NotContains(t, output, "class ENG_12 external")
+}

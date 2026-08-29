@@ -134,7 +134,7 @@ func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
 	v.Files = allFiles
 	v.Tests = sortedSet(testSet)
 	v.Benches = sortedSet(benchSet)
-	v.DependsOn = annotateExternal(sortedSet(depSet), reg, root)
+	v.DependsOn = annotateExternal(sortedSet(depSet), reg, root, db)
 	v.Blocks = sortedSet(blockSet)
 	v.RelatedTo = sortedSet(relSet)
 
@@ -180,10 +180,26 @@ func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
 // Done)" / "ENG-13 (external: In Progress)" / "ENG-14 (external: no cached
 // ticket status)". Local ids (external.Resolve's "not external" case) are
 // returned verbatim.
-// CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3960_View_DependsOn_ExternalAnnotated,TestCANARY_ENG_3960_View_DependsOn_LocalUnchanged; UPDATED=2026-08-29
-func annotateExternal(depsOn []string, reg *sources.Registry, root string) []string {
+//
+// Local tokens always win: an id with at least one local CANARY token in
+// the index is returned verbatim -- no external annotation -- even when it
+// also matches a configured external (ticket-source) prefix. This mirrors
+// the rule already implemented in next.go's hasUnresolvedDependencies and
+// deps.go's createDepsCheckCommand: external.Resolve is consulted ONLY
+// when a dependency id has zero local tokens. Without this check, a local
+// IMPL requirement whose id happens to match an external source's key
+// would render a misleading "(external: Done)" annotation from a stale or
+// unrelated cache entry.
+// CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3960_View_DependsOn_ExternalAnnotated,TestCANARY_ENG_3960_View_DependsOn_LocalUnchanged,TestCANARY_ENG_3960_View_DependsOn_LocalTokensWinOverExternalCache; UPDATED=2026-08-29
+func annotateExternal(depsOn []string, reg *sources.Registry, root string, db *storage.DB) []string {
 	out := make([]string, len(depsOn))
 	for i, id := range depsOn {
+		if db != nil {
+			if tokens, err := db.GetTokensByReqID(id); err == nil && len(tokens) > 0 {
+				out[i] = id
+				continue
+			}
+		}
 		res := external.Resolve(id, reg, root)
 		if !res.IsExternal() {
 			out[i] = id
