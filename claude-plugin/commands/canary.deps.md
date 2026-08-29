@@ -29,7 +29,7 @@ $ARGUMENTS
    ```bash
    canary deps validate [--strict-external]
    ```
-   External IDs (ticket-source or peer-owned) are never "missing spec" errors — they're counted on a separate `external: satisfied=N unsatisfied=M unknown=K` line. `--strict-external` fails validation when any external dependency is unsatisfied or has unknown (uncached) status; the default never blocks on `unknown`.
+   External IDs (ticket-source or peer-owned) are never "missing spec" errors — they're counted on a separate `external: satisfied=N unsatisfied=M unknown=K` line. `--strict-external` fails validation when any external dependency is unsatisfied or has unknown (uncached) status; by default `validate` reports counts only and never fails on either (unlike `next`/`deps check`, where unsatisfied always blocks).
 
 ## External Dependencies
 
