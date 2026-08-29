@@ -111,7 +111,7 @@ Examples:
 		}
 
 		// Update timestamp
-		token.UpdatedAt = time.Now().Format("2006-01-02")
+		token.UpdatedAt = time.Now().UTC().Format("2006-01-02")
 
 		// Save updated token
 		if err := db.UpsertToken(token); err != nil {

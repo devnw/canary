@@ -39,6 +39,13 @@ Subcommands:
 
 // Helper functions
 
+// buildBugToken constructs a CANARY bug token comment string (single-line format).
+// The format is: // CANARY: BUG=<id>; TITLE="<title>"; FEATURE="<feature>"; ASPECT=<aspect>; STATUS=<status>; SEVERITY=<sev>; PRIORITY=<pri>; UPDATED=<date>
+func buildBugToken(bugID, title, feature, aspect, status, severity, priority, updated string) string {
+	return fmt.Sprintf("// CANARY: BUG=%s; TITLE=\"%s\"; FEATURE=\"%s\"; ASPECT=%s; STATUS=%s; SEVERITY=%s; PRIORITY=%s; UPDATED=%s\n",
+		bugID, title, feature, aspect, status, severity, priority, updated)
+}
+
 func generateBugID(aspect string, dbPath string) (string, error) {
 	// Normalize aspect to uppercase
 	aspect = strings.ToUpper(aspect)
@@ -274,15 +281,7 @@ func listBugsFromFilesystem(aspect, status, severity, priority string, jsonOutpu
 
 func createBugCanaryComment(token *storage.Token, severity, priority string) error {
 	// Create CANARY comment in the specified file
-	canaryComment := fmt.Sprintf(
-		"// CANARY: BUG=%s; TITLE=\"%s\";\n"+
-			"//         ASPECT=%s; STATUS=%s;\n"+
-			"//         SEVERITY=%s; PRIORITY=%s;\n"+
-			"//         UPDATED=%s",
-		token.ReqID, token.Feature, token.Aspect, token.Status,
-		severity, priority,
-		token.UpdatedAt,
-	)
+	canaryComment := buildBugToken(token.ReqID, token.Feature, token.Feature, token.Aspect, token.Status, severity, priority, token.UpdatedAt)
 
 	fmt.Printf("✅ Bug token created: %s\n", token.ReqID)
 	fmt.Printf("\nAdd this CANARY comment to %s:%d:\n\n", token.FilePath, token.LineNumber)

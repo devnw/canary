@@ -6,10 +6,12 @@
 package bug
 
 import (
+	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
 
+	"devnw.dev/canary/pkg/canaryscan"
 	"devnw.dev/canary/pkg/storage"
 )
 
@@ -407,4 +409,62 @@ func padNumber(num int, width int) string {
 		numStr = string(rune('0'+num/100)) + string(rune('0'+(num%100)/10)) + string(rune('0'+num%10))
 	}
 	return numStr[len(numStr)-width:]
+}
+
+// TestCANARY_CBIN_302_BugTokenSingleLineParseable verifies that bug tokens
+// are emitted as single-line tokens that the scanner can parse correctly.
+// CANARY: REQ=CBIN-302; FEATURE="Bug tokens are single-line parseable"; ASPECT=Encode; STATUS=TESTED; UPDATED=2025-08-29
+func TestCANARY_CBIN_302_BugTokenSingleLineParseable(t *testing.T) {
+	// Create a temp directory to hold the test file
+	tmpRoot := t.TempDir()
+
+	// Generate bug token using the helper function
+	bugID := "BUG-API-999"
+	title := "Test bug for scanner"
+	aspect := "API"
+	severity := "S1"
+	priority := "P0"
+	updatedDate := "2025-08-29"
+
+	// Build the token string via the same code path
+	token := buildBugToken(bugID, title, title, aspect, "OPEN", severity, priority, updatedDate)
+
+	// Write to a temp file
+	testFile := filepath.Join(tmpRoot, "test.go")
+	err := os.WriteFile(testFile, []byte(token), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	// Scan the temp root
+	rep, err := canaryscan.Scan(tmpRoot, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("Scanner failed (this is expected if token is multi-line): %v", err)
+	}
+
+	// Check that the BUG id is in requirements
+	found := false
+	for _, req := range rep.Requirements {
+		if req.ID == bugID {
+			found = true
+			// Verify it has STATUS=OPEN
+			if len(req.Features) == 0 {
+				t.Fatalf("Bug requirement %s has no features", bugID)
+			}
+			if req.Features[0].Status != "OPEN" {
+				t.Errorf("Expected STATUS=OPEN for %s, got %s", bugID, req.Features[0].Status)
+			}
+			break
+		}
+	}
+
+	if !found {
+		t.Errorf("Bug token %s not found in scan results. Requirements found: %v", bugID, func() []string {
+			var ids []string
+			for _, r := range rep.Requirements {
+				ids = append(ids, r.ID)
+			}
+			return ids
+		}())
+	}
 }
