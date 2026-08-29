@@ -58,7 +58,7 @@ Per Article IV of `.canary/memory/constitution.md`:
 
 **Each command file contains step-by-step workflows, examples, and validation criteria.**
 
-**Ticket sources** (JIRA, etc.) are configured in `.canary/project.yaml`'s `sources:` list; `canary ticket sync` stays plan-only without credentials.
+**Ticket sources** (JIRA, etc.) are configured in `.canary/project.yaml`'s `sources:` list; `canary ticket sync` stays plan-only without credentials, and `canary ticket status [--refresh]` reports/refreshes the cache on its own. External (ticket-sourced or `peers:`-owned) dependencies never block by default when uncached — `--strict-external` opts in.
 
 ## Constitutional Principles
 

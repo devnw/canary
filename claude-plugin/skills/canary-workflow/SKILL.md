@@ -113,6 +113,8 @@ Checks that `GAP_ANALYSIS.md` claims match actual token status. Catches overclai
 
 Rescans the repo and reports tokens whose file was committed after their `UPDATED` date (code-drift), tokens stale past the staleness window, and (with an indexed database) doc-drift. `--strict` exits 2 on any finding — good for CI.
 
+Dependencies on a ticket-source (JIRA, etc.) or `peers:`-owned requirement resolve via the cached remote status (`canary ticket status --refresh`) and never block `next`/`deps validate` by default when uncached — pass `--strict-external` to opt in.
+
 ## Quick Priority Workflow
 
 Don't know what to work on next?

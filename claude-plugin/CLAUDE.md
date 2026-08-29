@@ -69,6 +69,7 @@ canary drift --strict                          # Token-vs-reality drift (exit 2 
 canary upgrade --root . --write                # Rewrite legacy token shapes
 canary onboard --root .                        # Fresh-codebase adoption analysis
 canary ticket sync --project <KEY>              # Reconcile tokens against JIRA (plan-only without creds)
+canary ticket status [--refresh]                # Report or refresh the cached remote-status snapshot
 
 # Management
 canary scan --root . --update-stale            # Update stale tokens
@@ -78,7 +79,7 @@ canary doc status --all                        # Check documentation freshness
 
 List-shaped commands (`list`, `search`, `drift`, `view`, `onboard`, `ticket sync`, `upgrade`) default to a small `--limit` (20; `view` defaults to 10 per section) to protect agent context. `list` and `search` accept `--limit -1` for unlimited; the rest just take a larger `--limit`. Truncated output includes a hint to raise it.
 
-Ticket sources (JIRA, etc.) are configured in `.canary/project.yaml`'s `sources:` list; without credentials, `ticket sync` still computes and writes a plan, it just never touches the network.
+Ticket sources (JIRA, etc.) are configured in `.canary/project.yaml`'s `sources:` list; without credentials, `ticket sync` still computes and writes a plan, it just never touches the network. A `destination: true` source (or, by default, the first non-flatfile source) is where new issues are created. External dependencies (ticket-sourced or `peers:`-owned) resolve to satisfied/unsatisfied/unknown from the cache; `unknown` never blocks by default, and `deps validate` treats `unsatisfied` the same way — pass `--strict-external` (on `next`/`deps validate`) to make either fail.
 
 ## MCP Server (Optional)
 

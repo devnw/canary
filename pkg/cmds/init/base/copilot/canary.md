@@ -142,7 +142,7 @@ See `.canary/commands/specify.md` for complete token format details.
 
 ## Ticket Sources
 
-External ticket sources (JIRA, etc.) are configured in `.canary/project.yaml`'s `sources:` list. `canary ticket sync` computes a reconciliation plan against them, and without credentials it stays plan-only and never touches the network.
+External ticket sources (JIRA, etc.) are configured in `.canary/project.yaml`'s `sources:` list. `canary ticket sync` computes a reconciliation plan against them, and without credentials it stays plan-only and never touches the network; `canary ticket status [--refresh]` reports or refreshes the cached remote status on its own. A `destination: true` source (or the first non-flatfile source by default) is where new issues are created. External dependencies (ticket-sourced or `peers:`-owned) never block by default when uncached — pass `--strict-external` to `next`/`deps validate` to opt in.
 
 ## Related Files
 
