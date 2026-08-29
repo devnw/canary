@@ -42,7 +42,7 @@ Available commands:
 }
 
 // CANARY: REQ=CP-262; FEATURE="DepsCheckCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsCheckCommand; UPDATED=2026-08-29
-// CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3960_DepsCheck_ExternalSatisfied,TestCANARY_ENG_3960_DepsCheck_ExternalUnsatisfied,TestCANARY_ENG_3960_DepsCheck_ExternalUnknown,TestCANARY_ENG_3960_DepsValidate_ExternalNotMissing,TestCANARY_ENG_3960_DepsValidate_ExternalCountsLine,TestCANARY_ENG_3960_DepsValidate_StrictExternalFails,TestCANARY_ENG_3960_DepsGraph_MermaidExternalClass; UPDATED=2026-08-29
+// CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3960_DepsCheck_ExternalSatisfied,TestCANARY_ENG_3960_DepsCheck_ExternalUnsatisfied,TestCANARY_ENG_3960_DepsCheck_ExternalUnknown,TestCANARY_ENG_3960_DepsValidate_ExternalNotMissing,TestCANARY_ENG_3960_DepsValidate_ExternalCountsLine,TestCANARY_ENG_3960_DepsValidate_StrictExternalFails,TestCANARY_ENG_3960_DepsGraph_MermaidExternalClass,TestCANARY_ENG_3960_DepsValidate_ExternalWithLocalTokens_CountedMissing; UPDATED=2026-08-29
 // CANARY: REQ=ENG-3961; FEATURE="PeerProjects"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3961_DepsCheck_PeerDetailSurfacesName; UPDATED=2026-08-29
 
 // createDepsCheckCommand creates the deps check command
@@ -335,23 +335,30 @@ Example:
 
 			reg := sources.LoadFromRoot(".")
 
+			tokenProvider, err := createTokenProvider()
+			if err != nil {
+				return fmt.Errorf("failed to create token provider: %w", err)
+			}
+
 			// Create validator
 			validator := specs.NewDependencyValidator(graph)
 
 			// Add spec finder to check for missing requirements; external
-			// ids never count as missing (they live in a ticket source).
+			// ids never count as missing (they live in a ticket source) --
+			// but only when they have no local tokens. Local tokens always
+			// win (mirrors countExternalDeps and view.annotateExternal): an
+			// id whose prefix matches a configured external source but that
+			// also has local CANARY tokens and no spec dir is genuinely
+			// missing, not external.
 			validator.SetSpecFinder(&externalAwareSpecFinder{
-				inner: &filesystemSpecFinder{},
-				reg:   reg,
+				inner:         &filesystemSpecFinder{},
+				reg:           reg,
+				tokenProvider: tokenProvider,
 			})
 
 			// Validate
 			result := validator.Validate()
 
-			tokenProvider, err := createTokenProvider()
-			if err != nil {
-				return fmt.Errorf("failed to create token provider: %w", err)
-			}
 			satisfied, unsatisfied, unknown := countExternalDeps(graph, reg, tokenProvider)
 			externalLine := fmt.Sprintf("external: satisfied=%d unsatisfied=%d unknown=%d", satisfied, unsatisfied, unknown)
 			externalFailing := strictExternal && (unsatisfied > 0 || unknown > 0)
@@ -569,15 +576,24 @@ func (f *filesystemSpecFinder) FindSpecPath(reqID string) (string, error) {
 
 // externalAwareSpecFinder wraps a SpecFinder so that ids resolving to an
 // external ticket source (per external.Resolve) never count as "missing" --
-// they live in the ticket source, not in .canary/specs/.
+// they live in the ticket source, not in .canary/specs/. Local tokens always
+// win: an id with at least one local CANARY token (per tokenProvider) is
+// never treated as external here, even when its prefix also matches a
+// configured external source's key -- external.Resolve is consulted only
+// when tokenProvider reports zero local tokens for the id. tokenProvider may
+// be nil (no local-token gate applied) for callers without one.
 type externalAwareSpecFinder struct {
-	inner specs.SpecFinder
-	reg   *sources.Registry
+	inner         specs.SpecFinder
+	reg           *sources.Registry
+	tokenProvider specs.TokenProvider
 }
 
 func (f *externalAwareSpecFinder) SpecExists(reqID string) bool {
 	if f.inner.SpecExists(reqID) {
 		return true
+	}
+	if f.tokenProvider != nil && len(f.tokenProvider.GetTokensByReqID(reqID)) > 0 {
+		return false
 	}
 	return external.Resolve(reqID, f.reg, ".").IsExternal()
 }

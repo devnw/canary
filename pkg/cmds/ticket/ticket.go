@@ -9,7 +9,7 @@
 // present and --apply is set — applying it via the JIRA REST client and
 // writing a completed plan plus a remap map for `canary upgrade --map`.
 // CANARY: REQ=CP-279; FEATURE="TicketSync"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_306_Sync_NoCredsPlanOnly,TestCANARY_CBIN_306_Sync_NoCredsApplyDegradesGracefully,TestCANARY_CBIN_306_Sync_ApplyWithCreds_EndToEnd,TestCANARY_CBIN_306_Sync_ApplyNoCreds_ProjectRequired,TestCANARY_CBIN_306_Sync_PartialProgress,TestCANARY_CBIN_306_PrintActions_Bounded; UPDATED=2026-08-29
-// CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3958_Sync_ApplyWithDestinationSource_NoProjectFlag,TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge; UPDATED=2026-08-29
+// CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3958_Sync_ApplyWithDestinationSource_NoProjectFlag,TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge,TestCANARY_ENG_3958_Sync_ApplyNoProject_BlindTransitionRefused,TestCANARY_ENG_3958_Sync_ApplyWithDestinationSource_TransitionsUnaffected,TestCANARY_ENG_3958_Status_Refresh_WithCredsNoProject_PreservesExistingCache,TestCANARY_ENG_3958_Status_Refresh_ProjectWithZeroIssues_CacheSaved; UPDATED=2026-08-29
 package ticket
 
 import (
@@ -173,9 +173,19 @@ func runTicketStatus(cmd *cobra.Command, refresh bool, project string) error {
 	}
 
 	client := &ticket.JiraClient{BaseURL: creds.BaseURL, Email: creds.Email, Token: creds.Token}
-	statuses, err := remoteStatusForSources(client, reg, project)
+	statuses, fetchedProjects, err := remoteStatusForSources(client, reg, project)
 	if err != nil {
 		return err
+	}
+
+	// A zero-project fetch (no source resolved a project, and --project was
+	// not given as a fallback) means nothing was actually fetched -- never
+	// overwrite an existing cache with that non-result. This is distinct
+	// from fetching a project that legitimately has zero issues: that is
+	// still a real fetch (fetchedProjects > 0) and is saved below.
+	if fetchedProjects == 0 {
+		fmt.Fprintln(cmd.OutOrStdout(), "CANARY_TICKET_STATUS cached=0 reason=no_project")
+		return nil
 	}
 
 	fetchedAt := currentTime()
@@ -308,27 +318,43 @@ func applyAndReport(cmd *cobra.Command, tokens []*storage.Token, reg *sources.Re
 	}
 
 	effProject := effectiveCreationProject(project, reg)
-	if effProject == "" && hasUnresolvedCreateProject(actions) {
+	if effProject == "" && planContainsCreate(actions) {
 		return fmt.Errorf("--project is required with --apply (plan contains create_issue actions and no destination source has a configured project)")
 	}
 
 	client := &ticket.JiraClient{BaseURL: creds.BaseURL, Email: creds.Email, Token: creds.Token}
 
-	remoteStatus, err := remoteStatusForSources(client, reg, project)
+	remoteStatus, fetchedProjects, err := remoteStatusForSources(client, reg, project)
 	if err != nil {
-		return err
-	}
-	// Cache the fetch as soon as it succeeds — pkg/external and a plain
-	// `canary ticket status` read this snapshot without ever touching the
-	// network, so it must reflect the freshest fetch regardless of whether
-	// applying the plan below fully succeeds.
-	if err := external.SaveCache(".", remoteStatus, currentTime()); err != nil {
 		return err
 	}
 
 	actions, err = ticket.ComputePlan(tokens, reg, remoteStatus)
 	if err != nil {
 		return err
+	}
+
+	// A transition action is applied blind (as "every eligible transition
+	// proposed") whenever remote status is unknown for its issue -- which is
+	// exactly what a zero-project fetch produces. Applying blind against
+	// JIRA risks flipping an issue to a status that was already correct
+	// remotely, so refuse before touching the network at all. A create_issue
+	// action with a resolvable destination project is unaffected: it never
+	// depends on remote status.
+	if fetchedProjects == 0 && planContainsTransition(actions) {
+		return fmt.Errorf("--project is required with --apply (plan contains transition actions and no remote status could be fetched)")
+	}
+
+	// Cache the fetch as soon as it succeeds — pkg/external and a plain
+	// `canary ticket status` read this snapshot without ever touching the
+	// network, so it must reflect the freshest fetch regardless of whether
+	// applying the plan below fully succeeds. A zero-project fetch (nothing
+	// resolved to fetch) must never overwrite an existing cache -- that's
+	// not a fresher snapshot, it's a non-result.
+	if fetchedProjects > 0 {
+		if err := external.SaveCache(".", remoteStatus, currentTime()); err != nil {
+			return err
+		}
 	}
 
 	created, transitioned, applyErrors := applyActions(client, actions, effProject, issueType)
@@ -375,13 +401,28 @@ func effectiveCreationProject(flagProject string, reg *sources.Registry) string 
 	return dest.Project
 }
 
-// hasUnresolvedCreateProject reports whether the plan contains a
-// create_issue action — the only action type that requires a resolvable
-// project to apply. Transition actions target an already-existing issue by
-// key and never need one.
-func hasUnresolvedCreateProject(actions []ticket.Action) bool {
+// planContainsCreate reports whether the plan contains a create_issue
+// action — the only action type that requires a resolvable project to
+// apply. Transition actions target an already-existing issue by key and
+// never need a creation project (see planContainsTransition for the
+// separate zero-fetch guard that applies to them). Callers combine this
+// with an empty effective project to decide the plan is unresolved.
+func planContainsCreate(actions []ticket.Action) bool {
 	for _, a := range actions {
 		if a.Type == "create_issue" {
+			return true
+		}
+	}
+	return false
+}
+
+// planContainsTransition reports whether the plan contains a transition
+// action — the action type that is applied blind (proposed unconditionally)
+// when remote status is unknown for its issue. Callers combine this with a
+// zero-project fetch to decide the plan is unresolved.
+func planContainsTransition(actions []ticket.Action) bool {
+	for _, a := range actions {
+		if a.Type == "transition" {
 			return true
 		}
 	}
@@ -400,12 +441,19 @@ func hasUnresolvedCreateProject(actions []ticket.Action) bool {
 // results from multiple sources, the last source in registry order's status
 // value overwrites earlier ones. This allows a canonical source for a key to
 // appear later in the registry and take precedence.
+//
+// The returned fetchedProjects count is the number of distinct projects
+// actually queried — zero means nothing resolved to a project at all (no
+// source's own Project, and no usable fallbackProject), as opposed to a
+// project that was queried and legitimately returned zero issues. Callers
+// use this to distinguish "nothing to fetch" from "fetched, found nothing"
+// — see applyAndReport and runTicketStatus.
 // CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge,TestCANARY_ENG_3958_RemoteStatusForSources_SharedProjectSingleFetch; UPDATED=2026-08-29
-func remoteStatusForSources(client *ticket.JiraClient, reg *sources.Registry, fallbackProject string) (map[string]string, error) {
+func remoteStatusForSources(client *ticket.JiraClient, reg *sources.Registry, fallbackProject string) (merged map[string]string, fetchedProjects int, err error) {
 	if reg == nil {
-		return nil, nil
+		return nil, 0, nil
 	}
-	merged := map[string]string{}
+	merged = map[string]string{}
 	fetched := map[string]bool{}
 	for _, s := range reg.Sources() {
 		if s.Type != "jira" {
@@ -419,15 +467,15 @@ func remoteStatusForSources(client *ticket.JiraClient, reg *sources.Registry, fa
 			continue
 		}
 		fetched[p] = true
-		rs, err := ticket.FetchRemoteStatus(client, p)
-		if err != nil {
-			return nil, fmt.Errorf("fetch remote status for project %s: %w", p, err)
+		rs, ferr := ticket.FetchRemoteStatus(client, p)
+		if ferr != nil {
+			return nil, 0, fmt.Errorf("fetch remote status for project %s: %w", p, ferr)
 		}
 		for k, v := range rs {
 			merged[k] = v
 		}
 	}
-	return merged, nil
+	return merged, len(fetched), nil
 }
 
 // applyActions applies create_issue actions first (filling each created key

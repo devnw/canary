@@ -74,6 +74,9 @@ func NewRegistry(list []Source) (*Registry, error) {
 		}
 		if s.Destination {
 			destinations++
+			if s.Type == "flatfile" {
+				return nil, fmt.Errorf("sources: destination source %q must be a ticket source, not flatfile", s.Name)
+			}
 		}
 		byKey[s.Key] = s
 		keys = append(keys, regexp.QuoteMeta(s.Key))
@@ -170,7 +173,7 @@ func (r *Registry) SetPeers(peers []config.PeerConfig) {
 // one); otherwise the first non-flatfile source in declaration order.
 // Returns false when no source is marked and only flatfile sources are
 // configured — there is nothing to promote a requirement to.
-// CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_ENG_3958_DestinationSource_MarkedWins,TestCANARY_ENG_3958_DestinationSource_DefaultFirstNonFlatfile,TestCANARY_ENG_3958_DestinationSource_NoneWhenOnlyFlatfile,TestCANARY_ENG_3958_NewRegistry_DuplicateDestinationError; UPDATED=2026-08-29
+// CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_ENG_3958_DestinationSource_MarkedWins,TestCANARY_ENG_3958_DestinationSource_DefaultFirstNonFlatfile,TestCANARY_ENG_3958_DestinationSource_NoneWhenOnlyFlatfile,TestCANARY_ENG_3958_NewRegistry_DuplicateDestinationError,TestCANARY_ENG_3958_NewRegistry_FlatfileDestinationError; UPDATED=2026-08-29
 func (r *Registry) DestinationSource() (Source, bool) {
 	for _, s := range r.list {
 		if s.Destination {

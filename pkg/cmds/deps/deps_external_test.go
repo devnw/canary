@@ -313,3 +313,28 @@ func TestCANARY_ENG_3960_DepsGraph_MermaidExternalClass_LocalTokensWin(t *testin
 	assert.NotContains(t, output, "classDef external")
 	assert.NotContains(t, output, "class ENG_12 external")
 }
+
+// TestCANARY_ENG_3960_DepsValidate_ExternalWithLocalTokens_CountedMissing
+// proves externalAwareSpecFinder's local-tokens gate matches
+// countExternalDeps / the mermaid isExternal closure: an id whose prefix
+// matches a configured external source (ENG) but that ALSO has real local
+// CANARY tokens and no spec dir under .canary/specs is a genuine missing
+// requirement, not silently treated as external and skipped. Before
+// threading the token provider into externalAwareSpecFinder, this id was
+// exempted from "missing spec" reporting purely because its prefix matched
+// the "eng" source's key.
+func TestCANARY_ENG_3960_DepsValidate_ExternalWithLocalTokens_CountedMissing(t *testing.T) {
+	depsTestRoot(t, "ENG-12 (upstream)")
+	seedLocalToken(t, "ENG-12", "IMPL")
+
+	var buf bytes.Buffer
+	cmd := createDepsValidateCommand()
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+	cmd.SetArgs([]string{})
+	err := cmd.Execute()
+
+	output := buf.String()
+	assert.Contains(t, output, "Missing requirement: ENG-12")
+	assert.Error(t, err, "an external-prefix id with local tokens and no spec dir must fail validate as a real missing-spec finding")
+}

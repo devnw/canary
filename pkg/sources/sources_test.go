@@ -8,6 +8,7 @@ package sources
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"devnw.dev/canary/pkg/config"
@@ -288,6 +289,21 @@ func TestCANARY_ENG_3958_NewRegistry_DuplicateDestinationError(t *testing.T) {
 	})
 	if err == nil {
 		t.Error("NewRegistry must reject more than one Destination=true source")
+	}
+}
+
+// TestCANARY_ENG_3958_NewRegistry_FlatfileDestinationError proves that a
+// flatfile source marked destination: true is rejected -- flatfile is a
+// local series, never a valid target for create_issue actions.
+func TestCANARY_ENG_3958_NewRegistry_FlatfileDestinationError(t *testing.T) {
+	_, err := NewRegistry([]Source{
+		{Name: "core", Type: "flatfile", Key: "CBIN", Destination: true},
+	})
+	if err == nil {
+		t.Fatal("NewRegistry must reject a flatfile source marked destination: true")
+	}
+	if !strings.Contains(err.Error(), `destination source "core" must be a ticket source, not flatfile`) {
+		t.Errorf("error = %q, want the flatfile-destination message", err.Error())
 	}
 }
 

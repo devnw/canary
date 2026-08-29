@@ -388,9 +388,12 @@ func TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge(t *testing.T) {
 	}
 
 	client := &ticket.JiraClient{BaseURL: srv.URL, Email: "agent@example.com", Token: "sekret"}
-	merged, err := remoteStatusForSources(client, reg, "")
+	merged, fetchedProjects, err := remoteStatusForSources(client, reg, "")
 	if err != nil {
 		t.Fatalf("remoteStatusForSources: %v", err)
+	}
+	if fetchedProjects != 2 {
+		t.Errorf("fetchedProjects = %d, want 2 (PLATPROJ + SECPROJ)", fetchedProjects)
 	}
 
 	// Verify both project searches were made
@@ -451,9 +454,12 @@ func TestCANARY_ENG_3958_RemoteStatusForSources_SharedProjectSingleFetch(t *test
 	}
 
 	client := &ticket.JiraClient{BaseURL: srv.URL, Email: "agent@example.com", Token: "sekret"}
-	merged, err := remoteStatusForSources(client, reg, "")
+	merged, fetchedProjects, err := remoteStatusForSources(client, reg, "")
 	if err != nil {
 		t.Fatalf("remoteStatusForSources: %v", err)
+	}
+	if fetchedProjects != 1 {
+		t.Errorf("fetchedProjects = %d, want 1 (deduped even with two sources for project=SHARED)", fetchedProjects)
 	}
 
 	// Verify exactly ONE fetch despite two sources pointing to SHARED
@@ -516,6 +522,132 @@ func TestCANARY_CBIN_306_Sync_ApplyNoCreds_ProjectRequired(t *testing.T) {
 	// Verify no plan file was written (since we errored early)
 	if fileExists(filepath.Join(root, ".canary", "plan.json")) {
 		t.Error("plan file should not be written when --project validation fails")
+	}
+}
+
+// seedProjectTransitionOnly mirrors seedProject's legacy config (one
+// flatfile source CBIN, one jira source PLAT with no project: field) but
+// seeds only a jira token (PLAT-42) — no flatfile token — so the computed
+// plan contains a transition action and NO create_issue action, isolating
+// the blind-transition guard from the (already covered) create_issue
+// project-required guard.
+func seedProjectTransitionOnly(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	canaryDir := filepath.Join(root, ".canary")
+	if err := os.MkdirAll(canaryDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	yaml := `project:
+  name: Demo
+  key: CBIN
+sources:
+  - name: core
+    type: flatfile
+    key: CBIN
+  - name: platform
+    type: jira
+    key: PLAT
+`
+	if err := os.WriteFile(filepath.Join(canaryDir, "project.yaml"), []byte(yaml), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	dbPath := filepath.Join(canaryDir, "canary.db")
+	if err := storage.MigrateDB(dbPath, "all"); err != nil {
+		t.Fatalf("MigrateDB: %v", err)
+	}
+	db, err := storage.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+
+	if err := db.UpsertToken(&storage.Token{ReqID: "PLAT-42", Feature: "Sync", Aspect: "Engine", Status: "IMPL", FilePath: "sync.go"}); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+// TestCANARY_ENG_3958_Sync_ApplyNoProject_BlindTransitionRefused proves that
+// --apply refuses to apply transition actions against unknown remote state:
+// a legacy jira source with no project: field, and no --project flag as
+// fallback, means remoteStatusForSources fetches zero projects, so the plan
+// (computed with remoteStatus unknown-for-every-issue) would propose every
+// eligible transition and applyActions would send it to JIRA blind. The
+// command must error before any HTTP call and before writing the plan.
+func TestCANARY_ENG_3958_Sync_ApplyNoProject_BlindTransitionRefused(t *testing.T) {
+	root := seedProjectTransitionOnly(t)
+	chdir(t, root)
+
+	var httpCalls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		httpCalls++
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	t.Setenv("JIRA_BASE_URL", srv.URL)
+	t.Setenv("JIRA_EMAIL", "agent@example.com")
+	t.Setenv("JIRA_API_TOKEN", "sekret")
+
+	_, err := execSync(t, "--apply", "--plan", ".canary/plan.json")
+	if err == nil {
+		t.Fatal("expected error: plan contains transition actions and no remote status could be fetched")
+	}
+	if !strings.Contains(err.Error(), "--project is required with --apply") || !strings.Contains(err.Error(), "transition") {
+		t.Errorf("error = %q, want the blind-transition guard message", err.Error())
+	}
+	if httpCalls > 0 {
+		t.Errorf("HTTP calls made despite zero-project fetch: %d calls", httpCalls)
+	}
+	if fileExists(filepath.Join(root, ".canary", "plan.json")) {
+		t.Error("plan file should not be written when the blind-transition guard fires")
+	}
+}
+
+// TestCANARY_ENG_3958_Sync_ApplyWithDestinationSource_TransitionsUnaffected
+// proves the guard's counterexample named in the fix: a create_issue action
+// with a resolvable destination project is unaffected by the blind-
+// transition guard, because the destination source (being a jira source
+// with its own project: set) is itself fetched, so fetchedProjects is never
+// zero in that configuration.
+func TestCANARY_ENG_3958_Sync_ApplyWithDestinationSource_TransitionsUnaffected(t *testing.T) {
+	var createCalls, searchCalls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/rest/api/3/issue":
+			createCalls++
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"id":"1","key":"CP-1"}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/search":
+			searchCalls++
+			_, _ = w.Write([]byte(`{"issues":[],"total":0,"startAt":0,"maxResults":50}`))
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	root := seedProjectWithDestination(t, srv.URL)
+	chdir(t, root)
+
+	t.Setenv("JIRA_BASE_URL", "")
+	t.Setenv("JIRA_EMAIL", "agent@example.com")
+	t.Setenv("JIRA_API_TOKEN", "sekret")
+
+	out, err := execSync(t, "--apply", "--plan", ".canary/plan.json")
+	if err != nil {
+		t.Fatalf("Execute: %v (destination source resolves both the creation project and a real fetch)", err)
+	}
+	if !strings.Contains(out, "CANARY_TICKET_SYNC created=1") {
+		t.Fatalf("output = %q", out)
+	}
+	if createCalls != 1 || searchCalls != 1 {
+		t.Errorf("createCalls=%d searchCalls=%d, want 1/1", createCalls, searchCalls)
 	}
 }
 
@@ -807,6 +939,111 @@ func TestCANARY_ENG_3959_Status_Refresh_WithCreds(t *testing.T) {
 	}
 	if cache.Statuses["PLAT-42"] != "Done" {
 		t.Errorf("cache.Statuses[PLAT-42] = %q, want Done", cache.Statuses["PLAT-42"])
+	}
+	if cache.FetchedAt != "2026-08-29T00:00:00Z" {
+		t.Errorf("cache.FetchedAt = %q, want pinned CANARY_TEST_TIMESTAMP value", cache.FetchedAt)
+	}
+}
+
+// TestCANARY_ENG_3958_Status_Refresh_WithCredsNoProject_PreservesExistingCache
+// proves that `canary ticket status --refresh`, with credentials present but
+// no project resolvable at all (a legacy jira source with no project: field,
+// and no --project flag as fallback), reports cached=0 reason=no_project and
+// leaves an existing cache file byte-for-byte untouched — a zero-project
+// fetch is not a fresher snapshot, it's a non-result, and must never clobber
+// a legitimately cached one.
+func TestCANARY_ENG_3958_Status_Refresh_WithCredsNoProject_PreservesExistingCache(t *testing.T) {
+	root := seedProject(t)
+	chdir(t, root)
+
+	if err := external.SaveCache(root, map[string]string{"PLAT-1": "Done"}, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatal(err)
+	}
+	before, berr := os.ReadFile(filepath.Join(root, ".canary", "remote-status.json"))
+	if berr != nil {
+		t.Fatal(berr)
+	}
+
+	var httpCalls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		httpCalls++
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	t.Setenv("JIRA_BASE_URL", srv.URL)
+	t.Setenv("JIRA_EMAIL", "agent@example.com")
+	t.Setenv("JIRA_API_TOKEN", "sekret")
+
+	// No --project flag; seedProject's "platform" jira source has no
+	// project: field either, so nothing resolves to fetch.
+	out, err := execStatus(t, "--refresh")
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if strings.TrimSpace(out) != "CANARY_TICKET_STATUS cached=0 reason=no_project" {
+		t.Fatalf("output = %q", out)
+	}
+	if httpCalls > 0 {
+		t.Errorf("HTTP calls made despite zero-project fetch: %d calls", httpCalls)
+	}
+
+	after, aerr := os.ReadFile(filepath.Join(root, ".canary", "remote-status.json"))
+	if aerr != nil {
+		t.Fatal(aerr)
+	}
+	if string(before) != string(after) {
+		t.Errorf("cache changed despite zero-project fetch:\nbefore=%s\nafter=%s", before, after)
+	}
+}
+
+// TestCANARY_ENG_3958_Status_Refresh_ProjectWithZeroIssues_CacheSaved proves
+// that a real fetch — a resolved project that legitimately returns zero
+// issues — is still a real fetch: the cache is saved (empty statuses map,
+// fresh fetched_at), distinguishing it from the zero-*project* case above.
+func TestCANARY_ENG_3958_Status_Refresh_ProjectWithZeroIssues_CacheSaved(t *testing.T) {
+	root := seedProject(t)
+	chdir(t, root)
+
+	var searchCalls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/search" {
+			searchCalls++
+			_, _ = w.Write([]byte(`{"issues":[],"total":0,"startAt":0,"maxResults":50}`))
+			return
+		}
+		t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	t.Setenv("JIRA_BASE_URL", srv.URL)
+	t.Setenv("JIRA_EMAIL", "agent@example.com")
+	t.Setenv("JIRA_API_TOKEN", "sekret")
+	t.Setenv("CANARY_TEST_TIMESTAMP", "2026-08-29T00:00:00Z")
+
+	out, err := execStatus(t, "--refresh", "--project", "PLAT")
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !strings.Contains(out, "CANARY_TICKET_STATUS cached=0 fetched_at=2026-08-29T00:00:00Z") {
+		t.Fatalf("output = %q, want cached=0 fetched_at=... (a real fetch, just zero issues)", out)
+	}
+	if searchCalls != 1 {
+		t.Errorf("searchCalls = %d, want 1 (project resolved via --project fallback)", searchCalls)
+	}
+
+	cacheData, cerr := os.ReadFile(filepath.Join(root, ".canary", "remote-status.json"))
+	if cerr != nil {
+		t.Fatalf("read cache: %v (cache must be saved for a real fetch even with zero issues)", cerr)
+	}
+	var cache external.Cache
+	if uerr := json.Unmarshal(cacheData, &cache); uerr != nil {
+		t.Fatalf("unmarshal cache: %v", uerr)
+	}
+	if len(cache.Statuses) != 0 {
+		t.Errorf("cache.Statuses = %+v, want empty", cache.Statuses)
 	}
 	if cache.FetchedAt != "2026-08-29T00:00:00Z" {
 		t.Errorf("cache.FetchedAt = %q, want pinned CANARY_TEST_TIMESTAMP value", cache.FetchedAt)

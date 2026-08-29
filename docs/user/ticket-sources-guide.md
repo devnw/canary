@@ -61,7 +61,7 @@ sources:
 | Field | Description |
 |-------|-------------|
 | `project` | The ticket-system project key this source creates issues in and fetches remote status for. Optional; a source without it contributes no project of its own to `canary ticket sync`. |
-| `destination` | Marks this source as the target for `create_issue` actions that promote a flatfile requirement. At most one source may set `destination: true` — `canary ticket sync` refuses a config with more than one. |
+| `destination` | Marks this source as the target for `create_issue` actions that promote a flatfile requirement. At most one source may set `destination: true` — `canary ticket sync` refuses a config with more than one. The destination source must itself be a ticket source (`jira`, `github`, or `gitlab`) — a `flatfile` source marked `destination: true` is rejected. |
 
 **Precedence** for `canary ticket sync --apply`'s creation project: the `--project` flag, when set, always wins; otherwise the destination source's `project:` — the source with `destination: true`, or, when none is marked, the first non-flatfile source in declaration order. `--project` is only required when a `create_issue` action exists and neither resolves to a project.
 
