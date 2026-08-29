@@ -248,3 +248,107 @@ func TestCANARY_CBIN_306_PrintActions_Bounded(t *testing.T) {
 		t.Errorf("expected a truncation hint, got:\n%s", s)
 	}
 }
+
+func TestCANARY_CBIN_306_Sync_ApplyNoCreds_ProjectRequired(t *testing.T) {
+	root := seedProject(t)
+	chdir(t, root)
+
+	// No HTTP server needed — we must error before calling network
+	var httpCalls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		httpCalls++
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	t.Setenv("JIRA_BASE_URL", srv.URL)
+	t.Setenv("JIRA_EMAIL", "agent@example.com")
+	t.Setenv("JIRA_API_TOKEN", "sekret")
+
+	// --apply with creds but no --project should error before making HTTP calls
+	// if the plan contains create_issue or transition actions
+	_, err := execSync(t, "--apply", "--plan", ".canary/plan.json")
+	if err == nil {
+		t.Fatal("expected error when --apply is set with credentials and plan contains mutable actions but --project is empty")
+	}
+	if !strings.Contains(err.Error(), "--project is required with --apply") {
+		t.Errorf("error = %q, want '--project is required with --apply' in message", err.Error())
+	}
+	if httpCalls > 0 {
+		t.Errorf("HTTP calls made despite --project being empty: %d calls", httpCalls)
+	}
+	// Verify no plan file was written (since we errored early)
+	if fileExists(filepath.Join(root, ".canary", "plan.json")) {
+		t.Error("plan file should not be written when --project validation fails")
+	}
+}
+
+func TestCANARY_CBIN_306_Sync_PartialProgress(t *testing.T) {
+	root := seedProject(t)
+	chdir(t, root)
+
+	var createCalls, transitionGETs, transitionPOSTs, searchCalls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/rest/api/3/issue":
+			createCalls++
+			// Fail the first create_issue call
+			if createCalls == 1 {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(`{"errorMessages":["Invalid field"]}`))
+				return
+			}
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"id":"1","key":"CP-1"}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/search":
+			searchCalls++
+			_, _ = w.Write([]byte(`{"issues":[{"key":"PLAT-42","fields":{"status":{"name":"To Do"}}}],"total":1,"startAt":0,"maxResults":50}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/issue/PLAT-42/transitions":
+			transitionGETs++
+			_, _ = w.Write([]byte(`{"transitions":[{"id":"21","name":"go","to":{"name":"In Progress"}}]}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/rest/api/3/issue/PLAT-42/transitions":
+			transitionPOSTs++
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	t.Setenv("JIRA_BASE_URL", srv.URL)
+	t.Setenv("JIRA_EMAIL", "agent@example.com")
+	t.Setenv("JIRA_API_TOKEN", "sekret")
+
+	planPath := filepath.Join(root, ".canary", "plan.json")
+	out, err := execSync(t, "--apply", "--project", "CP", "--plan", ".canary/plan.json")
+
+	// Should error but still print summary and persist the map with partial results
+	if err == nil {
+		t.Fatal("expected error due to create_issue failure, got nil")
+	}
+
+	// Output should contain the summary with errors count
+	if !strings.Contains(out, "CANARY_TICKET_SYNC created=0 transitioned=1 remap_pending=") {
+		t.Fatalf("output = %q, want CANARY_TICKET_SYNC with created=0 transitioned=1", out)
+	}
+	if !strings.Contains(out, "errors=1") {
+		t.Fatalf("output = %q, want errors=1 in summary", out)
+	}
+
+	// Verify partial progress persisted to map: only PLAT-42 transitioned, CBIN-105 failed
+	// The remap map should be empty since CBIN-105's create_issue failed (only successful remaps go into the map)
+	mapData, merr := os.ReadFile(planPath + ".map.json")
+	if merr != nil {
+		t.Fatalf("read remap map: %v", merr)
+	}
+	var idMap map[string]string
+	if uerr := json.Unmarshal(mapData, &idMap); uerr != nil {
+		t.Fatalf("unmarshal remap map: %v", uerr)
+	}
+	// Since CBIN-105's create_issue failed, the remap map should be empty
+	if len(idMap) != 0 {
+		t.Errorf("remap map = %+v, want empty (create failed so no successful remaps)", idMap)
+	}
+}

@@ -8,7 +8,7 @@
 // configured `sources:` registry, and — only when JIRA credentials are
 // present and --apply is set — applying it via the JIRA REST client and
 // writing a completed plan plus a remap map for `canary upgrade --map`.
-// CANARY: REQ=CBIN-306; FEATURE="TicketSync"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_306_Sync_NoCredsPlanOnly,TestCANARY_CBIN_306_Sync_NoCredsApplyDegradesGracefully,TestCANARY_CBIN_306_Sync_ApplyWithCreds_EndToEnd,TestCANARY_CBIN_306_PrintActions_Bounded; UPDATED=2026-08-29
+// CANARY: REQ=CBIN-306; FEATURE="TicketSync"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_306_Sync_NoCredsPlanOnly,TestCANARY_CBIN_306_Sync_NoCredsApplyDegradesGracefully,TestCANARY_CBIN_306_Sync_ApplyWithCreds_EndToEnd,TestCANARY_CBIN_306_Sync_ApplyNoCreds_ProjectRequired,TestCANARY_CBIN_306_Sync_PartialProgress,TestCANARY_CBIN_306_PrintActions_Bounded; UPDATED=2026-08-29
 package ticket
 
 import (
@@ -156,6 +156,17 @@ func runTicketSync(cmd *cobra.Command, dbPath, planPath, project, issueType stri
 // client, writes the completed plan and its remap map, and prints the
 // CANARY_TICKET_SYNC summary.
 func applyAndReport(cmd *cobra.Command, tokens []*storage.Token, reg *sources.Registry, creds jiraCreds, planPath, project, issueType string, limit int) error {
+	// Require --project when the plan contains create/transition actions that
+	// would need it to apply successfully.
+	actions, err := ticket.ComputePlan(tokens, reg, nil)
+	if err != nil {
+		return err
+	}
+
+	if project == "" && hasMutableActions(actions) {
+		return fmt.Errorf("--project is required with --apply (plan contains create/transition actions)")
+	}
+
 	client := &ticket.JiraClient{BaseURL: creds.BaseURL, Email: creds.Email, Token: creds.Token}
 
 	var remoteStatus map[string]string
@@ -167,20 +178,12 @@ func applyAndReport(cmd *cobra.Command, tokens []*storage.Token, reg *sources.Re
 		remoteStatus = rs
 	}
 
-	actions, err := ticket.ComputePlan(tokens, reg, remoteStatus)
+	actions, err = ticket.ComputePlan(tokens, reg, remoteStatus)
 	if err != nil {
 		return err
 	}
 
-	created, transitioned, err := applyActions(client, actions, project, issueType)
-	if err != nil {
-		// Best-effort: still persist whatever the plan looks like so far
-		// (created keys already filled into their remap pairs) before
-		// surfacing the error.
-		_ = writePlan(planPath, actions)
-		_ = writeRemapMap(planPath, actions)
-		return err
-	}
+	created, transitioned, applyErrors := applyActions(client, actions, project, issueType)
 
 	if err := writePlan(planPath, actions); err != nil {
 		return err
@@ -191,23 +194,45 @@ func applyAndReport(cmd *cobra.Command, tokens []*storage.Token, reg *sources.Re
 
 	printActions(cmd, actions, limit)
 	fmt.Fprintf(cmd.OutOrStdout(), "Plan written to %s (remap map: %s.map.json)\n", planPath, planPath)
-	fmt.Fprintf(cmd.OutOrStdout(), "CANARY_TICKET_SYNC created=%d transitioned=%d remap_pending=%d\n",
+	summary := fmt.Sprintf("CANARY_TICKET_SYNC created=%d transitioned=%d remap_pending=%d",
 		created, transitioned, countPendingRemap(actions))
+	if len(applyErrors) > 0 {
+		summary += fmt.Sprintf(" errors=%d", len(applyErrors))
+		fmt.Fprintln(cmd.OutOrStdout(), summary)
+		for _, errMsg := range applyErrors {
+			fmt.Fprintf(cmd.OutOrStderr(), "error: %s\n", errMsg)
+		}
+		return fmt.Errorf("apply: %d action(s) failed", len(applyErrors))
+	}
+	fmt.Fprintln(cmd.OutOrStdout(), summary)
 	return nil
+}
+
+// hasMutableActions checks if the plan contains any create_issue or
+// transition actions that would require --project to apply.
+func hasMutableActions(actions []ticket.Action) bool {
+	for _, a := range actions {
+		if a.Type == "create_issue" || a.Type == "transition" {
+			return true
+		}
+	}
+	return false
 }
 
 // applyActions applies create_issue actions first (filling each created key
 // into its paired remap action), then transition actions, mutating actions
-// in place. It returns counts of successfully applied create_issue and
-// transition actions, and stops at the first error.
-func applyActions(client *ticket.JiraClient, actions []ticket.Action, project, issueType string) (created, transitioned int, err error) {
+// in place. It collects errors per action instead of aborting on first error,
+// allowing partial progress. Returns counts of successful actions and a list
+// of error messages. Errors are formatted as "action_type issue/req: message".
+func applyActions(client *ticket.JiraClient, actions []ticket.Action, project, issueType string) (created, transitioned int, errs []string) {
 	for i := range actions {
 		if actions[i].Type != "create_issue" {
 			continue
 		}
 		key, cerr := client.CreateIssue(project, issueType, actions[i].Summary, actions[i].Description)
 		if cerr != nil {
-			return created, transitioned, fmt.Errorf("create issue for %s: %w", actions[i].ReqID, cerr)
+			errs = append(errs, fmt.Sprintf("create_issue %s: %v", actions[i].ReqID, cerr))
+			continue
 		}
 		created++
 		for j := i + 1; j < len(actions); j++ {
@@ -223,12 +248,13 @@ func applyActions(client *ticket.JiraClient, actions []ticket.Action, project, i
 			continue
 		}
 		if terr := client.TransitionIssue(actions[i].Issue, actions[i].To); terr != nil {
-			return created, transitioned, fmt.Errorf("transition %s: %w", actions[i].Issue, terr)
+			errs = append(errs, fmt.Sprintf("transition %s: %v", actions[i].Issue, terr))
+			continue
 		}
 		transitioned++
 	}
 
-	return created, transitioned, nil
+	return created, transitioned, errs
 }
 
 // countPendingRemap counts remap actions whose Issue is still unfilled
