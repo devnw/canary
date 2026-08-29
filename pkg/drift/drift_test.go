@@ -95,6 +95,25 @@ func TestCANARY_CBIN_305_Detect_CodeDriftPositive(t *testing.T) {
 	}
 }
 
+// TestCANARY_CBIN_305_Detect_CodeDriftSameDayNotDrift pins the strict
+// time.Time.After semantics used by detectCodeDrift: a commit on the exact
+// same day as the token's UPDATED date must NOT be reported as drift.
+func TestCANARY_CBIN_305_Detect_CodeDriftSameDayNotDrift(t *testing.T) {
+	dir := initRepo(t)
+	commitFile(t, dir, "foo.go", "package foo\n", "2026-08-20T12:00:00+00:00")
+
+	rep := repWithFile("CBIN-912", "foo.go", "2026-08-20", "IMPL")
+	findings, err := Detect(dir, rep, 30, time.Time{})
+	if err != nil {
+		t.Fatalf("Detect: %v", err)
+	}
+	for _, f := range findings {
+		if f.Kind == KindCodeDrift {
+			t.Errorf("commit date == UPDATED date must not be drift: %+v", f)
+		}
+	}
+}
+
 func TestCANARY_CBIN_305_Detect_CodeDriftNegative(t *testing.T) {
 	dir := initRepo(t)
 	commitFile(t, dir, "foo.go", "package foo\n", "2026-08-01T12:00:00+00:00")
@@ -175,6 +194,62 @@ func TestCANARY_CBIN_305_Detect_CodeDriftDedupesPerFile(t *testing.T) {
 	}
 	if n != 1 {
 		t.Errorf("expected exactly one deduped code-drift finding for the shared file, got %d: %+v", n, findings)
+	}
+}
+
+// TestCANARY_CBIN_305_Detect_CachesGitLogPerFile proves lastCommitDate is
+// invoked at most once per unique file, not once per (requirement, file)
+// pair: two requirements sharing one file plus a second, unique file must
+// drive exactly 2 gitLogFn calls even though there are 3 (req, file) pairs.
+func TestCANARY_CBIN_305_Detect_CachesGitLogPerFile(t *testing.T) {
+	calls := map[string]int{}
+	stub := func(root, file string) string {
+		calls[file]++
+		return "2026-08-20"
+	}
+
+	rep := canaryscan.Report{
+		Requirements: []canaryscan.Requirement{
+			{
+				ID: "CBIN-913",
+				Features: []canaryscan.Feature{
+					{Feature: "A", Aspect: "API", Status: "IMPL", Files: []string{"shared.go"}, Updated: "2026-08-01"},
+				},
+			},
+			{
+				ID: "CBIN-914",
+				Features: []canaryscan.Feature{
+					{Feature: "B", Aspect: "CLI", Status: "IMPL", Files: []string{"shared.go"}, Updated: "2026-08-02"},
+				},
+			},
+			{
+				ID: "CBIN-915",
+				Features: []canaryscan.Feature{
+					{Feature: "C", Aspect: "API", Status: "IMPL", Files: []string{"other.go"}, Updated: "2026-08-03"},
+				},
+			},
+		},
+	}
+
+	findings := detectCodeDriftWith("/unused-root", rep, stub)
+
+	pairCount := 0
+	for _, f := range findings {
+		if f.Kind == KindCodeDrift {
+			pairCount++
+		}
+	}
+	if pairCount != 3 {
+		t.Fatalf("expected 3 (req, file) code-drift findings, got %d: %+v", pairCount, findings)
+	}
+
+	if len(calls) != 2 {
+		t.Fatalf("expected gitLogFn called for exactly 2 unique files, got %d: %v", len(calls), calls)
+	}
+	for file, n := range calls {
+		if n != 1 {
+			t.Errorf("gitLogFn called %d times for %s, want 1 (cached per unique file, not per (req,file) pair)", n, file)
+		}
 	}
 }
 

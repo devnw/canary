@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"devnw.dev/canary/pkg/drift"
 )
 
 func runGit(t *testing.T, dir string, env []string, args ...string) {
@@ -123,19 +125,21 @@ func TestCANARY_CBIN_305_Cmd_JSON(t *testing.T) {
 	}
 }
 
-func TestCANARY_CBIN_305_Cmd_Strict_ReturnsError(t *testing.T) {
-	dir := writeDriftingRepo(t)
-	cmd := CreateDriftCommand()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
-	cmd.SetArgs([]string{"--root", dir, "--strict"})
-	err := cmd.Execute()
-	if err == nil {
-		t.Fatal("expected --strict to return an error when findings exist")
+// TestCANARY_CBIN_305_StrictShouldFail unit-tests the pure --strict
+// decision. The os.Exit(2) side effect it gates (mirroring
+// pkg/canaryscan.Run's exit-code pattern) is not exercised in-process —
+// see the transcript in .superpowers/sdd/task-7-report.md for an empirical
+// `canary drift --strict; echo $?` run against a built binary.
+func TestCANARY_CBIN_305_StrictShouldFail(t *testing.T) {
+	if strictShouldFail(nil) {
+		t.Error("strictShouldFail(nil) = true, want false")
 	}
-	if !strings.Contains(err.Error(), "CANARY_DRIFT_FAIL") {
-		t.Errorf("error = %v", err)
+	if strictShouldFail([]drift.Finding{}) {
+		t.Error("strictShouldFail(empty) = true, want false")
+	}
+	findings := []drift.Finding{{ReqID: "CBIN-950", Kind: drift.KindCodeDrift}}
+	if !strictShouldFail(findings) {
+		t.Error("strictShouldFail(non-empty) = false, want true")
 	}
 }
 
@@ -168,5 +172,54 @@ func TestCANARY_CBIN_305_Cmd_Table_NoDrift(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "CANARY_DRIFT requirements=0") {
 		t.Errorf("output missing zeroed summary line: %q", out.String())
+	}
+}
+
+// TestCANARY_CBIN_305_Cmd_TimestampEnv_StaleFlips is an end-to-end test at
+// the CLI layer: it sets CANARY_TEST_TIMESTAMP (which scanAndDetect reads
+// via canaryscan.RefTimeFromEnv) so a fixed reference time, not the wall
+// clock, drives staleness, and asserts the summary counts flip as refTime
+// crosses the 30-day default staleness window.
+func TestCANARY_CBIN_305_Cmd_TimestampEnv_StaleFlips(t *testing.T) {
+	dir := t.TempDir()
+	runGit(t, dir, nil, "init", "-q")
+
+	content := "package foo\n\n" +
+		"// CANARY: REQ=CBIN-951; FEATURE=\"Foo\"; ASPECT=API; STATUS=TESTED; TEST=TestFoo; UPDATED=2026-08-01\n" +
+		"func Foo() {}\n"
+	full := filepath.Join(dir, "foo.go")
+	if err := os.WriteFile(full, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, dir, nil, "add", "foo.go")
+	env := append(os.Environ(), "GIT_AUTHOR_DATE=2026-08-01T12:00:00+00:00", "GIT_COMMITTER_DATE=2026-08-01T12:00:00+00:00")
+	runGit(t, dir, env, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "msg")
+
+	// refTime 14 days after UPDATED: inside the 30-day window, not stale.
+	t.Setenv("CANARY_TEST_TIMESTAMP", "2026-08-15T00:00:00Z")
+	cmd := CreateDriftCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"--root", dir})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !strings.Contains(out.String(), "CANARY_DRIFT requirements=0 code_drift=0 stale=0 doc_drift=0") {
+		t.Errorf("expected no findings within the staleness window, output = %q", out.String())
+	}
+
+	// refTime 45 days after UPDATED: past the 30-day window, stale.
+	t.Setenv("CANARY_TEST_TIMESTAMP", "2026-09-15T00:00:00Z")
+	cmd2 := CreateDriftCommand()
+	var out2 bytes.Buffer
+	cmd2.SetOut(&out2)
+	cmd2.SetErr(&out2)
+	cmd2.SetArgs([]string{"--root", dir})
+	if err := cmd2.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !strings.Contains(out2.String(), "CANARY_DRIFT requirements=1 code_drift=0 stale=1 doc_drift=0") {
+		t.Errorf("expected exactly one stale finding past the staleness window, output = %q", out2.String())
 	}
 }

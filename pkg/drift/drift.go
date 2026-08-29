@@ -8,7 +8,7 @@
 // date (code-drift), tokens that have aged past the staleness window
 // (stale), and — when a CANARY index database is present — documentation
 // that has fallen out of sync with its source (doc-drift).
-// CANARY: REQ=CBIN-305; FEATURE="DriftDetect"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_305_Detect_CodeDriftPositive,TestCANARY_CBIN_305_Detect_CodeDriftNegative,TestCANARY_CBIN_305_Detect_NonGitRootSoftSkip,TestCANARY_CBIN_305_Detect_UntrackedFileSoftSkip,TestCANARY_CBIN_305_Detect_Stale,TestCANARY_CBIN_305_Detect_StaleIgnoresNonTestedBenched,TestCANARY_CBIN_305_Detect_DocDrift,TestCANARY_CBIN_305_Detect_DocDriftNoDB,TestCANARY_CBIN_305_Detect_CodeDriftDedupesPerFile,TestCANARY_CBIN_305_Detect_CachesGitLogPerFile; UPDATED=2026-08-29
+// CANARY: REQ=CBIN-305; FEATURE="DriftDetect"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_305_Detect_CodeDriftPositive,TestCANARY_CBIN_305_Detect_CodeDriftNegative,TestCANARY_CBIN_305_Detect_CodeDriftSameDayNotDrift,TestCANARY_CBIN_305_Detect_NonGitRootSoftSkip,TestCANARY_CBIN_305_Detect_UntrackedFileSoftSkip,TestCANARY_CBIN_305_Detect_Stale,TestCANARY_CBIN_305_Detect_StaleIgnoresNonTestedBenched,TestCANARY_CBIN_305_Detect_DocDrift,TestCANARY_CBIN_305_Detect_DocDriftNoDB,TestCANARY_CBIN_305_Detect_CodeDriftDedupesPerFile,TestCANARY_CBIN_305_Detect_CachesGitLogPerFile; UPDATED=2026-08-29
 package drift
 
 import (
@@ -74,6 +74,15 @@ func Detect(root string, rep canaryscan.Report, staleDays int, refTime time.Time
 // detectCodeDrift compares each unique token file's last git commit date
 // against the UPDATED date of every token feature referencing it.
 func detectCodeDrift(root string, rep canaryscan.Report) []Finding {
+	return detectCodeDriftWith(root, rep, lastCommitDate)
+}
+
+// detectCodeDriftWith is detectCodeDrift with an injectable git-log lookup.
+// Production code always goes through detectCodeDrift (which defaults
+// gitLogFn to the real lastCommitDate); tests use this entry point to
+// substitute a counting stub and verify lastCommitDate is invoked at most
+// once per unique file, not once per (requirement, file) pair.
+func detectCodeDriftWith(root string, rep canaryscan.Report, gitLogFn func(root, file string) string) []Finding {
 	cache := map[string]string{} // file -> last commit date (YYYY-MM-DD, "" = none/untracked/no-git)
 	seen := map[string]bool{}    // dedupe per (req, file)
 	var findings []Finding
@@ -91,7 +100,7 @@ func detectCodeDrift(root string, rep canaryscan.Report) []Finding {
 				}
 				commitDateStr, ok := cache[file]
 				if !ok {
-					commitDateStr = lastCommitDate(root, file)
+					commitDateStr = gitLogFn(root, file)
 					cache[file] = commitDateStr
 				}
 				if commitDateStr == "" {

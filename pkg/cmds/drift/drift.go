@@ -6,12 +6,13 @@
 // Package drift wires the pkg/drift engine into `canary drift`: a fresh
 // scan (matching `canary scan`'s own default-skip + .canaryignore
 // behavior), drift detection, and a bounded, agent-friendly report.
-// CANARY: REQ=CBIN-305; FEATURE="DriftCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_305_Execute_CodeDrift,TestCANARY_CBIN_305_SummaryLine_Format,TestCANARY_CBIN_305_Cmd_JSON,TestCANARY_CBIN_305_Cmd_Strict_ReturnsError,TestCANARY_CBIN_305_Cmd_Strict_NoFindings_NoError,TestCANARY_CBIN_305_Cmd_Table_NoDrift; UPDATED=2026-08-29
+// CANARY: REQ=CBIN-305; FEATURE="DriftCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_305_Execute_CodeDrift,TestCANARY_CBIN_305_SummaryLine_Format,TestCANARY_CBIN_305_Cmd_JSON,TestCANARY_CBIN_305_StrictShouldFail,TestCANARY_CBIN_305_Cmd_Strict_NoFindings_NoError,TestCANARY_CBIN_305_Cmd_Table_NoDrift,TestCANARY_CBIN_305_Cmd_TimestampEnv_StaleFlips; UPDATED=2026-08-29
 package drift
 
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"time"
 
@@ -104,6 +105,14 @@ func summaryLine(findings []drift.Finding) string {
 		s.Requirements, s.CodeDrift, s.Stale, s.DocDrift)
 }
 
+// strictShouldFail is the pure --strict decision: fail when any drift
+// finding exists. Kept separate from the os.Exit(2) side effect in RunE so
+// the decision itself stays unit-testable (mirrors scan.go's exit-code
+// pattern, where the os.Exit branch is untested by design).
+func strictShouldFail(findings []drift.Finding) bool {
+	return len(findings) > 0
+}
+
 type reqGroup struct {
 	ReqID    string
 	Findings []drift.Finding
@@ -178,8 +187,9 @@ Flags:
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), summaryLine(findings))
 
-			if strict && len(findings) > 0 {
-				return fmt.Errorf("CANARY_DRIFT_FAIL count=%d", len(findings))
+			if strict && strictShouldFail(findings) {
+				fmt.Fprintf(cmd.ErrOrStderr(), "CANARY_DRIFT_FAIL count=%d\n", len(findings))
+				os.Exit(2)
 			}
 			return nil
 		},
