@@ -324,34 +324,16 @@ func boundMigrateNotes(notes []canaryscan.MigrateNote, limit int) ([]MigrateNote
 }
 
 // nextFlatfileID resolves the next available flatfile requirement ID for
-// key — what `canary specify` would hand out next. reqid.GenerateNextID
-// only reads the cwd-relative .canary/specs directory (it predates --root
-// support elsewhere in this CLI), so onboard temporarily chdirs into root
-// for the call and always restores the original working directory. "CLI" is
-// used as a representative aspect purely to probe whether .canary/specs
-// exists and has entries — onboard has no way to know which aspect the
-// first real requirement will use. Any failure (no .canary/specs yet,
-// unreadable, chdir failure) falls back to the flat "<KEY>-001" form, which
-// is the common case for a codebase that hasn't run `canary init` yet.
+// key — what `canary specify` would hand out next. "CLI" is used as a
+// representative aspect purely to probe whether .canary/specs exists and
+// has entries — onboard has no way to know which aspect the first real
+// requirement will use. Any failure (no .canary/specs yet, unreadable)
+// falls back to the flat "<KEY>-001" form, which is the common case for a
+// codebase that hasn't run `canary init` yet.
 func nextFlatfileID(root, key string) string {
 	fallback := key + "-001"
 
-	absRoot, err := filepath.Abs(root)
-	if err != nil {
-		return fallback
-	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fallback
-	}
-	if absRoot != cwd {
-		if err := os.Chdir(absRoot); err != nil {
-			return fallback
-		}
-		defer func() { _ = os.Chdir(cwd) }()
-	}
-
-	id, err := reqid.GenerateNextID(key, "CLI")
+	id, err := reqid.GenerateNextIDIn(root, key, "CLI")
 	if err != nil {
 		return fallback
 	}

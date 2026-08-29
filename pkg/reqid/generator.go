@@ -14,8 +14,9 @@ import (
 	"strings"
 )
 
-// GenerateNextID generates the next requirement ID for a given aspect
-func GenerateNextID(key, aspect string) (string, error) {
+// GenerateNextIDIn generates the next requirement ID for a given aspect within a specific root directory.
+// The root parameter is used to locate .canary/specs; for cwd-relative behavior, pass ".".
+func GenerateNextIDIn(root, key, aspect string) (string, error) {
 	// Validate aspect
 	if err := ValidateAspect(aspect); err != nil {
 		return "", err
@@ -24,8 +25,8 @@ func GenerateNextID(key, aspect string) (string, error) {
 	// Normalize aspect to canonical casing
 	aspect = NormalizeAspect(aspect)
 
-	// Find .canary/specs directory
-	specsDir := filepath.Join(".canary", "specs")
+	// Find .canary/specs directory relative to root
+	specsDir := filepath.Join(root, ".canary", "specs")
 	if _, err := os.Stat(specsDir); os.IsNotExist(err) {
 		return "", fmt.Errorf("specs directory not found: %s", specsDir)
 	}
@@ -80,4 +81,9 @@ func GenerateNextID(key, aspect string) (string, error) {
 
 	// Format as 3-digit zero-padded string
 	return fmt.Sprintf("%s-%s-%03d", key, aspect, nextID), nil
+}
+
+// GenerateNextID generates the next requirement ID for a given aspect using the cwd-relative .canary/specs directory.
+func GenerateNextID(key, aspect string) (string, error) {
+	return GenerateNextIDIn(".", key, aspect)
 }

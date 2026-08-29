@@ -1,0 +1,5 @@
+remote=origin
+host=gitlab.com
+url=git@gitlab.com:devnw/codepros/oss/canary.git
+ref=main
+pushed_at=2026-08-28T23:54:21Z
