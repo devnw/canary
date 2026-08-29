@@ -36,6 +36,17 @@ func DefaultSkipRegex() *regexp.Regexp {
 	return r
 }
 
+// migrateCapturePrefix marks a tokenLineRe capture as CANARY:MIGRATE
+// free-text guidance rather than a KV token.
+const migrateCapturePrefix = "MIGRATE"
+
+// isMigrateCapture reports whether m (the capture group of a tokenLineRe
+// match) is a CANARY:MIGRATE guidance line. Such lines must never reach
+// parseKV — that is what keeps a MIGRATE line from ever aborting a scan.
+func isMigrateCapture(m string) bool {
+	return strings.HasPrefix(strings.TrimSpace(m), migrateCapturePrefix)
+}
+
 func parseKV(s string) (map[string]string, error) {
 	out := map[string]string{}
 	legacyReqRe := regexp.MustCompile(`^((?:REQ|TASK|BUG)(?:-[A-Z]+)?-?\d{1,4})$`)

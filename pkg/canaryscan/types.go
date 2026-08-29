@@ -2,9 +2,10 @@ package canaryscan
 
 // Report is the scan output (JSON/CSV shape).
 type Report struct {
-	GeneratedAt  string        `json:"generated_at"`
-	Requirements []Requirement `json:"requirements"`
-	Summary      Summary       `json:"summary"`
+	GeneratedAt    string        `json:"generated_at"`
+	Requirements   []Requirement `json:"requirements"`
+	Summary        Summary       `json:"summary"`
+	MigrationNotes []MigrateNote `json:"migration_notes,omitempty"`
 }
 
 // Requirement groups features by requirement ID.
