@@ -49,3 +49,8 @@ bin_canary
 
 # Stale build artifacts at repo root
 /canary
+
+# Track the project canary config (JIRA source of truth) despite .canary/ being ignored
+!.canary/
+.canary/*
+!.canary/project.yaml

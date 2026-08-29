@@ -1,0 +1,81 @@
+# CANARY Project Configuration
+# This file defines project-specific settings for requirement tracking
+
+# Project identification
+project:
+  name: "."
+  description: ". project with CANARY requirement tracking"
+  key: "CBIN"
+
+# Requirement ID pattern for this project
+# This filters which CANARY tokens are considered "real" vs examples/tests
+requirements:
+  # Regex pattern for valid requirement IDs in this project
+  # Examples:
+  #   - "CBIN-[1-9][0-9]{2,}" matches CBIN-100 and above
+  #   - "CBIN-.*" matches any CBIN- prefix
+  #   - "CBIN-(10[0-9]|1[1-5][0-9])" matches CBIN-100 through CBIN-159
+  id_pattern: "(CBIN-[1-9][0-9]{2,}|CBIN-[A-Za-z]+-[0-9]{3,}|CP-[0-9]+)"  # CBIN-100 and above (excludes example IDs 001-099)
+
+  # Alternative: explicit ranges
+  # id_ranges:
+  #   - "CBIN-100:CBIN-999"  # Inclusive range
+
+  # Alternative: exclude patterns (for examples/tests)
+  # exclude_patterns:
+  #   - "CBIN-0[0-9]{2}"  # Exclude CBIN-001 through CBIN-099 (examples)
+
+# Scanner behavior
+scanner:
+  # Paths to exclude from scanning (in addition to default skip patterns)
+  exclude_paths:
+    - "testdata/"
+    - "fixtures/"
+    - "examples/"
+
+  # File patterns to include (defaults to *.go, *.py, *.md, etc.)
+  # include_patterns:
+  #   - "*.go"
+  #   - "*.md"
+  #   - "*.py"
+
+# Verification settings
+verification:
+  # Require TEST= field for TESTED status
+  require_test_field: true
+
+  # Require BENCH= field for BENCHED status
+  require_bench_field: true
+
+  # Staleness threshold in days (for --strict mode)
+  staleness_days: 30
+
+# Requirement-ID sources. Every prefix used in REQ= fields should be declared.
+# type: flatfile (local series) | jira | github | gitlab
+# url templates: {id} = full ID (PLAT-4521), {num} = numeric part (4521)
+sources:
+  - name: core
+    type: flatfile
+    key: "CBIN"
+  - name: codepros
+    type: jira
+    key: "CP"
+    url: "https://devnw.atlassian.net/browse/{id}"
+    api: "https://devnw.atlassian.net"
+    status_map:
+      STUB: "To Do"
+      IMPL: "In Progress"
+      TESTED: "Done"
+      BENCHED: "Done"
+#  - name: platform
+#    type: jira
+#    key: "PLAT"
+#    url: "https://company.atlassian.net/browse/{id}"
+#  - name: app
+#    type: gitlab
+#    key: "GL"
+#    url: "https://gitlab.com/group/project/-/issues/{num}"
+#  - name: oss
+#    type: github
+#    key: "GH"
+#    url: "https://github.com/owner/repo/issues/{num}"

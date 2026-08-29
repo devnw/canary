@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"devnw.dev/canary/pkg/config"
 	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/storage"
 	"devnw.dev/canary/pkg/ticket"
@@ -119,7 +120,13 @@ func runTicketSync(cmd *cobra.Command, dbPath, planPath, project, issueType stri
 	}
 	defer func() { _ = db.Close() }()
 
-	tokens, err := db.ListTokens(nil, "", "req_id ASC", 0)
+	// Honor the project id_pattern (like list/next) so fixture/example
+	// tokens in the index never leak into ticket plans.
+	idPattern := ""
+	if cfg, cfgErr := config.Load("."); cfgErr == nil && cfg != nil {
+		idPattern = cfg.Requirements.IDPattern
+	}
+	tokens, err := db.ListTokens(nil, idPattern, "req_id ASC", 0)
 	if err != nil {
 		return fmt.Errorf("list tokens: %w", err)
 	}
