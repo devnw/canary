@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// CANARY: REQ=CBIN-311; FEATURE="MCPServerCommand"; ASPECT=Wire; STATUS=TESTED; TEST=TestMCPCommandCreation; UPDATED=2026-08-29
 // New returns the MCP subcommand for Canary
 func New() *cobra.Command {
 	var (

@@ -10,6 +10,7 @@ List requirements that are fully implemented and verified:
 ✅ CBIN-204 - RequirementView: canary view / MCP view one-call requirement picture
 ✅ CBIN-205 - ContextCaps: small-by-default bounded output across CLI and MCP
 ✅ CBIN-206 - DiagramRefsIndex: refs table indexing diagram references
+✅ CBIN-311 - MCPServerCommand: mcp subcommand construction (flags, Use) covered by TestMCPCommandCreation
 
 ## Gaps
 
