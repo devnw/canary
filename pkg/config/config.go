@@ -46,6 +46,20 @@ type SourceConfig struct {
 	Destination bool `yaml:"destination,omitempty"`
 }
 
+// PeerConfig is one peer project this repo is inter-dependent with: a
+// sibling repo whose own `canary scan --out status.json` this project reads
+// (read-only, never written to) to resolve requirement ids that peer owns —
+// including ids under a prefix this project's own `sources:` list doesn't
+// recognize at all. See pkg/external's peer-resolution layer.
+// CANARY: REQ=ENG-3961; FEATURE="PeerProjects"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_ENG_3961_LoadPeers,TestCANARY_ENG_3961_LoadPeers_AbsentIsEmpty; UPDATED=2026-08-29
+type PeerConfig struct {
+	Name string `yaml:"name"`
+	// Root is the peer project's root directory, resolved relative to
+	// this project's own root when not absolute. Its status.json is read
+	// from <Root>/status.json.
+	Root string `yaml:"root"`
+}
+
 // ProjectConfig represents the .canary/project.yaml configuration
 type ProjectConfig struct {
 	Project struct {
@@ -53,7 +67,10 @@ type ProjectConfig struct {
 		Description string `yaml:"description"`
 		Key         string `yaml:"key"`
 	} `yaml:"project"`
-	Sources      []SourceConfig `yaml:"sources"`
+	Sources []SourceConfig `yaml:"sources"`
+	// Peers lists sibling projects consulted for requirement ids this
+	// project doesn't own itself. Optional; empty when unconfigured.
+	Peers        []PeerConfig `yaml:"peers"`
 	Requirements struct {
 		IDPattern string `yaml:"id_pattern"`
 	} `yaml:"requirements"`

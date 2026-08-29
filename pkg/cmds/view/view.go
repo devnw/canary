@@ -191,6 +191,7 @@ func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
 // would render a misleading "(external: Done)" annotation from a stale or
 // unrelated cache entry.
 // CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3960_View_DependsOn_ExternalAnnotated,TestCANARY_ENG_3960_View_DependsOn_LocalUnchanged,TestCANARY_ENG_3960_View_DependsOn_LocalTokensWinOverExternalCache; UPDATED=2026-08-29
+// CANARY: REQ=ENG-3961; FEATURE="PeerProjects"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3961_View_DependsOn_PeerAnnotated; UPDATED=2026-08-29
 func annotateExternal(depsOn []string, reg *sources.Registry, root string, db *storage.DB) []string {
 	out := make([]string, len(depsOn))
 	for i, id := range depsOn {

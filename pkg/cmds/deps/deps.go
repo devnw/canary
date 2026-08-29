@@ -43,6 +43,7 @@ Available commands:
 
 // CANARY: REQ=CP-262; FEATURE="DepsCheckCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsCheckCommand; UPDATED=2026-08-29
 // CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3960_DepsCheck_ExternalSatisfied,TestCANARY_ENG_3960_DepsCheck_ExternalUnsatisfied,TestCANARY_ENG_3960_DepsCheck_ExternalUnknown,TestCANARY_ENG_3960_DepsValidate_ExternalNotMissing,TestCANARY_ENG_3960_DepsValidate_ExternalCountsLine,TestCANARY_ENG_3960_DepsValidate_StrictExternalFails,TestCANARY_ENG_3960_DepsGraph_MermaidExternalClass; UPDATED=2026-08-29
+// CANARY: REQ=ENG-3961; FEATURE="PeerProjects"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3961_DepsCheck_PeerDetailSurfacesName; UPDATED=2026-08-29
 
 // createDepsCheckCommand creates the deps check command
 func createDepsCheckCommand() *cobra.Command {

@@ -193,6 +193,47 @@ func TestCANARY_ENG_3960_DepsGraph_MermaidExternalClass(t *testing.T) {
 
 func mustFreshTime() time.Time { return time.Now().UTC() }
 
+// TestCANARY_ENG_3961_DepsCheck_PeerDetailSurfacesName proves `deps check`
+// surfaces the peer's name in its Detail line for a dependency resolved by
+// a configured peer project's status.json -- Resolution.Detail's
+// "peer:<name>" comes through unchanged via ShortDetail into the "✔
+// external ..." rendering.
+func TestCANARY_ENG_3961_DepsCheck_PeerDetailSurfacesName(t *testing.T) {
+	root := depsTestRoot(t, "ENG-12 (upstream)")
+
+	peerYAML := `project:
+  name: "demo"
+  key: "CBIN"
+sources:
+  - name: core
+    type: flatfile
+    key: "CBIN"
+  - name: eng
+    type: jira
+    key: "ENG"
+    url: "https://example.atlassian.net/browse/{id}"
+peers:
+  - name: upstream-repo
+    root: "peer"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(root, ".canary", "project.yaml"), []byte(peerYAML), 0o644))
+
+	peerStatus := `{"requirements":[{"id":"ENG-12","features":[{"feature":"X","aspect":"Engine","status":"TESTED"}]}]}`
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "peer"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "peer", "status.json"), []byte(peerStatus), 0o644))
+
+	var buf bytes.Buffer
+	cmd := createDepsCheckCommand()
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+	cmd.SetArgs([]string{"CBIN-147"})
+	err := cmd.Execute()
+
+	output := buf.String()
+	assert.Contains(t, output, "✔ external ENG-12 (peer:upstream-repo)")
+	assert.NoError(t, err, "peer-satisfied external dependency must not fail deps check")
+}
+
 // seedLocalToken migrates a .canary/canary.db under the current working
 // directory (expected to already be a depsTestRoot) and upserts a single
 // local CANARY token for reqID with the given status. Used to prove that a

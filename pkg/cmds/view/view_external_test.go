@@ -104,6 +104,54 @@ func TestCANARY_ENG_3960_View_DependsOn_LocalUnchanged(t *testing.T) {
 	}
 }
 
+// TestCANARY_ENG_3961_View_DependsOn_PeerAnnotated proves BuildView
+// annotates a DependsOn entry resolved by a configured peer project with
+// "(external: peer:<name>)", through the same annotateExternal path used
+// for ticket-cache resolutions.
+func TestCANARY_ENG_3961_View_DependsOn_PeerAnnotated(t *testing.T) {
+	dbPath, root := seedDBWithSources(t)
+
+	peerYAML := `project:
+  name: "demo"
+  key: "CBIN"
+sources:
+  - name: core
+    type: flatfile
+    key: "CBIN"
+  - name: eng
+    type: jira
+    key: "ENG"
+peers:
+  - name: upstream-repo
+    root: "peer"
+`
+	if err := os.WriteFile(filepath.Join(root, ".canary", "project.yaml"), []byte(peerYAML), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	peerStatus := `{"requirements":[{"id":"ENG-12","features":[{"feature":"X","aspect":"Engine","status":"TESTED"}]}]}`
+	if err := os.MkdirAll(filepath.Join(root, "peer"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "peer", "status.json"), []byte(peerStatus), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	v, err := BuildView(dbPath, root, "CBIN-105", 10)
+	if err != nil {
+		t.Fatalf("BuildView: %v", err)
+	}
+
+	want := []string{"CBIN-101", "ENG-12 (external: peer:upstream-repo)"}
+	if len(v.DependsOn) != len(want) {
+		t.Fatalf("DependsOn = %v, want %v", v.DependsOn, want)
+	}
+	for i := range want {
+		if v.DependsOn[i] != want[i] {
+			t.Errorf("DependsOn[%d] = %q, want %q", i, v.DependsOn[i], want[i])
+		}
+	}
+}
+
 // TestCANARY_ENG_3960_View_DependsOn_LocalTokensWinOverExternalCache proves
 // that a DependsOn id with real local CANARY tokens is rendered plain --
 // never annotated with "(external: ...)" -- even when it also matches a
