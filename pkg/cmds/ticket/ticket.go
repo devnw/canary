@@ -17,10 +17,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"devnw.dev/canary/pkg/config"
+	"devnw.dev/canary/pkg/external"
 	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/storage"
 	"devnw.dev/canary/pkg/ticket"
@@ -44,9 +46,12 @@ token state against external ticket sources configured in
 .canary/project.yaml's sources: list.
 
 Subcommands:
-  sync   Compute a ticket-sync plan; apply it against JIRA with --apply`,
+  sync    Compute a ticket-sync plan; apply it against JIRA with --apply
+  status  Show the cached remote-status snapshot, or refresh it (--refresh)
+          without computing or applying a sync plan`,
 	}
 	cmd.AddCommand(createTicketSyncCommand())
+	cmd.AddCommand(createTicketStatusCommand())
 	return cmd
 }
 
@@ -103,6 +108,104 @@ map ({"OLD-ID":"NEW-ID"}) to <plan>.map.json — ready for 'canary upgrade
 	cmd.Flags().StringVar(&issueType, "issue-type", "Story", "JIRA issue type for created issues")
 	cmd.Flags().IntVar(&limit, "limit", DefaultPlanLimit, "max actions shown in the table (raise when you need more; the full plan is always written to --plan)")
 	return cmd
+}
+
+// currentTime returns CANARY_TEST_TIMESTAMP (RFC3339) when set and valid,
+// otherwise the current time in UTC — the fetched_at stamp written to the
+// remote-status cache, and the reference point pkg/external compares it
+// against for staleness. Mirrors pkg/external.refTime's convention.
+func currentTime() time.Time {
+	if ts := os.Getenv("CANARY_TEST_TIMESTAMP"); ts != "" {
+		if t, err := time.Parse(time.RFC3339, ts); err == nil {
+			return t.UTC()
+		}
+	}
+	return time.Now().UTC()
+}
+
+// createTicketStatusCommand returns the `canary ticket status` subcommand:
+// plain, it reports the on-disk remote-status cache's age and entry count
+// without any network access; --refresh fetches current status from every
+// configured jira-type source and overwrites the cache, without computing
+// or applying a sync plan.
+// CANARY: REQ=ENG-3959; FEATURE="ExternalResolve"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3959_Status_Refresh_NoCreds,TestCANARY_ENG_3959_Status_Refresh_WithCreds,TestCANARY_ENG_3959_Status_Plain_ReportsCache,TestCANARY_ENG_3959_Status_Plain_NoCache; UPDATED=2026-08-29
+func createTicketStatusCommand() *cobra.Command {
+	var refresh bool
+	var project string
+
+	cmd := &cobra.Command{
+		Use:   "status",
+		Short: "Show the cached remote ticket status, or refresh it with --refresh",
+		Long: `Without --refresh, reports the on-disk remote-status cache
+(.canary/remote-status.json) — its age and entry count — without touching
+the network. Missing cache is reported, not an error.
+
+With --refresh, fetches current status from every configured jira-type
+source (the same multi-project fetch 'ticket sync --apply' uses) and
+overwrites the cache. Without JIRA credentials (JIRA_BASE_URL, JIRA_EMAIL,
+JIRA_API_TOKEN all set, or a source api: field as the BaseURL fallback),
+--refresh degrades gracefully: it never errors, never touches the network,
+and never touches the existing cache file.`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runTicketStatus(cmd, refresh, project)
+		},
+	}
+
+	cmd.Flags().BoolVar(&refresh, "refresh", false, "fetch current remote status from every configured jira-type source and overwrite the cache")
+	cmd.Flags().StringVar(&project, "project", "", "JIRA project key fallback for sources without their own project: (same semantics as 'ticket sync --project')")
+	return cmd
+}
+
+func runTicketStatus(cmd *cobra.Command, refresh bool, project string) error {
+	cmd.SilenceUsage = true
+	root := "."
+
+	if !refresh {
+		return reportCachedStatus(cmd, root)
+	}
+
+	reg := sources.LoadFromRoot(root)
+	creds := credsFromEnv(reg)
+	if !creds.present() {
+		fmt.Fprintln(cmd.OutOrStdout(), "CANARY_TICKET_STATUS cached=0 reason=no_credentials")
+		return nil
+	}
+
+	client := &ticket.JiraClient{BaseURL: creds.BaseURL, Email: creds.Email, Token: creds.Token}
+	statuses, err := remoteStatusForSources(client, reg, project)
+	if err != nil {
+		return err
+	}
+
+	fetchedAt := currentTime()
+	if err := external.SaveCache(root, statuses, fetchedAt); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "CANARY_TICKET_STATUS cached=%d fetched_at=%s\n", len(statuses), fetchedAt.Format(time.RFC3339))
+	return nil
+}
+
+// reportCachedStatus prints the cache's entry count, fetched_at, and age
+// without any network access. A missing cache is reported as cached=0
+// reason=no_cache — never an error.
+func reportCachedStatus(cmd *cobra.Command, root string) error {
+	cache, err := external.LoadCache(root)
+	if err != nil {
+		return err
+	}
+	if cache == nil {
+		fmt.Fprintln(cmd.OutOrStdout(), "CANARY_TICKET_STATUS cached=0 reason=no_cache")
+		return nil
+	}
+
+	age := "unknown"
+	if fetchedAt, perr := time.Parse(time.RFC3339, cache.FetchedAt); perr == nil {
+		age = currentTime().Sub(fetchedAt).Round(time.Second).String()
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "CANARY_TICKET_STATUS cached=%d fetched_at=%s age=%s\n", len(cache.Statuses), cache.FetchedAt, age)
+	return nil
 }
 
 // jiraCreds is the three-env-var credential bundle `canary ticket sync`
@@ -213,6 +316,13 @@ func applyAndReport(cmd *cobra.Command, tokens []*storage.Token, reg *sources.Re
 
 	remoteStatus, err := remoteStatusForSources(client, reg, project)
 	if err != nil {
+		return err
+	}
+	// Cache the fetch as soon as it succeeds — pkg/external and a plain
+	// `canary ticket status` read this snapshot without ever touching the
+	// network, so it must reflect the freshest fetch regardless of whether
+	// applying the plan below fully succeeds.
+	if err := external.SaveCache(".", remoteStatus, currentTime()); err != nil {
 		return err
 	}
 
