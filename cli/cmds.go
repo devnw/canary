@@ -26,6 +26,7 @@ import (
 	"devnw.dev/canary/pkg/cmds/list"
 	"devnw.dev/canary/pkg/cmds/migrate"
 	"devnw.dev/canary/pkg/cmds/next"
+	"devnw.dev/canary/pkg/cmds/onboard"
 	"devnw.dev/canary/pkg/cmds/plan"
 	"devnw.dev/canary/pkg/cmds/prioritize"
 	"devnw.dev/canary/pkg/cmds/project"
@@ -71,6 +72,7 @@ func Commands() []*cobra.Command {
 		status.StatusCmd,
 		grep.GrepCmd,
 		view.CreateViewCommand(),
+		onboard.CreateOnboardCommand(),
 
 		// Management commands
 		prioritize.PrioritizeCmd,
