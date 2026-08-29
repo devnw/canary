@@ -1,6 +1,6 @@
 {
   "name": "canary",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "CANARY requirement tracking for Claude Code. Embeds requirement tokens in source code with full lifecycle management: specify, plan, implement, scan, verify.",
   "author": {
     "name": "Developer Network",
