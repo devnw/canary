@@ -24,8 +24,11 @@ type SourceConfig struct {
 	Key  string `yaml:"key"`  // ID prefix, e.g. "CBIN", "PLAT", "GH"
 	URL  string `yaml:"url,omitempty"`
 	// API is the REST base URL used by `canary ticket sync` when it differs
-	// from URL (which is the human browse-link template). Empty means the
-	// ticket-sync client falls back to its own default (e.g. JIRA_BASE_URL).
+	// from URL (which is the human browse-link template). Precedence is
+	// env > source.API: if JIRA_BASE_URL is set, it always wins; API is
+	// only consulted as a fallback when JIRA_BASE_URL is unset. Email and
+	// Token have no config-file fallback — they must come from
+	// JIRA_EMAIL/JIRA_API_TOKEN regardless of what this field holds.
 	API string `yaml:"api,omitempty"`
 	// StatusMap overrides the default CANARY-status -> remote-status-name
 	// mapping (STUB/IMPL/TESTED/BENCHED keys) for this source only.

@@ -78,7 +78,7 @@ func TestCANARY_CBIN_304_UpdateStaleV2IDs(t *testing.T) {
 	}
 	diags := []string{"CANARY_STALE REQ=CBIN-CLI-001 updated=2020-01-01 age_days=2431 threshold=30"}
 
-	updatedFiles, tokenCount, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags)
+	updatedFiles, tokenCount, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestCANARY_CBIN_304_UpdateStaleAddsMissingUpdated(t *testing.T) {
 		}
 		diags := []string{"CANARY_STALE REQ=CBIN-305 updated=MISSING age_days=99999 threshold=30"}
 
-		updatedFiles, tokenCount, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags)
+		updatedFiles, tokenCount, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -141,7 +141,7 @@ func TestCANARY_CBIN_304_UpdateStaleAddsMissingUpdated(t *testing.T) {
 		}
 		diags := []string{"CANARY_STALE REQ=CBIN-306 updated=MISSING age_days=99999 threshold=30"}
 
-		updatedFiles, tokenCount, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags)
+		updatedFiles, tokenCount, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -188,5 +188,52 @@ func TestCANARY_CBIN_304_RunReportsActualRewriteCount(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "Updated 2 stale tokens in 2 files") {
 		t.Errorf("expected honest count 'Updated 2 stale tokens in 2 files' (not the diag count of 1), got: %s", stderr.String())
+	}
+}
+
+// TestCANARY_CBIN_304_UpdateStaleHonorsCanaryIgnore proves UpdateStaleTokens
+// honors .canaryignore the same way Scan does: a stale token living in a
+// path .canaryignore excludes must never be rewritten by --update-stale,
+// even though its REQ ID can still show up in staleDiags (e.g. because a
+// duplicate, non-ignored copy of the same REQ elsewhere triggered the
+// staleness diag). Without loading .canaryignore in the rewrite walk, a file
+// the scanner treats as invisible could still be silently mutated on disk.
+func TestCANARY_CBIN_304_UpdateStaleHonorsCanaryIgnore(t *testing.T) {
+	t.Setenv("CANARY_TEST_TIMESTAMP", "2026-08-29T00:00:00Z")
+	root := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(root, ".canaryignore"), []byte("ignored/\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "ignored"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	src := "package x\n" +
+		"// CANARY: REQ=CBIN-602; FEATURE=\"Ignored\"; ASPECT=API; STATUS=TESTED; TEST=TestIgnored; UPDATED=2020-01-01\n"
+	ignoredPath := filepath.Join(root, "ignored", "x.go")
+	if err := os.WriteFile(ignoredPath, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	ignorePatterns, err := LoadCanaryIgnore(root)
+	if err != nil {
+		t.Fatalf("LoadCanaryIgnore: %v", err)
+	}
+	if ignorePatterns == nil {
+		t.Fatal("expected .canaryignore to be loaded")
+	}
+
+	diags := []string{"CANARY_STALE REQ=CBIN-602 updated=2020-01-01 age_days=2431 threshold=30"}
+	updatedFiles, tokenCount, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, ignorePatterns)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(updatedFiles) != 0 || tokenCount != 0 {
+		t.Fatalf("expected 0 files/0 tokens updated (ignored path must not be rewritten), got files=%d tokens=%d: %v", len(updatedFiles), tokenCount, updatedFiles)
+	}
+	b, _ := os.ReadFile(ignoredPath)
+	if !strings.Contains(string(b), "UPDATED=2020-01-01") {
+		t.Errorf("ignored file's stale token should be left untouched, got:\n%s", b)
 	}
 }

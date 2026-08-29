@@ -87,6 +87,8 @@ Use a Work‑DAG with concurrency groups; **join** before shared writes (no spec
 //         REPRO=<k>/<n>; UPDATED=<YYYY-MM-DD>
 ```
 
+Note: add this comment to your source file — the DB row is rebuilt from source on the next 'canary index'.
+
 ### 5) Checkpoint Protocol (compact; low‑token)
 
 Emit after **ID selection** and after **report write** when context usage is high or a milestone is reached:

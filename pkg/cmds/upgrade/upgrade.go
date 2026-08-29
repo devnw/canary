@@ -46,6 +46,12 @@ GAP_ANALYSIS.md "✅ <ID>" claim lines.
 
 Dry run by default — nothing is written until --write is passed.
 
+Note: the md-heading rule converts "# CANARY:" markdown headings into
+"<!-- CANARY: ... -->" HTML comments so they stay readable, but "canary
+scan" does not parse HTML comments, so converted tokens are never counted
+toward status.json's requirement totals — this rule primarily serves doc
+examples, not requirements that need scan visibility.
+
 Flags:
   --root <dir>     Root directory to scan (default ".")
   --write          Apply changes to disk (default: dry run)

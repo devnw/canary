@@ -116,6 +116,7 @@ Examples:
 		fmt.Printf("?? Location: %s:%d\n", filePath, lineNum)
 		fmt.Printf("\n%s CANARY comment to add:\n", color.YellowString("?"))
 		fmt.Println(canaryComment)
+		fmt.Println("Note: add this comment to your source file — the DB row is rebuilt from source on the next 'canary index'.")
 
 		return nil
 	},

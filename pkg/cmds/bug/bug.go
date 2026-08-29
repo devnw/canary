@@ -286,6 +286,7 @@ func createBugCanaryComment(token *storage.Token, severity, priority string) err
 	fmt.Printf("✅ Bug token created: %s\n", token.ReqID)
 	fmt.Printf("\nAdd this CANARY comment to %s:%d:\n\n", token.FilePath, token.LineNumber)
 	fmt.Println(canaryComment)
+	fmt.Println("Note: add this comment to your source file — the DB row is rebuilt from source on the next 'canary index'.")
 
 	return nil
 }

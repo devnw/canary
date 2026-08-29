@@ -70,6 +70,12 @@ Without JIRA credentials (JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN all set),
 this command NEVER errors and NEVER touches the network: it always writes
 the plan to --plan and prints a plan-only summary, even with --apply.
 
+JIRA_BASE_URL may be omitted from the environment when the configured jira
+source in .canary/project.yaml carries an "api:" field — it is used as the
+BaseURL fallback. Precedence is env > source.API: an explicit JIRA_BASE_URL
+always wins. JIRA_EMAIL and JIRA_API_TOKEN have no config-file fallback and
+must always come from the environment.
+
 With credentials AND --apply: fetches remote status for --project, applies
 create_issue and transition actions via the JIRA REST API, fills created
 keys into their paired remap actions, and writes the completed plan to
@@ -101,12 +107,27 @@ func (c jiraCreds) present() bool {
 	return c.BaseURL != "" && c.Email != "" && c.Token != ""
 }
 
-func credsFromEnv() jiraCreds {
-	return jiraCreds{
+// credsFromEnv reads JIRA credentials from the environment. Email and Token
+// always come from JIRA_EMAIL/JIRA_API_TOKEN — there is no config-file
+// fallback for secrets. BaseURL prefers JIRA_BASE_URL when set; when it is
+// unset, it falls back to the API field of the first configured jira-type
+// source in reg (reg may be nil). Precedence is env > source.API, so an
+// explicit JIRA_BASE_URL always wins even if a source also carries API.
+func credsFromEnv(reg *sources.Registry) jiraCreds {
+	c := jiraCreds{
 		BaseURL: os.Getenv("JIRA_BASE_URL"),
 		Email:   os.Getenv("JIRA_EMAIL"),
 		Token:   os.Getenv("JIRA_API_TOKEN"),
 	}
+	if c.BaseURL == "" && reg != nil {
+		for _, s := range reg.Sources() {
+			if s.Type == "jira" && s.API != "" {
+				c.BaseURL = s.API
+				break
+			}
+		}
+	}
+	return c
 }
 
 func runTicketSync(cmd *cobra.Command, dbPath, planPath, project, issueType string, apply bool, limit int) error {
@@ -131,7 +152,7 @@ func runTicketSync(cmd *cobra.Command, dbPath, planPath, project, issueType stri
 		return fmt.Errorf("list tokens: %w", err)
 	}
 
-	creds := credsFromEnv()
+	creds := credsFromEnv(reg)
 
 	// Real apply path: credentials present AND --apply. Everything else
 	// (no --apply, or --apply without credentials) is plan-only and never

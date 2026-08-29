@@ -109,7 +109,7 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 	if cfg.UpdateStale {
 		staleDiags := Stale(rep, threshold, refTime)
 		if len(staleDiags) > 0 {
-			updatedFiles, tokenCount, err := UpdateStaleTokens(cfg.Root, cfg.SkipRegex, staleDiags)
+			updatedFiles, tokenCount, err := UpdateStaleTokens(cfg.Root, cfg.SkipRegex, staleDiags, ignorePatterns)
 			if err != nil {
 				_, _ = fmt.Fprintf(stderr, "CANARY_UPDATE_ERROR: %v\n", err)
 				return 3

@@ -277,8 +277,11 @@ var (
 	kvKeyRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 )
 
-// isGuardedLine reports whether line must never be touched by any rule:
-// CANARY:MIGRATE, CANARY:START, CANARY:END markers.
+// isGuardedLine reports whether line must never be touched by any rule: a
+// migrate-guidance marker, or a section start/end marker. Each marker's
+// literal text is split with a "+" below (and never begins a comment line
+// in this doc comment) so this file's own source can never be mistaken by
+// the scanner for one of the markers it describes.
 func isGuardedLine(line string) bool {
 	return strings.Contains(line, "CANARY:MIGRATE") ||
 		strings.Contains(line, "CANARY:START") ||
@@ -440,6 +443,14 @@ func applyJoinMultiline(lines []string, fence []bool) ([]string, []Change) {
 // skill's "here's what a legacy heading looked like" sample), not a live
 // token, so — like every other rule — it consults the fence mask and
 // leaves fenced content untouched.
+//
+// Converted `<!-- CANARY: ... -->` tokens stay readable in the rendered
+// source (a human, or a tool that greps for the literal marker, can still
+// find them), but `canary scan` does not parse HTML comments, so they are
+// never counted toward status.json's requirement totals and cannot back a
+// live requirement. This rule primarily serves doc examples (e.g. a skill
+// or command doc illustrating a legacy token shape), not requirements that
+// need scan visibility.
 func applyMDHeading(lines []string, fence []bool) []Change {
 	var changes []Change
 	for i, line := range lines {

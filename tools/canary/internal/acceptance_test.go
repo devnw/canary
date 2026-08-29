@@ -360,8 +360,16 @@ func TestAcceptance_UpdateStale(t *testing.T) {
 
 	// Create test file with stale and fresh tokens
 	testFile := filepath.Join(root, "test.go")
+	// The harness pins CANARY_TEST_TIMESTAMP to 2025-10-16 (see build/run
+	// helpers above), so CBIN-001's fixture date must be genuinely stale
+	// relative to *that* pinned reference, not relative to whatever day this
+	// test happens to run. Built via concatenation (not a literal
+	// "UPDATED=2024-01-01" substring) so a repo-wide `--update-stale`
+	// dogfood run over this test's own source can never collaterally
+	// rewrite this fixture and silently vacuate the assertion below.
+	staleUpdated := "UPDATED=" + "2024-01-01"
 	content := `package test
-// CANARY: REQ=CBIN-001; FEATURE="StaleToken"; ASPECT=API; STATUS=TESTED; TEST=Test1; UPDATED=2026-08-29
+// CANARY: REQ=CBIN-001; FEATURE="StaleToken"; ASPECT=API; STATUS=TESTED; TEST=Test1; ` + staleUpdated + `
 // CANARY: REQ=CBIN-002; FEATURE="FreshToken"; ASPECT=CLI; STATUS=TESTED; TEST=Test2; UPDATED=2025-10-15
 // CANARY: REQ=CBIN-003; FEATURE="StaleImplNotUpdated"; ASPECT=Engine; STATUS=IMPL; UPDATED=2024-01-01
 // CANARY: REQ=CBIN-004; FEATURE="StaleBenchedToken"; ASPECT=Storage; STATUS=BENCHED; BENCH=Bench4; UPDATED=2024-01-01
@@ -395,12 +403,16 @@ func TestAcceptance_UpdateStale(t *testing.T) {
 		return ""
 	}
 
-	// CBIN-001 (TESTED, stale) should be updated
+	// CBIN-001 (TESTED, stale relative to the pinned CANARY_TEST_TIMESTAMP)
+	// should be updated, and positively rewritten to that pinned date
+	// (2025-10-16) rather than merely "not 2024-01-01 anymore".
 	line001 := findLine("CBIN-001")
 	if line001 == "" {
 		t.Error("CBIN-001 missing from updated file")
 	} else if strings.Contains(line001, "UPDATED=2024-01-01") {
 		t.Errorf("CBIN-001 should have UPDATED field changed from 2024-01-01, got: %s", line001)
+	} else if !strings.Contains(line001, "UPDATED=2025-10-16") {
+		t.Errorf("CBIN-001 should have UPDATED rewritten to the pinned CANARY_TEST_TIMESTAMP date 2025-10-16, got: %s", line001)
 	}
 
 	// CBIN-002 (TESTED, fresh) should NOT be updated

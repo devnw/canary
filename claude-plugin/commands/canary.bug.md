@@ -92,6 +92,8 @@ Use a Work-DAG with concurrency groups; **join** before shared writes (no specul
 //         REPRO=<k>/<n>; UPDATED=<YYYY-MM-DD>
 ```
 
+Note: add this comment to your source file — the DB row is rebuilt from source on the next 'canary index'.
+
 ### 5) Output Contract (strict)
 
 Return artifacts **in order** (JSON **not** in code fences).

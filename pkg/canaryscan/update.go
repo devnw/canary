@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	ignore "github.com/sabhiram/go-gitignore"
 )
 
 // diagReqRe extracts the REQ ID from a CANARY_STALE diagnostic line
@@ -26,7 +28,13 @@ var updatedDateRe = regexp.MustCompile(`(UPDATED=)([0-9]{4}-[0-9]{2}-[0-9]{2})`)
 // were modified and the number of individual token lines actually rewritten (which may
 // differ from len(staleDiags): several diags can share one REQ, or a REQ can span multiple
 // physical token lines/files).
-func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string) (updatedFiles map[string]bool, tokenCount int, err error) {
+//
+// ignorePatterns (from LoadCanaryIgnore) is honored the same way Scan honors it: relative
+// path matched first, dirs skipped via SkipDir; nil means no .canaryignore patterns apply.
+// This keeps the rewrite walk in sync with the read walk that produced staleDiags in the
+// first place — without it, a file excluded from scanning by .canaryignore could still be
+// silently mutated by --update-stale.
+func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string, ignorePatterns *ignore.GitIgnore) (updatedFiles map[string]bool, tokenCount int, err error) {
 	staleReqs := make(map[string]bool)
 	for _, diag := range staleDiags {
 		matches := diagReqRe.FindStringSubmatch(diag)
@@ -47,14 +55,23 @@ func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string) (u
 		if err != nil {
 			return err
 		}
+		rel, _ := filepath.Rel(root, path)
+		relForIgnore := rel
+		if relForIgnore == "" {
+			relForIgnore = "."
+		}
+		if ignorePatterns != nil && ignorePatterns.MatchesPath(relForIgnore) {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
 		if info.IsDir() {
-			rel, _ := filepath.Rel(root, path)
 			if rel != "." && skip.MatchString(rel) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		rel, _ := filepath.Rel(root, path)
 		if skip.MatchString(rel) {
 			return nil
 		}

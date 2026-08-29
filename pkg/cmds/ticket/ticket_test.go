@@ -352,3 +352,103 @@ func TestCANARY_CBIN_306_Sync_PartialProgress(t *testing.T) {
 		t.Errorf("remap map = %+v, want empty (create failed so no successful remaps)", idMap)
 	}
 }
+
+// seedProjectWithSourceAPI mirrors seedProject but gives the jira "platform"
+// source an api: field pointing at apiURL, instead of relying on
+// JIRA_BASE_URL.
+func seedProjectWithSourceAPI(t *testing.T, apiURL string) string {
+	t.Helper()
+	root := t.TempDir()
+	canaryDir := filepath.Join(root, ".canary")
+	if err := os.MkdirAll(canaryDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	yaml := `project:
+  name: Demo
+  key: CBIN
+sources:
+  - name: core
+    type: flatfile
+    key: CBIN
+  - name: platform
+    type: jira
+    key: PLAT
+    api: ` + apiURL + `
+`
+	if err := os.WriteFile(filepath.Join(canaryDir, "project.yaml"), []byte(yaml), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	dbPath := filepath.Join(canaryDir, "canary.db")
+	if err := storage.MigrateDB(dbPath, "all"); err != nil {
+		t.Fatalf("MigrateDB: %v", err)
+	}
+	db, err := storage.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+
+	toks := []*storage.Token{
+		{ReqID: "CBIN-105", Feature: "Scanner", Aspect: "Engine", Status: "TESTED", FilePath: "scan.go"},
+		{ReqID: "PLAT-42", Feature: "Sync", Aspect: "Engine", Status: "IMPL", FilePath: "sync.go"},
+	}
+	for _, tok := range toks {
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return root
+}
+
+// TestCANARY_CBIN_306_Sync_ApplyWithSourceAPI_BaseURLFallback proves that
+// when JIRA_BASE_URL is unset but the configured jira source carries an
+// api: field, that field is used as the BaseURL fallback (env still
+// supplies Email/Token) and the apply path actually reaches the JIRA
+// client's httptest server — not just the plan-only path.
+func TestCANARY_CBIN_306_Sync_ApplyWithSourceAPI_BaseURLFallback(t *testing.T) {
+	var createCalls, transitionGETs, transitionPOSTs, searchCalls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/rest/api/3/issue":
+			createCalls++
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"id":"1","key":"CP-1"}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/search":
+			searchCalls++
+			_, _ = w.Write([]byte(`{"issues":[{"key":"PLAT-42","fields":{"status":{"name":"To Do"}}}],"total":1,"startAt":0,"maxResults":50}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/issue/PLAT-42/transitions":
+			transitionGETs++
+			_, _ = w.Write([]byte(`{"transitions":[{"id":"21","name":"go","to":{"name":"In Progress"}}]}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/rest/api/3/issue/PLAT-42/transitions":
+			transitionPOSTs++
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	root := seedProjectWithSourceAPI(t, srv.URL)
+	chdir(t, root)
+
+	// Deliberately no JIRA_BASE_URL: only email+token from env, BaseURL
+	// must come from the source's api: field.
+	t.Setenv("JIRA_BASE_URL", "")
+	t.Setenv("JIRA_EMAIL", "agent@example.com")
+	t.Setenv("JIRA_API_TOKEN", "sekret")
+
+	out, err := execSync(t, "--apply", "--project", "CP", "--plan", ".canary/plan.json")
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !strings.Contains(out, "CANARY_TICKET_SYNC created=1 transitioned=1 remap_pending=0") {
+		t.Fatalf("output = %q", out)
+	}
+	if createCalls != 1 || searchCalls == 0 || transitionGETs != 1 || transitionPOSTs != 1 {
+		t.Errorf("call counts: create=%d search=%d transitionGET=%d transitionPOST=%d (expected apply path to reach the httptest server via source.API fallback)", createCalls, searchCalls, transitionGETs, transitionPOSTs)
+	}
+}

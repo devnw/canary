@@ -23,8 +23,12 @@ List requirements that are planned or in progress:
 - [ ] Follow-up: next-command candidate-window undershoot with id_pattern
 - [ ] Follow-up: --order-by allowlist in storage
 - [ ] Follow-up: --db flag parity for canary view
-- [ ] Follow-up: align MCP list tool with capLimit/Total convention
-- [ ] Follow-up: strict-gate stale-token cleanup (multi-segment IDs like CBIN-CLI-001 unsupported by update-stale regex)
+- [ ] Follow-up: unify index's ExtractField parser with canaryscan
+- [ ] Follow-up: canaryscan parse <!-- --> markdown tokens (md-heading parity)
+- [ ] Follow-up: sanitize ;/quotes in bug TITLE at buildBugToken
+- [ ] Follow-up: remove transitional CBIN source + dual id_pattern after CBIN-CLI-001 token migrates
+- [ ] Follow-up: delete dead embedded stub packages x3
+- [ ] Follow-up: migrate FetchRemoteStatus to /search/jql (deprecated endpoint)
 
 ## Verification
 
