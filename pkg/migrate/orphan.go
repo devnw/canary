@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CP-260; FEATURE="OrphanDetection"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-10-17
+// CANARY: REQ=ENG-4318; FEATURE="OrphanDetection"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-10-17
 
 package migrate
 

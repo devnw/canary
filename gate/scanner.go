@@ -1,6 +1,6 @@
 package gate
 
-// CANARY: REQ=CP-273; FEATURE="GenericScanner"; ASPECT=Engine; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-02
+// CANARY: REQ=ENG-4324; FEATURE="GenericScanner"; ASPECT=Engine; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-02
 import (
 	"bufio"
 	"errors"

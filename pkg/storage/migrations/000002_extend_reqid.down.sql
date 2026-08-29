@@ -1,4 +1,4 @@
--- CANARY: REQ=CP-256; FEATURE="AspectBasedReqIDSchema"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
+-- CANARY: REQ=ENG-4316; FEATURE="AspectBasedReqIDSchema"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
 -- Rollback aspect-based req_id extension
 
 -- No actual schema changes to rollback since TEXT columns were already unlimited

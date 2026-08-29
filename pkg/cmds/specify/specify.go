@@ -13,7 +13,7 @@ import (
 	"devnw.dev/canary/pkg/reqid"
 )
 
-// CANARY: REQ=CP-242; FEATURE="SpecifyCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=ENG-4304; FEATURE="SpecifyCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 // CANARY: REQ=CP-258; FEATURE="SpecifyTemplatePlaceholderContract"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_141_CLI_SpecifyRendersRealID; UPDATED=2026-08-29
 var SpecifyCmd = &cobra.Command{
 	Use:   "specify <feature-description>",

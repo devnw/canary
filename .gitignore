@@ -4,6 +4,7 @@
 *.csv
 
 external/
+!pkg/external/
 dist/
 out/
 

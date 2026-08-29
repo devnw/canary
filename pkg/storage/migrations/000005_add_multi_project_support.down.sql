@@ -1,4 +1,4 @@
--- CANARY: REQ=CP-261; FEATURE="MultiProjectSupport"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-18
+-- CANARY: REQ=ENG-4319; FEATURE="MultiProjectSupport"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-18
 -- Rollback multi-project support
 
 -- Drop project-related index

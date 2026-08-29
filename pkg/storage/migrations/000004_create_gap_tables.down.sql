@@ -1,4 +1,4 @@
--- CANARY: REQ=CP-257; FEATURE="GapDatabaseSchema"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-17
+-- CANARY: REQ=ENG-4317; FEATURE="GapDatabaseSchema"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-17
 -- Rollback gap analysis tracking tables
 
 -- Drop indices first

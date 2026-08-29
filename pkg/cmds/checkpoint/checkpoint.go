@@ -12,7 +12,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CP-249; FEATURE="CheckpointCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=ENG-4311; FEATURE="CheckpointCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 var CheckpointCmd = &cobra.Command{
 	Use:   "checkpoint <name> [description]",
 	Short: "Create a state snapshot checkpoint",

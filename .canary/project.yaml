@@ -15,7 +15,7 @@ requirements:
   #   - "CBIN-[1-9][0-9]{2,}" matches CBIN-100 and above
   #   - "CBIN-.*" matches any CBIN- prefix
   #   - "CBIN-(10[0-9]|1[1-5][0-9])" matches CBIN-100 through CBIN-159
-  id_pattern: "(CBIN-[1-9][0-9]{2,}|CBIN-[A-Za-z]+-[0-9]{3,}|CP-[0-9]+)"  # CBIN-100 and above (excludes example IDs 001-099)
+  id_pattern: "(CBIN-[1-9][0-9]{2,}|CBIN-[A-Za-z]+-[0-9]{3,}|CP-[0-9]+|ENG-[0-9]+)"  # CBIN-100 and above (excludes example IDs 001-099)
 
   # Alternative: explicit ranges
   # id_ranges:
@@ -62,6 +62,18 @@ sources:
     key: "CP"
     url: "https://devnw.atlassian.net/browse/{id}"
     api: "https://devnw.atlassian.net"
+    status_map:
+      STUB: "To Do"
+      IMPL: "In Progress"
+      TESTED: "Done"
+      BENCHED: "Done"
+  - name: eng
+    type: jira
+    key: "ENG"
+    url: "https://devnw.atlassian.net/browse/{id}"
+    api: "https://devnw.atlassian.net"
+    project: "ENG"
+    destination: true
     status_map:
       STUB: "To Do"
       IMPL: "In Progress"

@@ -49,13 +49,14 @@ Identify and implement the next highest priority CANARY requirement.
 - `canary next --json` - Machine-readable output
 - `canary next --status STUB` - Filter by status
 - `canary next --aspect API` - Filter by aspect
+- `canary next --strict-external` - Also block selection on external (ticket-source/peer) dependencies with unknown/uncached status, not just unsatisfied ones
 
 ## Priority Factors
 
 The system determines priority based on:
 1. **PRIORITY field** (1=highest, 10=lowest)
 2. **STATUS** (STUB > IMPL > TESTED)
-3. **Dependencies** (DEPENDS_ON must be satisfied)
+3. **Dependencies** (DEPENDS_ON must be satisfied — an external dependency's cached ticket/peer status counts too; `unknown` never blocks unless `--strict-external`)
 4. **Age** (older UPDATED dates get priority boost)
 
 ## Constitutional Principles

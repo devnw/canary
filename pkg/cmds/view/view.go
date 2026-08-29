@@ -7,7 +7,7 @@
 // files, tests, dependencies, spec/plan, diagrams, ticket link — into one
 // bounded, agent-friendly answer.
 // CANARY: REQ=CP-270; FEATURE="RequirementView"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_204_BuildView; UPDATED=2026-08-28
-// CANARY: REQ=CP-274; FEATURE="MigrateNotesView"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_301_BuildView_MigrateNotes,TestCANARY_CBIN_301_BuildView_MigrateNotesCap; UPDATED=2026-08-29
+// CANARY: REQ=ENG-4325; FEATURE="MigrateNotesView"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_301_BuildView_MigrateNotes,TestCANARY_CBIN_301_BuildView_MigrateNotesCap; UPDATED=2026-08-29
 // CANARY: REQ=CP-278; FEATURE="DriftedView"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_305_BuildView_Drifted,TestCANARY_CBIN_305_BuildView_NotDrifted,TestCANARY_CBIN_305_BuildView_NonGitRootSoftSkip; UPDATED=2026-08-29
 package view
 
@@ -23,6 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"devnw.dev/canary/pkg/external"
 	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/storage"
 )
@@ -133,7 +134,7 @@ func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
 	v.Files = allFiles
 	v.Tests = sortedSet(testSet)
 	v.Benches = sortedSet(benchSet)
-	v.DependsOn = sortedSet(depSet)
+	v.DependsOn = annotateExternal(sortedSet(depSet), reg, root, db)
 	v.Blocks = sortedSet(blockSet)
 	v.RelatedTo = sortedSet(relSet)
 
@@ -172,6 +173,42 @@ func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
 		}
 	}
 	return v, nil
+}
+
+// annotateExternal decorates each id in depsOn that resolves to an external
+// (ticket-source) dependency with its resolution, e.g. "ENG-12 (external:
+// Done)" / "ENG-13 (external: In Progress)" / "ENG-14 (external: no cached
+// ticket status)". Local ids (external.Resolve's "not external" case) are
+// returned verbatim.
+//
+// Local tokens always win: an id with at least one local CANARY token in
+// the index is returned verbatim -- no external annotation -- even when it
+// also matches a configured external (ticket-source) prefix. This mirrors
+// the rule already implemented in next.go's hasUnresolvedDependencies and
+// deps.go's createDepsCheckCommand: external.Resolve is consulted ONLY
+// when a dependency id has zero local tokens. Without this check, a local
+// IMPL requirement whose id happens to match an external source's key
+// would render a misleading "(external: Done)" annotation from a stale or
+// unrelated cache entry.
+// CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3960_View_DependsOn_ExternalAnnotated,TestCANARY_ENG_3960_View_DependsOn_LocalUnchanged,TestCANARY_ENG_3960_View_DependsOn_LocalTokensWinOverExternalCache; UPDATED=2026-08-29
+// CANARY: REQ=ENG-3961; FEATURE="PeerProjects"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3961_View_DependsOn_PeerAnnotated; UPDATED=2026-08-29
+func annotateExternal(depsOn []string, reg *sources.Registry, root string, db *storage.DB) []string {
+	out := make([]string, len(depsOn))
+	for i, id := range depsOn {
+		if db != nil {
+			if tokens, err := db.GetTokensByReqID(id); err == nil && len(tokens) > 0 {
+				out[i] = id
+				continue
+			}
+		}
+		res := external.Resolve(id, reg, root)
+		if !res.IsExternal() {
+			out[i] = id
+			continue
+		}
+		out[i] = fmt.Sprintf("%s (external: %s)", id, res.ShortDetail())
+	}
+	return out
 }
 
 func splitCSV(s string) []string {

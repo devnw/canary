@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CP-254; FEATURE="SectionLoader"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=ENG-4314; FEATURE="SectionLoader"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-10-16
 package specs
 
 import (

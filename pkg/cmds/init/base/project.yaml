@@ -61,6 +61,17 @@ sources:
 #    type: jira
 #    key: "PLAT"
 #    url: "https://company.atlassian.net/browse/{id}"
+#    # api: base URL for `canary ticket sync`/`ticket status` when it differs
+#    # from url above (or to avoid setting JIRA_BASE_URL in the environment).
+#    api: "https://company.atlassian.net"
+#    # project: the JIRA project key this source creates issues in and
+#    # fetches remote status for.
+#    project: "PLAT"
+#    # destination: true marks this source as the target for `ticket sync`
+#    # create_issue actions that promote a flatfile requirement. At most one
+#    # source may set this; when none is marked, the first non-flatfile
+#    # source is used.
+#    destination: true
 #  - name: app
 #    type: gitlab
 #    key: "GL"
@@ -69,3 +80,11 @@ sources:
 #    type: github
 #    key: "GH"
 #    url: "https://github.com/owner/repo/issues/{num}"
+
+# Peer projects: sibling repos consulted (read-only) to resolve requirement
+# IDs this project doesn't own itself -- including IDs under a prefix not
+# listed in sources: above. Each peer's own `canary scan --out status.json`
+# is read from <root>/status.json; never written to.
+# peers:
+#   - name: platform-service
+#     root: "../platform-service"

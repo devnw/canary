@@ -33,14 +33,14 @@ var (
 // If the file doesn't exist, it creates it with the content
 // If the section exists, it replaces the content between the markers
 // If the markers don't exist, it appends the section to the end
-// CANARY: REQ=CP-264; FEATURE="MarkdownSectionUpdater"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
+// CANARY: REQ=ENG-4320; FEATURE="MarkdownSectionUpdater"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
 func updateMarkdownSection(filePath, sectionContent string) error {
 	return gate.UpdateSingle(filePath, sectionContent,
 		append(markdownOptions, gate.WithBlankLineBefore())...,
 	)
 }
 
-// CANARY: REQ=CP-264; FEATURE="MarkdownSectionUpdater"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
+// CANARY: REQ=ENG-4320; FEATURE="MarkdownSectionUpdater"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
 // updateMultipleMarkdownSections updates multiple gated sections in a markdown file
 // Each section is identified by a unique key: <!-- CANARY:key:START --> ... <!-- CANARY:key:END -->
 func updateMultipleMarkdownSections(filePath string, sections map[string]string) error {
@@ -49,7 +49,7 @@ func updateMultipleMarkdownSections(filePath string, sections map[string]string)
 	)
 }
 
-// CANARY: REQ=CP-264; FEATURE="MarkdownSectionUpdater"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
+// CANARY: REQ=ENG-4320; FEATURE="MarkdownSectionUpdater"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
 // removeMarkdownSection removes a gated section from a markdown file
 // removeMarkdownSection is kept for potential future use (e.g. pruning sections).
 //

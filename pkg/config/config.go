@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CP-257; FEATURE="ProjectConfig"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=ENG-4317; FEATURE="ProjectConfig"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
 package config
 
 import (
@@ -16,8 +16,9 @@ import (
 
 // SourceConfig describes one requirement-ID source: a flatfile prefix or an
 // external ticket system (jira, github, gitlab) whose keys appear in REQ= fields.
-// CANARY: REQ=CP-267; FEATURE="TicketSources"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_201_LoadSources; UPDATED=2026-08-28
+// CANARY: REQ=ENG-4322; FEATURE="TicketSources"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_201_LoadSources; UPDATED=2026-08-28
 // CANARY: REQ=CP-279; FEATURE="TicketSync"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_306_LoadSources_TicketSyncFields; UPDATED=2026-08-29
+// CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_ENG_3958_LoadSources_ProjectDestinationFields; UPDATED=2026-08-29
 type SourceConfig struct {
 	Name string `yaml:"name"`
 	Type string `yaml:"type"` // flatfile | jira | github | gitlab
@@ -33,6 +34,30 @@ type SourceConfig struct {
 	// StatusMap overrides the default CANARY-status -> remote-status-name
 	// mapping (STUB/IMPL/TESTED/BENCHED keys) for this source only.
 	StatusMap map[string]string `yaml:"status_map,omitempty"`
+	// Project is the ticket-system project key this source creates issues
+	// in and fetches remote status for (e.g. a JIRA project key). Optional;
+	// when unset, this source contributes no project of its own to `canary
+	// ticket sync`.
+	Project string `yaml:"project,omitempty"`
+	// Destination marks this source as the target for create_issue actions
+	// promoting flatfile requirements. At most one source may set this; see
+	// Registry.DestinationSource in pkg/sources for the resolution rule
+	// when no source is marked.
+	Destination bool `yaml:"destination,omitempty"`
+}
+
+// PeerConfig is one peer project this repo is inter-dependent with: a
+// sibling repo whose own `canary scan --out status.json` this project reads
+// (read-only, never written to) to resolve requirement ids that peer owns —
+// including ids under a prefix this project's own `sources:` list doesn't
+// recognize at all. See pkg/external's peer-resolution layer.
+// CANARY: REQ=ENG-3961; FEATURE="PeerProjects"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_ENG_3961_LoadPeers,TestCANARY_ENG_3961_LoadPeers_AbsentIsEmpty; UPDATED=2026-08-29
+type PeerConfig struct {
+	Name string `yaml:"name"`
+	// Root is the peer project's root directory, resolved relative to
+	// this project's own root when not absolute. Its status.json is read
+	// from <Root>/status.json.
+	Root string `yaml:"root"`
 }
 
 // ProjectConfig represents the .canary/project.yaml configuration
@@ -42,7 +67,10 @@ type ProjectConfig struct {
 		Description string `yaml:"description"`
 		Key         string `yaml:"key"`
 	} `yaml:"project"`
-	Sources      []SourceConfig `yaml:"sources"`
+	Sources []SourceConfig `yaml:"sources"`
+	// Peers lists sibling projects consulted for requirement ids this
+	// project doesn't own itself. Optional; empty when unconfigured.
+	Peers        []PeerConfig `yaml:"peers"`
 	Requirements struct {
 		IDPattern string `yaml:"id_pattern"`
 	} `yaml:"requirements"`

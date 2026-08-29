@@ -244,7 +244,7 @@ func TestCANARY_CBIN_203_FormatMermaid(t *testing.T) {
 		}
 		return ""
 	}
-	out := gg.FormatMermaid(graph, "CBIN-300", urlFor)
+	out := gg.FormatMermaid(graph, "CBIN-300", urlFor, nil)
 
 	for _, want := range []string{
 		"flowchart TD",
@@ -272,8 +272,55 @@ func TestCANARY_CBIN_203_FormatMermaid_CycleSafe(t *testing.T) {
 		},
 	}
 	gg := NewGraphGenerator(nil)
-	out := gg.FormatMermaid(graph, "CBIN-100", nil) // must terminate
+	out := gg.FormatMermaid(graph, "CBIN-100", nil, nil) // must terminate
 	if c := strings.Count(out, "CBIN_100 --> CBIN_200"); c != 1 {
 		t.Errorf("edge emitted %d times, want 1", c)
+	}
+}
+
+// TestCANARY_ENG_3960_FormatMermaid_ExternalClassDef proves external nodes
+// get a `class <node> external` line and the shared `classDef external`
+// line is emitted exactly once when at least one node is external.
+func TestCANARY_ENG_3960_FormatMermaid_ExternalClassDef(t *testing.T) {
+	graph := &DependencyGraph{
+		Nodes: map[string][]Dependency{
+			"CBIN-300": {
+				{Source: "CBIN-300", Target: "CBIN-200", Type: DependencyTypeFull},
+				{Source: "CBIN-300", Target: "PLAT-4521", Type: DependencyTypeFull},
+			},
+		},
+	}
+	gg := NewGraphGenerator(nil)
+	isExternal := func(id string) bool { return id == "PLAT-4521" }
+	out := gg.FormatMermaid(graph, "CBIN-300", nil, isExternal)
+
+	if c := strings.Count(out, "classDef external"); c != 1 {
+		t.Errorf("classDef external emitted %d times, want exactly 1:\n%s", c, out)
+	}
+	if !strings.Contains(out, "class PLAT_4521 external") {
+		t.Errorf("mermaid output missing external class line for PLAT_4521:\n%s", out)
+	}
+	if strings.Contains(out, "class CBIN_300 external") || strings.Contains(out, "class CBIN_200 external") {
+		t.Errorf("non-external nodes must not get the external class:\n%s", out)
+	}
+}
+
+// TestCANARY_ENG_3960_FormatMermaid_NoExternalNoClassDef proves the
+// classDef line is omitted entirely when isExternal is nil or reports no
+// external nodes, keeping today's non-external output unchanged.
+func TestCANARY_ENG_3960_FormatMermaid_NoExternalNoClassDef(t *testing.T) {
+	graph := &DependencyGraph{
+		Nodes: map[string][]Dependency{
+			"CBIN-300": {{Source: "CBIN-300", Target: "CBIN-200", Type: DependencyTypeFull}},
+		},
+	}
+	gg := NewGraphGenerator(nil)
+
+	if out := gg.FormatMermaid(graph, "CBIN-300", nil, nil); strings.Contains(out, "classDef external") {
+		t.Errorf("nil isExternal must not emit classDef: %s", out)
+	}
+	noneExternal := func(string) bool { return false }
+	if out := gg.FormatMermaid(graph, "CBIN-300", nil, noneExternal); strings.Contains(out, "classDef external") {
+		t.Errorf("isExternal reporting no external nodes must not emit classDef: %s", out)
 	}
 }

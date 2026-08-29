@@ -8,6 +8,7 @@ package sources
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"devnw.dev/canary/pkg/config"
@@ -236,6 +237,88 @@ func TestCANARY_CBIN_306_FromProjectConfig_TicketSyncFieldsPassThrough(t *testin
 	want := map[string]string{"STUB": "Backlog", "TESTED": "Closed"}
 	if len(src.StatusMap) != len(want) || src.StatusMap["STUB"] != want["STUB"] || src.StatusMap["TESTED"] != want["TESTED"] {
 		t.Errorf("StatusMap = %+v, want %+v", src.StatusMap, want)
+	}
+}
+
+func TestCANARY_ENG_3958_DestinationSource_MarkedWins(t *testing.T) {
+	r, err := NewRegistry([]Source{
+		{Name: "core", Type: "flatfile", Key: "CBIN"},
+		{Name: "platform", Type: "jira", Key: "PLAT", Project: "PLATPROJ"},
+		{Name: "security", Type: "jira", Key: "SEC", Project: "SECPROJ", Destination: true},
+	})
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+	src, ok := r.DestinationSource()
+	if !ok || src.Name != "security" || src.Project != "SECPROJ" {
+		t.Errorf("DestinationSource() = %+v, %v; want marked source security/SECPROJ", src, ok)
+	}
+}
+
+func TestCANARY_ENG_3958_DestinationSource_DefaultFirstNonFlatfile(t *testing.T) {
+	r, err := NewRegistry([]Source{
+		{Name: "core", Type: "flatfile", Key: "CBIN"},
+		{Name: "platform", Type: "jira", Key: "PLAT", Project: "PLATPROJ"},
+		{Name: "security", Type: "jira", Key: "SEC", Project: "SECPROJ"},
+	})
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+	src, ok := r.DestinationSource()
+	if !ok || src.Name != "platform" {
+		t.Errorf("DestinationSource() = %+v, %v; want first non-flatfile source (platform)", src, ok)
+	}
+}
+
+func TestCANARY_ENG_3958_DestinationSource_NoneWhenOnlyFlatfile(t *testing.T) {
+	r, err := NewRegistry([]Source{
+		{Name: "core", Type: "flatfile", Key: "CBIN"},
+	})
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+	if _, ok := r.DestinationSource(); ok {
+		t.Error("DestinationSource() should return false when only flatfile sources are configured")
+	}
+}
+
+func TestCANARY_ENG_3958_NewRegistry_DuplicateDestinationError(t *testing.T) {
+	_, err := NewRegistry([]Source{
+		{Name: "platform", Type: "jira", Key: "PLAT", Destination: true},
+		{Name: "security", Type: "jira", Key: "SEC", Destination: true},
+	})
+	if err == nil {
+		t.Error("NewRegistry must reject more than one Destination=true source")
+	}
+}
+
+// TestCANARY_ENG_3958_NewRegistry_FlatfileDestinationError proves that a
+// flatfile source marked destination: true is rejected -- flatfile is a
+// local series, never a valid target for create_issue actions.
+func TestCANARY_ENG_3958_NewRegistry_FlatfileDestinationError(t *testing.T) {
+	_, err := NewRegistry([]Source{
+		{Name: "core", Type: "flatfile", Key: "CBIN", Destination: true},
+	})
+	if err == nil {
+		t.Fatal("NewRegistry must reject a flatfile source marked destination: true")
+	}
+	if !strings.Contains(err.Error(), `destination source "core" must be a ticket source, not flatfile`) {
+		t.Errorf("error = %q, want the flatfile-destination message", err.Error())
+	}
+}
+
+func TestCANARY_ENG_3958_FromProjectConfig_ProjectDestinationPassThrough(t *testing.T) {
+	cfg := &config.ProjectConfig{}
+	cfg.Project.Key = "CBIN"
+	cfg.Sources = []config.SourceConfig{
+		{Name: "core", Type: "flatfile", Key: "CBIN"},
+		{Name: "platform", Type: "jira", Key: "PLAT", Project: "PLATPROJ", Destination: true},
+	}
+
+	r := FromProjectConfig(cfg)
+	src, ok := r.DestinationSource()
+	if !ok || src.Name != "platform" || src.Project != "PLATPROJ" || !src.Destination {
+		t.Errorf("DestinationSource() = %+v, %v; want platform/PLATPROJ/true", src, ok)
 	}
 }
 

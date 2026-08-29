@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// CANARY: REQ=CP-260; FEATURE="SpecsCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_145_CLI_SpecsCmd; UPDATED=2026-08-29
+// CANARY: REQ=ENG-4318; FEATURE="SpecsCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_145_CLI_SpecsCmd; UPDATED=2026-08-29
 var SpecsCmd = &cobra.Command{
 	Use:   "specs [flags]",
 	Short: "List all requirement specification directories",

@@ -12,7 +12,7 @@ import (
 // VerifyClaims reads the GAP file and returns diagnostics for claimed-but-not-
 // TESTED/BENCHED requirements. Claims are lines like "✅ <ID>" where <ID>
 // matches any configured source key; a nil registry means the default (CBIN).
-// CANARY: REQ=CP-267; FEATURE="TicketSources"; ASPECT=Engine; STATUS=IMPL; TEST=TestCANARY_CBIN_201_VerifyClaimsTicketSource; UPDATED=2026-08-28
+// CANARY: REQ=ENG-4322; FEATURE="TicketSources"; ASPECT=Engine; STATUS=IMPL; TEST=TestCANARY_CBIN_201_VerifyClaimsTicketSource; UPDATED=2026-08-28
 func VerifyClaims(rep Report, gapPath string, reg *sources.Registry) []string {
 	if reg == nil {
 		reg = sources.Default()

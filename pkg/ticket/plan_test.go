@@ -69,6 +69,48 @@ func TestCANARY_CBIN_306_ComputePlan_FlatfileCreateAndRemapPairing(t *testing.T)
 	}
 }
 
+func TestCANARY_ENG_3958_ComputePlan_CreateIssueStampsDestinationProject(t *testing.T) {
+	r, err := sources.NewRegistry([]sources.Source{
+		{Name: "core", Type: "flatfile", Key: "CBIN"},
+		{Name: "platform", Type: "jira", Key: "PLAT", Project: "PLATPROJ"},
+	})
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+	tokens := []*storage.Token{
+		{ReqID: "CBIN-105", Feature: "Scanner", Aspect: "Engine", Status: "TESTED", FilePath: "scan.go"},
+	}
+	actions, err := ComputePlan(tokens, r, nil)
+	if err != nil {
+		t.Fatalf("ComputePlan: %v", err)
+	}
+	if len(actions) != 2 || actions[0].Type != "create_issue" {
+		t.Fatalf("actions = %+v, want create_issue+remap", actions)
+	}
+	if actions[0].Project != "PLATPROJ" {
+		t.Errorf("create_issue.Project = %q, want PLATPROJ (destination source)", actions[0].Project)
+	}
+	if actions[1].Project != "" {
+		t.Errorf("remap.Project = %q, want empty", actions[1].Project)
+	}
+}
+
+func TestCANARY_ENG_3958_ComputePlan_CreateIssueProjectEmptyWhenDestinationUnset(t *testing.T) {
+	// No source in the registry carries a Project — create_issue's Project
+	// must be empty, not error or panic.
+	reg := testRegistry(t, nil)
+	tokens := []*storage.Token{
+		{ReqID: "CBIN-105", Feature: "Scanner", Aspect: "Engine", Status: "TESTED", FilePath: "scan.go"},
+	}
+	actions, err := ComputePlan(tokens, reg, nil)
+	if err != nil {
+		t.Fatalf("ComputePlan: %v", err)
+	}
+	if len(actions) != 2 || actions[0].Type != "create_issue" || actions[0].Project != "" {
+		t.Fatalf("actions = %+v, want create_issue with empty Project (no destination project configured)", actions)
+	}
+}
+
 func TestCANARY_CBIN_306_ComputePlan_FlatfileNoNonFlatfileSource_NoAction(t *testing.T) {
 	// With only a flatfile source configured, there's nothing to promote a
 	// requirement to — no create_issue/remap pair should be proposed.

@@ -150,6 +150,9 @@ canary deps graph PROJ-105 --format mermaid
 # Validate no circular dependencies
 canary deps validate
 
+# Fail (non-zero exit) when external (ticket-source/peer) deps are unsatisfied or unknown
+canary deps validate --strict-external
+
 # Find what depends on a requirement
 canary deps reverse PROJ-105
 ```
@@ -194,9 +197,13 @@ Configure sources in `.canary/project.yaml`:
 
 ```yaml
 sources:
-  - type: jira
-    project: PROJ
-    base_url: https://your-org.atlassian.net
+  - name: platform
+    type: jira
+    key: "PROJ"
+    url: "https://your-org.atlassian.net/browse/{id}"
+    api: "https://your-org.atlassian.net"
+    project: "PROJ"
+    destination: true
 ```
 
 ```bash
@@ -208,6 +215,12 @@ canary ticket sync --project PROJ --apply
 
 # Chain a JIRA-driven remap into upgrade
 canary upgrade --map .canary/ticket-plan.json.map.json --write
+
+# Report the cached remote-status snapshot without touching the network
+canary ticket status
+
+# Refresh the cache from every configured jira-type source
+canary ticket status --refresh
 ```
 
 ## MCP Server (Optional)

@@ -9,6 +9,7 @@
 // present and --apply is set — applying it via the JIRA REST client and
 // writing a completed plan plus a remap map for `canary upgrade --map`.
 // CANARY: REQ=CP-279; FEATURE="TicketSync"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_306_Sync_NoCredsPlanOnly,TestCANARY_CBIN_306_Sync_NoCredsApplyDegradesGracefully,TestCANARY_CBIN_306_Sync_ApplyWithCreds_EndToEnd,TestCANARY_CBIN_306_Sync_ApplyNoCreds_ProjectRequired,TestCANARY_CBIN_306_Sync_PartialProgress,TestCANARY_CBIN_306_PrintActions_Bounded; UPDATED=2026-08-29
+// CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3958_Sync_ApplyWithDestinationSource_NoProjectFlag,TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge,TestCANARY_ENG_3958_Sync_ApplyNoProject_BlindTransitionRefused,TestCANARY_ENG_3958_Sync_ApplyWithDestinationSource_TransitionsUnaffected,TestCANARY_ENG_3958_Status_Refresh_WithCredsNoProject_PreservesExistingCache,TestCANARY_ENG_3958_Status_Refresh_ProjectWithZeroIssues_CacheSaved; UPDATED=2026-08-29
 package ticket
 
 import (
@@ -16,10 +17,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"devnw.dev/canary/pkg/config"
+	"devnw.dev/canary/pkg/external"
 	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/storage"
 	"devnw.dev/canary/pkg/ticket"
@@ -43,9 +46,12 @@ token state against external ticket sources configured in
 .canary/project.yaml's sources: list.
 
 Subcommands:
-  sync   Compute a ticket-sync plan; apply it against JIRA with --apply`,
+  sync    Compute a ticket-sync plan; apply it against JIRA with --apply
+  status  Show the cached remote-status snapshot, or refresh it (--refresh)
+          without computing or applying a sync plan`,
 	}
 	cmd.AddCommand(createTicketSyncCommand())
+	cmd.AddCommand(createTicketStatusCommand())
 	return cmd
 }
 
@@ -76,11 +82,19 @@ BaseURL fallback. Precedence is env > source.API: an explicit JIRA_BASE_URL
 always wins. JIRA_EMAIL and JIRA_API_TOKEN have no config-file fallback and
 must always come from the environment.
 
-With credentials AND --apply: fetches remote status for --project, applies
-create_issue and transition actions via the JIRA REST API, fills created
-keys into their paired remap actions, and writes the completed plan to
---plan plus a remap map ({"OLD-ID":"NEW-ID"}) to <plan>.map.json — ready for
-'canary upgrade --map <plan>.map.json --write'.`,
+With credentials AND --apply: the effective project for creating new
+issues is --project when set, otherwise the configured destination
+source's "project:" field (the source with "destination: true", or — when
+none is marked — the first non-flatfile source; see "sources:" in
+.canary/project.yaml). --project is only required when a create_issue
+action exists and neither resolves to a project. Remote status is fetched
+and merged across every configured jira-type source that has its own
+"project:" set (falling back to --project for sources that don't), so a
+single sync can cover multiple JIRA projects. Applies create_issue and
+transition actions via the JIRA REST API, fills created keys into their
+paired remap actions, and writes the completed plan to --plan plus a remap
+map ({"OLD-ID":"NEW-ID"}) to <plan>.map.json — ready for 'canary upgrade
+--map <plan>.map.json --write'.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runTicketSync(cmd, dbPath, planPath, project, issueType, apply, limit)
@@ -90,10 +104,118 @@ keys into their paired remap actions, and writes the completed plan to
 	cmd.Flags().StringVar(&dbPath, "db", ".canary/canary.db", "path to the CANARY index database")
 	cmd.Flags().StringVar(&planPath, "plan", ".canary/ticket-plan.json", "path to write the JSON sync plan")
 	cmd.Flags().BoolVar(&apply, "apply", false, "apply the plan against JIRA (requires JIRA_BASE_URL/JIRA_EMAIL/JIRA_API_TOKEN)")
-	cmd.Flags().StringVar(&project, "project", "", "JIRA project key (required to create issues or fetch remote status under --apply)")
+	cmd.Flags().StringVar(&project, "project", "", "JIRA project key; overrides the configured destination source's project (required under --apply only when neither is set and the plan would create issues)")
 	cmd.Flags().StringVar(&issueType, "issue-type", "Story", "JIRA issue type for created issues")
 	cmd.Flags().IntVar(&limit, "limit", DefaultPlanLimit, "max actions shown in the table (raise when you need more; the full plan is always written to --plan)")
 	return cmd
+}
+
+// currentTime returns CANARY_TEST_TIMESTAMP (RFC3339) when set and valid,
+// otherwise the current time in UTC — the fetched_at stamp written to the
+// remote-status cache, and the reference point pkg/external compares it
+// against for staleness. Mirrors pkg/external.refTime's convention.
+func currentTime() time.Time {
+	if ts := os.Getenv("CANARY_TEST_TIMESTAMP"); ts != "" {
+		if t, err := time.Parse(time.RFC3339, ts); err == nil {
+			return t.UTC()
+		}
+	}
+	return time.Now().UTC()
+}
+
+// createTicketStatusCommand returns the `canary ticket status` subcommand:
+// plain, it reports the on-disk remote-status cache's age and entry count
+// without any network access; --refresh fetches current status from every
+// configured jira-type source and overwrites the cache, without computing
+// or applying a sync plan.
+// CANARY: REQ=ENG-3959; FEATURE="ExternalResolve"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3959_Status_Refresh_NoCreds,TestCANARY_ENG_3959_Status_Refresh_WithCreds,TestCANARY_ENG_3959_Status_Plain_ReportsCache,TestCANARY_ENG_3959_Status_Plain_NoCache; UPDATED=2026-08-29
+func createTicketStatusCommand() *cobra.Command {
+	var refresh bool
+	var project string
+
+	cmd := &cobra.Command{
+		Use:   "status",
+		Short: "Show the cached remote ticket status, or refresh it with --refresh",
+		Long: `Without --refresh, reports the on-disk remote-status cache
+(.canary/remote-status.json) — its age and entry count — without touching
+the network. Missing cache is reported, not an error.
+
+With --refresh, fetches current status from every configured jira-type
+source (the same multi-project fetch 'ticket sync --apply' uses) and
+overwrites the cache. Without JIRA credentials (JIRA_BASE_URL, JIRA_EMAIL,
+JIRA_API_TOKEN all set, or a source api: field as the BaseURL fallback),
+--refresh degrades gracefully: it never errors, never touches the network,
+and never touches the existing cache file.`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runTicketStatus(cmd, refresh, project)
+		},
+	}
+
+	cmd.Flags().BoolVar(&refresh, "refresh", false, "fetch current remote status from every configured jira-type source and overwrite the cache")
+	cmd.Flags().StringVar(&project, "project", "", "JIRA project key fallback for sources without their own project: (same semantics as 'ticket sync --project')")
+	return cmd
+}
+
+func runTicketStatus(cmd *cobra.Command, refresh bool, project string) error {
+	cmd.SilenceUsage = true
+	root := "."
+
+	if !refresh {
+		return reportCachedStatus(cmd, root)
+	}
+
+	reg := sources.LoadFromRoot(root)
+	creds := credsFromEnv(reg)
+	if !creds.present() {
+		fmt.Fprintln(cmd.OutOrStdout(), "CANARY_TICKET_STATUS cached=0 reason=no_credentials")
+		return nil
+	}
+
+	client := &ticket.JiraClient{BaseURL: creds.BaseURL, Email: creds.Email, Token: creds.Token}
+	statuses, fetchedProjects, err := remoteStatusForSources(client, reg, project)
+	if err != nil {
+		return err
+	}
+
+	// A zero-project fetch (no source resolved a project, and --project was
+	// not given as a fallback) means nothing was actually fetched -- never
+	// overwrite an existing cache with that non-result. This is distinct
+	// from fetching a project that legitimately has zero issues: that is
+	// still a real fetch (fetchedProjects > 0) and is saved below.
+	if fetchedProjects == 0 {
+		fmt.Fprintln(cmd.OutOrStdout(), "CANARY_TICKET_STATUS cached=0 reason=no_project")
+		return nil
+	}
+
+	fetchedAt := currentTime()
+	if err := external.SaveCache(root, statuses, fetchedAt); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "CANARY_TICKET_STATUS cached=%d fetched_at=%s\n", len(statuses), fetchedAt.Format(time.RFC3339))
+	return nil
+}
+
+// reportCachedStatus prints the cache's entry count, fetched_at, and age
+// without any network access. A missing cache is reported as cached=0
+// reason=no_cache — never an error.
+func reportCachedStatus(cmd *cobra.Command, root string) error {
+	cache, err := external.LoadCache(root)
+	if err != nil {
+		return err
+	}
+	if cache == nil {
+		fmt.Fprintln(cmd.OutOrStdout(), "CANARY_TICKET_STATUS cached=0 reason=no_cache")
+		return nil
+	}
+
+	age := "unknown"
+	if fetchedAt, perr := time.Parse(time.RFC3339, cache.FetchedAt); perr == nil {
+		age = currentTime().Sub(fetchedAt).Round(time.Second).String()
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "CANARY_TICKET_STATUS cached=%d fetched_at=%s age=%s\n", len(cache.Statuses), cache.FetchedAt, age)
+	return nil
 }
 
 // jiraCreds is the three-env-var credential bundle `canary ticket sync`
@@ -179,31 +301,32 @@ func runTicketSync(cmd *cobra.Command, dbPath, planPath, project, issueType stri
 	return nil
 }
 
-// applyAndReport fetches remote status (when --project is set), computes
-// the plan against it, applies create_issue + transition actions via
-// client, writes the completed plan and its remap map, and prints the
-// CANARY_TICKET_SYNC summary.
+// applyAndReport resolves the effective creation project (--project, else
+// the configured destination source's project), fetches and merges remote
+// status across every jira-type source, computes the plan against it,
+// applies create_issue + transition actions via client, writes the
+// completed plan and its remap map, and prints the CANARY_TICKET_SYNC
+// summary.
 func applyAndReport(cmd *cobra.Command, tokens []*storage.Token, reg *sources.Registry, creds jiraCreds, planPath, project, issueType string, limit int) error {
-	// Require --project when the plan contains create/transition actions that
-	// would need it to apply successfully.
+	// Require an effective project when the plan contains create_issue
+	// actions that would need one to apply successfully. Transition
+	// actions target an already-existing issue by key and never need a
+	// project.
 	actions, err := ticket.ComputePlan(tokens, reg, nil)
 	if err != nil {
 		return err
 	}
 
-	if project == "" && hasMutableActions(actions) {
-		return fmt.Errorf("--project is required with --apply (plan contains create/transition actions)")
+	effProject := effectiveCreationProject(project, reg)
+	if effProject == "" && planContainsCreate(actions) {
+		return fmt.Errorf("--project is required with --apply (plan contains create_issue actions and no destination source has a configured project)")
 	}
 
 	client := &ticket.JiraClient{BaseURL: creds.BaseURL, Email: creds.Email, Token: creds.Token}
 
-	var remoteStatus map[string]string
-	if project != "" {
-		rs, err := ticket.FetchRemoteStatus(client, project)
-		if err != nil {
-			return fmt.Errorf("fetch remote status for project %s: %w", project, err)
-		}
-		remoteStatus = rs
+	remoteStatus, fetchedProjects, err := remoteStatusForSources(client, reg, project)
+	if err != nil {
+		return err
 	}
 
 	actions, err = ticket.ComputePlan(tokens, reg, remoteStatus)
@@ -211,7 +334,30 @@ func applyAndReport(cmd *cobra.Command, tokens []*storage.Token, reg *sources.Re
 		return err
 	}
 
-	created, transitioned, applyErrors := applyActions(client, actions, project, issueType)
+	// A transition action is applied blind (as "every eligible transition
+	// proposed") whenever remote status is unknown for its issue -- which is
+	// exactly what a zero-project fetch produces. Applying blind against
+	// JIRA risks flipping an issue to a status that was already correct
+	// remotely, so refuse before touching the network at all. A create_issue
+	// action with a resolvable destination project is unaffected: it never
+	// depends on remote status.
+	if fetchedProjects == 0 && planContainsTransition(actions) {
+		return fmt.Errorf("--project is required with --apply (plan contains transition actions and no remote status could be fetched)")
+	}
+
+	// Cache the fetch as soon as it succeeds — pkg/external and a plain
+	// `canary ticket status` read this snapshot without ever touching the
+	// network, so it must reflect the freshest fetch regardless of whether
+	// applying the plan below fully succeeds. A zero-project fetch (nothing
+	// resolved to fetch) must never overwrite an existing cache -- that's
+	// not a fresher snapshot, it's a non-result.
+	if fetchedProjects > 0 {
+		if err := external.SaveCache(".", remoteStatus, currentTime()); err != nil {
+			return err
+		}
+	}
+
+	created, transitioned, applyErrors := applyActions(client, actions, effProject, issueType)
 
 	if err := writePlan(planPath, actions); err != nil {
 		return err
@@ -236,15 +382,100 @@ func applyAndReport(cmd *cobra.Command, tokens []*storage.Token, reg *sources.Re
 	return nil
 }
 
-// hasMutableActions checks if the plan contains any create_issue or
-// transition actions that would require --project to apply.
-func hasMutableActions(actions []ticket.Action) bool {
+// effectiveCreationProject resolves the JIRA project used to create new
+// issues: the --project flag when set, otherwise the configured
+// destination source's Project (see sources.Registry.DestinationSource).
+// Empty when neither resolves.
+// CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3958_Sync_ApplyWithDestinationSource_NoProjectFlag; UPDATED=2026-08-29
+func effectiveCreationProject(flagProject string, reg *sources.Registry) string {
+	if flagProject != "" {
+		return flagProject
+	}
+	if reg == nil {
+		return ""
+	}
+	dest, ok := reg.DestinationSource()
+	if !ok {
+		return ""
+	}
+	return dest.Project
+}
+
+// planContainsCreate reports whether the plan contains a create_issue
+// action — the only action type that requires a resolvable project to
+// apply. Transition actions target an already-existing issue by key and
+// never need a creation project (see planContainsTransition for the
+// separate zero-fetch guard that applies to them). Callers combine this
+// with an empty effective project to decide the plan is unresolved.
+func planContainsCreate(actions []ticket.Action) bool {
 	for _, a := range actions {
-		if a.Type == "create_issue" || a.Type == "transition" {
+		if a.Type == "create_issue" {
 			return true
 		}
 	}
 	return false
+}
+
+// planContainsTransition reports whether the plan contains a transition
+// action — the action type that is applied blind (proposed unconditionally)
+// when remote status is unknown for its issue. Callers combine this with a
+// zero-project fetch to decide the plan is unresolved.
+func planContainsTransition(actions []ticket.Action) bool {
+	for _, a := range actions {
+		if a.Type == "transition" {
+			return true
+		}
+	}
+	return false
+}
+
+// remoteStatusForSources fetches and merges remote status across every
+// jira-type source in reg: each source's own Project is queried first;
+// sources with no Project configured fall back to fallbackProject (the
+// --project flag), preserving single-project configs' historical behavior.
+// A given project is only fetched once even when shared by multiple
+// sources. Sources (and the fallback) that resolve to no project at all are
+// skipped — they contribute nothing to merge.
+//
+// Merge semantics (last-write-wins): when the same issue key appears in
+// results from multiple sources, the last source in registry order's status
+// value overwrites earlier ones. This allows a canonical source for a key to
+// appear later in the registry and take precedence.
+//
+// The returned fetchedProjects count is the number of distinct projects
+// actually queried — zero means nothing resolved to a project at all (no
+// source's own Project, and no usable fallbackProject), as opposed to a
+// project that was queried and legitimately returned zero issues. Callers
+// use this to distinguish "nothing to fetch" from "fetched, found nothing"
+// — see applyAndReport and runTicketStatus.
+// CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge,TestCANARY_ENG_3958_RemoteStatusForSources_SharedProjectSingleFetch; UPDATED=2026-08-29
+func remoteStatusForSources(client *ticket.JiraClient, reg *sources.Registry, fallbackProject string) (merged map[string]string, fetchedProjects int, err error) {
+	if reg == nil {
+		return nil, 0, nil
+	}
+	merged = map[string]string{}
+	fetched := map[string]bool{}
+	for _, s := range reg.Sources() {
+		if s.Type != "jira" {
+			continue
+		}
+		p := s.Project
+		if p == "" {
+			p = fallbackProject
+		}
+		if p == "" || fetched[p] {
+			continue
+		}
+		fetched[p] = true
+		rs, ferr := ticket.FetchRemoteStatus(client, p)
+		if ferr != nil {
+			return nil, 0, fmt.Errorf("fetch remote status for project %s: %w", p, ferr)
+		}
+		for k, v := range rs {
+			merged[k] = v
+		}
+	}
+	return merged, len(fetched), nil
 }
 
 // applyActions applies create_issue actions first (filling each created key
