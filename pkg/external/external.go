@@ -207,13 +207,14 @@ func appendNote(detail, note string) string {
 //
 //  0. id is external (resolves to a non-flatfile source) OR has an unknown
 //     prefix (resolves to no configured source at all, including when reg
-//     is nil): every configured peer project (.canary/project.yaml's
-//     `peers:`, loaded fresh from root on every call — no caching layer
-//     beyond this) is consulted, in declaration order, BEFORE the ticket
-//     cache below. This is the inter-dependent-repos case: a peer may own
-//     an id under a key this project's own sources: list never heard of.
-//     See resolvePeer for the peer-file contract. A known local (flatfile)
-//     id never consults peers — it is unambiguously this project's own.
+//     is nil): every configured peer project is consulted, in declaration
+//     order, BEFORE the ticket cache below. This is the inter-dependent-repos
+//     case: a peer may own an id under a key this project's own sources:
+//     list never heard of. Peers are drawn from reg.Peers() when reg != nil
+//     (no additional config.Load); otherwise peers are loaded fresh from
+//     root's .canary/project.yaml for backward compatibility. A known local
+//     (flatfile) id never consults peers — it is unambiguously this project's
+//     own. See resolvePeer for the peer-file contract.
 //  1. id resolves to a flatfile source, or to no configured source at all
 //     (and no peer claimed it): State=unknown, Detail="not external" —
 //     callers treat this as a local requirement, not an external one.
@@ -241,7 +242,16 @@ func Resolve(id string, reg *sources.Registry, root string) Resolution {
 	localFlatfile := ok && src.Type == "flatfile"
 
 	if !localFlatfile {
-		if res, found := resolvePeer(id, root); found {
+		var peers []config.PeerConfig
+		if reg != nil {
+			peers = reg.Peers()
+		} else {
+			// Backward compatibility: when reg == nil, load peers fresh from config.
+			if cfg, err := config.Load(root); err == nil {
+				peers = cfg.Peers
+			}
+		}
+		if res, found := resolvePeer(id, root, peers); found {
 			return res
 		}
 	}
@@ -335,9 +345,9 @@ func peerStatusPath(root string, peer config.PeerConfig) string {
 	return filepath.Join(peerRoot, "status.json")
 }
 
-// resolvePeer consults each peer project configured in root's
-// .canary/project.yaml (`peers:`), in declaration order, for id — read-only,
-// never writing or creating anything. For each peer:
+// resolvePeer consults each peer project in the peers list, in declaration
+// order, for id — read-only, never writing or creating anything. For each
+// peer:
 //   - peer.Root/status.json missing or unreadable: soft skip, try the next
 //     peer (degradation is sacred — an absent or unreachable peer must never
 //     error Resolve).
@@ -352,22 +362,14 @@ func peerStatusPath(root string, peer config.PeerConfig) string {
 //
 // The first peer (in declaration order) that has an entry for id wins —
 // later peers are not consulted once one has answered. Returns found=false
-// when no configured peer's status.json holds id (including when no peers
-// are configured, or root has no .canary/project.yaml at all), letting
-// Resolve fall through to its own ticket-cache logic.
+// when no peer in the list has an entry for id (including when peers is
+// empty), letting Resolve fall through to its own ticket-cache logic.
 //
-// No caching layer beyond this: project.yaml and every consulted peer's
-// status.json are read fresh on every Resolve call. That is a known
-// performance follow-up (each call is at minimum one config.Load plus one
-// os.ReadFile per configured peer) left for later if peer-heavy repos need
-// it — Resolve is not currently called in a loop tight enough to matter.
-func resolvePeer(id, root string) (Resolution, bool) {
-	cfg, err := config.Load(root)
-	if err != nil || len(cfg.Peers) == 0 {
-		return Resolution{}, false
-	}
-
-	for _, peer := range cfg.Peers {
+// Reads each consulted peer's status.json fresh on every call. That is a
+// known performance follow-up left for later if peer-heavy repos need it —
+// Resolve is not currently called in a loop tight enough to matter.
+func resolvePeer(id, root string, peers []config.PeerConfig) (Resolution, bool) {
+	for _, peer := range peers {
 		data, err := os.ReadFile(peerStatusPath(root, peer))
 		if err != nil {
 			continue // missing/unreadable status.json: soft skip

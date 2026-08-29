@@ -51,6 +51,7 @@ type Registry struct {
 	byKey   map[string]Source
 	pattern *regexp.Regexp
 	claim   *regexp.Regexp
+	peers   []config.PeerConfig
 }
 
 // NewRegistry validates the sources and builds the combined ID pattern.
@@ -86,6 +87,7 @@ func NewRegistry(list []Source) (*Registry, error) {
 		byKey:   byKey,
 		pattern: regexp.MustCompile(`\b((?:` + alt + `)-\d+)\b`),
 		claim:   regexp.MustCompile(`(?m)^\s*✅\s+((?:` + alt + `)-\d+)\b`),
+		peers:   []config.PeerConfig{},
 	}, nil
 }
 
@@ -131,6 +133,7 @@ func FromProjectConfig(cfg *config.ProjectConfig) *Registry {
 	if err != nil {
 		return Default()
 	}
+	r.peers = cfg.Peers
 	return r
 }
 
@@ -152,6 +155,14 @@ func (r *Registry) ClaimPattern() *regexp.Regexp { return r.claim }
 
 // Sources returns the configured sources in declaration order.
 func (r *Registry) Sources() []Source { return r.list }
+
+// Peers returns the configured peer projects in declaration order.
+func (r *Registry) Peers() []config.PeerConfig { return r.peers }
+
+// SetPeers sets the peer projects for this registry (used for testing).
+func (r *Registry) SetPeers(peers []config.PeerConfig) {
+	r.peers = peers
+}
 
 // DestinationSource returns the source that `canary ticket sync` targets
 // when promoting a flatfile requirement (create_issue actions): the source

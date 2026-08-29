@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"devnw.dev/canary/pkg/config"
 	"devnw.dev/canary/pkg/sources"
 )
 
@@ -29,6 +30,22 @@ func peerTestRoot(t *testing.T, peersYAML string) string {
 		t.Fatal(err)
 	}
 	return root
+}
+
+// newRegistryWithPeersFromRoot creates a registry with the given sources list
+// but loads peers from root's .canary/project.yaml — needed for peer tests
+// that construct custom sources while relying on config-defined peers.
+func newRegistryWithPeersFromRoot(t *testing.T, root string, sourcesList []sources.Source) *sources.Registry {
+	t.Helper()
+	reg, err := sources.NewRegistry(sourcesList)
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+	cfg, err := config.Load(root)
+	if err == nil {
+		reg.SetPeers(cfg.Peers)
+	}
+	return reg
 }
 
 // writePeerStatus writes a canaryscan-shaped status.json at
@@ -77,7 +94,7 @@ func TestCANARY_ENG_3961_Resolve_PeerSatisfied(t *testing.T) {
 	writePeerStatus(t, filepath.Join(root, "peer"), map[string][]string{
 		"UP-1": {"TESTED"},
 	})
-	reg := newRegistry(t, []sources.Source{
+	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{
 		{Name: "core", Type: "flatfile", Key: "CBIN"},
 		{Name: "up", Type: "jira", Key: "UP"},
 	})
@@ -102,7 +119,7 @@ func TestCANARY_ENG_3961_Resolve_PeerUnsatisfied(t *testing.T) {
 	writePeerStatus(t, filepath.Join(root, "peer"), map[string][]string{
 		"UP-2": {"IMPL", "STUB"},
 	})
-	reg := newRegistry(t, []sources.Source{
+	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{
 		{Name: "core", Type: "flatfile", Key: "CBIN"},
 		{Name: "up", Type: "jira", Key: "UP"},
 	})
@@ -125,7 +142,7 @@ func TestCANARY_ENG_3961_Resolve_PeerNotFound(t *testing.T) {
 	writePeerStatus(t, filepath.Join(root, "peer"), map[string][]string{
 		"UP-1": {"TESTED"},
 	})
-	reg := newRegistry(t, []sources.Source{
+	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{
 		{Name: "core", Type: "flatfile", Key: "CBIN"},
 		{Name: "up", Type: "jira", Key: "UP"},
 	})
@@ -144,7 +161,7 @@ func TestCANARY_ENG_3961_Resolve_PeerNotFound(t *testing.T) {
 // through to the next peer, then the ticket cache, without error.
 func TestCANARY_ENG_3961_Resolve_PeerMissingFile(t *testing.T) {
 	root := peerTestRoot(t, "peers:\n  - name: ghost\n    root: \"nowhere\"\n")
-	reg := newRegistry(t, []sources.Source{
+	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{
 		{Name: "core", Type: "flatfile", Key: "CBIN"},
 		{Name: "up", Type: "jira", Key: "UP"},
 	})
@@ -169,7 +186,7 @@ func TestCANARY_ENG_3961_Resolve_PeerMalformedJSON(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "peer", "status.json"), []byte("not json"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	reg := newRegistry(t, []sources.Source{
+	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{
 		{Name: "core", Type: "flatfile", Key: "CBIN"},
 		{Name: "up", Type: "jira", Key: "UP"},
 	})
@@ -194,7 +211,7 @@ func TestCANARY_ENG_3961_Resolve_PeerRelativeRoot(t *testing.T) {
 	writePeerStatus(t, siblingDir, map[string][]string{
 		"UP-1": {"BENCHED"},
 	})
-	reg := newRegistry(t, []sources.Source{
+	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{
 		{Name: "core", Type: "flatfile", Key: "CBIN"},
 		{Name: "up", Type: "jira", Key: "UP"},
 	})
@@ -220,7 +237,7 @@ func TestCANARY_ENG_3961_Resolve_PeerBeatsTicketCache(t *testing.T) {
 	if err := SaveCache(root, map[string]string{"UP-1": "Done"}, freshTime()); err != nil {
 		t.Fatal(err) // ticket cache says satisfied
 	}
-	reg := newRegistry(t, []sources.Source{
+	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{
 		{Name: "core", Type: "flatfile", Key: "CBIN"},
 		{Name: "up", Type: "jira", Key: "UP"},
 	})
@@ -245,7 +262,7 @@ func TestCANARY_ENG_3961_Resolve_UnknownPrefixResolvedByPeer(t *testing.T) {
 		"ZZZ-1": {"TESTED"},
 	})
 	// Only CBIN is configured locally -- ZZZ is a totally unknown prefix.
-	reg := newRegistry(t, []sources.Source{{Name: "core", Type: "flatfile", Key: "CBIN"}})
+	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{{Name: "core", Type: "flatfile", Key: "CBIN"}})
 
 	res := Resolve("ZZZ-1", reg, root)
 	if res.State != StateSatisfied {
@@ -267,7 +284,7 @@ func TestCANARY_ENG_3961_Resolve_LocalFlatfileNeverConsultsPeer(t *testing.T) {
 	writePeerStatus(t, filepath.Join(root, "peer"), map[string][]string{
 		"CBIN-1": {"TESTED"},
 	})
-	reg := newRegistry(t, []sources.Source{{Name: "core", Type: "flatfile", Key: "CBIN"}})
+	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{{Name: "core", Type: "flatfile", Key: "CBIN"}})
 
 	res := Resolve("CBIN-1", reg, root)
 	if res.State != StateUnknown || res.Detail != "not external" {
@@ -286,7 +303,7 @@ func TestCANARY_ENG_3961_Resolve_SecondPeerFallsThroughFirst(t *testing.T) {
 	writePeerStatus(t, filepath.Join(root, "peer-b"), map[string][]string{
 		"UP-1": {"BENCHED"},
 	})
-	reg := newRegistry(t, []sources.Source{
+	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{
 		{Name: "core", Type: "flatfile", Key: "CBIN"},
 		{Name: "up", Type: "jira", Key: "UP"},
 	})
