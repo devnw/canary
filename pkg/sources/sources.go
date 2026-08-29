@@ -23,6 +23,14 @@ type Source struct {
 	Type string // flatfile | jira | github | gitlab
 	Key  string // uppercase ID prefix, e.g. "CBIN", "PLAT"
 	URL  string // optional template; {id} = full ID, {num} = numeric part
+
+	// API is the ticket system's REST base URL, used by `canary ticket
+	// sync` when set (falls back to its own defaults, e.g. env vars,
+	// otherwise). Empty for flatfile sources.
+	API string
+	// StatusMap overrides the default CANARY-status -> remote-status-name
+	// mapping (STUB/IMPL/TESTED/BENCHED keys) for this source only.
+	StatusMap map[string]string
 }
 
 var validTypes = map[string]struct{}{"flatfile": {}, "jira": {}, "github": {}, "gitlab": {}}
@@ -92,7 +100,14 @@ func FromProjectConfig(cfg *config.ProjectConfig) *Registry {
 	}
 	list := make([]Source, 0, len(cfg.Sources))
 	for _, s := range cfg.Sources {
-		list = append(list, Source{Name: s.Name, Type: s.Type, Key: s.Key, URL: s.URL})
+		list = append(list, Source{
+			Name:      s.Name,
+			Type:      s.Type,
+			Key:       s.Key,
+			URL:       s.URL,
+			API:       s.API,
+			StatusMap: s.StatusMap,
+		})
 	}
 	r, err := NewRegistry(list)
 	if err != nil {

@@ -8,6 +8,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -57,8 +58,40 @@ sources:
 		t.Fatalf("len(Sources) = %d, want 4", len(cfg.Sources))
 	}
 	want := SourceConfig{Name: "platform", Type: "jira", Key: "PLAT", URL: "https://company.atlassian.net/browse/{id}"}
-	if cfg.Sources[1] != want {
+	if !reflect.DeepEqual(cfg.Sources[1], want) {
 		t.Errorf("Sources[1] = %+v, want %+v", cfg.Sources[1], want)
+	}
+}
+
+func TestCANARY_CBIN_306_LoadSources_TicketSyncFields(t *testing.T) {
+	root := writeProjectYAML(t, `
+project:
+  name: "demo"
+  key: "CBIN"
+sources:
+  - name: platform
+    type: jira
+    key: "PLAT"
+    url: "https://company.atlassian.net/browse/{id}"
+    api: "https://company.atlassian.net"
+    status_map:
+      STUB: "Backlog"
+      IMPL: "In Development"
+`)
+	cfg, err := Load(root)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(cfg.Sources) != 1 {
+		t.Fatalf("len(Sources) = %d, want 1", len(cfg.Sources))
+	}
+	got := cfg.Sources[0]
+	if got.API != "https://company.atlassian.net" {
+		t.Errorf("API = %q, want https://company.atlassian.net", got.API)
+	}
+	want := map[string]string{"STUB": "Backlog", "IMPL": "In Development"}
+	if !reflect.DeepEqual(got.StatusMap, want) {
+		t.Errorf("StatusMap = %+v, want %+v", got.StatusMap, want)
 	}
 }
 

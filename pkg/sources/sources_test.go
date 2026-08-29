@@ -209,6 +209,36 @@ func TestCANARY_CBIN_201_LoadFromRootNoCanaryDir(t *testing.T) {
 	}
 }
 
+func TestCANARY_CBIN_306_FromProjectConfig_TicketSyncFieldsPassThrough(t *testing.T) {
+	// SourceConfig.API and SourceConfig.StatusMap must reach the built
+	// Source unchanged, so pkg/ticket's ComputePlan can read StatusMap
+	// overrides through the registry.
+	cfg := &config.ProjectConfig{}
+	cfg.Project.Key = "CBIN"
+	cfg.Sources = []config.SourceConfig{
+		{Name: "core", Type: "flatfile", Key: "CBIN"},
+		{
+			Name: "platform", Type: "jira", Key: "PLAT",
+			URL:       "https://company.atlassian.net/browse/{id}",
+			API:       "https://company.atlassian.net",
+			StatusMap: map[string]string{"STUB": "Backlog", "TESTED": "Closed"},
+		},
+	}
+
+	r := FromProjectConfig(cfg)
+	src, ok := r.Resolve("PLAT-1")
+	if !ok {
+		t.Fatal("Resolve(PLAT-1) failed")
+	}
+	if src.API != "https://company.atlassian.net" {
+		t.Errorf("API = %q, want https://company.atlassian.net", src.API)
+	}
+	want := map[string]string{"STUB": "Backlog", "TESTED": "Closed"}
+	if len(src.StatusMap) != len(want) || src.StatusMap["STUB"] != want["STUB"] || src.StatusMap["TESTED"] != want["TESTED"] {
+		t.Errorf("StatusMap = %+v, want %+v", src.StatusMap, want)
+	}
+}
+
 func TestCANARY_CBIN_201_LoadFromRootWithProjectYAML(t *testing.T) {
 	// LoadFromRoot with a real .canary/project.yaml written to a temp dir declaring a jira source PLAT
 	// → TicketURL("PLAT-42") expands correctly.
