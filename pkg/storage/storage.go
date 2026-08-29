@@ -419,7 +419,7 @@ func (db *DB) SearchTokens(keywords string, limit int) ([]*Token, error) {
 	return scanTokens(rows)
 }
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstraction"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstraction"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID; UPDATED=2026-08-29
 // GetFilesByReqID groups tokens by file path for a requirement
 func (db *DB) GetFilesByReqID(reqID string, excludeSpecs bool) (map[string][]*Token, error) {
 	tokens, err := db.GetTokensByReqID(reqID)

@@ -166,7 +166,7 @@ Examples:
 			return fmt.Errorf("install agent files to systems: %w", err)
 		}
 
-		// CANARY: REQ=CBIN-148; FEATURE="CopilotInitInstructions"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCreateCopilotInstructions; BENCH=BenchmarkCreateCopilotInstructions; UPDATED=2025-10-19
+		// CANARY: REQ=CBIN-148; FEATURE="CopilotInitInstructions"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCreateCopilotInstructions; BENCH=BenchmarkCreateCopilotInstructions; UPDATED=2026-08-29
 		// Create GitHub Copilot instruction files
 		if err := createCopilotInstructions(projectName, projectKey); err != nil {
 			return fmt.Errorf("create Copilot instructions: %w", err)
@@ -191,7 +191,7 @@ Examples:
 			"## Format\n\n" +
 			"CANARY tokens track requirements directly in source code:\n\n" +
 			"```\n" +
-			"// CANARY: REQ=CBIN-###; FEATURE=\"Name\"; ASPECT=API; STATUS=IMPL; [TEST=TestName]; [BENCH=BenchName]; [OWNER=team]; UPDATED=YYYY-MM-DD\n" +
+			"// CANARY: REQ=CBIN-###; FEATURE=\"Name\"; ASPECT=API; STATUS=IMPL; [TEST=TestName]; [BENCH=BenchName]; [OWNER=team]; UPDATED=<YYYY-MM-DD>\n" +
 			"```\n\n" +
 			"## Required Fields\n\n" +
 			"- **REQ**: Requirement ID (format: CBIN-###)\n" +

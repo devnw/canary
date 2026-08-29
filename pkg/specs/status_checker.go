@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_FullSatisfied,TestCheckDependencyStatus_FullBlocked,TestCheckDependencyStatus_PartialFeaturesSatisfied,TestCheckDependencyStatus_PartialFeaturesBlocked; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_FullSatisfied,TestCheckDependencyStatus_FullBlocked,TestCheckDependencyStatus_PartialFeaturesSatisfied,TestCheckDependencyStatus_PartialFeaturesBlocked; UPDATED=2026-08-29
 
 // TokenProvider is an interface for retrieving CANARY tokens from storage.
 // This allows the status checker to query token status without tight coupling to storage.

@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestBuildGraphFromSpecs,TestGetTransitiveDependencies,TestFormatASCIITree; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestBuildGraphFromSpecs,TestGetTransitiveDependencies,TestFormatASCIITree; UPDATED=2026-08-29
 
 // SpecLoader is an interface for loading dependencies from spec files.
 type SpecLoader interface {

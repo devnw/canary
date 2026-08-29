@@ -40,7 +40,7 @@ canary scan --root . --verify GAP_ANALYSIS.md --strict
 
 ## Token Format
 ```
-CANARY: REQ=CBIN-###; FEATURE="Name"; ASPECT=API; STATUS=IMPL; TEST=TestName; BENCH=BenchName; OWNER=team; UPDATED=YYYY-MM-DD
+CANARY: REQ=CBIN-###; FEATURE="Name"; ASPECT=API; STATUS=IMPL; TEST=TestName; BENCH=BenchName; OWNER=team; UPDATED=<YYYY-MM-DD>
 ```
 
 ## Output Schema

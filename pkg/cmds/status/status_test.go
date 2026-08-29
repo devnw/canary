@@ -12,7 +12,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_StatusCmd; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_StatusCmd; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_CLI_StatusCmd(t *testing.T) {
 	// Setup: Create temporary database
 	tmpDir := t.TempDir()
@@ -73,7 +73,7 @@ func TestCANARY_CBIN_CLI_001_CLI_StatusCmd(t *testing.T) {
 	}
 }
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_StatusCmd; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_StatusCmd; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_CLI_StatusCmd_ProgressBar(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -136,7 +136,7 @@ func TestCANARY_CBIN_CLI_001_CLI_StatusCmd_ProgressBar(t *testing.T) {
 	}
 }
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_StatusCmd; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_StatusCmd; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_CLI_StatusCmd_CompletionPercentage(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -190,7 +190,7 @@ func TestCANARY_CBIN_CLI_001_CLI_StatusCmd_CompletionPercentage(t *testing.T) {
 	}
 }
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_StatusCmd; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_StatusCmd; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_CLI_StatusCmd_DisplaySummary(t *testing.T) {
 	tokens := []*storage.Token{
 		{ReqID: "TEST", Feature: "F1", Status: "STUB", FilePath: "f1.go"},

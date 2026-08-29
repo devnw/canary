@@ -13,7 +13,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="GrepCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_GrepCmd; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="GrepCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_GrepCmd; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_CLI_GrepCmd(t *testing.T) {
 	// Setup: Create temporary database
 	tmpDir := t.TempDir()
@@ -121,7 +121,7 @@ func TestCANARY_CBIN_CLI_001_CLI_GrepCmd(t *testing.T) {
 	}
 }
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="GrepCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_GrepCmd; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="GrepCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_GrepCmd; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_CLI_GrepCmd_CaseInsensitive(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
@@ -176,7 +176,7 @@ func TestCANARY_CBIN_CLI_001_CLI_GrepCmd_CaseInsensitive(t *testing.T) {
 	}
 }
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="GrepCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_GrepCmd; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="GrepCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_GrepCmd; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_CLI_GrepCmd_EmptyPattern(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")

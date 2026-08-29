@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CBIN-133; FEATURE="RequirementLookup"; ASPECT=API; STATUS=TESTED; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="RequirementLookup"; ASPECT=API; STATUS=TESTED; UPDATED=2026-08-29
 package implement
 
 import (
@@ -21,7 +21,7 @@ import (
 	"devnw.dev/canary/pkg/matcher"
 )
 
-// CANARY: REQ=CBIN-133; FEATURE="ImplementCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_ExactMatch; OWNER=canary; DOC=user:docs/user/implement-command-guide.md; DOC_HASH=ed68fb1d97cf0562; UPDATED=2025-10-17
+// CANARY: REQ=CBIN-133; FEATURE="ImplementCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_ExactMatch; OWNER=canary; DOC=user:docs/user/implement-command-guide.md; DOC_HASH=ed68fb1d97cf0562; UPDATED=2026-08-29
 var ImplementCmd = &cobra.Command{
 	Use:   "implement <query>",
 	Short: "Generate implementation guidance for a requirement",
@@ -250,7 +250,7 @@ func loadSpecFromDir(dirPath string) (*RequirementSpec, error) {
 	return spec, nil
 }
 
-// CANARY: REQ=CBIN-133; FEATURE="PromptRenderer"; ASPECT=API; STATUS=TESTED; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="PromptRenderer"; ASPECT=API; STATUS=TESTED; UPDATED=2026-08-29
 // renderImplementPrompt generates comprehensive implementation guidance
 func renderImplementPrompt(spec *RequirementSpec, flags *ImplementFlags) (string, error) {
 	// Load template

@@ -5,7 +5,7 @@
 CANARY tokens track requirements directly in source code:
 
 ```
-// CANARY: REQ=CBIN-###; FEATURE="Name"; ASPECT=API; STATUS=IMPL; [TEST=TestName]; [BENCH=BenchName]; [OWNER=team]; UPDATED=YYYY-MM-DD
+// CANARY: REQ=CBIN-###; FEATURE="Name"; ASPECT=API; STATUS=IMPL; [TEST=TestName]; [BENCH=BenchName]; [OWNER=team]; UPDATED=<YYYY-MM-DD>
 ```
 
 ## Required Fields
@@ -34,7 +34,7 @@ CANARY tokens track requirements directly in source code:
 ## Example
 
 ```go
-// CANARY: REQ=CBIN-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; OWNER=backend; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-001; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; OWNER=backend; UPDATED=2026-08-29
 func AuthenticateUser(credentials *Credentials) (*Session, error) {
     // implementation
 }

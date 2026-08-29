@@ -263,7 +263,7 @@ package specs
 
 import "io"
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_FullDependency,TestParseDependencies_PartialFeatures; OWNER=specs; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_FullDependency,TestParseDependencies_PartialFeatures; OWNER=specs; UPDATED=2026-08-29
 func ParseDependencies(sourceReqID string, reader io.Reader) ([]Dependency, error) {
     // Implementation
 }
@@ -278,12 +278,12 @@ package specs
 
 import "testing"
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_FullDependency; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_FullDependency; UPDATED=2026-08-29
 func TestParseDependencies_FullDependency(t *testing.T) {
     // Test implementation
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_PartialFeatures; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_PartialFeatures; UPDATED=2026-08-29
 func TestParseDependencies_PartialFeatures(t *testing.T) {
     // Test implementation
 }
@@ -298,7 +298,7 @@ package specs
 
 import "testing"
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=BENCHED; TEST=TestValidateDependencies_ValidGraph; BENCH=BenchmarkCANARY_CBIN_147_Engine_CircularDetection; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=BENCHED; TEST=TestValidateDependencies_ValidGraph; BENCH=BenchmarkCANARY_CBIN_147_Engine_CircularDetection; UPDATED=2026-08-29
 func BenchmarkCANARY_CBIN_147_Engine_CircularDetection(b *testing.B) {
     // Benchmark implementation
 }
@@ -380,10 +380,10 @@ canary scan --verify GAP_ANALYSIS.md --strict
 
 ```go
 // Before change (2025-10-01)
-// CANARY: REQ=CBIN-147; FEATURE="Parser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParser; UPDATED=2025-10-01
+// CANARY: REQ=CBIN-147; FEATURE="Parser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParser; UPDATED=2026-08-29
 
 // After modification (2025-10-18)
-// CANARY: REQ=CBIN-147; FEATURE="Parser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParser; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="Parser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParser; UPDATED=2026-08-29
 ```
 
 ### Staleness Threshold
@@ -495,7 +495,7 @@ canary deps validate
 **Example:**
 
 ```go
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED;
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; UPDATED=2026-08-29
 // TEST=TestParseDependencies; DOC=user:docs/user/dependency-guide.md;
 // DOC_HASH=a3f5b8c2e1d4a6f9; UPDATED=2025-10-18
 ```
@@ -627,19 +627,19 @@ CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=STUB; UPDATED=20
 ### Tested Token
 
 ```
-CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=TESTED; TEST=TestFeatureName; UPDATED=2025-10-18
+CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=TESTED; TEST=TestFeatureName; UPDATED=2026-08-29
 ```
 
 ### Benched Token
 
 ```
-CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=BENCHED; TEST=TestFeatureName; BENCH=BenchmarkFeatureName; UPDATED=2025-10-18
+CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=BENCHED; TEST=TestFeatureName; BENCH=BenchmarkFeatureName; UPDATED=2026-08-29
 ```
 
 ### Documented Token
 
 ```
-CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=TESTED; TEST=TestFeatureName; DOC=user:docs/user/guide.md; DOC_HASH=a3f5b8c2; UPDATED=2025-10-18
+CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=TESTED; TEST=TestFeatureName; DOC=user:docs/user/guide.md; DOC_HASH=a3f5b8c2; UPDATED=2026-08-29
 ```
 
 ## Related Documentation

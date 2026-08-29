@@ -46,3 +46,6 @@ bin_canary
 
 # Superpowers SDD scratch
 .superpowers/
+
+# Stale build artifacts at repo root
+/canary

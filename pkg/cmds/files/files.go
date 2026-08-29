@@ -24,7 +24,7 @@ type filesJSON struct {
 	Files map[string][]string `json:"files"`
 }
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_FilesCmd; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_FilesCmd; UPDATED=2026-08-29
 var FilesCmd = &cobra.Command{
 	Use:   "files <REQ-ID>",
 	Short: "List implementation files for a requirement",

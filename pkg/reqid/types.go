@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ-151; FEATURE="FixedPrefixes"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-11-01
+// CANARY: REQ=REQ-151; FEATURE="FixedPrefixes"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-11-01
 package reqid
 
 import (

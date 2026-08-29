@@ -50,7 +50,7 @@ You should see available commands including `init`, `specify`, `plan`, `show`, `
 CANARY tokens are structured comments embedded in your code:
 
 ```go
-// CANARY: REQ=CBIN-105; FEATURE="Authentication"; ASPECT=API; STATUS=TESTED; UPDATED=2025-10-17
+// CANARY: REQ=CBIN-105; FEATURE="Authentication"; ASPECT=API; STATUS=TESTED; UPDATED=2026-08-29
 ```
 
 **Token Fields:**
@@ -272,7 +272,7 @@ go test ./internal/auth/
 ```go
 // internal/auth/auth_test.go
 
-// CANARY: REQ=CBIN-001; FEATURE="Authentication"; ASPECT=Security; STATUS=TESTED; TEST=TestCANARY_CBIN_001_Security_PasswordHashing; UPDATED=2025-10-17
+// CANARY: REQ=CBIN-001; FEATURE="Authentication"; ASPECT=Security; STATUS=TESTED; TEST=TestCANARY_CBIN_001_Security_PasswordHashing; UPDATED=2026-08-29
 func TestCANARY_CBIN_001_Security_PasswordHashing(t *testing.T) {
     // ... test code ...
 }
@@ -281,7 +281,7 @@ func TestCANARY_CBIN_001_Security_PasswordHashing(t *testing.T) {
 ```go
 // internal/auth/auth.go
 
-// CANARY: REQ=CBIN-001; FEATURE="Authentication"; ASPECT=Security; STATUS=TESTED; TEST=TestCANARY_CBIN_001_Security_PasswordHashing; UPDATED=2025-10-17
+// CANARY: REQ=CBIN-001; FEATURE="Authentication"; ASPECT=Security; STATUS=TESTED; TEST=TestCANARY_CBIN_001_Security_PasswordHashing; UPDATED=2026-08-29
 package auth
 // ... implementation ...
 ```
@@ -332,7 +332,7 @@ vim docs/user/authentication-guide.md
 
 # Update token with DOC field
 # In your source file:
-// CANARY: REQ=CBIN-001; FEATURE="Authentication"; ASPECT=Security; STATUS=TESTED; TEST=TestCANARY_CBIN_001_Security_PasswordHashing; DOC=user:docs/user/authentication-guide.md; UPDATED=2025-10-17
+// CANARY: REQ=CBIN-001; FEATURE="Authentication"; ASPECT=Security; STATUS=TESTED; TEST=TestCANARY_CBIN_001_Security_PasswordHashing; DOC=user:docs/user/authentication-guide.md; UPDATED=2026-08-29
 
 # Calculate and add hash
 canary doc update --req CBIN-001 --feature Authentication
@@ -512,10 +512,10 @@ See [Query Commands Guide](./query-commands-guide.md) for complete reference.
 **Solution**:
 ```go
 // Wrong
-// CANARY: REQ=CBIN-105; FEATURE="Search"; ASPECT=API; STATUS=TESTED; UPDATED=2025-10-17
+// CANARY: REQ=CBIN-105; FEATURE="Search"; ASPECT=API; STATUS=TESTED; UPDATED=2026-08-29
 
 // Correct
-// CANARY: REQ=CBIN-105; FEATURE="Search"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_105_API_FuzzySearch; UPDATED=2025-10-17
+// CANARY: REQ=CBIN-105; FEATURE="Search"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_105_API_FuzzySearch; UPDATED=2026-08-29
 ```
 
 ### Pitfall 2: Stale Documentation
@@ -539,7 +539,7 @@ canary doc update --req CBIN-105 --feature Search
 ```go
 // internal/search/fuzzy.go
 
-// CANARY: REQ=CBIN-105; FEATURE="FuzzySearch"; ASPECT=Engine; STATUS=TESTED; TEST=TestFuzzyMatch; UPDATED=2025-10-17
+// CANARY: REQ=CBIN-105; FEATURE="FuzzySearch"; ASPECT=Engine; STATUS=TESTED; TEST=TestFuzzyMatch; UPDATED=2026-08-29
 func FuzzyMatch(pattern, text string) bool {
     // Implementation...
 }

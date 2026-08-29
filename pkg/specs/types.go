@@ -1,6 +1,6 @@
 package specs
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyCreation,TestPartialFeatureDependency,TestPartialAspectDependency; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyCreation,TestPartialFeatureDependency,TestPartialAspectDependency; UPDATED=2026-08-29
 
 // TokenInfo represents a CANARY token from storage.
 // This is used by StatusChecker to query token status.

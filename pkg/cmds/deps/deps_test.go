@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CANARY: REQ=CBIN-147; FEATURE="DepsCheckCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsCheckCommand; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DepsCheckCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsCheckCommand; UPDATED=2026-08-29
 func TestDepsCheckCommand(t *testing.T) {
 	// Create temp directory with test spec
 	tmpDir := t.TempDir()
@@ -49,7 +49,7 @@ func TestDepsCheckCommand(t *testing.T) {
 	assert.Contains(t, output, "CBIN-146")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DepsGraphCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsGraphCommand; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DepsGraphCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsGraphCommand; UPDATED=2026-08-29
 func TestDepsGraphCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 	specDir := filepath.Join(tmpDir, ".canary", "specs", "CBIN-147-test")
@@ -85,7 +85,7 @@ func TestDepsGraphCommand(t *testing.T) {
 	assert.True(t, len(output) > 0)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DepsReverseCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsReverseCommand; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DepsReverseCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsReverseCommand; UPDATED=2026-08-29
 func TestDepsReverseCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -122,7 +122,7 @@ func TestDepsReverseCommand(t *testing.T) {
 	assert.Contains(t, output, "CBIN-146")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DepsValidateCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsValidateCommand; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DepsValidateCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsValidateCommand; UPDATED=2026-08-29
 func TestDepsValidateCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 	specDir := filepath.Join(tmpDir, ".canary", "specs", "CBIN-147-test")
@@ -157,7 +157,7 @@ func TestDepsValidateCommand(t *testing.T) {
 	assert.True(t, len(output) > 0)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DepsValidateCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsValidateCommand_DetectsCycle; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DepsValidateCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsValidateCommand_DetectsCycle; UPDATED=2026-08-29
 func TestDepsValidateCommand_DetectsCycle(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -203,7 +203,7 @@ func TestDepsValidateCommand_DetectsCycle(t *testing.T) {
 	assert.True(t, strings.Contains(strings.ToLower(output), "cycle"), "Output should contain 'cycle':\n%s", output)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DepsParentCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsParentCommand; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DepsParentCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsParentCommand; UPDATED=2026-08-29
 func TestDepsParentCommand(t *testing.T) {
 	cmd := CreateDepsCommand()
 

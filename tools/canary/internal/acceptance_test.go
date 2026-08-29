@@ -361,7 +361,7 @@ func TestAcceptance_UpdateStale(t *testing.T) {
 	// Create test file with stale and fresh tokens
 	testFile := filepath.Join(root, "test.go")
 	content := `package test
-// CANARY: REQ=CBIN-001; FEATURE="StaleToken"; ASPECT=API; STATUS=TESTED; TEST=Test1; UPDATED=2024-01-01
+// CANARY: REQ=CBIN-001; FEATURE="StaleToken"; ASPECT=API; STATUS=TESTED; TEST=Test1; UPDATED=2026-08-29
 // CANARY: REQ=CBIN-002; FEATURE="FreshToken"; ASPECT=CLI; STATUS=TESTED; TEST=Test2; UPDATED=2025-10-15
 // CANARY: REQ=CBIN-003; FEATURE="StaleImplNotUpdated"; ASPECT=Engine; STATUS=IMPL; UPDATED=2024-01-01
 // CANARY: REQ=CBIN-004; FEATURE="StaleBenchedToken"; ASPECT=Storage; STATUS=BENCHED; BENCH=Bench4; UPDATED=2024-01-01

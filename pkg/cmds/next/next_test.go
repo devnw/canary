@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CBIN-132; FEATURE="NextCmd"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-132; FEATURE="NextCmd"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; UPDATED=2026-08-29
 package next
 
 import (
@@ -442,7 +442,7 @@ func containsAt(s, substr string, start int) bool {
 	return false
 }
 
-// CANARY: REQ=CBIN-132; FEATURE="NextCmd"; ASPECT=CLI; STATUS=BENCHED; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-132; FEATURE="NextCmd"; ASPECT=CLI; STATUS=BENCHED; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; UPDATED=2026-08-29
 // BenchmarkCANARY_CBIN_132_CLI_PriorityQuery measures priority query performance
 // Target: <100ms per operation (for <10,000 requirements)
 func BenchmarkCANARY_CBIN_132_CLI_PriorityQuery(b *testing.B) {
@@ -544,7 +544,7 @@ func FilesystemTest() {
 	}
 }
 
-// CANARY: REQ=CBIN-132; FEATURE="NextCmd"; ASPECT=CLI; STATUS=BENCHED; BENCH=BenchmarkCANARY_CBIN_132_CLI_PromptGeneration; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-132; FEATURE="NextCmd"; ASPECT=CLI; STATUS=BENCHED; BENCH=BenchmarkCANARY_CBIN_132_CLI_PromptGeneration; OWNER=canary; UPDATED=2026-08-29
 // BenchmarkCANARY_CBIN_132_CLI_PromptGeneration measures prompt rendering performance
 // Target: <500ms per operation
 func BenchmarkCANARY_CBIN_132_CLI_PromptGeneration(b *testing.B) {

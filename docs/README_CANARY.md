@@ -18,7 +18,7 @@ CANARY: REQ=<req-id>; FEATURE="<name>"; ASPECT=<aspect>; STATUS=<status>; [OPTIO
 ### Complete Example
 
 ```go
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_FullDependency,TestParseDependencies_PartialFeatures; OWNER=specs; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_FullDependency,TestParseDependencies_PartialFeatures; OWNER=specs; UPDATED=2026-08-29
 func ParseDependencies(sourceReqID string, reader io.Reader) ([]Dependency, error) {
    // implementation
 }
@@ -309,7 +309,7 @@ See [CBIN-147 Specification](/.canary/specs/CBIN-147-specification-dependencies/
 **Primary Implementation File:**
 
 ```go
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies; UPDATED=2026-08-29
 func ParseDependencies(sourceReqID string, reader io.Reader) ([]Dependency, error) {
     // implementation
 }
@@ -318,7 +318,7 @@ func ParseDependencies(sourceReqID string, reader io.Reader) ([]Dependency, erro
 **Test Files:**
 
 ```go
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_FullDependency; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_FullDependency; UPDATED=2026-08-29
 func TestParseDependencies_FullDependency(t *testing.T) {
     // test implementation
 }
@@ -428,19 +428,19 @@ A single requirement (CBIN-147) with multiple features:
 
 ```go
 // File: internal/specs/types.go
-// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyCreation; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyCreation; UPDATED=2026-08-29
 type Dependency struct { ... }
 
 // File: internal/specs/parser_dependency.go
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies; UPDATED=2026-08-29
 func ParseDependencies() { ... }
 
 // File: internal/specs/validator.go
-// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies; UPDATED=2026-08-29
 func ValidateDependencies() { ... }
 
 // File: cmd/canary/deps.go
-// CANARY: REQ=CBIN-147; FEATURE="DepsCheckCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsCheckCommand; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DepsCheckCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsCheckCommand; UPDATED=2026-08-29
 func createDepsCheckCommand() { ... }
 ```
 
@@ -529,10 +529,10 @@ Always change UPDATED when modifying implementation:
 
 ```go
 // Before modification
-// CANARY: REQ=CBIN-105; FEATURE="Auth"; ASPECT=API; STATUS=TESTED; TEST=TestAuth; UPDATED=2025-09-01
+// CANARY: REQ=CBIN-105; FEATURE="Auth"; ASPECT=API; STATUS=TESTED; TEST=TestAuth; UPDATED=2026-08-29
 
 // After modification
-// CANARY: REQ=CBIN-105; FEATURE="Auth"; ASPECT=API; STATUS=TESTED; TEST=TestAuth; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-105; FEATURE="Auth"; ASPECT=API; STATUS=TESTED; TEST=TestAuth; UPDATED=2026-08-29
 ```
 
 ### 2. Use Meaningful Feature Names
@@ -552,7 +552,7 @@ Always change UPDATED when modifying implementation:
 ### 3. Match Test Names to Features
 
 ```go
-// CANARY: REQ=CBIN-105; FEATURE="PasswordHasher"; ASPECT=Security; STATUS=TESTED; TEST=TestPasswordHasher; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-105; FEATURE="PasswordHasher"; ASPECT=Security; STATUS=TESTED; TEST=TestPasswordHasher; UPDATED=2026-08-29
 func HashPassword(password string) (string, error) { }
 
 func TestPasswordHasher(t *testing.T) {
@@ -592,25 +592,25 @@ CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=STUB; UPDATED=20
 ### Tested Token
 
 ```
-CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=TESTED; TEST=TestFeatureName; UPDATED=2025-10-18
+CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=TESTED; TEST=TestFeatureName; UPDATED=2026-08-29
 ```
 
 ### Fully Benchmarked Token
 
 ```
-CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=BENCHED; TEST=TestFeatureName; BENCH=BenchmarkFeatureName; UPDATED=2025-10-18
+CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=BENCHED; TEST=TestFeatureName; BENCH=BenchmarkFeatureName; UPDATED=2026-08-29
 ```
 
 ### Documented Token
 
 ```
-CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=TESTED; TEST=TestFeatureName; DOC=user:docs/user/feature-guide.md; DOC_HASH=a3f5b8c2e1d4a6f9; UPDATED=2025-10-18
+CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=TESTED; TEST=TestFeatureName; DOC=user:docs/user/feature-guide.md; DOC_HASH=a3f5b8c2e1d4a6f9; UPDATED=2026-08-29
 ```
 
 ### Complete Token (All Fields)
 
 ```
-CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=BENCHED; TEST=TestFeatureName; BENCH=BenchmarkFeatureName; DOC=user:docs/user/feature-guide.md; DOC_HASH=a3f5b8c2e1d4a6f9; OWNER=team; PRIORITY=1; UPDATED=2025-10-18
+CANARY: REQ=CBIN-001; FEATURE="FeatureName"; ASPECT=API; STATUS=BENCHED; TEST=TestFeatureName; BENCH=BenchmarkFeatureName; DOC=user:docs/user/feature-guide.md; DOC_HASH=a3f5b8c2e1d4a6f9; OWNER=team; PRIORITY=1; UPDATED=2026-08-29
 ```
 
 ## Related Documentation
