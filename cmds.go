@@ -18,6 +18,7 @@ import (
 	"devnw.dev/canary/pkg/cmds/db"
 	"devnw.dev/canary/pkg/cmds/deps"
 	"devnw.dev/canary/pkg/cmds/doc"
+	"devnw.dev/canary/pkg/cmds/drift"
 	"devnw.dev/canary/pkg/cmds/files"
 	"devnw.dev/canary/pkg/cmds/gap"
 	"devnw.dev/canary/pkg/cmds/grep"
@@ -75,6 +76,7 @@ func Commands() []*cobra.Command {
 		grep.GrepCmd,
 		view.CreateViewCommand(),
 		onboard.CreateOnboardCommand(),
+		drift.CreateDriftCommand(),
 
 		// Management commands
 		prioritize.PrioritizeCmd,

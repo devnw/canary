@@ -8,15 +8,18 @@
 // bounded, agent-friendly answer.
 // CANARY: REQ=CBIN-204; FEATURE="RequirementView"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_204_BuildView; UPDATED=2026-08-28
 // CANARY: REQ=CBIN-301; FEATURE="MigrateNotesView"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_301_BuildView_MigrateNotes,TestCANARY_CBIN_301_BuildView_MigrateNotesCap; UPDATED=2026-08-29
+// CANARY: REQ=CBIN-305; FEATURE="DriftedView"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_305_BuildView_Drifted,TestCANARY_CBIN_305_BuildView_NotDrifted,TestCANARY_CBIN_305_BuildView_NonGitRootSoftSkip; UPDATED=2026-08-29
 package view
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -48,6 +51,8 @@ type View struct {
 	DiagramsTotal     int            `json:"diagrams_total,omitempty"`
 	MigrateNotes      []string       `json:"migrate_notes,omitempty"` // "file:line: text"
 	MigrateNotesTotal int            `json:"migrate_notes_total,omitempty"`
+	Drifted           bool           `json:"drifted,omitempty"`
+	DriftReason       string         `json:"drift_reason,omitempty"`
 }
 
 // DefaultViewLimit bounds list sections (files, diagrams) by default; agents
@@ -87,6 +92,7 @@ func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
 
 	fileSet, testSet, benchSet := map[string]struct{}{}, map[string]struct{}{}, map[string]struct{}{}
 	depSet, blockSet, relSet := map[string]struct{}{}, map[string]struct{}{}, map[string]struct{}{}
+	fileUpdated := map[string]string{} // file -> most recent token UPDATED referencing it
 	done := 0
 	for _, tok := range tokens {
 		v.Statuses[tok.Status]++
@@ -96,6 +102,9 @@ func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
 		v.Features = append(v.Features, fmt.Sprintf("%s (%s, %s)", tok.Feature, tok.Aspect, tok.Status))
 		if tok.FilePath != "" {
 			fileSet[tok.FilePath] = struct{}{}
+			if tok.UpdatedAt > fileUpdated[tok.FilePath] {
+				fileUpdated[tok.FilePath] = tok.UpdatedAt
+			}
 		}
 		for _, s := range splitCSV(tok.Test) {
 			testSet[s] = struct{}{}
@@ -127,6 +136,14 @@ func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
 	v.DependsOn = sortedSet(depSet)
 	v.Blocks = sortedSet(blockSet)
 	v.RelatedTo = sortedSet(relSet)
+
+	// Cheap, best-effort drift signal: compare the requirement's first file
+	// (alphabetically) against its own most recent UPDATED claim via one git
+	// log call. Soft-fails silently when git is unavailable, root isn't a
+	// git repo, or the file is untracked — see driftCheck.
+	if len(v.Files) > 0 {
+		v.Drifted, v.DriftReason = driftCheck(root, v.Files[0], fileUpdated[v.Files[0]])
+	}
 
 	// Spec/plan by directory convention: .canary/specs/<REQ-ID>-<slug>/
 	if matches, _ := filepath.Glob(filepath.Join(root, ".canary", "specs", reqID+"-*", "spec.md")); len(matches) > 0 {
@@ -179,6 +196,36 @@ func sortedSet(m map[string]struct{}) []string {
 func fileExists(p string) bool {
 	_, err := os.Stat(p)
 	return err == nil
+}
+
+// driftCheck reports whether file's last git commit date is after
+// tokenUpdated (a token's UPDATED field, "YYYY-MM-DD"). It never errors:
+// missing git, a non-git root, an untracked file, or an unparsable date all
+// resolve to (false, "") so BuildView's drift signal stays best-effort.
+func driftCheck(root, file, tokenUpdated string) (bool, string) {
+	if file == "" || tokenUpdated == "" {
+		return false, ""
+	}
+	tokenDate, err := time.Parse("2006-01-02", tokenUpdated)
+	if err != nil {
+		return false, ""
+	}
+	out, err := exec.Command("git", "-C", root, "log", "-1", "--format=%cs", "--", file).Output()
+	if err != nil {
+		return false, ""
+	}
+	commitStr := strings.TrimSpace(string(out))
+	if commitStr == "" {
+		return false, ""
+	}
+	commitDate, err := time.Parse("2006-01-02", commitStr)
+	if err != nil {
+		return false, ""
+	}
+	if commitDate.After(tokenDate) {
+		return true, fmt.Sprintf("%s committed %s, token updated %s", file, commitStr, tokenUpdated)
+	}
+	return false, ""
 }
 
 // CreateViewCommand returns the `canary view` command.
@@ -243,6 +290,9 @@ func printView(cmd *cobra.Command, v *View, limit int) {
 	}
 	if len(v.RelatedTo) > 0 {
 		fmt.Fprintf(out, "Related:  %s\n", strings.Join(v.RelatedTo, ", "))
+	}
+	if v.Drifted {
+		fmt.Fprintf(out, "Drift:    %s\n", v.DriftReason)
 	}
 	if v.SpecPath != "" {
 		fmt.Fprintf(out, "Spec:     %s\n", v.SpecPath)

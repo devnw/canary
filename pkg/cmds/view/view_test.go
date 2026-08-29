@@ -7,11 +7,103 @@ package view
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
 	"devnw.dev/canary/pkg/storage"
 )
+
+func runGit(t *testing.T, dir string, env []string, args ...string) {
+	t.Helper()
+	full := append([]string{"-C", dir}, args...)
+	cmd := exec.Command("git", full...)
+	if env != nil {
+		cmd.Env = env
+	}
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v: %v\n%s", full, err, out)
+	}
+}
+
+// seedGitDB is like seedDB but roots the project in a real git repo with one
+// committed file, so BuildView's drift check has something to compare
+// against. tokenUpdated is the UPDATED value stamped on the token that
+// references committedFile.
+func seedGitDB(t *testing.T, committedFile, commitDate, tokenUpdated string) (dbPath, root string) {
+	t.Helper()
+	root = t.TempDir()
+	runGit(t, root, nil, "init", "-q")
+
+	full := filepath.Join(root, committedFile)
+	if err := os.WriteFile(full, []byte("package foo\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, root, nil, "add", committedFile)
+	env := append(os.Environ(), "GIT_AUTHOR_DATE="+commitDate, "GIT_COMMITTER_DATE="+commitDate)
+	runGit(t, root, env, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "msg")
+
+	if err := os.MkdirAll(filepath.Join(root, ".canary"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	dbPath = filepath.Join(root, ".canary", "canary.db")
+	if err := storage.MigrateDB(dbPath, "all"); err != nil {
+		t.Fatalf("MigrateDB: %v", err)
+	}
+
+	db, err := storage.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+
+	if err := db.UpsertToken(&storage.Token{
+		ReqID: "CBIN-950", Feature: "Foo", Aspect: "API", Status: "IMPL",
+		FilePath: committedFile, LineNumber: 1, UpdatedAt: tokenUpdated,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return dbPath, root
+}
+
+func TestCANARY_CBIN_305_BuildView_Drifted(t *testing.T) {
+	dbPath, root := seedGitDB(t, "foo.go", "2026-08-20T12:00:00+00:00", "2026-08-01")
+	v, err := BuildView(dbPath, root, "CBIN-950", 10)
+	if err != nil {
+		t.Fatalf("BuildView: %v", err)
+	}
+	if !v.Drifted {
+		t.Fatal("expected Drifted = true")
+	}
+	if v.DriftReason == "" {
+		t.Error("expected a non-empty DriftReason")
+	}
+}
+
+func TestCANARY_CBIN_305_BuildView_NotDrifted(t *testing.T) {
+	dbPath, root := seedGitDB(t, "foo.go", "2026-08-01T12:00:00+00:00", "2026-08-20")
+	v, err := BuildView(dbPath, root, "CBIN-950", 10)
+	if err != nil {
+		t.Fatalf("BuildView: %v", err)
+	}
+	if v.Drifted {
+		t.Errorf("expected Drifted = false, got reason %q", v.DriftReason)
+	}
+	if v.DriftReason != "" {
+		t.Errorf("DriftReason = %q, want empty", v.DriftReason)
+	}
+}
+
+func TestCANARY_CBIN_305_BuildView_NonGitRootSoftSkip(t *testing.T) {
+	dbPath, root := seedDB(t) // no git init
+	v, err := BuildView(dbPath, root, "CBIN-105", 10)
+	if err != nil {
+		t.Fatalf("BuildView: %v", err)
+	}
+	if v.Drifted {
+		t.Errorf("expected Drifted = false on a non-git root, got reason %q", v.DriftReason)
+	}
+}
 
 func seedDB(t *testing.T) (dbPath, root string) {
 	t.Helper()
