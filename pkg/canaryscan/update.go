@@ -1,4 +1,4 @@
-// CANARY: REQ=CBIN-304; FEATURE="StalenessConfig"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_304_StaleDaysFromConfig,TestCANARY_CBIN_304_UpdateStaleV2IDs,TestCANARY_CBIN_304_UpdateStaleAddsMissingUpdated,TestCANARY_CBIN_304_RunReportsActualRewriteCount; UPDATED=2026-08-29
+// CANARY: REQ=CP-277; FEATURE="StalenessConfig"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_304_StaleDaysFromConfig,TestCANARY_CBIN_304_UpdateStaleV2IDs,TestCANARY_CBIN_304_UpdateStaleAddsMissingUpdated,TestCANARY_CBIN_304_RunReportsActualRewriteCount; UPDATED=2026-08-29
 package canaryscan
 
 import (

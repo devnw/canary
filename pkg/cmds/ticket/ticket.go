@@ -8,7 +8,7 @@
 // configured `sources:` registry, and — only when JIRA credentials are
 // present and --apply is set — applying it via the JIRA REST client and
 // writing a completed plan plus a remap map for `canary upgrade --map`.
-// CANARY: REQ=CBIN-306; FEATURE="TicketSync"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_306_Sync_NoCredsPlanOnly,TestCANARY_CBIN_306_Sync_NoCredsApplyDegradesGracefully,TestCANARY_CBIN_306_Sync_ApplyWithCreds_EndToEnd,TestCANARY_CBIN_306_Sync_ApplyNoCreds_ProjectRequired,TestCANARY_CBIN_306_Sync_PartialProgress,TestCANARY_CBIN_306_PrintActions_Bounded; UPDATED=2026-08-29
+// CANARY: REQ=CP-279; FEATURE="TicketSync"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_306_Sync_NoCredsPlanOnly,TestCANARY_CBIN_306_Sync_NoCredsApplyDegradesGracefully,TestCANARY_CBIN_306_Sync_ApplyWithCreds_EndToEnd,TestCANARY_CBIN_306_Sync_ApplyNoCreds_ProjectRequired,TestCANARY_CBIN_306_Sync_PartialProgress,TestCANARY_CBIN_306_PrintActions_Bounded; UPDATED=2026-08-29
 package ticket
 
 import (

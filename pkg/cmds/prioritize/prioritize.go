@@ -10,7 +10,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-127; FEATURE="PrioritizeCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-248; FEATURE="PrioritizeCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 var PrioritizeCmd = &cobra.Command{
 	Use:   "prioritize <REQ-ID> <feature> <priority>",
 	Short: "Update priority of a CANARY token",

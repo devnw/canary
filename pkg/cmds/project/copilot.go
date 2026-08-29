@@ -14,7 +14,7 @@ import (
 	"devnw.dev/canary/pkg/cmds/internal/utils"
 )
 
-// CANARY: REQ=CBIN-148; FEATURE="CopilotInstructionCreator"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCreateCopilotInstructions; BENCH=BenchmarkCreateCopilotInstructions; UPDATED=2026-08-29
+// CANARY: REQ=CP-263; FEATURE="CopilotInstructionCreator"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCreateCopilotInstructions; BENCH=BenchmarkCreateCopilotInstructions; UPDATED=2026-08-29
 // createCopilotInstructions generates GitHub Copilot instruction files for the project
 // createCopilotInstructions is kept for potential reuse by init or other callers.
 //

@@ -42,7 +42,7 @@ import (
 	"devnw.dev/canary/pkg/cmds/view"
 )
 
-// CANARY: REQ=CBIN-310; FEATURE="CommandRegistry"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-29
+// CANARY: REQ=CP-280; FEATURE="CommandRegistry"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-29
 // Commands returns all top-level commands for the canary CLI.
 // Subcommands are already registered with their parent commands via init() functions.
 //

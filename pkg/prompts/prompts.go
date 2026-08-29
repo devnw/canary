@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-// CANARY: REQ=CBIN-150; FEATURE="HierarchicalPrompts"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-11-01
+// CANARY: REQ=CP-265; FEATURE="HierarchicalPrompts"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-11-01
 
 //go:embed sys/*.md
 var sysFS embed.FS

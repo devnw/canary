@@ -4,7 +4,7 @@
 // source code repository or contact Developer Network at info@devnw.com.
 
 // Package upgrade wires the pkg/upgrade legacy-token rewriter into the CLI.
-// CANARY: REQ=CBIN-302; FEATURE="TokenUpgrade"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_302_CLI_DryRunDefault,TestCANARY_CBIN_302_CLI_RuleFlag,TestCANARY_CBIN_302_CLI_MapFlag,TestCANARY_CBIN_302_CLI_InvalidRule; UPDATED=2026-08-29
+// CANARY: REQ=CP-275; FEATURE="TokenUpgrade"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_302_CLI_DryRunDefault,TestCANARY_CBIN_302_CLI_RuleFlag,TestCANARY_CBIN_302_CLI_MapFlag,TestCANARY_CBIN_302_CLI_InvalidRule; UPDATED=2026-08-29
 package upgrade
 
 import (

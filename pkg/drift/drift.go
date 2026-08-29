@@ -8,7 +8,7 @@
 // date (code-drift), tokens that have aged past the staleness window
 // (stale), and — when a CANARY index database is present — documentation
 // that has fallen out of sync with its source (doc-drift).
-// CANARY: REQ=CBIN-305; FEATURE="DriftDetect"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_305_Detect_CodeDriftPositive,TestCANARY_CBIN_305_Detect_CodeDriftNegative,TestCANARY_CBIN_305_Detect_CodeDriftSameDayNotDrift,TestCANARY_CBIN_305_Detect_NonGitRootSoftSkip,TestCANARY_CBIN_305_Detect_UntrackedFileSoftSkip,TestCANARY_CBIN_305_Detect_Stale,TestCANARY_CBIN_305_Detect_StaleIgnoresNonTestedBenched,TestCANARY_CBIN_305_Detect_DocDrift,TestCANARY_CBIN_305_Detect_DocDriftNoDB,TestCANARY_CBIN_305_Detect_CodeDriftDedupesPerFile,TestCANARY_CBIN_305_Detect_CachesGitLogPerFile; UPDATED=2026-08-29
+// CANARY: REQ=CP-278; FEATURE="DriftDetect"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_305_Detect_CodeDriftPositive,TestCANARY_CBIN_305_Detect_CodeDriftNegative,TestCANARY_CBIN_305_Detect_CodeDriftSameDayNotDrift,TestCANARY_CBIN_305_Detect_NonGitRootSoftSkip,TestCANARY_CBIN_305_Detect_UntrackedFileSoftSkip,TestCANARY_CBIN_305_Detect_Stale,TestCANARY_CBIN_305_Detect_StaleIgnoresNonTestedBenched,TestCANARY_CBIN_305_Detect_DocDrift,TestCANARY_CBIN_305_Detect_DocDriftNoDB,TestCANARY_CBIN_305_Detect_CodeDriftDedupesPerFile,TestCANARY_CBIN_305_Detect_CachesGitLogPerFile; UPDATED=2026-08-29
 package drift
 
 import (

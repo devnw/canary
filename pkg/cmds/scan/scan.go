@@ -9,7 +9,7 @@ import (
 	"devnw.dev/canary/pkg/canaryscan"
 )
 
-// CANARY: REQ=CBIN-111; FEATURE="ScanCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17
+// CANARY: REQ=CP-240; FEATURE="ScanCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17
 // ScanCmd uses the built-in canaryscan package so scan works from any CWD (e.g. after go install).
 var ScanCmd = &cobra.Command{
 	Use:   "scan [flags]",

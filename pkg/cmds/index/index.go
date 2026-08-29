@@ -16,7 +16,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-124; FEATURE="IndexCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-245; FEATURE="IndexCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 var IndexCmd = &cobra.Command{
 	Use:   "index [flags]",
 	Short: "Build or rebuild the CANARY token database",
@@ -196,7 +196,7 @@ The database is stored at .canary/canary.db by default.`,
 			}
 		}
 
-		// CANARY: REQ=CBIN-301; FEATURE="MigrateNotesIndex"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-29
+		// CANARY: REQ=CP-274; FEATURE="MigrateNotesIndex"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-29
 		// Index CANARY:MIGRATE guidance notes so `canary view` can surface
 		// migration guidance without grepping. One ref row per (note,
 		// associated ReqID); a note that matched no requirement still gets

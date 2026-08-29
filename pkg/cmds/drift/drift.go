@@ -6,7 +6,7 @@
 // Package drift wires the pkg/drift engine into `canary drift`: a fresh
 // scan (matching `canary scan`'s own default-skip + .canaryignore
 // behavior), drift detection, and a bounded, agent-friendly report.
-// CANARY: REQ=CBIN-305; FEATURE="DriftCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_305_Execute_CodeDrift,TestCANARY_CBIN_305_SummaryLine_Format,TestCANARY_CBIN_305_Cmd_JSON,TestCANARY_CBIN_305_StrictShouldFail,TestCANARY_CBIN_305_Cmd_Strict_NoFindings_NoError,TestCANARY_CBIN_305_Cmd_Table_NoDrift,TestCANARY_CBIN_305_Cmd_TimestampEnv_StaleFlips; UPDATED=2026-08-29
+// CANARY: REQ=CP-278; FEATURE="DriftCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_305_Execute_CodeDrift,TestCANARY_CBIN_305_SummaryLine_Format,TestCANARY_CBIN_305_Cmd_JSON,TestCANARY_CBIN_305_StrictShouldFail,TestCANARY_CBIN_305_Cmd_Strict_NoFindings_NoError,TestCANARY_CBIN_305_Cmd_Table_NoDrift,TestCANARY_CBIN_305_Cmd_TimestampEnv_StaleFlips; UPDATED=2026-08-29
 package drift
 
 import (

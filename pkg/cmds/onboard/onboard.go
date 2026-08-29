@@ -9,7 +9,7 @@
 // any existing CANARY tokens, pre-seeded CANARY:MIGRATE guidance, the
 // configured requirement-ID sources, the next available flatfile ID, and a
 // next_steps checklist. Read-only — onboard never writes to the target repo.
-// CANARY: REQ=CBIN-303; FEATURE="Onboard"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_303_Analyze,TestCANARY_CBIN_303_Analyze_LimitBounds,TestCANARY_CBIN_303_Analyze_DefaultRootAndLimit,TestCANARY_CBIN_303_CreateOnboardCommand_JSON,TestCANARY_CBIN_303_CreateOnboardCommand_Human; UPDATED=2026-08-29
+// CANARY: REQ=CP-276; FEATURE="Onboard"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_303_Analyze,TestCANARY_CBIN_303_Analyze_LimitBounds,TestCANARY_CBIN_303_Analyze_DefaultRootAndLimit,TestCANARY_CBIN_303_CreateOnboardCommand_JSON,TestCANARY_CBIN_303_CreateOnboardCommand_Human; UPDATED=2026-08-29
 package onboard
 
 import (

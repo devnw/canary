@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CBIN-139; FEATURE="AspectIDGenerator"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=CP-256; FEATURE="AspectIDGenerator"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-10-16
 package reqid
 
 import (

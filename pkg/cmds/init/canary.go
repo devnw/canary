@@ -10,7 +10,7 @@ import (
 	"devnw.dev/canary/pkg/cmds/internal/utils"
 )
 
-// CANARY: REQ=CBIN-105; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-238; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 // copyCanaryStructure copies the embedded base/ directory structure to the target .canary/ project directory
 func copyCanaryStructure(targetDir string) error {
 	targetCanary := filepath.Join(targetDir, ".canary")
@@ -74,7 +74,7 @@ func copyCanaryStructure(targetDir string) error {
 	})
 }
 
-// CANARY: REQ=CBIN-105; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-238; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 // customizeProjectYaml replaces placeholders in project.yaml with actual values
 func customizeProjectYaml(path, projectName, projectKey string) error {
 	content, err := os.ReadFile(path)
@@ -95,7 +95,7 @@ func customizeProjectYaml(path, projectName, projectKey string) error {
 	return nil
 }
 
-// CANARY: REQ=CBIN-105; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-238; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 // AgentConfig defines configuration for each supported AI agent
 type AgentConfig struct {
 	Dir    string // Directory for agent files
@@ -250,7 +250,7 @@ func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag b
 	return notes, nil
 }
 
-// CANARY: REQ=CBIN-105; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17
+// CANARY: REQ=CP-238; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17
 // copyAndProcessAgentFiles copies agent files from embedded/.canary/agents/ to .canary/agents/
 // and performs template variable substitution for {{ .AgentPrefix }}, {{ .AgentModel }}, {{ .AgentColor }}
 func copyAndProcessAgentFiles(targetDir, agentPrefix, agentModel, agentColor string) error {
@@ -302,7 +302,7 @@ func copyAndProcessAgentFiles(targetDir, agentPrefix, agentModel, agentColor str
 	return nil
 }
 
-// CANARY: REQ=CBIN-105; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17
+// CANARY: REQ=CP-238; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17
 // installAgentFilesToSystems copies agent files from embedded/.canary/agents/ to each agent system's agents directory
 // This ensures agent definitions are available in each AI agent system (Claude, Cursor, etc.)
 func installAgentFilesToSystems(targetDir string, agentsList []string, allAgentsFlag bool, agentPrefix, agentModel, agentColor string, localInstall bool) error {
@@ -428,7 +428,7 @@ func installAgentFilesToSystems(targetDir string, agentsList []string, allAgents
 	return nil
 }
 
-// CANARY: REQ=CBIN-149; FEATURE="AgentContextUpdate"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
+// CANARY: REQ=CP-264; FEATURE="AgentContextUpdate"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
 // updateAgentContextFiles updates all agent context files with gated CANARY sections
 func updateAgentContextFiles(projectName string) error {
 	// Get CANARY content for each file
@@ -525,7 +525,7 @@ func createCursorRuleAndMCP(projectName string) error {
 	return nil
 }
 
-// CANARY: REQ=CBIN-106; FEATURE="AgentContext"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-239; FEATURE="AgentContext"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 // createClaudeMD generates the CANARY section for CLAUDE.md (Claude Code / Claude plugins).
 // Kept minimal to reduce agent context; load-only-what-you-need.
 func createClaudeMD() string {
@@ -550,7 +550,7 @@ func createClaudeMD() string {
 	return b
 }
 
-// CANARY: REQ=CBIN-149; FEATURE="AgentContextUpdate"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
+// CANARY: REQ=CP-264; FEATURE="AgentContextUpdate"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
 // createCursorMD generates the CANARY section for CURSOR.md (Cursor IDE / Cursor plugins).
 func createCursorMD() string {
 	bt := "`"
@@ -583,7 +583,7 @@ func createCodexAGENTSMD() string {
 		"- Keep repository-specific guidance in this file; " + bt + "canary init" + bt + " preserves content outside the CANARY gated section.\n"
 }
 
-// CANARY: REQ=CBIN-149; FEATURE="AgentContextUpdate"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
+// CANARY: REQ=CP-264; FEATURE="AgentContextUpdate"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
 // createCopilotInstructionsMD generates the CANARY section for .github/copilot-instructions.md (GitHub Copilot / plugins).
 func createCopilotInstructionsMD() string {
 	return "# CANARY Development Guide for GitHub Copilot\n\n" +

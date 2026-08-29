@@ -1,3 +1,3 @@
 # Requirements Gap Analysis (Self)
-✅ CBIN-101
-✅ CBIN-102
+✅ CP-235
+✅ CP-236

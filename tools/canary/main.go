@@ -5,7 +5,7 @@
 
 package main
 
-// CANARY: REQ=CBIN-101; FEATURE="ScannerCore"; ASPECT=Engine; STATUS=BENCHED; TEST=TestCANARY_CBIN_101_Engine_ScanBasic; BENCH=BenchmarkCANARY_CBIN_101_Engine_Scan; OWNER=canary; UPDATED=2026-08-29
+// CANARY: REQ=CP-235; FEATURE="ScannerCore"; ASPECT=Engine; STATUS=BENCHED; TEST=TestCANARY_CBIN_101_Engine_ScanBasic; BENCH=BenchmarkCANARY_CBIN_101_Engine_Scan; OWNER=canary; UPDATED=2026-08-29
 
 import (
 	"flag"

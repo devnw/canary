@@ -132,7 +132,7 @@ func TestAcceptance_SelfCanary(t *testing.T) {
 	gap := filepath.Join(testdataDir, "GAP_ANALYSIS.md")
 
 	// Always write the test GAP file with correct requirement IDs
-	if err := os.WriteFile(gap, []byte("# Requirements Gap Analysis (Self)\n✅ CBIN-101\n✅ CBIN-102\n"), 0o644); err != nil {
+	if err := os.WriteFile(gap, []byte("# Requirements Gap Analysis (Self)\n✅ CP-235\n✅ CP-236\n"), 0o644); err != nil {
 		t.Fatalf("create GAP_ANALYSIS.md: %v", err)
 	}
 
@@ -149,7 +149,7 @@ func TestAcceptance_SelfCanary(t *testing.T) {
 	if res2.code != 0 {
 		t.Fatalf("verify exit=%d stderr=%s", res2.code, res2.stderr)
 	}
-	fmt.Println("ACCEPT SelfCanary OK ids=[CBIN-101,CBIN-102]")
+	fmt.Println("ACCEPT SelfCanary OK ids=[CP-235,CP-236]")
 }
 
 func TestAcceptance_CSVOrder(t *testing.T) {

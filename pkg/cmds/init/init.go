@@ -166,7 +166,7 @@ Examples:
 			return fmt.Errorf("install agent files to systems: %w", err)
 		}
 
-		// CANARY: REQ=CBIN-148; FEATURE="CopilotInitInstructions"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCreateCopilotInstructions; BENCH=BenchmarkCreateCopilotInstructions; UPDATED=2026-08-29
+		// CANARY: REQ=CP-263; FEATURE="CopilotInitInstructions"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCreateCopilotInstructions; BENCH=BenchmarkCreateCopilotInstructions; UPDATED=2026-08-29
 		// Create GitHub Copilot instruction files
 		if err := createCopilotInstructions(projectName, projectKey); err != nil {
 			return fmt.Errorf("create Copilot instructions: %w", err)

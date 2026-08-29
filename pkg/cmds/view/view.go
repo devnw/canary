@@ -6,9 +6,9 @@
 // Package view aggregates everything known about one requirement — tokens,
 // files, tests, dependencies, spec/plan, diagrams, ticket link — into one
 // bounded, agent-friendly answer.
-// CANARY: REQ=CBIN-204; FEATURE="RequirementView"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_204_BuildView; UPDATED=2026-08-28
-// CANARY: REQ=CBIN-301; FEATURE="MigrateNotesView"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_301_BuildView_MigrateNotes,TestCANARY_CBIN_301_BuildView_MigrateNotesCap; UPDATED=2026-08-29
-// CANARY: REQ=CBIN-305; FEATURE="DriftedView"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_305_BuildView_Drifted,TestCANARY_CBIN_305_BuildView_NotDrifted,TestCANARY_CBIN_305_BuildView_NonGitRootSoftSkip; UPDATED=2026-08-29
+// CANARY: REQ=CP-270; FEATURE="RequirementView"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_204_BuildView; UPDATED=2026-08-28
+// CANARY: REQ=CP-274; FEATURE="MigrateNotesView"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_301_BuildView_MigrateNotes,TestCANARY_CBIN_301_BuildView_MigrateNotesCap; UPDATED=2026-08-29
+// CANARY: REQ=CP-278; FEATURE="DriftedView"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_305_BuildView_Drifted,TestCANARY_CBIN_305_BuildView_NotDrifted,TestCANARY_CBIN_305_BuildView_NonGitRootSoftSkip; UPDATED=2026-08-29
 package view
 
 import (

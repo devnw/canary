@@ -19,7 +19,7 @@
 // code blocks in markdown files: a fenced `# CANARY:` heading is a
 // documentation example, not a live token, so it is left alone like every
 // other rule's fenced content.
-// CANARY: REQ=CBIN-302; FEATURE="TokenUpgrade"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_302_AtomicWrite,TestCANARY_CBIN_302_CRLF,TestCANARY_CBIN_302_Combined,TestCANARY_CBIN_302_FenceProtection,TestCANARY_CBIN_302_Idempotent,TestCANARY_CBIN_302_MDHeadingFenceProtection,TestCANARY_CBIN_302_MigrateGuard,TestCANARY_CBIN_302_PlaceholderGuard,TestCANARY_CBIN_302_Remap,TestCANARY_CBIN_302_RemapCollision,TestCANARY_CBIN_302_Rules,TestCANARY_CBIN_302_RuleFiltering,TestCANARY_CBIN_302_UnicodeHyphenProse,TestCANARY_CBIN_302_ValidRule; UPDATED=2026-08-29
+// CANARY: REQ=CP-275; FEATURE="TokenUpgrade"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_302_AtomicWrite,TestCANARY_CBIN_302_CRLF,TestCANARY_CBIN_302_Combined,TestCANARY_CBIN_302_FenceProtection,TestCANARY_CBIN_302_Idempotent,TestCANARY_CBIN_302_MDHeadingFenceProtection,TestCANARY_CBIN_302_MigrateGuard,TestCANARY_CBIN_302_PlaceholderGuard,TestCANARY_CBIN_302_Remap,TestCANARY_CBIN_302_RemapCollision,TestCANARY_CBIN_302_Rules,TestCANARY_CBIN_302_RuleFiltering,TestCANARY_CBIN_302_UnicodeHyphenProse,TestCANARY_CBIN_302_ValidRule; UPDATED=2026-08-29
 package upgrade
 
 import (

@@ -17,7 +17,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-28
+// CANARY: REQ=CP-271; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-28
 // maxStatusJSONIncomplete caps the "incomplete" list in --json output to
 // protect agent context.
 const maxStatusJSONIncomplete = 20

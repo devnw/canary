@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CBIN-123; FEATURE="TokenStorage"; ASPECT=Storage; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-244; FEATURE="TokenStorage"; ASPECT=Storage; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 package storage
 
 import (
@@ -44,7 +44,7 @@ type Token struct {
 	RawToken    string
 	IndexedAt   string
 
-	// CANARY: REQ=CBIN-136; FEATURE="DocDatabaseSchema"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
+	// CANARY: REQ=CP-255; FEATURE="DocDatabaseSchema"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
 	// Documentation tracking fields
 	DocPath      string // Comma-separated doc file paths (e.g., "user:docs/user.md,api:docs/api.md")
 	DocHash      string // Comma-separated SHA256 hashes (abbreviated, first 16 chars)
@@ -52,7 +52,7 @@ type Token struct {
 	DocCheckedAt string // ISO 8601 timestamp of last staleness check
 	DocStatus    string // DOC_CURRENT, DOC_STALE, DOC_MISSING, DOC_UNHASHED
 
-	// CANARY: REQ=CBIN-146; FEATURE="TokenNamespacing"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-18
+	// CANARY: REQ=CP-261; FEATURE="TokenNamespacing"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-18
 	// Multi-project support
 	ProjectID string // Project identifier for token isolation
 }
@@ -248,7 +248,7 @@ func indexOfSubstring(s, substr string) int {
 	return -1
 }
 
-// CANARY: REQ=CBIN-145; FEATURE="PriorityFiltering"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-17
+// CANARY: REQ=CP-260; FEATURE="PriorityFiltering"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-17
 // ListTokens retrieves tokens with filters and ordering
 // idPattern is a regex pattern for filtering requirement IDs (e.g., "CBIN-[1-9][0-9]{2,}")
 func (db *DB) ListTokens(filters map[string]string, idPattern string, orderBy string, limit int) ([]*Token, error) {
@@ -385,7 +385,7 @@ func (db *DB) ListTokens(filters map[string]string, idPattern string, orderBy st
 // when they need more.
 const DefaultSearchLimit = 25
 
-// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_205_SearchTokensLimit; UPDATED=2026-08-28
+// CANARY: REQ=CP-271; FEATURE="ContextCaps"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_205_SearchTokensLimit; UPDATED=2026-08-28
 // SearchTokens searches by keywords across keyword tags, feature names,
 // requirement IDs, file paths, test names, and bench names, bounded by
 // limit (or DefaultSearchLimit when limit <= 0).
@@ -643,7 +643,7 @@ func (db *DB) ensureTokensTable() error {
 	return nil
 }
 
-// CANARY: REQ=CBIN-146; FEATURE="TokenNamespacing"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-18
+// CANARY: REQ=CP-261; FEATURE="TokenNamespacing"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-18
 // GetTokensByProject retrieves all tokens for a specific project
 func (db *DB) GetTokensByProject(projectID string) ([]*Token, error) {
 	if err := db.ensureTokensTable(); err != nil {

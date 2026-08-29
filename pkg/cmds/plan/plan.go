@@ -15,8 +15,8 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-121; FEATURE="PlanCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
-// CANARY: REQ=CBIN-142; FEATURE="PlanTemplatePlaceholderContract"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_142_CLI_PlanRendersRealID; UPDATED=2026-08-29
+// CANARY: REQ=CP-243; FEATURE="PlanCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-259; FEATURE="PlanTemplatePlaceholderContract"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_142_CLI_PlanRendersRealID; UPDATED=2026-08-29
 var PlanCmd = &cobra.Command{
 	Use:   "plan <CBIN-XXX> [tech-stack]",
 	Short: "Generate technical implementation plan for a requirement",
@@ -127,7 +127,7 @@ tech stack decisions, and CANARY token placement instructions.`,
 			content = strings.ReplaceAll(content, "[Go/Python/JavaScript/etc.]", techStack)
 		}
 
-		// CANARY: REQ=CBIN-140; FEATURE="PlanGapInjection"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
+		// CANARY: REQ=CP-257; FEATURE="PlanGapInjection"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 		// Inject gap analysis if available
 		dbPath := ".canary/canary.db"
 		if _, err := os.Stat(dbPath); err == nil {

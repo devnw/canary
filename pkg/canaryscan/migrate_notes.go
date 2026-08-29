@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CBIN-301; FEATURE="MigrateNotes"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_301_ExtractMigrateNotes; UPDATED=2026-08-29
+// CANARY: REQ=CP-274; FEATURE="MigrateNotes"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_301_ExtractMigrateNotes; UPDATED=2026-08-29
 package canaryscan
 
 import (

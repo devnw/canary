@@ -19,7 +19,7 @@ import (
 
 // JiraClient talks to the JIRA Cloud REST API (v3) using basic auth
 // (email + API token). Every method is safe for concurrent use.
-// CANARY: REQ=CBIN-306; FEATURE="TicketSync"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_306_JiraClient_CreateIssue,TestCANARY_CBIN_306_JiraClient_CreateIssue_ErrorStatus,TestCANARY_CBIN_306_JiraClient_TransitionIssue_ResolvesIDByName,TestCANARY_CBIN_306_JiraClient_TransitionIssue_NoMatch,TestCANARY_CBIN_306_FetchRemoteStatus_Paged; UPDATED=2026-08-29
+// CANARY: REQ=CP-279; FEATURE="TicketSync"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_306_JiraClient_CreateIssue,TestCANARY_CBIN_306_JiraClient_CreateIssue_ErrorStatus,TestCANARY_CBIN_306_JiraClient_TransitionIssue_ResolvesIDByName,TestCANARY_CBIN_306_JiraClient_TransitionIssue_NoMatch,TestCANARY_CBIN_306_FetchRemoteStatus_Paged; UPDATED=2026-08-29
 type JiraClient struct {
 	BaseURL string
 	Email   string

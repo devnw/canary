@@ -4,13 +4,13 @@
 
 List requirements that are fully implemented and verified:
 
-✅ CBIN-201 - TicketSources: JIRA/GitLab/GitHub requirement-ID sources with flatfile fallback
-✅ CBIN-202 - MermaidRefs: requirement references extracted from mermaid diagrams
-✅ CBIN-203 - MermaidGraph: dependency graphs rendered as mermaid with ticket click-through
-✅ CBIN-204 - RequirementView: canary view / MCP view one-call requirement picture
-✅ CBIN-205 - ContextCaps: small-by-default bounded output across CLI and MCP
-✅ CBIN-206 - DiagramRefsIndex: refs table indexing diagram references
-✅ CBIN-311 - MCPServerCommand: mcp subcommand construction (flags, Use) covered by TestMCPCommandCreation
+✅ CP-267 - TicketSources: JIRA/GitLab/GitHub requirement-ID sources with flatfile fallback
+✅ CP-268 - MermaidRefs: requirement references extracted from mermaid diagrams
+✅ CP-269 - MermaidGraph: dependency graphs rendered as mermaid with ticket click-through
+✅ CP-270 - RequirementView: canary view / MCP view one-call requirement picture
+✅ CP-271 - ContextCaps: small-by-default bounded output across CLI and MCP
+✅ CP-272 - DiagramRefsIndex: refs table indexing diagram references
+✅ CP-281 - MCPServerCommand: mcp subcommand construction (flags, Use) covered by TestMCPCommandCreation
 
 ## Gaps
 
