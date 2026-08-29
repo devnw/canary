@@ -49,6 +49,10 @@ type ListResult struct {
 	Tokens []*storage.Token `json:"tokens"`
 	Count  int              `json:"count"`
 	Total  int              `json:"total"`
+	// TotalIsLowerBound is true when the underlying overfetch hit its ceiling
+	// (maxToolLimit+1 rows came back), meaning Total is a floor, not an exact
+	// count -- there may be more matches than reported.
+	TotalIsLowerBound bool `json:"total_is_lower_bound,omitempty"`
 }
 
 // handleList implements the list tool handler
@@ -81,6 +85,7 @@ func handleList(ctx context.Context, req *mcp.CallToolRequest, params *ListParam
 	}
 
 	total := len(all)
+	lowerBound := total > maxToolLimit
 	limit := capLimit(params.Limit)
 	tokens := all
 	if len(tokens) > limit {
@@ -88,9 +93,10 @@ func handleList(ctx context.Context, req *mcp.CallToolRequest, params *ListParam
 	}
 
 	result := &ListResult{
-		Tokens: tokens,
-		Count:  len(tokens),
-		Total:  total,
+		Tokens:            tokens,
+		Count:             len(tokens),
+		Total:             total,
+		TotalIsLowerBound: lowerBound,
 	}
 
 	// Compact summary in content so agents get the gist without parsing full result.

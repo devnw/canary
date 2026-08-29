@@ -375,6 +375,52 @@ func TestCANARY_CBIN_205_ListCapped(t *testing.T) {
 	if result.Total != 30 {
 		t.Errorf("expected Total=30, got %d", result.Total)
 	}
+	if result.TotalIsLowerBound {
+		t.Errorf("expected TotalIsLowerBound=false (30 < 101), got true")
+	}
+}
+
+// TestCANARY_CBIN_205_ListLowerBound verifies handleList sets TotalIsLowerBound
+// to true when results exceed the maxToolLimit+1 overfetch ceiling.
+func TestCANARY_CBIN_205_ListLowerBound(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+
+	for i := 0; i < 102; i++ {
+		tok := &storage.Token{
+			ReqID:    fmt.Sprintf("CBIN-LB%03d", i),
+			Feature:  fmt.Sprintf("ListBoundFeature%03d", i),
+			Aspect:   "API",
+			Status:   "IMPL",
+			Priority: i + 1,
+			FilePath: fmt.Sprintf("listboundfile%03d.go", i),
+		}
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatalf("failed to insert test token %d: %v", i, err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	_, result, err := handleList(ctx, req, &ListParams{Status: "IMPL"})
+	if err != nil {
+		t.Fatalf("handleList failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	if len(result.Tokens) != 20 {
+		t.Errorf("expected 20 tokens (default cap), got %d", len(result.Tokens))
+	}
+	if result.Total <= maxToolLimit {
+		t.Errorf("expected Total > %d, got %d", maxToolLimit, result.Total)
+	}
+	if !result.TotalIsLowerBound {
+		t.Errorf("expected TotalIsLowerBound=true (>101 tokens), got false")
+	}
 }
 
 // TestCANARY_CBIN_205_ListLimitRaised verifies an explicit Limit above the
