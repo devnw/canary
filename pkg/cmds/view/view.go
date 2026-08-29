@@ -23,6 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"devnw.dev/canary/pkg/external"
 	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/storage"
 )
@@ -133,7 +134,7 @@ func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
 	v.Files = allFiles
 	v.Tests = sortedSet(testSet)
 	v.Benches = sortedSet(benchSet)
-	v.DependsOn = sortedSet(depSet)
+	v.DependsOn = annotateExternal(sortedSet(depSet), reg, root)
 	v.Blocks = sortedSet(blockSet)
 	v.RelatedTo = sortedSet(relSet)
 
@@ -172,6 +173,25 @@ func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
 		}
 	}
 	return v, nil
+}
+
+// annotateExternal decorates each id in depsOn that resolves to an external
+// (ticket-source) dependency with its resolution, e.g. "ENG-12 (external:
+// Done)" / "ENG-13 (external: In Progress)" / "ENG-14 (external: no cached
+// ticket status)". Local ids (external.Resolve's "not external" case) are
+// returned verbatim.
+// CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3960_View_DependsOn_ExternalAnnotated,TestCANARY_ENG_3960_View_DependsOn_LocalUnchanged; UPDATED=2026-08-29
+func annotateExternal(depsOn []string, reg *sources.Registry, root string) []string {
+	out := make([]string, len(depsOn))
+	for i, id := range depsOn {
+		res := external.Resolve(id, reg, root)
+		if !res.IsExternal() {
+			out[i] = id
+			continue
+		}
+		out[i] = fmt.Sprintf("%s (external: %s)", id, res.ShortDetail())
+	}
+	return out
 }
 
 func splitCSV(s string) []string {

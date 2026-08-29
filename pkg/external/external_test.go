@@ -298,3 +298,53 @@ func TestCANARY_ENG_3959_Resolve_DegenerateIMPLToDone(t *testing.T) {
 		t.Fatalf("Done must NOT satisfy when TESTED/BENCHED target other names: got %s (%s)", res.State, res.Detail)
 	}
 }
+
+// TestCANARY_ENG_3960_Resolution_IsExternal proves IsExternal distinguishes
+// a genuine external (ticket-source) resolution from the "not external"
+// sentinel Resolve uses for local/flatfile ids and unresolved prefixes.
+func TestCANARY_ENG_3960_Resolution_IsExternal(t *testing.T) {
+	root := t.TempDir()
+	reg := newRegistry(t, []sources.Source{
+		{Name: "core", Type: "flatfile", Key: "CBIN"},
+		{Name: "eng", Type: "jira", Key: "ENG"},
+	})
+
+	if got := Resolve("CBIN-1", reg, root); got.IsExternal() {
+		t.Errorf("flatfile id must not be external: %+v", got)
+	}
+	if got := Resolve("OTHER-1", reg, root); got.IsExternal() {
+		t.Errorf("unresolved prefix must not be external: %+v", got)
+	}
+	if got := Resolve("ENG-1", reg, root); !got.IsExternal() {
+		t.Errorf("ticket-source id must be external (even with no cache): %+v", got)
+	}
+	if err := SaveCache(root, map[string]string{"ENG-1": "Done"}, freshTime()); err != nil {
+		t.Fatal(err)
+	}
+	if got := Resolve("ENG-1", reg, root); !got.IsExternal() {
+		t.Errorf("cached ticket-source id must be external: %+v", got)
+	}
+}
+
+// TestCANARY_ENG_3960_Resolution_ShortDetail proves ShortDetail trims a
+// staleness note for satisfied/unsatisfied and gives a fixed short note for
+// unknown — the display used by `deps check` and `view`.
+func TestCANARY_ENG_3960_Resolution_ShortDetail(t *testing.T) {
+	cases := []struct {
+		name string
+		res  Resolution
+		want string
+	}{
+		{"satisfied plain", Resolution{State: StateSatisfied, Detail: "Done"}, "Done"},
+		{"unsatisfied plain", Resolution{State: StateUnsatisfied, Detail: "In Progress"}, "In Progress"},
+		{"satisfied with staleness note", Resolution{State: StateSatisfied, Detail: "Done; cache stale (fetched 2026-01-01T00:00:00Z, 999h old)"}, "Done"},
+		{"unknown ignores detail", Resolution{State: StateUnknown, Detail: refreshHint}, "no cached ticket status"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.res.ShortDetail(); got != tc.want {
+				t.Errorf("ShortDetail() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

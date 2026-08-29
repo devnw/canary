@@ -95,4 +95,5 @@ func init() {
 	next.NextCmd.Flags().Bool("dry-run", false, "show what would be selected without generating prompt")
 	next.NextCmd.Flags().String("status", "", "filter by status (STUB, IMPL, TESTED, BENCHED)")
 	next.NextCmd.Flags().String("aspect", "", "filter by aspect (API, CLI, Engine, Storage, etc.)")
+	next.NextCmd.Flags().Bool("strict-external", false, "block on external (ticket-source) dependencies with unknown/uncached status, not just unsatisfied ones")
 }

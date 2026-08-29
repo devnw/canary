@@ -80,7 +80,7 @@ The server runs as an HTTP endpoint that AI assistants can interact with.`,
 
 			mcp.AddTool(server, &mcp.Tool{
 				Name:        "next",
-				Description: "Identify next highest priority unimplemented requirement",
+				Description: "Identify next highest priority unimplemented requirement. External (ticket-source) dependencies with cached status resolve as satisfied/unsatisfied; with no cached status they are treated as non-blocking (run 'canary ticket status --refresh' to populate the cache) -- this tool always uses that non-strict default, unlike the CLI's --strict-external flag.",
 			}, handleNext)
 
 			// Workflow tools

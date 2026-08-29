@@ -251,7 +251,8 @@ func (gg *GraphGenerator) FormatDependencySummary(graph *DependencyGraph, reqID 
 	return strings.Join(lines, "\n")
 }
 
-// CANARY: REQ=CP-269; FEATURE="MermaidGraph"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_203_FormatMermaid,TestCANARY_CBIN_203_FormatMermaid_CycleSafe; UPDATED=2026-08-28
+// CANARY: REQ=CP-269; FEATURE="MermaidGraph"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_203_FormatMermaid,TestCANARY_CBIN_203_FormatMermaid_CycleSafe; UPDATED=2026-08-29
+// CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_ENG_3960_FormatMermaid_ExternalClassDef,TestCANARY_ENG_3960_FormatMermaid_NoExternalNoClassDef; UPDATED=2026-08-29
 
 // mermaidNodeID converts a requirement ID to a mermaid-safe node identifier.
 // Mermaid node identifiers may not contain characters commonly found in
@@ -269,8 +270,12 @@ func mermaidNodeID(reqID string) string {
 // unbounded recursion). urlFor is optional; when it returns a non-empty URL
 // for a requirement ID, a mermaid `click` directive is emitted for that node
 // so viewers can jump straight to the ticket/doc. Click lines are emitted in
-// sorted (deterministic) order.
-func (gg *GraphGenerator) FormatMermaid(graph *DependencyGraph, rootReqID string, urlFor func(string) string) string {
+// sorted (deterministic) order. isExternal is optional; when it reports true
+// for a node, that node is styled with the "external" mermaid class (dashed
+// border) -- a single `classDef external` line is emitted once, only when at
+// least one node is external, followed by one `class <node> external` line
+// per external node in sorted (deterministic) order.
+func (gg *GraphGenerator) FormatMermaid(graph *DependencyGraph, rootReqID string, urlFor func(string) string, isExternal func(string) bool) string {
 	var b strings.Builder
 	b.WriteString("flowchart TD\n")
 
@@ -310,6 +315,22 @@ func (gg *GraphGenerator) FormatMermaid(graph *DependencyGraph, rootReqID string
 		for _, id := range ids {
 			if u := urlFor(id); u != "" {
 				fmt.Fprintf(&b, "    click %s \"%s\"\n", mermaidNodeID(id), u)
+			}
+		}
+	}
+
+	if isExternal != nil {
+		externalIDs := make([]string, 0, len(seenNode))
+		for id := range seenNode {
+			if isExternal(id) {
+				externalIDs = append(externalIDs, id)
+			}
+		}
+		if len(externalIDs) > 0 {
+			sort.Strings(externalIDs)
+			b.WriteString("    classDef external stroke-dasharray: 5 5\n")
+			for _, id := range externalIDs {
+				fmt.Fprintf(&b, "    class %s external\n", mermaidNodeID(id))
 			}
 		}
 	}

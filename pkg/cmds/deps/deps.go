@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"devnw.dev/canary/pkg/external"
 	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/specs"
 	"devnw.dev/canary/pkg/storage"
@@ -41,6 +42,7 @@ Available commands:
 }
 
 // CANARY: REQ=CP-262; FEATURE="DepsCheckCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsCheckCommand; UPDATED=2026-08-29
+// CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3960_DepsCheck_ExternalSatisfied,TestCANARY_ENG_3960_DepsCheck_ExternalUnsatisfied,TestCANARY_ENG_3960_DepsCheck_ExternalUnknown,TestCANARY_ENG_3960_DepsValidate_ExternalNotMissing,TestCANARY_ENG_3960_DepsValidate_ExternalCountsLine,TestCANARY_ENG_3960_DepsValidate_StrictExternalFails,TestCANARY_ENG_3960_DepsGraph_MermaidExternalClass; UPDATED=2026-08-29
 
 // createDepsCheckCommand creates the deps check command
 func createDepsCheckCommand() *cobra.Command {
@@ -87,6 +89,7 @@ Example:
 			// Check dependency status
 			checker := specs.NewStatusChecker(tokenProvider)
 			statuses := checker.CheckAllDependencies(deps)
+			reg := sources.LoadFromRoot(".")
 
 			// Display results
 			cmd.Println(fmt.Sprintf("Dependency status for %s:", reqID))
@@ -96,6 +99,27 @@ Example:
 			blockingCount := 0
 
 			for _, status := range statuses {
+				// A dependency with zero local tokens (CurrentStatus MISSING)
+				// may actually be owned by an external ticket source rather
+				// than genuinely missing — consult external.Resolve before
+				// falling back to the local-spec MISSING treatment.
+				if status.CurrentStatus == "MISSING" {
+					res := external.Resolve(status.Dependency.Target, reg, ".")
+					if res.IsExternal() {
+						switch res.State {
+						case external.StateSatisfied:
+							satisfiedCount++
+							cmd.Println(fmt.Sprintf("✔ external %s (%s)", status.Dependency.Target, res.ShortDetail()))
+						case external.StateUnsatisfied:
+							blockingCount++
+							cmd.Println(fmt.Sprintf("✖ external %s (%s)", status.Dependency.Target, res.ShortDetail()))
+						default: // unknown: never blocking here (degradation is sacred)
+							cmd.Println(fmt.Sprintf("? external %s (%s)", status.Dependency.Target, res.ShortDetail()))
+						}
+						continue
+					}
+				}
+
 				if status.IsSatisfied {
 					satisfiedCount++
 					if showSatisfied {
@@ -169,7 +193,10 @@ Example:
 
 			if format == "mermaid" {
 				reg := sources.LoadFromRoot(".")
-				cmd.Println(generator.FormatMermaid(graph, reqID, reg.TicketURL))
+				isExternal := func(id string) bool {
+					return external.Resolve(id, reg, ".").IsExternal()
+				}
+				cmd.Println(generator.FormatMermaid(graph, reqID, reg.TicketURL, isExternal))
 				return nil
 			}
 
@@ -266,6 +293,8 @@ Example:
 
 // createDepsValidateCommand creates the deps validate command
 func createDepsValidateCommand() *cobra.Command {
+	var strictExternal bool
+
 	cmd := &cobra.Command{
 		Use:   "validate",
 		Short: "Validate all dependencies for cycles",
@@ -276,8 +305,15 @@ Checks for:
 - Missing requirements (dependencies on non-existent specs)
 - Self-dependencies (A depends on A)
 
+Dependencies resolving to an external ticket source (e.g. JIRA) are never
+"missing spec" errors -- their satisfied/unsatisfied/unknown counts are
+reported on a separate "external:" summary line. Use --strict-external to
+fail validation when any external dependency is unsatisfied or has no
+cached status.
+
 Example:
-  canary deps validate`,
+  canary deps validate
+  canary deps validate --strict-external`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Build graph from all specs
@@ -286,31 +322,49 @@ Example:
 				return fmt.Errorf("failed to build dependency graph: %w", err)
 			}
 
+			reg := sources.LoadFromRoot(".")
+
 			// Create validator
 			validator := specs.NewDependencyValidator(graph)
 
-			// Add spec finder to check for missing requirements
-			specFinder := &filesystemSpecFinder{}
-			validator.SetSpecFinder(specFinder)
+			// Add spec finder to check for missing requirements; external
+			// ids never count as missing (they live in a ticket source).
+			validator.SetSpecFinder(&externalAwareSpecFinder{
+				inner: &filesystemSpecFinder{},
+				reg:   reg,
+			})
 
 			// Validate
 			result := validator.Validate()
 
-			if result.IsValid {
+			satisfied, unsatisfied, unknown := countExternalDeps(graph, reg)
+			externalLine := fmt.Sprintf("external: satisfied=%d unsatisfied=%d unknown=%d", satisfied, unsatisfied, unknown)
+			externalFailing := strictExternal && (unsatisfied > 0 || unknown > 0)
+
+			if result.IsValid && !externalFailing {
 				cmd.Println("✅ All dependencies are valid")
 				cmd.Println(fmt.Sprintf("Validated %d requirements with %d dependencies",
 					len(graph.GetAllRequirements()), countTotalDependencies(graph)))
+				cmd.Println(externalLine)
 				return nil
 			}
 
 			// Display errors
 			cmd.Println("❌ Dependency validation failed:")
 			cmd.Println()
-			cmd.Println(result.FormatErrors())
+			if !result.IsValid {
+				cmd.Println(result.FormatErrors())
+			}
+			cmd.Println(externalLine)
+			if externalFailing {
+				cmd.Println("external dependencies failing --strict-external (unsatisfied or unknown status)")
+			}
 
 			return fmt.Errorf("validation failed")
 		},
 	}
+
+	cmd.Flags().BoolVar(&strictExternal, "strict-external", false, "fail validation when external dependencies are unsatisfied or have unknown (uncached) status")
 
 	return cmd
 }
@@ -421,6 +475,38 @@ func countTotalDependencies(graph *specs.DependencyGraph) int {
 	return count
 }
 
+// countExternalDeps classifies every unique dependency target in graph that
+// resolves to an external (ticket-source) id -- via external.Resolve -- into
+// satisfied/unsatisfied/unknown counts for `deps validate`'s summary line.
+// Local/flatfile/unconfigured targets (Detail "not external") are excluded;
+// those are covered by the validator's own missing-requirement check.
+func countExternalDeps(graph *specs.DependencyGraph, reg *sources.Registry) (satisfied, unsatisfied, unknown int) {
+	checked := map[string]bool{}
+	for _, deps := range graph.Nodes {
+		for _, dep := range deps {
+			target := dep.Target
+			if checked[target] {
+				continue
+			}
+			checked[target] = true
+
+			res := external.Resolve(target, reg, ".")
+			if !res.IsExternal() {
+				continue
+			}
+			switch res.State {
+			case external.StateSatisfied:
+				satisfied++
+			case external.StateUnsatisfied:
+				unsatisfied++
+			default:
+				unknown++
+			}
+		}
+	}
+	return satisfied, unsatisfied, unknown
+}
+
 // Adapter types
 
 // dependencyStatusAdapter adapts StatusChecker to StatusCheckerInterface
@@ -443,6 +529,25 @@ func (f *filesystemSpecFinder) SpecExists(reqID string) bool {
 
 func (f *filesystemSpecFinder) FindSpecPath(reqID string) (string, error) {
 	return findSpecFile(reqID)
+}
+
+// externalAwareSpecFinder wraps a SpecFinder so that ids resolving to an
+// external ticket source (per external.Resolve) never count as "missing" --
+// they live in the ticket source, not in .canary/specs/.
+type externalAwareSpecFinder struct {
+	inner specs.SpecFinder
+	reg   *sources.Registry
+}
+
+func (f *externalAwareSpecFinder) SpecExists(reqID string) bool {
+	if f.inner.SpecExists(reqID) {
+		return true
+	}
+	return external.Resolve(reqID, f.reg, ".").IsExternal()
+}
+
+func (f *externalAwareSpecFinder) FindSpecPath(reqID string) (string, error) {
+	return f.inner.FindSpecPath(reqID)
 }
 
 // emptyTokenProvider returns empty token lists when database is unavailable

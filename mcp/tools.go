@@ -8,12 +8,15 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"devnw.dev/canary/pkg/canaryscan"
+	"devnw.dev/canary/pkg/external"
+	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/storage"
 )
 
@@ -459,6 +462,11 @@ func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParam
 	}
 	defer db.Close()
 
+	// Source registry + per-call dedup for the "no cached status" stderr
+	// note, shared across every hasUnresolvedDependencies call this request.
+	reg := sources.LoadFromRoot(".")
+	warned := map[string]bool{}
+
 	var token *storage.Token
 	if params.Status != "" {
 		filters := make(map[string]string)
@@ -471,7 +479,7 @@ func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParam
 		if err != nil {
 			return nil, nil, fmt.Errorf("query tokens: %w", err)
 		}
-		token = firstUnblocked(db, candidates)
+		token = firstUnblocked(db, candidates, reg, warned)
 	} else {
 		// No status filter: query STUB first, then IMPL if none found,
 		// mirroring the CLI's next command (internal/cmds/next/next.go).
@@ -488,7 +496,7 @@ func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParam
 			if err != nil {
 				return nil, nil, fmt.Errorf("query tokens: %w", err)
 			}
-			token = firstUnblocked(db, candidates)
+			token = firstUnblocked(db, candidates, reg, warned)
 			if token != nil {
 				break
 			}
@@ -529,9 +537,9 @@ func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParam
 
 // firstUnblocked returns the first candidate (already priority-ordered) whose
 // dependencies are all resolved, or nil if every candidate is blocked.
-func firstUnblocked(db *storage.DB, candidates []*storage.Token) *storage.Token {
+func firstUnblocked(db *storage.DB, candidates []*storage.Token, reg *sources.Registry, warned map[string]bool) *storage.Token {
 	for _, tok := range candidates {
-		if !hasUnresolvedDependencies(db, tok) {
+		if !hasUnresolvedDependencies(db, tok, reg, warned) {
 			return tok
 		}
 	}
@@ -539,11 +547,15 @@ func firstUnblocked(db *storage.DB, candidates []*storage.Token) *storage.Token 
 }
 
 // hasUnresolvedDependencies reports whether tok names a DEPENDS_ON
-// requirement whose tokens are not all TESTED/BENCHED. This is a minimal
-// replica of the CLI's unexported helper of the same name in
-// internal/cmds/next/next.go (hasUnresolvedDependencies, ~line 257) -- kept
-// in sync manually since it can't be imported directly.
-func hasUnresolvedDependencies(db *storage.DB, tok *storage.Token) bool {
+// requirement that blocks selection. This is a minimal replica of the CLI's
+// unexported helper of the same name in pkg/cmds/next/next.go
+// (hasUnresolvedDependencies) -- kept in sync manually since it can't be
+// imported directly. Unlike the CLI, MCP has no --strict-external flag: an
+// external (ticket-source) dependency with zero local tokens always uses the
+// non-strict default (satisfied -> not blocking, unsatisfied -> blocking,
+// unknown/no-cached-status -> not blocking, degradation is sacred).
+// CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_ENG_3960_MCP_Next_ExternalSatisfied_NotBlocking,TestCANARY_ENG_3960_MCP_Next_ExternalUnsatisfied_Blocking,TestCANARY_ENG_3960_MCP_Next_ExternalUnknown_NotBlocking,TestCANARY_ENG_3960_MCP_Next_LocalMissingDep_StillBlocking; UPDATED=2026-08-29
+func hasUnresolvedDependencies(db *storage.DB, tok *storage.Token, reg *sources.Registry, warned map[string]bool) bool {
 	if tok.DependsOn == "" {
 		return false
 	}
@@ -557,7 +569,22 @@ func hasUnresolvedDependencies(db *storage.DB, tok *storage.Token) bool {
 
 		depTokens, err := db.GetTokensByReqID(dep)
 		if err != nil || len(depTokens) == 0 {
-			return true // Dependency not found = blocking
+			res := external.Resolve(dep, reg, ".")
+			if !res.IsExternal() {
+				return true // Local dependency not found = blocking
+			}
+			switch res.State {
+			case external.StateSatisfied:
+				continue
+			case external.StateUnsatisfied:
+				return true
+			default: // unknown: not blocking by default (degradation is sacred)
+				if warned != nil && !warned[dep] {
+					warned[dep] = true
+					fmt.Fprintf(os.Stderr, "note: external dependency %s has no cached status (canary ticket status --refresh)\n", dep)
+				}
+				continue
+			}
 		}
 
 		allComplete := true

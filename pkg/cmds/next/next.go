@@ -21,6 +21,8 @@ import (
 
 	"devnw.dev/canary/pkg/cmds/internal/utils"
 	"devnw.dev/canary/pkg/config"
+	"devnw.dev/canary/pkg/external"
+	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/storage"
 )
 
@@ -60,6 +62,7 @@ Priority determination factors:
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		filterStatus, _ := cmd.Flags().GetString("status")
 		filterAspect, _ := cmd.Flags().GetString("aspect")
+		strictExternal, _ := cmd.Flags().GetBool("strict-external")
 
 		// Build filters
 		filters := make(map[string]string)
@@ -71,7 +74,7 @@ Priority determination factors:
 		}
 
 		// Select next priority
-		token, err := selectNextPriority(dbPath, filters)
+		token, err := selectNextPriorityStrict(dbPath, filters, strictExternal)
 		if err != nil {
 			return fmt.Errorf("select next priority: %w", err)
 		}
@@ -161,8 +164,17 @@ type RelatedSpec struct {
 }
 
 // selectNextPriority identifies the highest priority unimplemented requirement
-// Uses database if available, falls back to filesystem scan
+// Uses database if available, falls back to filesystem scan. External
+// dependencies with unknown (uncached) status are treated as non-blocking
+// (the safe default); use selectNextPriorityStrict for --strict-external.
 func selectNextPriority(dbPath string, filters map[string]string) (*storage.Token, error) {
+	return selectNextPriorityStrict(dbPath, filters, false)
+}
+
+// selectNextPriorityStrict is selectNextPriority with control over whether
+// external dependencies of unknown (uncached) status block selection.
+// CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3960_Next_ExternalSatisfied_NotBlocking,TestCANARY_ENG_3960_Next_ExternalUnsatisfied_Blocking,TestCANARY_ENG_3960_Next_ExternalUnknown_NotBlockingByDefault,TestCANARY_ENG_3960_Next_ExternalUnknown_StrictBlocks,TestCANARY_ENG_3960_Next_LocalMissingDep_StillBlocking; UPDATED=2026-08-29
+func selectNextPriorityStrict(dbPath string, filters map[string]string, strictExternal bool) (*storage.Token, error) {
 	// Check if database file exists
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		// Fall back to filesystem scan if database doesn't exist
@@ -177,11 +189,11 @@ func selectNextPriority(dbPath string, filters map[string]string) (*storage.Toke
 	}
 
 	defer func() { _ = db.Close() }()
-	return selectFromDatabase(db, filters)
+	return selectFromDatabase(db, filters, strictExternal)
 }
 
 // selectFromDatabase queries the database for next priority
-func selectFromDatabase(db *storage.DB, filters map[string]string) (*storage.Token, error) {
+func selectFromDatabase(db *storage.DB, filters map[string]string, strictExternal bool) (*storage.Token, error) {
 	// Build filters for incomplete requirements
 	if filters == nil {
 		filters = make(map[string]string)
@@ -193,6 +205,11 @@ func selectFromDatabase(db *storage.DB, filters map[string]string) (*storage.Tok
 	if cfg != nil && cfg.Requirements.IDPattern != "" {
 		idPattern = cfg.Requirements.IDPattern
 	}
+
+	// Source registry + per-run dedup for the "no cached status" stderr
+	// note, shared across every hasUnresolvedDependencies call this run.
+	reg := sources.LoadFromRoot(".")
+	warned := map[string]bool{}
 
 	// If no status filter, only select STUB or IMPL by default
 	if _, hasStatusFilter := filters["status"]; !hasStatusFilter {
@@ -211,7 +228,7 @@ func selectFromDatabase(db *storage.DB, filters map[string]string) (*storage.Tok
 
 		// Filter out blocked tokens
 		for _, token := range tokens {
-			if !hasUnresolvedDependencies(db, token) {
+			if !hasUnresolvedDependencies(db, token, reg, ".", strictExternal, warned) {
 				return token, nil
 			}
 		}
@@ -229,7 +246,7 @@ func selectFromDatabase(db *storage.DB, filters map[string]string) (*storage.Tok
 		}
 
 		for _, token := range tokens {
-			if !hasUnresolvedDependencies(db, token) {
+			if !hasUnresolvedDependencies(db, token, reg, ".", strictExternal, warned) {
 				return token, nil
 			}
 		}
@@ -245,7 +262,7 @@ func selectFromDatabase(db *storage.DB, filters map[string]string) (*storage.Tok
 
 	// Find first unblocked token
 	for _, token := range tokens {
-		if !hasUnresolvedDependencies(db, token) {
+		if !hasUnresolvedDependencies(db, token, reg, ".", strictExternal, warned) {
 			return token, nil
 		}
 	}
@@ -253,8 +270,22 @@ func selectFromDatabase(db *storage.DB, filters map[string]string) (*storage.Tok
 	return nil, nil // No unblocked work available
 }
 
-// hasUnresolvedDependencies checks if a token has blocking dependencies
-func hasUnresolvedDependencies(db *storage.DB, token *storage.Token) bool {
+// hasUnresolvedDependencies checks if a token has blocking dependencies.
+//
+// A dependency with at least one local CANARY token keeps the original
+// rule: blocking unless every token for it is TESTED/BENCHED.
+//
+// A dependency with ZERO local tokens is consulted against
+// external.Resolve(dep, reg, root):
+//   - Detail "not external" (local/flatfile id, or unconfigured prefix):
+//     unchanged legacy behavior — missing = blocking.
+//   - satisfied: not blocking.
+//   - unsatisfied: blocking.
+//   - unknown (no cached ticket status): NOT blocking by default
+//     (degradation is sacred) — a one-line stderr note is printed the
+//     first time a given dep is seen this run (warned dedups by id).
+//     strictExternal flips unknown to blocking.
+func hasUnresolvedDependencies(db *storage.DB, token *storage.Token, reg *sources.Registry, root string, strictExternal bool, warned map[string]bool) bool {
 	if token.DependsOn == "" {
 		return false
 	}
@@ -270,7 +301,25 @@ func hasUnresolvedDependencies(db *storage.DB, token *storage.Token) bool {
 		// Query dependency status
 		depTokens, err := db.GetTokensByReqID(dep)
 		if err != nil || len(depTokens) == 0 {
-			return true // Dependency not found = blocking
+			res := external.Resolve(dep, reg, root)
+			if !res.IsExternal() {
+				return true // Local dependency not found = blocking
+			}
+			switch res.State {
+			case external.StateSatisfied:
+				continue
+			case external.StateUnsatisfied:
+				return true
+			default: // unknown
+				if strictExternal {
+					return true
+				}
+				if warned != nil && !warned[dep] {
+					warned[dep] = true
+					fmt.Fprintf(os.Stderr, "note: external dependency %s has no cached status (canary ticket status --refresh)\n", dep)
+				}
+				continue
+			}
 		}
 
 		// Check if any token for this requirement is incomplete

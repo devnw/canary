@@ -10,7 +10,7 @@
 // `canary ticket sync --apply` and `canary ticket status --refresh` in
 // pkg/cmds/ticket): this package performs NO network I/O, ever — a missing
 // or stale cache degrades to State=unknown rather than blocking or erroring.
-// CANARY: REQ=ENG-3959; FEATURE="ExternalResolve"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_ENG_3959_Cache_RoundTrip,TestCANARY_ENG_3959_Cache_LoadMissing_NoError,TestCANARY_ENG_3959_Cache_LoadCorrupt_Error,TestCANARY_ENG_3959_Resolve_FlatfileSource_Unknown,TestCANARY_ENG_3959_Resolve_UnresolvedPrefix_Unknown,TestCANARY_ENG_3959_Resolve_NilRegistry_Unknown,TestCANARY_ENG_3959_Resolve_NoCacheFile_Unknown,TestCANARY_ENG_3959_Resolve_CachedDone_Satisfied,TestCANARY_ENG_3959_Resolve_CachedNotDone_Unsatisfied,TestCANARY_ENG_3959_Resolve_AbsentFromCache_Unknown,TestCANARY_ENG_3959_Resolve_CustomStatusMap_DoneSet,TestCANARY_ENG_3959_Resolve_StaleCache_DetailNote,TestCANARY_ENG_3959_Resolve_FreshCache_NoStaleNote; UPDATED=2026-08-29
+// CANARY: REQ=ENG-3959; FEATURE="ExternalResolve"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_ENG_3959_Cache_RoundTrip,TestCANARY_ENG_3959_Cache_LoadMissing_NoError,TestCANARY_ENG_3959_Cache_LoadCorrupt_Error,TestCANARY_ENG_3959_Resolve_FlatfileSource_Unknown,TestCANARY_ENG_3959_Resolve_UnresolvedPrefix_Unknown,TestCANARY_ENG_3959_Resolve_NilRegistry_Unknown,TestCANARY_ENG_3959_Resolve_NoCacheFile_Unknown,TestCANARY_ENG_3959_Resolve_CachedDone_Satisfied,TestCANARY_ENG_3959_Resolve_CachedNotDone_Unsatisfied,TestCANARY_ENG_3959_Resolve_AbsentFromCache_Unknown,TestCANARY_ENG_3959_Resolve_CustomStatusMap_DoneSet,TestCANARY_ENG_3959_Resolve_StaleCache_DetailNote,TestCANARY_ENG_3959_Resolve_FreshCache_NoStaleNote,TestCANARY_ENG_3960_Resolution_IsExternal,TestCANARY_ENG_3960_Resolution_ShortDetail; UPDATED=2026-08-29
 package external
 
 import (
@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"devnw.dev/canary/pkg/sources"
@@ -51,6 +52,30 @@ const (
 	StateUnsatisfied = "unsatisfied"
 	StateUnknown     = "unknown"
 )
+
+// IsExternal reports whether r describes an actual external (ticket-source)
+// dependency, as opposed to a local/flatfile id or an unconfigured prefix —
+// the case Resolve marks with Detail "not external". Callers (deps/next/view)
+// use this to decide whether to apply external-dependency display/blocking
+// rules at all.
+func (r Resolution) IsExternal() bool {
+	return r.Detail != "not external"
+}
+
+// ShortDetail returns a short, display-friendly rendering of r.Detail: the
+// cached remote-status name (with any appended staleness note stripped) for
+// satisfied/unsatisfied, or the fixed short note "no cached ticket status"
+// for unknown — dropping the longer refresh-hint command suggestion so
+// callers like `deps check` and `view` stay on one line.
+func (r Resolution) ShortDetail() string {
+	if r.State == StateUnknown {
+		return "no cached ticket status"
+	}
+	if i := strings.Index(r.Detail, "; "); i >= 0 {
+		return r.Detail[:i]
+	}
+	return r.Detail
+}
 
 // Cache is the on-disk shape of .canary/remote-status.json: the last time a
 // fetch succeeded, and the issue-key -> remote-status-name snapshot it
