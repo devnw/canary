@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestBuildGraphFromSpecs,TestGetTransitiveDependencies,TestFormatASCIITree; UPDATED=2025-10-18
+// CANARY: REQ=CP-262; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestBuildGraphFromSpecs,TestGetTransitiveDependencies,TestFormatASCIITree; UPDATED=2026-08-29
 
 // SpecLoader is an interface for loading dependencies from spec files.
 type SpecLoader interface {
@@ -251,7 +251,7 @@ func (gg *GraphGenerator) FormatDependencySummary(graph *DependencyGraph, reqID 
 	return strings.Join(lines, "\n")
 }
 
-// CANARY: REQ=CBIN-203; FEATURE="MermaidGraph"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_203_FormatMermaid,TestCANARY_CBIN_203_FormatMermaid_CycleSafe; UPDATED=2026-08-28
+// CANARY: REQ=CP-269; FEATURE="MermaidGraph"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_203_FormatMermaid,TestCANARY_CBIN_203_FormatMermaid_CycleSafe; UPDATED=2026-08-28
 
 // mermaidNodeID converts a requirement ID to a mermaid-safe node identifier.
 // Mermaid node identifiers may not contain characters commonly found in

@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CBIN-202; FEATURE="MermaidRefs"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_202_ExtractDiagramRefs; UPDATED=2026-08-28
+// CANARY: REQ=CP-268; FEATURE="MermaidRefs"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_202_ExtractDiagramRefs; UPDATED=2026-08-28
 package canaryscan
 
 import (

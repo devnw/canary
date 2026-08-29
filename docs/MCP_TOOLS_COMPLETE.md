@@ -2,9 +2,13 @@
 
 ## Overview
 
-The Canary MCP server now provides **18 comprehensive tools** covering all major Canary functionality.
+The Canary MCP server provides **19 tools** covering all major Canary functionality. Five are stubs returning placeholder responses today (tracked in `docs/GAP_ANALYSIS.md`, GAP-0005): `specify`, `plan`, `index`, `bug-create`, `gap-mark`.
 
 ## Tool Categories
+
+### One-Call Hierarchical Context (2 tools)
+- `view` - Full picture of a requirement: status, files, tests, deps, spec/plan, diagrams, ticket. Use FIRST instead of separate show/status/files calls.
+- `deps` - Dependency IDs (forward or reverse) for a requirement; IDs only, follow up with `view` for detail.
 
 ### Core Token Management (6 tools)
 - `list` - List CANARY tokens with filtering
@@ -16,10 +20,10 @@ The Canary MCP server now provides **18 comprehensive tools** covering all major
 
 ### Workflow & Development (5 tools)
 - `scan` - Scan codebase for CANARY tokens
-- `specify` - Create requirement specification
-- `plan` - Generate implementation plan
+- `specify` - Create requirement specification (stub — not yet implemented)
+- `plan` - Generate implementation plan (stub — not yet implemented)
 - `implement` - Get implementation guidance
-- `index` - Index codebase tokens into database
+- `index` - Index codebase tokens into database (stub — not yet implemented)
 
 ### Query & Navigation (2 tools)
 - `files` - Find files containing requirement tokens
@@ -30,10 +34,10 @@ The Canary MCP server now provides **18 comprehensive tools** covering all major
 
 ### Bug Tracking (2 tools)
 - `bug-list` - List bug tracking tokens
-- `bug-create` - Create new bug token
+- `bug-create` - Create new bug token (stub — not yet implemented)
 
-### Gap Analysis (2 tools)
-- `gap-mark` - Mark gap claims as helpful/unhelpful
+### Gap Analysis (1 tool)
+- `gap-mark` - Mark gap claims as helpful/unhelpful (stub — not yet implemented)
 
 ## Detailed Tool Specifications
 
@@ -44,11 +48,12 @@ The Canary MCP server now provides **18 comprehensive tools** covering all major
 - `status` (string, optional): Filter by status (STUB, IMPL, TESTED, BENCHED)
 - `aspect` (string, optional): Filter by aspect (API, CLI, Engine, etc.)
 - `owner` (string, optional): Filter by owner
-- `limit` (number, optional): Maximum results (default: 100)
+- `limit` (number, optional): Maximum results (default: 20, max: 100 — mirrors `search`'s cap)
 
 **Returns**:
 - `tokens`: Array of matching tokens
-- `count`: Total number of results
+- `count`: Number of tokens in this response (after capping)
+- `total`: True match count before capping
 
 **Example**:
 ```json
@@ -202,7 +207,7 @@ The Canary MCP server now provides **18 comprehensive tools** covering all major
 - `message`: Status message
 - `root`: Scanned directory
 
-**Note**: Currently placeholder - full scanning requires integration with scan command.
+**Note**: Fully implemented — calls the real `canaryscan` scanner (`pkg/canaryscan`), the same engine the `canary scan` CLI command uses.
 
 ### 8. specify
 **Purpose**: Create a requirement specification
@@ -329,7 +334,7 @@ The Canary MCP server now provides **18 comprehensive tools** covering all major
 {
   "reqId": "CBIN-133",
   "files": [
-    "internal/storage/storage.go",
+    "pkg/storage/storage.go",
     "cli/list/list.go",
     "cli/show/show.go"
   ],
@@ -460,22 +465,66 @@ The Canary MCP server now provides **18 comprehensive tools** covering all major
 }
 ```
 
+### 18. view
+**Purpose**: Full picture of one requirement in a single, bounded call -- status, files, tests, deps, spec/plan, diagrams, ticket URL. Use this FIRST instead of separate show/status/files calls.
+
+**Parameters**:
+- `reqId` (string, required): Requirement ID (e.g., "CBIN-105")
+- `limit` (number, optional): Max entries per list section (default: 10)
+
+**Returns**: the full `view.View` struct -- statuses, completion %, features, files (+ total), tests, benches, depends_on, blocks, related_to, spec_path, plan_path, diagrams (+ total), migrate_notes (+ total), drifted/drift_reason, ticket_url.
+
+**Example**:
+```json
+{
+  "name": "view",
+  "arguments": {
+    "reqId": "CBIN-204",
+    "limit": 20
+  }
+}
+```
+
+### 19. deps
+**Purpose**: Dependency IDs for a requirement, forward (what it depends on) or reverse (what depends on it). IDs only -- follow up with `view` for detail on any returned ID.
+
+**Parameters**:
+- `reqId` (string, required): Requirement ID
+- `direction` (string, optional): `forward` (default) or `reverse`
+
+**Returns**:
+- `reqId`, `direction`: Echo of parameters
+- `dependencies`: Array of requirement IDs
+- `count`: Number of dependencies
+
+**Example**:
+```json
+{
+  "name": "deps",
+  "arguments": {
+    "reqId": "CBIN-147",
+    "direction": "reverse"
+  }
+}
+```
+
 ## Implementation Status
 
-### ? Fully Functional (11 tools)
+### Fully Functional (12 tools)
+- view, deps
 - list, show, create, status, search, next
+- scan
 - files, grep, prioritize
-- bug-create, gap-mark
 
-### ?? Functional with Database Access (2 tools)
+### Functional with Database Access (2 tools)
 - bug-list (requires indexed database)
 - implement (reads from database and filesystem)
 
-### ?? Placeholder Implementation (5 tools)
-- scan (needs scan command integration)
+### Stub Implementation (5 tools)
 - specify (needs specification generation)
 - plan (needs plan generation)
 - index (needs indexing logic)
+- bug-create (needs collision-safe ID generation; currently always returns BUG-001)
 - gap-mark (needs gap database integration)
 
 ## Usage Examples
@@ -485,7 +534,7 @@ The Canary MCP server now provides **18 comprehensive tools** covering all major
 ```
 User: "What should I work on next?"
 
-Assistant ? MCP:
+Assistant -> MCP:
 {
   "name": "next",
   "arguments": {}
@@ -514,7 +563,7 @@ Assistant → MCP:
 
 Response:
 {
-  "files": ["internal/storage/migrations.go", "cmd/canary/main.go"],
+  "files": ["pkg/storage/migrations.go", "cmd/canary/main.go"],
   "fileCount": 2
 }
 
@@ -543,34 +592,39 @@ Response:
 
 | CLI Command | MCP Tool(s) | Status |
 |-------------|-------------|--------|
+| view | view | ✅ Full |
+| deps | deps | ✅ Full |
 | list | list | ✅ Full |
 | show | show | ✅ Full |
 | create | create | ✅ Full |
 | status | status | ✅ Full |
 | search | search | ✅ Full |
 | next | next | ✅ Full |
-| scan | scan | 🚧 Placeholder |
-| specify | specify | 🚧 Placeholder |
-| plan | plan | 🚧 Placeholder |
+| scan | scan | ✅ Full |
+| specify | specify | 🚧 Stub |
+| plan | plan | 🚧 Stub |
 | implement | implement | ⚠️ Partial |
-| index | index | 🚧 Placeholder |
+| index | index | 🚧 Stub |
 | files | files | ✅ Full |
 | grep | grep | ✅ Full |
 | prioritize | prioritize | ✅ Full |
 | bug (list) | bug-list | ⚠️ DB-dependent |
-| bug (create) | bug-create | ✅ Full |
-| gap (mark) | gap-mark | 🚧 Placeholder |
+| bug (create) | bug-create | 🚧 Stub (always returns BUG-001) |
+| gap (mark) | gap-mark | 🚧 Stub |
 | checkpoint | - | Not implemented |
 | constitution | - | Not implemented |
 | doc | - | Not implemented |
-| deps | - | Not implemented |
+| drift | - | Not implemented |
+| upgrade | - | Not implemented |
+| onboard | - | Not implemented |
+| ticket | - | Not implemented |
 | migrate | - | Not implemented |
 | project | - | Not implemented |
 
 **Legend**:
 - ✅ Full: Complete implementation, ready for use
 - ⚠️ Partial/DB-dependent: Works with database setup
-- 🚧 Placeholder: Stub implementation, needs full integration
+- 🚧 Stub: Placeholder implementation, needs full integration
 - Not implemented: No MCP tool yet
 
 ## Server Information
@@ -601,7 +655,7 @@ Response:
 ```
 
 ### Tool Discovery
-AI assistants automatically discover all 18 tools through the MCP protocol. No manual configuration needed.
+AI assistants automatically discover all 19 tools through the MCP protocol. No manual configuration needed.
 
 ## Testing
 
@@ -610,7 +664,7 @@ AI assistants automatically discover all 18 tools through the MCP protocol. No m
 go test ./mcp/... -v
 ```
 
-All 18 tool handlers have basic tests covering:
+All 19 tool handlers have basic tests covering:
 - Parameter validation
 - Handler function signatures
 - Basic error handling
@@ -696,17 +750,18 @@ mcp.AddTool(server, &mcp.Tool{
 
 ```
 mcp/
-├── mcp.go              # Server setup and tool registration
-├── tools.go            # Core tools (list, show, create, etc.)
-├── tools_extended.go   # Extended tools (specify, plan, implement, etc.)
-└── mcp_test.go         # Unit tests for all tools
+|-- mcp.go              # Server setup and tool registration
+|-- tools.go            # Core tools (list, show, create, status, search, next, scan)
+|-- tools_extended.go   # Extended tools (specify, plan, index, implement, files, grep,
+|                       #   prioritize, bug-list, bug-create, gap-mark, view, deps)
+|-- mcp_test.go         # Unit tests for all tools
 ```
 
 ## Summary
 
-The Canary MCP implementation provides **18 comprehensive tools** covering:
-- ✅ 11 fully functional tools ready for immediate use
+The Canary MCP implementation provides **19 tools** covering:
+- ✅ 12 fully functional tools ready for immediate use
 - ⚠️ 2 database-dependent tools (work with indexed database)
-- 🚧 5 placeholder tools (need full integration)
+- 🚧 5 stub tools (need full integration)
 
 This provides AI assistants with extensive access to Canary's requirement tracking system through a standardized MCP interface.

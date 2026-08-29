@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CBIN-136; FEATURE="DocHashCalculation"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_136_Engine_HashCalculation; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-136; FEATURE="DocHashCalculation"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_136_Engine_HashCalculation; UPDATED=2026-08-29
 
 package docs_test
 
@@ -91,7 +91,7 @@ func TestCANARY_CBIN_136_Engine_HashDeterminism(t *testing.T) {
 	}
 }
 
-// CANARY: REQ=CBIN-136; FEATURE="DocHashCalculation"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkCANARY_CBIN_136_Engine_HashPerformance; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-136; FEATURE="DocHashCalculation"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkCANARY_CBIN_136_Engine_HashPerformance; UPDATED=2026-08-29
 // BenchmarkCANARY_CBIN_136_Engine_HashPerformance measures hash calculation performance
 // Target: <10ms per 1KB documentation file (from spec FR-2)
 func BenchmarkCANARY_CBIN_136_Engine_HashPerformance(b *testing.B) {

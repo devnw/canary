@@ -32,7 +32,7 @@ Summary: 2 implementations (1 TESTED, 1 IMPL)
 ```
 
 ## Standards
-- Query `internal/storage` by requirement ID
+- Query `pkg/storage` by requirement ID
 - Group by feature name
 - Show files, tests, benchmarks
 - Clear hierarchy and formatting

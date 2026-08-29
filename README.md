@@ -104,7 +104,7 @@ canary status CBIN-001
 Tokens are structured comments that track requirements:
 
 ```go
-// CANARY: REQ=CBIN-105; FEATURE="UserAuth"; ASPECT=Security; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-105; FEATURE="UserAuth"; ASPECT=Security; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2026-08-29
 func AuthenticateUser(creds *Credentials) (*Session, error) {
     // implementation
 }
@@ -376,7 +376,7 @@ canary grep Authentication
 Track documentation status with cryptographic hashes:
 
 ```go
-// CANARY: REQ=CBIN-105; FEATURE="FuzzySearch"; ASPECT=Engine; STATUS=TESTED; TEST=TestFuzzySearch; DOC=user:docs/user/search-guide.md; DOC_HASH=a3f5b8c2e1d4a6f9; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-105; FEATURE="FuzzySearch"; ASPECT=Engine; STATUS=TESTED; TEST=TestFuzzySearch; DOC=user:docs/user/search-guide.md; DOC_HASH=a3f5b8c2e1d4a6f9; UPDATED=2026-08-29
 ```
 
 ```bash

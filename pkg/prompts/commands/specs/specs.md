@@ -25,17 +25,17 @@ canary specs validate
 ```
 Requirement Specifications:
 
-? CBIN-001: User Authentication
+- CBIN-001: User Authentication
    Spec: .canary/specs/CBIN-001-user-auth/spec.md
    Plan: .canary/specs/CBIN-001-user-auth/plan.md
    Status: TESTED (4 tokens)
 
-?? CBIN-015: OAuth2 Integration  
+- CBIN-015: OAuth2 Integration
    Spec: .canary/specs/CBIN-015-oauth2/spec.md
    Plan: Missing
    Status: IMPL (2 tokens)
 
-? CBIN-042: Data Validation
+- CBIN-042: Data Validation
    Spec: Missing
    Plan: Missing
    Status: STUB (1 token)

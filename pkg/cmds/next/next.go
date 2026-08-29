@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CBIN-132; FEATURE="NextPriorityCommand"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-252; FEATURE="NextPriorityCommand"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; UPDATED=2026-08-29
 package next
 
 import (
@@ -24,7 +24,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-132; FEATURE="NextCmd"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; DOC=user:docs/user/next-priority-guide.md; DOC_HASH=17524f7a14d2c410; UPDATED=2025-10-17
+// CANARY: REQ=CP-252; FEATURE="NextCmd"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; DOC=user:docs/user/next-priority-guide.md; DOC_HASH=17524f7a14d2c410; UPDATED=2026-08-29
 var NextCmd = &cobra.Command{
 	Use:   "next [flags]",
 	Short: "Identify and implement next highest priority requirement",

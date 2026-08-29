@@ -1,4 +1,4 @@
--- CANARY: REQ=CBIN-136; FEATURE="DocDatabaseSchema"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
+-- CANARY: REQ=CP-255; FEATURE="DocDatabaseSchema"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
 -- Add documentation tracking fields to tokens table
 
 -- Add documentation tracking columns

@@ -13,7 +13,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-126; FEATURE="SearchCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-247; FEATURE="SearchCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 var SearchCmd = &cobra.Command{
 	Use:   "search <keywords>",
 	Short: "Search CANARY tokens by keywords",
@@ -80,7 +80,7 @@ Keywords are matched case-insensitively using LIKE queries.`,
 	},
 }
 
-// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-28
+// CANARY: REQ=CP-271; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-28
 // defaultSearchLimit caps search output to protect agent context.
 // Deliberately small; pass --limit -1 to explicitly request everything.
 const defaultSearchLimit = 20

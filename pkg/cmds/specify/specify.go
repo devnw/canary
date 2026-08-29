@@ -13,7 +13,8 @@ import (
 	"devnw.dev/canary/pkg/reqid"
 )
 
-// CANARY: REQ=CBIN-120; FEATURE="SpecifyCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-242; FEATURE="SpecifyCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-258; FEATURE="SpecifyTemplatePlaceholderContract"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_141_CLI_SpecifyRendersRealID; UPDATED=2026-08-29
 var SpecifyCmd = &cobra.Command{
 	Use:   "specify <feature-description>",
 	Short: "Create a new requirement specification",
@@ -74,7 +75,7 @@ creates a spec directory, and populates it with a specification template.`,
 		}
 
 		content := string(templateContent)
-		content = strings.ReplaceAll(content, "CBIN-XXX", generatedID)
+		content = strings.ReplaceAll(content, "REQID-XXX", generatedID)
 		content = strings.ReplaceAll(content, "[FEATURE NAME]", featureDesc)
 		content = strings.ReplaceAll(content, "YYYY-MM-DD", time.Now().UTC().Format("2006-01-02"))
 		content = strings.ReplaceAll(content, "SECURITY_REVIEW", aspect)

@@ -13,7 +13,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_FilesCmd; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_FilesCmd; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_CLI_FilesCmd(t *testing.T) {
 	// Setup: Create temporary database
 	tmpDir := t.TempDir()
@@ -102,7 +102,7 @@ func TestCANARY_CBIN_CLI_001_CLI_FilesCmd(t *testing.T) {
 	}
 }
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_FilesCmd; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_FilesCmd; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_CLI_FilesCmd_Formatting(t *testing.T) {
 	fileGroups := map[string][]*storage.Token{
 		"internal/api/handler.go": {
@@ -132,7 +132,7 @@ func TestCANARY_CBIN_CLI_001_CLI_FilesCmd_Formatting(t *testing.T) {
 	}
 }
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_FilesCmd; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="FilesCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_FilesCmd; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_CLI_FilesCmd_AspectGrouping(t *testing.T) {
 	fileGroups := map[string][]*storage.Token{
 		"file1.go": {

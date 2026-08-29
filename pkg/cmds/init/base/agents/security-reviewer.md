@@ -1,4 +1,3 @@
-```yaml
 ---
 name: {{ .AgentPrefix }}-sec-reviewer
 description: >
@@ -11,8 +10,6 @@ description: >
   adopting ASVS for deeper, testable coverage where appropriate. :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1}
 model: {{ .AgentModel }}
 color: {{ .AgentColor }}
----
-```
 ---
 
 **ROLE**

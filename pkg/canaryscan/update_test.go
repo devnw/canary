@@ -17,7 +17,7 @@ func TestCANARY_CBIN_201_UpdateStaleTicketIDs(t *testing.T) {
 		t.Fatal(err)
 	}
 	diags := []string{"CANARY_STALE REQ=PLAT-4521 updated=2020-01-01 age_days=2431 threshold=30"}
-	if _, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags); err != nil {
+	if _, _, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, nil); err != nil {
 		t.Fatal(err)
 	}
 	b, _ := os.ReadFile(path)

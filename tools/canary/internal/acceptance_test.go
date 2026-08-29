@@ -132,7 +132,7 @@ func TestAcceptance_SelfCanary(t *testing.T) {
 	gap := filepath.Join(testdataDir, "GAP_ANALYSIS.md")
 
 	// Always write the test GAP file with correct requirement IDs
-	if err := os.WriteFile(gap, []byte("# Requirements Gap Analysis (Self)\n✅ CBIN-101\n✅ CBIN-102\n"), 0o644); err != nil {
+	if err := os.WriteFile(gap, []byte("# Requirements Gap Analysis (Self)\n✅ CP-235\n✅ CP-236\n"), 0o644); err != nil {
 		t.Fatalf("create GAP_ANALYSIS.md: %v", err)
 	}
 
@@ -149,7 +149,7 @@ func TestAcceptance_SelfCanary(t *testing.T) {
 	if res2.code != 0 {
 		t.Fatalf("verify exit=%d stderr=%s", res2.code, res2.stderr)
 	}
-	fmt.Println("ACCEPT SelfCanary OK ids=[CBIN-101,CBIN-102]")
+	fmt.Println("ACCEPT SelfCanary OK ids=[CP-235,CP-236]")
 }
 
 func TestAcceptance_CSVOrder(t *testing.T) {
@@ -360,8 +360,16 @@ func TestAcceptance_UpdateStale(t *testing.T) {
 
 	// Create test file with stale and fresh tokens
 	testFile := filepath.Join(root, "test.go")
+	// The harness pins CANARY_TEST_TIMESTAMP to 2025-10-16 (see build/run
+	// helpers above), so CBIN-001's fixture date must be genuinely stale
+	// relative to *that* pinned reference, not relative to whatever day this
+	// test happens to run. Built via concatenation (not a literal
+	// "UPDATED=2024-01-01" substring) so a repo-wide `--update-stale`
+	// dogfood run over this test's own source can never collaterally
+	// rewrite this fixture and silently vacuate the assertion below.
+	staleUpdated := "UPDATED=" + "2024-01-01"
 	content := `package test
-// CANARY: REQ=CBIN-001; FEATURE="StaleToken"; ASPECT=API; STATUS=TESTED; TEST=Test1; UPDATED=2024-01-01
+// CANARY: REQ=CBIN-001; FEATURE="StaleToken"; ASPECT=API; STATUS=TESTED; TEST=Test1; ` + staleUpdated + `
 // CANARY: REQ=CBIN-002; FEATURE="FreshToken"; ASPECT=CLI; STATUS=TESTED; TEST=Test2; UPDATED=2025-10-15
 // CANARY: REQ=CBIN-003; FEATURE="StaleImplNotUpdated"; ASPECT=Engine; STATUS=IMPL; UPDATED=2024-01-01
 // CANARY: REQ=CBIN-004; FEATURE="StaleBenchedToken"; ASPECT=Storage; STATUS=BENCHED; BENCH=Bench4; UPDATED=2024-01-01
@@ -395,12 +403,16 @@ func TestAcceptance_UpdateStale(t *testing.T) {
 		return ""
 	}
 
-	// CBIN-001 (TESTED, stale) should be updated
+	// CBIN-001 (TESTED, stale relative to the pinned CANARY_TEST_TIMESTAMP)
+	// should be updated, and positively rewritten to that pinned date
+	// (2025-10-16) rather than merely "not 2024-01-01 anymore".
 	line001 := findLine("CBIN-001")
 	if line001 == "" {
 		t.Error("CBIN-001 missing from updated file")
 	} else if strings.Contains(line001, "UPDATED=2024-01-01") {
 		t.Errorf("CBIN-001 should have UPDATED field changed from 2024-01-01, got: %s", line001)
+	} else if !strings.Contains(line001, "UPDATED=2025-10-16") {
+		t.Errorf("CBIN-001 should have UPDATED rewritten to the pinned CANARY_TEST_TIMESTAMP date 2025-10-16, got: %s", line001)
 	}
 
 	// CBIN-002 (TESTED, fresh) should NOT be updated

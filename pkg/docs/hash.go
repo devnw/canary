@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CBIN-136; FEATURE="DocHashCalculation"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_136_Engine_HashCalculation; UPDATED=2025-10-16
+// CANARY: REQ=CP-255; FEATURE="DocHashCalculation"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_136_Engine_HashCalculation; UPDATED=2026-08-29
 
 package docs
 

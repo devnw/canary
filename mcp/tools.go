@@ -17,7 +17,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_205_SearchCapped; UPDATED=2026-08-28
+// CANARY: REQ=CP-271; FEATURE="ContextCaps"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_205_SearchCapped; UPDATED=2026-08-28
 const (
 	defaultToolLimit = 20  // small by default to protect agent context
 	maxToolLimit     = 100 // explicit ceiling even when the agent asks for more
@@ -48,6 +48,11 @@ type ListParams struct {
 type ListResult struct {
 	Tokens []*storage.Token `json:"tokens"`
 	Count  int              `json:"count"`
+	Total  int              `json:"total"`
+	// TotalIsLowerBound is true when the underlying overfetch hit its ceiling
+	// (maxToolLimit+1 rows came back), meaning Total is a floor, not an exact
+	// count -- there may be more matches than reported.
+	TotalIsLowerBound bool `json:"total_is_lower_bound,omitempty"`
 }
 
 // handleList implements the list tool handler
@@ -71,22 +76,27 @@ func handleList(ctx context.Context, req *mcp.CallToolRequest, params *ListParam
 		filters["owner"] = params.Owner
 	}
 
-	limit := params.Limit
-	if limit == 0 {
-		limit = 25 // Default limit to reduce context; use limit param for more
-	}
-	if limit > 50 {
-		limit = 50 // Cap to avoid large responses
-	}
-
-	tokens, err := db.ListTokens(filters, "", "", limit)
+	// Overfetch by one past maxToolLimit so Total reflects the true match
+	// count (or a lower bound past the ceiling) before capping, matching
+	// handleSearch's cap/Total pattern.
+	all, err := db.ListTokens(filters, "", "", maxToolLimit+1)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list tokens: %w", err)
 	}
 
+	total := len(all)
+	lowerBound := total > maxToolLimit
+	limit := capLimit(params.Limit)
+	tokens := all
+	if len(tokens) > limit {
+		tokens = tokens[:limit]
+	}
+
 	result := &ListResult{
-		Tokens: tokens,
-		Count:  len(tokens),
+		Tokens:            tokens,
+		Count:             len(tokens),
+		Total:             total,
+		TotalIsLowerBound: lowerBound,
 	}
 
 	// Compact summary in content so agents get the gist without parsing full result.

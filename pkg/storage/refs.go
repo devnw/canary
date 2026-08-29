@@ -5,7 +5,7 @@
 
 package storage
 
-// CANARY: REQ=CBIN-206; FEATURE="DiagramRefsIndex"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_206_RefsRoundTrip; UPDATED=2026-08-28
+// CANARY: REQ=CP-272; FEATURE="DiagramRefsIndex"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_206_RefsRoundTrip; UPDATED=2026-08-28
 
 // Ref is a requirement reference found outside CANARY tokens (diagrams, docs).
 type Ref struct {
@@ -55,4 +55,43 @@ func (db *DB) GetRefsByReqID(reqID string) ([]*Ref, error) {
 		out = append(out, &r)
 	}
 	return out, rows.Err()
+}
+
+// maxRefsByKind caps GetRefsByKind results when limit<=0 is requested.
+const maxRefsByKind = 100
+
+// CANARY: REQ=CP-274; FEATURE="MigrateRefsIndex"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_301_MigrateRefsRoundTrip,TestCANARY_CBIN_301_GetRefsByKindLimit; UPDATED=2026-08-29
+
+// GetRefsByKind returns refs of the given kind across all requirements,
+// ordered by file then line. limit<=0 defaults to a 100-row cap.
+func (db *DB) GetRefsByKind(kind string, limit int) ([]*Ref, error) {
+	if limit <= 0 {
+		limit = maxRefsByKind
+	}
+	rows, err := db.conn.Queryx(
+		`SELECT req_id, kind, file_path, line_number, COALESCE(context,'') AS context
+		 FROM refs WHERE kind = ? ORDER BY file_path, line_number LIMIT ?`, kind, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []*Ref
+	for rows.Next() {
+		var r Ref
+		if err := rows.StructScan(&r); err != nil {
+			return nil, err
+		}
+		out = append(out, &r)
+	}
+	return out, rows.Err()
+}
+
+// DeleteAllTokens clears the tokens table. `canary index` treats the token
+// index as fully derived state: each run rebuilds it from a whole-tree scan,
+// so rows for tokens that no longer exist on disk (renamed or remapped REQ
+// IDs, deleted files) must not survive a re-index.
+// CANARY: REQ=CP-285; FEATURE="IndexRebuild"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CP_285_IndexRebuildPrunes; UPDATED=2026-08-29
+func (db *DB) DeleteAllTokens() error {
+	_, err := db.conn.Exec(`DELETE FROM tokens`)
+	return err
 }

@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkDependencyParsing; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkDependencyParsing; UPDATED=2026-08-29
 
 // BenchmarkDependencyParsing benchmarks parsing dependencies from spec files
 func BenchmarkDependencyParsing(b *testing.B) {
@@ -39,7 +39,7 @@ func BenchmarkDependencyParsing(b *testing.B) {
 	}
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkCircularDetection_100Nodes; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkCircularDetection_100Nodes; UPDATED=2026-08-29
 
 // BenchmarkCircularDetection_100Nodes benchmarks cycle detection with 100 nodes
 func BenchmarkCircularDetection_100Nodes(b *testing.B) {
@@ -55,7 +55,7 @@ func BenchmarkCircularDetection_100Nodes(b *testing.B) {
 	}
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkCircularDetection_500Nodes; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkCircularDetection_500Nodes; UPDATED=2026-08-29
 
 // BenchmarkCircularDetection_500Nodes benchmarks cycle detection with 500 nodes
 // Target: < 200ms (from spec)
@@ -72,7 +72,7 @@ func BenchmarkCircularDetection_500Nodes(b *testing.B) {
 	}
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkCircularDetection_WithCycle; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkCircularDetection_WithCycle; UPDATED=2026-08-29
 
 // BenchmarkCircularDetection_WithCycle benchmarks cycle detection when cycle exists
 func BenchmarkCircularDetection_WithCycle(b *testing.B) {
@@ -97,7 +97,7 @@ func BenchmarkCircularDetection_WithCycle(b *testing.B) {
 	}
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkTransitiveDependencies_Linear; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkTransitiveDependencies_Linear; UPDATED=2026-08-29
 
 // BenchmarkTransitiveDependencies_Linear benchmarks transitive dependency resolution
 func BenchmarkTransitiveDependencies_Linear(b *testing.B) {
@@ -113,7 +113,7 @@ func BenchmarkTransitiveDependencies_Linear(b *testing.B) {
 	}
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkTransitiveDependencies_Diamond; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkTransitiveDependencies_Diamond; UPDATED=2026-08-29
 
 // BenchmarkTransitiveDependencies_Diamond benchmarks with diamond patterns
 func BenchmarkTransitiveDependencies_Diamond(b *testing.B) {
@@ -128,7 +128,7 @@ func BenchmarkTransitiveDependencies_Diamond(b *testing.B) {
 	}
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkStatusChecking_FullDependency; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkStatusChecking_FullDependency; UPDATED=2026-08-29
 
 // BenchmarkStatusChecking_FullDependency benchmarks checking full dependency status
 func BenchmarkStatusChecking_FullDependency(b *testing.B) {
@@ -160,7 +160,7 @@ func BenchmarkStatusChecking_FullDependency(b *testing.B) {
 	}
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkStatusChecking_Batch; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkStatusChecking_Batch; UPDATED=2026-08-29
 
 // BenchmarkStatusChecking_Batch benchmarks checking multiple dependencies
 func BenchmarkStatusChecking_Batch(b *testing.B) {
@@ -192,7 +192,7 @@ func BenchmarkStatusChecking_Batch(b *testing.B) {
 	}
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkGraphVisualization; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkGraphVisualization; UPDATED=2026-08-29
 
 // BenchmarkGraphVisualization benchmarks ASCII tree generation
 func BenchmarkGraphVisualization(b *testing.B) {
@@ -208,7 +208,7 @@ func BenchmarkGraphVisualization(b *testing.B) {
 	}
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkDependencyDepth; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="PerformanceBenchmarks"; ASPECT=Engine; STATUS=BENCHED; BENCH=BenchmarkDependencyDepth; UPDATED=2026-08-29
 
 // BenchmarkDependencyDepth benchmarks depth calculation
 func BenchmarkDependencyDepth(b *testing.B) {

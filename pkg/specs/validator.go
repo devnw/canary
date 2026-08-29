@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies_Valid,TestValidateDependencies_SimpleCycle,TestValidateDependencies_ComplexCycle; UPDATED=2025-10-18
+// CANARY: REQ=CP-262; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies_Valid,TestValidateDependencies_SimpleCycle,TestValidateDependencies_ComplexCycle; UPDATED=2026-08-29
 
 // SpecFinder is an interface for finding and checking specification existence.
 // This allows validation against the actual filesystem or a mock for testing.

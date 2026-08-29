@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CBIN-133; FEATURE="ImplementCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_ExactMatch; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-133; FEATURE="ImplementCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_ExactMatch; UPDATED=2026-08-29
 package implement
 
 import (
@@ -290,5 +290,73 @@ func TestCANARY_CBIN_133_CLI_MissingSpec(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "no matches found") && !strings.Contains(err.Error(), "not found") {
 		t.Errorf("Expected error about missing spec, got: %v", err)
+	}
+}
+
+// TestCANARY_CBIN_133_API_DetectAspect verifies detectAspect returns the
+// ASPECT= field from a CANARY token found for a requirement, or
+// "API" as a fallback when no token exists yet.
+func TestCANARY_CBIN_133_API_DetectAspect(t *testing.T) {
+	tests := []struct {
+		name     string
+		reqID    string
+		token    string // single CANARY token line, empty for no-match case
+		expected string
+	}{
+		{
+			name:     "detects Engine aspect",
+			reqID:    "CBIN-200",
+			token:    `// CANARY: REQ=CBIN-200; FEATURE="Engine"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-10-16`,
+			expected: "Engine",
+		},
+		{
+			name:     "detects CLI aspect",
+			reqID:    "CBIN-201",
+			token:    `// CANARY: REQ=CBIN-201; FEATURE="CLICmd"; ASPECT=CLI; STATUS=TESTED; UPDATED=2025-10-16`,
+			expected: "CLI",
+		},
+		{
+			name:     "detects Storage aspect",
+			reqID:    "CBIN-202",
+			token:    `// CANARY: REQ=CBIN-202; FEATURE="DataStore"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16`,
+			expected: "Storage",
+		},
+		{
+			name:     "returns API fallback for unknown requirement",
+			reqID:    "CBIN-999",
+			token:    "",
+			expected: "API",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup: Create temp directory with test file
+			tmpDir := t.TempDir()
+
+			// Write a single test file with the CANARY token if provided
+			if tt.token != "" {
+				content := tt.token + "\npackage main\n"
+				filename := filepath.Join(tmpDir, "test.go")
+				if err := os.WriteFile(filename, []byte(content), 0644); err != nil {
+					t.Fatalf("failed to write test file: %v", err)
+				}
+			}
+
+			// Change to temp directory for grep to work
+			originalWd, _ := os.Getwd()
+			defer os.Chdir(originalWd)
+			if err := os.Chdir(tmpDir); err != nil {
+				t.Fatalf("failed to change directory: %v", err)
+			}
+
+			// Execute: Call detectAspect
+			aspect := detectAspect(tt.reqID)
+
+			// Verify: Correct aspect returned
+			if aspect != tt.expected {
+				t.Errorf("expected aspect %q, got %q", tt.expected, aspect)
+			}
+		})
 	}
 }

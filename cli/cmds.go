@@ -16,6 +16,7 @@ import (
 	"devnw.dev/canary/pkg/cmds/db"
 	"devnw.dev/canary/pkg/cmds/deps"
 	"devnw.dev/canary/pkg/cmds/doc"
+	"devnw.dev/canary/pkg/cmds/drift"
 	"devnw.dev/canary/pkg/cmds/files"
 	"devnw.dev/canary/pkg/cmds/gap"
 	"devnw.dev/canary/pkg/cmds/grep"
@@ -26,6 +27,7 @@ import (
 	"devnw.dev/canary/pkg/cmds/list"
 	"devnw.dev/canary/pkg/cmds/migrate"
 	"devnw.dev/canary/pkg/cmds/next"
+	"devnw.dev/canary/pkg/cmds/onboard"
 	"devnw.dev/canary/pkg/cmds/plan"
 	"devnw.dev/canary/pkg/cmds/prioritize"
 	"devnw.dev/canary/pkg/cmds/project"
@@ -35,9 +37,12 @@ import (
 	"devnw.dev/canary/pkg/cmds/specify"
 	"devnw.dev/canary/pkg/cmds/specs"
 	"devnw.dev/canary/pkg/cmds/status"
+	"devnw.dev/canary/pkg/cmds/ticket"
+	"devnw.dev/canary/pkg/cmds/upgrade"
 	"devnw.dev/canary/pkg/cmds/view"
 )
 
+// CANARY: REQ=CP-280; FEATURE="CommandRegistry"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-29
 // Commands returns all top-level commands for the canary CLI.
 // Subcommands are already registered with their parent commands via init() functions.
 //
@@ -70,6 +75,9 @@ func Commands() []*cobra.Command {
 		status.StatusCmd,
 		grep.GrepCmd,
 		view.CreateViewCommand(),
+		onboard.CreateOnboardCommand(),
+		drift.CreateDriftCommand(),
+		ticket.CreateTicketCommand(),
 
 		// Management commands
 		prioritize.PrioritizeCmd,
@@ -83,6 +91,7 @@ func Commands() []*cobra.Command {
 		legacy.DetectCmd,
 		legacy.MigrateFromCmd,
 		migrate.OrphanCmd,
+		upgrade.UpgradeCmd,
 
 		// Documentation and dependencies
 		doc.DocCmd,

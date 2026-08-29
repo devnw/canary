@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_FullSatisfied; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_FullSatisfied; UPDATED=2026-08-29
 func TestCheckDependencyStatus_FullSatisfied(t *testing.T) {
 	// Mock token provider with all features TESTED
 	tokenProvider := &MockTokenProvider{
@@ -33,7 +33,7 @@ func TestCheckDependencyStatus_FullSatisfied(t *testing.T) {
 	assert.Contains(t, status.Message, "satisfied")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_FullBlocked; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_FullBlocked; UPDATED=2026-08-29
 func TestCheckDependencyStatus_FullBlocked(t *testing.T) {
 	// Mock token provider with one feature only IMPL
 	tokenProvider := &MockTokenProvider{
@@ -59,7 +59,7 @@ func TestCheckDependencyStatus_FullBlocked(t *testing.T) {
 	assert.Contains(t, status.Message, "not yet TESTED/BENCHED")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_PartialFeaturesSatisfied; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_PartialFeaturesSatisfied; UPDATED=2026-08-29
 func TestCheckDependencyStatus_PartialFeaturesSatisfied(t *testing.T) {
 	tokenProvider := &MockTokenProvider{
 		tokens: map[string][]MockToken{
@@ -85,7 +85,7 @@ func TestCheckDependencyStatus_PartialFeaturesSatisfied(t *testing.T) {
 	assert.False(t, status.Blocking)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_PartialFeaturesBlocked; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_PartialFeaturesBlocked; UPDATED=2026-08-29
 func TestCheckDependencyStatus_PartialFeaturesBlocked(t *testing.T) {
 	tokenProvider := &MockTokenProvider{
 		tokens: map[string][]MockToken{
@@ -112,7 +112,7 @@ func TestCheckDependencyStatus_PartialFeaturesBlocked(t *testing.T) {
 	assert.Contains(t, status.MissingFeatures, "ContextManagement")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_PartialAspectSatisfied; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_PartialAspectSatisfied; UPDATED=2026-08-29
 func TestCheckDependencyStatus_PartialAspectSatisfied(t *testing.T) {
 	tokenProvider := &MockTokenProvider{
 		tokens: map[string][]MockToken{
@@ -138,7 +138,7 @@ func TestCheckDependencyStatus_PartialAspectSatisfied(t *testing.T) {
 	assert.False(t, status.Blocking)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_PartialAspectBlocked; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_PartialAspectBlocked; UPDATED=2026-08-29
 func TestCheckDependencyStatus_PartialAspectBlocked(t *testing.T) {
 	tokenProvider := &MockTokenProvider{
 		tokens: map[string][]MockToken{
@@ -163,7 +163,7 @@ func TestCheckDependencyStatus_PartialAspectBlocked(t *testing.T) {
 	assert.True(t, status.Blocking)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_MissingRequirement; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_MissingRequirement; UPDATED=2026-08-29
 func TestCheckDependencyStatus_MissingRequirement(t *testing.T) {
 	tokenProvider := &MockTokenProvider{
 		tokens: map[string][]MockToken{}, // No tokens for CBIN-999
@@ -183,7 +183,7 @@ func TestCheckDependencyStatus_MissingRequirement(t *testing.T) {
 	assert.Contains(t, status.Message, "not found")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_BENCHEDAccepted; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckDependencyStatus_BENCHEDAccepted; UPDATED=2026-08-29
 func TestCheckDependencyStatus_BENCHEDAccepted(t *testing.T) {
 	tokenProvider := &MockTokenProvider{
 		tokens: map[string][]MockToken{
@@ -206,7 +206,7 @@ func TestCheckDependencyStatus_BENCHEDAccepted(t *testing.T) {
 	assert.False(t, status.Blocking)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckAllDependencies; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestCheckAllDependencies; UPDATED=2026-08-29
 func TestCheckAllDependencies(t *testing.T) {
 	tokenProvider := &MockTokenProvider{
 		tokens: map[string][]MockToken{
@@ -232,7 +232,7 @@ func TestCheckAllDependencies(t *testing.T) {
 	assert.False(t, statuses[1].IsSatisfied)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestGetBlockingDependencies; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="StatusChecker"; ASPECT=Engine; STATUS=TESTED; TEST=TestGetBlockingDependencies; UPDATED=2026-08-29
 func TestGetBlockingDependencies(t *testing.T) {
 	tokenProvider := &MockTokenProvider{
 		tokens: map[string][]MockToken{

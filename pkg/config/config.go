@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CBIN-140; FEATURE="ProjectConfig"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=CP-257; FEATURE="ProjectConfig"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
 package config
 
 import (
@@ -16,12 +16,23 @@ import (
 
 // SourceConfig describes one requirement-ID source: a flatfile prefix or an
 // external ticket system (jira, github, gitlab) whose keys appear in REQ= fields.
-// CANARY: REQ=CBIN-201; FEATURE="TicketSources"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_201_LoadSources; UPDATED=2026-08-28
+// CANARY: REQ=CP-267; FEATURE="TicketSources"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_201_LoadSources; UPDATED=2026-08-28
+// CANARY: REQ=CP-279; FEATURE="TicketSync"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_306_LoadSources_TicketSyncFields; UPDATED=2026-08-29
 type SourceConfig struct {
 	Name string `yaml:"name"`
 	Type string `yaml:"type"` // flatfile | jira | github | gitlab
 	Key  string `yaml:"key"`  // ID prefix, e.g. "CBIN", "PLAT", "GH"
 	URL  string `yaml:"url,omitempty"`
+	// API is the REST base URL used by `canary ticket sync` when it differs
+	// from URL (which is the human browse-link template). Precedence is
+	// env > source.API: if JIRA_BASE_URL is set, it always wins; API is
+	// only consulted as a fallback when JIRA_BASE_URL is unset. Email and
+	// Token have no config-file fallback — they must come from
+	// JIRA_EMAIL/JIRA_API_TOKEN regardless of what this field holds.
+	API string `yaml:"api,omitempty"`
+	// StatusMap overrides the default CANARY-status -> remote-status-name
+	// mapping (STUB/IMPL/TESTED/BENCHED keys) for this source only.
+	StatusMap map[string]string `yaml:"status_map,omitempty"`
 }
 
 // ProjectConfig represents the .canary/project.yaml configuration

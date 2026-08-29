@@ -12,7 +12,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-125; FEATURE="ListCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-246; FEATURE="ListCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 var ListCmd = &cobra.Command{
 	Use:   "list [flags]",
 	Short: "List CANARY tokens with filtering and ordering",
@@ -138,7 +138,7 @@ Use --include-hidden to show all requirements including hidden ones.`,
 	},
 }
 
-// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_205_ListDefaultLimitIsSmall; UPDATED=2026-08-28
+// CANARY: REQ=CP-271; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_205_ListDefaultLimitIsSmall; UPDATED=2026-08-28
 // defaultListLimit caps list output to protect agent context. Deliberately
 // small; pass --limit -1 to explicitly request everything.
 const defaultListLimit = 20

@@ -1,4 +1,4 @@
--- CANARY: REQ=CBIN-123; FEATURE="TokenStorage"; ASPECT=Storage; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+-- CANARY: REQ=CP-244; FEATURE="TokenStorage"; ASPECT=Storage; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 -- Initial schema for CANARY token storage
 
 CREATE TABLE IF NOT EXISTS tokens (

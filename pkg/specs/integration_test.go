@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CANARY: REQ=CBIN-147; FEATURE="IntegrationTests"; ASPECT=Engine; STATUS=TESTED; TEST=TestIntegration_EndToEnd; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="IntegrationTests"; ASPECT=Engine; STATUS=TESTED; TEST=TestIntegration_EndToEnd; UPDATED=2026-08-29
 func TestIntegration_EndToEnd(t *testing.T) {
 	// Test complete workflow: parse → build graph → validate → check status
 	tmpDir := t.TempDir()
@@ -62,7 +62,7 @@ func TestIntegration_EndToEnd(t *testing.T) {
 	assert.Contains(t, tree, "├──")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="IntegrationTests"; ASPECT=Engine; STATUS=TESTED; TEST=TestIntegration_PartialDependencies; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="IntegrationTests"; ASPECT=Engine; STATUS=TESTED; TEST=TestIntegration_PartialDependencies; UPDATED=2026-08-29
 func TestIntegration_PartialDependencies(t *testing.T) {
 	// Test partial feature and aspect dependencies
 	tmpDir := t.TempDir()
@@ -106,7 +106,7 @@ func TestIntegration_PartialDependencies(t *testing.T) {
 	assert.Equal(t, "Storage", partialAspect.RequiredAspect)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="IntegrationTests"; ASPECT=Engine; STATUS=TESTED; TEST=TestIntegration_CircularDetection; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="IntegrationTests"; ASPECT=Engine; STATUS=TESTED; TEST=TestIntegration_CircularDetection; UPDATED=2026-08-29
 func TestIntegration_CircularDetection(t *testing.T) {
 	// Test that circular dependencies are properly detected
 	tmpDir := t.TempDir()
@@ -160,7 +160,7 @@ func TestIntegration_CircularDetection(t *testing.T) {
 	assert.Contains(t, cycleStr, "CBIN-102")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="IntegrationTests"; ASPECT=Engine; STATUS=TESTED; TEST=TestIntegration_StatusChecking; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="IntegrationTests"; ASPECT=Engine; STATUS=TESTED; TEST=TestIntegration_StatusChecking; UPDATED=2026-08-29
 func TestIntegration_StatusChecking(t *testing.T) {
 	// Test dependency status checking with mock tokens
 	graph := NewDependencyGraph()
@@ -203,7 +203,7 @@ func TestIntegration_StatusChecking(t *testing.T) {
 	assert.Equal(t, "CBIN-145", blocking[0].Dependency.Target)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="IntegrationTests"; ASPECT=Engine; STATUS=TESTED; TEST=TestIntegration_ComplexGraph; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="IntegrationTests"; ASPECT=Engine; STATUS=TESTED; TEST=TestIntegration_ComplexGraph; UPDATED=2026-08-29
 func TestIntegration_ComplexGraph(t *testing.T) {
 	// Test complex dependency graph with multiple levels
 	// Graph structure:
@@ -248,7 +248,7 @@ func TestIntegration_ComplexGraph(t *testing.T) {
 	assert.Len(t, reverseDeps140, 2) // CBIN-146 and CBIN-145
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="IntegrationTests"; ASPECT=Engine; STATUS=TESTED; TEST=TestIntegration_DiamondDependency; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="IntegrationTests"; ASPECT=Engine; STATUS=TESTED; TEST=TestIntegration_DiamondDependency; UPDATED=2026-08-29
 func TestIntegration_DiamondDependency(t *testing.T) {
 	// Test diamond pattern: A -> B, A -> C, B -> D, C -> D
 	// D should appear only once in transitive dependencies

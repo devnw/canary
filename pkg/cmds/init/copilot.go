@@ -9,7 +9,7 @@ import (
 	"devnw.dev/canary/pkg/cmds/internal/utils"
 )
 
-// CANARY: REQ=CBIN-148; FEATURE="CopilotInstructionCreator"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCreateCopilotInstructions; BENCH=BenchmarkCreateCopilotInstructions; UPDATED=2025-10-19
+// CANARY: REQ=CP-263; FEATURE="CopilotInstructionCreator"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCreateCopilotInstructions; BENCH=BenchmarkCreateCopilotInstructions; UPDATED=2026-08-29
 // createCopilotInstructions generates GitHub Copilot instruction files for the project
 func createCopilotInstructions(projectName, projectKey string) error {
 	instructionsDir := filepath.Join(projectName, ".github", "instructions")

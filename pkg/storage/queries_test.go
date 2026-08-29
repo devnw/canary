@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstractionTests"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstractionTests"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID(t *testing.T) {
 	// Setup: Create temporary database
 	tmpDir := t.TempDir()
@@ -120,7 +120,7 @@ func TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID(t *testing.T) {
 	}
 }
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstractionTests"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstractionTests"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID_TokenGrouping(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
@@ -165,7 +165,7 @@ func TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID_TokenGrouping(t *testing.T)
 	}
 }
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstractionTests"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstractionTests"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_Storage_ShouldExcludeFile(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -214,7 +214,7 @@ func TestCANARY_CBIN_CLI_001_Storage_ShouldExcludeFile(t *testing.T) {
 	}
 }
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstractionTests"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="QueryAbstractionTests"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_Storage_GetTokensByReqID(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")

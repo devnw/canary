@@ -15,7 +15,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_ShowCmd; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_ShowCmd; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_CLI_ShowCmd(t *testing.T) {
 	// Setup: Create temporary database
 	tmpDir := t.TempDir()
@@ -118,7 +118,7 @@ func TestCANARY_CBIN_CLI_001_CLI_ShowCmd(t *testing.T) {
 	}
 }
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_ShowCmd; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_ShowCmd; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_CLI_ShowCmd_JSONOutput(t *testing.T) {
 	// Setup: Create temporary database
 	tmpDir := t.TempDir()
@@ -179,7 +179,7 @@ func TestCANARY_CBIN_CLI_001_CLI_ShowCmd_JSONOutput(t *testing.T) {
 	}
 }
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_ShowCmd; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="ShowCmdTests"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_ShowCmd; UPDATED=2026-08-29
 func TestCANARY_CBIN_CLI_001_CLI_ShowCmd_Grouping(t *testing.T) {
 	tokens := []*storage.Token{
 		{ReqID: "TEST", Feature: "F1", Aspect: "API", Status: "IMPL"},

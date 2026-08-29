@@ -129,6 +129,22 @@ func TestGenericLegacyPrefixes_TASK_BUG(t *testing.T) {
 	}
 }
 
+func TestMigrateLineSkippedByGateScanner(t *testing.T) {
+	dir := t.TempDir()
+	content := "package x\n// CANARY:MIGRATE free text with = signs; and semicolons\n"
+	if err := os.WriteFile(filepath.Join(dir, "migrate.go"), []byte(content), 0644); err != nil {
+		t.Fatalf("write migrate.go: %v", err)
+	}
+	sc := NewScanner()
+	res, err := sc.ScanRepository(dir)
+	if err != nil {
+		t.Fatalf("MIGRATE line must never abort the gate scanner: %v", err)
+	}
+	if len(res.Requirements) != 0 {
+		t.Fatalf("expected 0 requirements for a MIGRATE-only file, got %d: %+v", len(res.Requirements), res.Requirements)
+	}
+}
+
 func TestPlaceholderTokenSkipped(t *testing.T) {
 	dir := t.TempDir()
 	line := `// CANARY: <ID>; FEATURE="<name>"; ASPECT=<aspect>; STATUS=<status>; UPDATED=2025-11-02`

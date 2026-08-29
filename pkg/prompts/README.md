@@ -8,65 +8,69 @@ The Canary prompts package provides a hierarchical organization of prompts for a
 
 ```
 prompts/
-??? commands/              # Command-specific prompts
-?   ??? scan/
-?   ?   ??? scan.md       # Scan command prompt
-?   ??? list/
-?   ?   ??? list.md       # List command prompt
-?   ??? show/
-?   ?   ??? show.md       # Show command prompt
-?   ??? create/
-?   ?   ??? create.md     # Create command prompt
-?   ??? status/
-?   ?   ??? status.md     # Status command prompt
-?   ??? search/
-?   ?   ??? search.md     # Search command prompt
-?   ??? next/
-?   ?   ??? next.md       # Next command prompt
-?   ??? specify/
-?   ?   ??? specify.md    # Specify command prompt
-?   ??? plan/
-?   ?   ??? plan.md       # Plan command prompt
-?   ??? implement/
-?   ?   ??? implement.md  # Implement command prompt
-?   ??? index/
-?   ?   ??? index.md      # Index command prompt
-?   ??? files/
-?   ?   ??? files.md      # Files command prompt
-?   ??? grep/
-?   ?   ??? grep.md       # Grep command prompt
-?   ??? prioritize/
-?   ?   ??? prioritize.md # Prioritize command prompt
-?   ??? bug/
-?   ?   ??? bug.md        # Bug command prompt
-?   ??? gap/
-?   ?   ??? gap.md        # Gap command prompt
-?   ??? checkpoint/
-?   ?   ??? checkpoint.md # Checkpoint command prompt
-?   ??? constitution/
-?   ?   ??? constitution.md # Constitution command prompt
-?   ??? deps/
-?   ?   ??? deps.md       # Dependencies command prompt
-?   ??? doc/
-?   ?   ??? doc.md        # Documentation command prompt
-?   ??? migrate/
-?   ?   ??? migrate.md    # Migration command prompt
-?   ??? project/
-?   ?   ??? project.md    # Project command prompt
-?   ??? specs/
-?   ?   ??? specs.md      # Specs command prompt
-?   ??? db/
-?   ?   ??? db.md         # Database command prompt
-?   ??? mcp/
-?       ??? mcp.md        # MCP server command prompt
-??? sys/                   # System-level prompts (legacy)
-?   ??? init.md           # Initialization prompt
-?   ??? policy.md         # Policy prompt
-?   ??? requirements.md   # Requirements prompt
-?   ??? evaluate.md       # Evaluation prompt
-??? prompts.go            # Go API for accessing prompts
-??? prompts_test.go       # Tests for prompt API
-??? README.md             # This file
+|-- commands/              # Command-specific prompts
+|   |-- bug/
+|   |   |-- bug.md         # Bug command prompt
+|   |-- checkpoint/
+|   |   |-- checkpoint.md  # Checkpoint command prompt
+|   |-- constitution/
+|   |   |-- constitution.md # Constitution command prompt
+|   |-- create/
+|   |   |-- create.md      # Create command prompt
+|   |-- db/
+|   |   |-- db.md          # Database command prompt
+|   |-- deps/
+|   |   |-- deps.md        # Dependencies command prompt
+|   |-- doc/
+|   |   |-- doc.md         # Documentation command prompt
+|   |-- files/
+|   |   |-- files.md       # Files command prompt
+|   |-- gap/
+|   |   |-- gap.md         # Gap command prompt
+|   |-- grep/
+|   |   |-- grep.md        # Grep command prompt
+|   |-- implement/
+|   |   |-- implement.md   # Implement command prompt
+|   |-- index/
+|   |   |-- index.md       # Index command prompt
+|   |-- list/
+|   |   |-- list.md        # List command prompt
+|   |-- mcp/
+|   |   |-- mcp.md         # MCP server command prompt
+|   |-- migrate/
+|   |   |-- migrate.md     # Orphan/upgrade/onboard/migrate-from prompt
+|   |-- next/
+|   |   |-- next.md        # Next command prompt
+|   |-- plan/
+|   |   |-- plan.md        # Plan command prompt
+|   |-- prioritize/
+|   |   |-- prioritize.md  # Prioritize command prompt
+|   |-- project/
+|   |   |-- project.md     # Project command prompt
+|   |-- scan/
+|   |   |-- scan.md        # Scan command prompt
+|   |-- search/
+|   |   |-- search.md      # Search command prompt
+|   |-- show/
+|   |   |-- show.md        # Show command prompt
+|   |-- specify/
+|   |   |-- specify.md     # Specify command prompt
+|   |-- specs/
+|   |   |-- specs.md       # Specs command prompt
+|   |-- status/
+|   |   |-- status.md      # Status command prompt
+|   |-- view/
+|       |-- view.md        # View command prompt
+|-- sys/                   # System-level meta-prompt templates (served raw
+|   |                      # via --prompt <name>; {{VAR}} placeholders are
+|   |                      # intentional, see the header comment in each file)
+|   |-- init.md            # Initialization prompt
+|   |-- policy.md          # Policy prompt
+|   |-- requirements.md    # Requirements prompt
+|   |-- evaluate.md        # Evaluation prompt
+|-- prompts.go             # Go API for accessing prompts
+|-- prompts_test.go        # Tests for prompt API
+|-- README.md              # This file
 ```
 
 ## Usage
@@ -165,6 +169,9 @@ Description and examples of command output.
 
 ## Categories
 
+### One-Call Context
+- **view** - Full picture of a requirement in one call (status, files, tests, deps, spec, ticket)
+
 ### Core Token Management
 Commands that deal with CANARY tokens directly:
 - **list** - List/filter tokens
@@ -208,7 +215,7 @@ Commands for documentation:
 ### Infrastructure
 Commands for system management:
 - **db** - Database operations
-- **migrate** - Schema migrations
+- **migrate** - Orphan spec generation, legacy token-shape upgrades, onboarding, spec-kit/legacy-canary migration (database schema migrations are `canary migrate <steps>`, a separate command not documented under this prompt)
 - **mcp** - MCP server for AI assistants
 
 ## Adding New Commands
@@ -292,7 +299,7 @@ Potential improvements:
 
 - `cli/` - CLI command implementations
 - `mcp/` - MCP server that exposes commands to AI
-- `internal/storage/` - Database layer used by commands
+- `pkg/storage/` - Database layer used by commands
 - `.canary/templates/` - User-facing templates
 
 ## License

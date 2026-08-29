@@ -10,7 +10,7 @@ import (
 	"devnw.dev/canary/pkg/cmds/internal/utils"
 )
 
-// CANARY: REQ=CBIN-119; FEATURE="ConstitutionCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-241; FEATURE="ConstitutionCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 var ConstitutionCmd = &cobra.Command{
 	Use:   "constitution [description]",
 	Short: "Create or update project governing principles",

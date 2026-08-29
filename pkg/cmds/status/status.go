@@ -17,7 +17,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-28
+// CANARY: REQ=CP-271; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-28
 // maxStatusJSONIncomplete caps the "incomplete" list in --json output to
 // protect agent context.
 const maxStatusJSONIncomplete = 20
@@ -30,7 +30,7 @@ type statusJSON struct {
 	Incomplete    []string       `json:"incomplete"`
 }
 
-// CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_StatusCmd; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-CLI-001; FEATURE="StatusCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_StatusCmd; UPDATED=2026-08-29
 var StatusCmd = &cobra.Command{
 	Use:   "status <REQ-ID>",
 	Short: "Show implementation progress for a requirement",

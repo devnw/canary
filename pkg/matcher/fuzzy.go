@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CBIN-133; FEATURE="FuzzyMatcher"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_133_Engine_Levenshtein; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-253; FEATURE="FuzzyMatcher"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_133_Engine_Levenshtein; OWNER=canary; UPDATED=2026-08-29
 package matcher
 
 import (

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyCreation; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyCreation; UPDATED=2026-08-29
 func TestDependencyCreation(t *testing.T) {
 	dep := Dependency{
 		Source:      "CBIN-147",
@@ -20,7 +20,7 @@ func TestDependencyCreation(t *testing.T) {
 	assert.Equal(t, "Requires multi-project support", dep.Description)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestPartialFeatureDependency; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestPartialFeatureDependency; UPDATED=2026-08-29
 func TestPartialFeatureDependency(t *testing.T) {
 	dep := Dependency{
 		Source:           "CBIN-147",
@@ -38,7 +38,7 @@ func TestPartialFeatureDependency(t *testing.T) {
 	assert.Equal(t, "Only needs project registry and context management", dep.Description)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestPartialAspectDependency; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestPartialAspectDependency; UPDATED=2026-08-29
 func TestPartialAspectDependency(t *testing.T) {
 	dep := Dependency{
 		Source:         "CBIN-147",
@@ -54,7 +54,7 @@ func TestPartialAspectDependency(t *testing.T) {
 	assert.Equal(t, "Only needs Storage aspect of database migrations", dep.Description)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyStatusCreation; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyStatusCreation; UPDATED=2026-08-29
 func TestDependencyStatusCreation(t *testing.T) {
 	status := DependencyStatus{
 		Dependency: Dependency{
@@ -71,7 +71,7 @@ func TestDependencyStatusCreation(t *testing.T) {
 	assert.Equal(t, "All required features are TESTED", status.Message)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyGraphCreation; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyGraphCreation; UPDATED=2026-08-29
 func TestDependencyGraphCreation(t *testing.T) {
 	graph := DependencyGraph{
 		Nodes: map[string][]Dependency{
@@ -89,7 +89,7 @@ func TestDependencyGraphCreation(t *testing.T) {
 	assert.Len(t, graph.Nodes["CBIN-146"], 1)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyGraphGetDependencies; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyGraphGetDependencies; UPDATED=2026-08-29
 func TestDependencyGraphGetDependencies(t *testing.T) {
 	graph := DependencyGraph{
 		Nodes: map[string][]Dependency{
@@ -107,7 +107,7 @@ func TestDependencyGraphGetDependencies(t *testing.T) {
 	assert.Len(t, deps, 0)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyGraphAddDependency; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyGraphAddDependency; UPDATED=2026-08-29
 func TestDependencyGraphAddDependency(t *testing.T) {
 	graph := NewDependencyGraph()
 
@@ -124,7 +124,7 @@ func TestDependencyGraphAddDependency(t *testing.T) {
 	assert.Equal(t, "CBIN-146", graph.Nodes["CBIN-147"][0].Target)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyGraphGetReverseDependencies; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyModel"; ASPECT=Storage; STATUS=TESTED; TEST=TestDependencyGraphGetReverseDependencies; UPDATED=2026-08-29
 func TestDependencyGraphGetReverseDependencies(t *testing.T) {
 	graph := DependencyGraph{
 		Nodes: map[string][]Dependency{

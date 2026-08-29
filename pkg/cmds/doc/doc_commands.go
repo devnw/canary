@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CBIN-136; FEATURE="DocCLICommands"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_136_CLI_DocWorkflow; DOC=user:docs/user/documentation-tracking-guide.md; DOC_HASH=1e32f44252c80284; UPDATED=2025-10-16
+// CANARY: REQ=CP-255; FEATURE="DocCLICommands"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_136_CLI_DocWorkflow; DOC=user:docs/user/documentation-tracking-guide.md; DOC_HASH=1e32f44252c80284; UPDATED=2026-08-29
 
 package doc
 
@@ -21,7 +21,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-136; FEATURE="DocParentCommand"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=CP-255; FEATURE="DocParentCommand"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-16
 var DocCmd = &cobra.Command{
 	Use:   "doc",
 	Short: "Documentation management commands",
@@ -40,7 +40,7 @@ files. The system uses SHA256 hashing to detect staleness and keep docs in sync 
   canary doc status --all`,
 }
 
-// CANARY: REQ=CBIN-136; FEATURE="DocCreateCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_136_CLI_DocCreate; UPDATED=2025-10-16
+// CANARY: REQ=CP-255; FEATURE="DocCreateCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_136_CLI_DocCreate; UPDATED=2026-08-29
 var docCreateCmd = &cobra.Command{
 	Use:   "create <REQ-ID> --type <doc-type> --output <path>",
 	Short: "Create documentation from template",
@@ -141,7 +141,7 @@ The command will:
 	},
 }
 
-// CANARY: REQ=CBIN-136; FEATURE="DocUpdateCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_136_CLI_BatchUpdate; UPDATED=2025-10-16
+// CANARY: REQ=CP-255; FEATURE="DocUpdateCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_136_CLI_BatchUpdate; UPDATED=2026-08-29
 var docUpdateCmd = &cobra.Command{
 	Use:   "update [REQ-ID]",
 	Short: "Update documentation hash after changes",
@@ -303,7 +303,7 @@ Batch Operations:
 	},
 }
 
-// CANARY: REQ=CBIN-136; FEATURE="DocStatusCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_136_CLI_DocStatus; UPDATED=2025-10-16
+// CANARY: REQ=CP-255; FEATURE="DocStatusCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_136_CLI_DocStatus; UPDATED=2026-08-29
 var docStatusCmd = &cobra.Command{
 	Use:   "status [REQ-ID]",
 	Short: "Check documentation staleness status",
@@ -425,7 +425,7 @@ Status values:
 	},
 }
 
-// CANARY: REQ=CBIN-136; FEATURE="DocReportCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_136_CLI_DocReport; UPDATED=2025-10-16
+// CANARY: REQ=CP-255; FEATURE="DocReportCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_136_CLI_DocReport; UPDATED=2026-08-29
 var docReportCmd = &cobra.Command{
 	Use:   "report",
 	Short: "Generate documentation coverage and staleness report",

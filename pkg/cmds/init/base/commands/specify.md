@@ -21,17 +21,17 @@ The text the user typed after `/canary.specify` is the feature description.
 Given that feature description, do this:
 
 1. **Generate requirement ID**:
-   - Scan existing `.canary/specs/` directory for highest {{.ReqID}}-SECURITY_REVIEW-### number
-   - Assign next sequential ID (e.g., if {{.ReqID}}-SECURITY_REVIEW-105 exists, use {{.ReqID}}-SECURITY_REVIEW-106)
-   - Format: {{.ReqID}}-SECURITY_REVIEW-XXX (zero-padded 3 digits)
+   - Scan existing `.canary/specs/` directory for highest <PROJECT_KEY>-<ASPECT>-### number
+   - Assign next sequential ID (e.g., if <PROJECT_KEY>-<ASPECT>-105 exists, use <PROJECT_KEY>-<ASPECT>-106)
+   - Format: <PROJECT_KEY>-<ASPECT>-XXX (zero-padded 3 digits)
 
 2. **Generate concise feature name** (2-4 words):
    - Extract meaningful keywords from description
    - Use action-noun format (e.g., "user-authentication", "data-validation")
    - Keep technical terms (OAuth2, JWT, API, etc.)
 
-3. **Run the script** `.canary/scripts/create-new-requirement.sh --req-id {{.ReqID}}-SECURITY_REVIEW-XXX --feature "name"`:
-   - Creates `.canary/specs/{{.ReqID}}-SECURITY_REVIEW-XXX-feature-name/` directory
+3. **Run the script** `.canary/scripts/create-new-requirement.sh --req-id <PROJECT_KEY>-<ASPECT>-XXX --feature "name"`:
+   - Creates `.canary/specs/<PROJECT_KEY>-<ASPECT>-XXX-feature-name/` directory
    - Initializes `spec.md` from template
    - Returns SPEC_FILE path
 
@@ -48,7 +48,7 @@ Given that feature description, do this:
 
 5. **Generate CANARY token**:
    ```
-   // CANARY: REQ={{.ReqID}}-SECURITY_REVIEW-XXX; FEATURE="FeatureName"; ASPECT=API; STATUS=STUB; UPDATED=YYYY-MM-DD
+   // CANARY: REQ=<PROJECT_KEY>-<ASPECT>-XXX; FEATURE="FeatureName"; ASPECT=API; STATUS=STUB; UPDATED=YYYY-MM-DD
    ```
    - Determine appropriate ASPECT based on feature description
    - Set STATUS=STUB (will be promoted when implemented)
@@ -60,7 +60,7 @@ Given that feature description, do this:
 
 7. **Create requirement tracking entry**:
    - Update `.canary/requirements.md` (create if doesn't exist)
-   - Add entry: `- [ ] {{.ReqID}}-SECURITY_REVIEW-XXX - FeatureName (STATUS=STUB)`
+   - Add entry: `- [ ] <PROJECT_KEY>-<ASPECT>-XXX - FeatureName (STATUS=STUB)`
 
 8. **Report completion**:
    - Requirement ID and feature name
@@ -85,17 +85,17 @@ After creating the spec, validate:
 
 User input: "Add user authentication with email/password and OAuth2 support"
 
-1. Generate ID: {{.ReqID}}-SECURITY_REVIEW-107
+1. Generate ID: <PROJECT_KEY>-<ASPECT>-107
 2. Feature name: "user-authentication"
-3. Create: `.canary/specs/{{.ReqID}}-SECURITY_REVIEW-107-user-authentication/spec.md`
+3. Create: `.canary/specs/<PROJECT_KEY>-<ASPECT>-107-user-authentication/spec.md`
 4. CANARY token:
    ```
-   // CANARY: REQ={{.ReqID}}-SECURITY_REVIEW-107; FEATURE="UserAuthentication"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-16
+   // CANARY: REQ=<PROJECT_KEY>-<ASPECT>-107; FEATURE="UserAuthentication"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-16
    ```
 5. Suggest placement:
    ```go
    // File: src/auth/auth.go
-   // CANARY: REQ={{.ReqID}}-API-107; FEATURE="UserAuthentication"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-16
+   // CANARY: REQ=<PROJECT_KEY>-API-107; FEATURE="UserAuthentication"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-16
    package auth
 
    func Authenticate(credentials Credentials) (*Session, error) {

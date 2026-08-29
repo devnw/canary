@@ -8,6 +8,11 @@ alwaysApply: false
 
 This project uses CANARY. For the command you're running, read only that file under `.canary/commands/` (e.g. scan.md for /canary.scan).
 
+- **View first:** `canary view <REQ-ID>` gives the full picture (status, files, tests, deps, spec, ticket) in one call — prefer it over separate show/status/files calls. `--json` for machine-readable output; `--limit` raises the per-section cap (default 10).
 - **Scan:** Use the one-line stdout from `canary scan` (CANARY_SCAN tokens=...) for metrics; do not read status.json unless needed.
 - **Verify:** Use stdout CANARY_VERIFY_OK or stderr CANARY_VERIFY_FAIL lines; open GAP_ANALYSIS.md only when fixing claims.
 - **Token format:** `// CANARY: REQ=ID; FEATURE="Name"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD` — status STUB→IMPL→TESTED→BENCHED.
+- **Limits:** `list`/`search`/`drift`/`view`/`onboard`/`ticket sync`/`upgrade` default to a small `--limit` (20; `view` uses 10 per section) to protect context. `list` and `search` accept `--limit -1` for unlimited; the rest just take a larger `--limit`. Truncated output includes a hint to raise it.
+- **Drift:** `canary drift --strict` catches tokens whose file was committed after their `UPDATED` date, staleness, and (with an indexed database) doc drift — exits 2 on any finding, good for CI.
+- **Ticket sources:** JIRA and other sources are configured in `.canary/project.yaml`'s `sources:` list. `canary ticket sync` computes a reconciliation plan and, without credentials, stays plan-only and never touches the network.
+- **Dependencies:** `canary deps graph <REQ-ID> --format mermaid` (or `--format ascii`, the default) shows the dependency tree; `canary deps check <REQ-ID>` reports whether dependencies are satisfied.

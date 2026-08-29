@@ -13,7 +13,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-147; FEATURE="DepsParentCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsParentCommand; UPDATED=2025-10-18
+// CANARY: REQ=CP-262; FEATURE="DepsParentCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsParentCommand; UPDATED=2026-08-29
 
 // CreateDepsCommand creates the parent deps command
 func CreateDepsCommand() *cobra.Command {
@@ -40,7 +40,7 @@ Available commands:
 	return cmd
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DepsCheckCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsCheckCommand; UPDATED=2025-10-18
+// CANARY: REQ=CP-262; FEATURE="DepsCheckCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsCheckCommand; UPDATED=2026-08-29
 
 // createDepsCheckCommand creates the deps check command
 func createDepsCheckCommand() *cobra.Command {
@@ -126,8 +126,8 @@ Example:
 	return cmd
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DepsGraphCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsGraphCommand; UPDATED=2025-10-18
-// CANARY: REQ=CBIN-203; FEATURE="MermaidGraph"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_203_FormatMermaid; UPDATED=2026-08-28
+// CANARY: REQ=CP-262; FEATURE="DepsGraphCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsGraphCommand; UPDATED=2026-08-29
+// CANARY: REQ=CP-269; FEATURE="MermaidGraph"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_203_FormatMermaid; UPDATED=2026-08-28
 
 // createDepsGraphCommand creates the deps graph command
 func createDepsGraphCommand() *cobra.Command {
@@ -203,7 +203,7 @@ Example:
 	return cmd
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DepsReverseCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsReverseCommand; UPDATED=2025-10-18
+// CANARY: REQ=CP-262; FEATURE="DepsReverseCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsReverseCommand; UPDATED=2026-08-29
 
 // createDepsReverseCommand creates the deps reverse command
 func createDepsReverseCommand() *cobra.Command {
@@ -262,7 +262,7 @@ Example:
 	return cmd
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DepsValidateCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsValidateCommand,TestDepsValidateCommand_DetectsCycle; UPDATED=2025-10-18
+// CANARY: REQ=CP-262; FEATURE="DepsValidateCommand"; ASPECT=CLI; STATUS=TESTED; TEST=TestDepsValidateCommand,TestDepsValidateCommand_DetectsCycle; UPDATED=2026-08-29
 
 // createDepsValidateCommand creates the deps validate command
 func createDepsValidateCommand() *cobra.Command {

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies_Valid; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies_Valid; UPDATED=2026-08-29
 func TestValidateDependencies_Valid(t *testing.T) {
 	graph := NewDependencyGraph()
 	graph.AddDependency(Dependency{Source: "CBIN-147", Target: "CBIN-146", Type: DependencyTypeFull})
@@ -23,7 +23,7 @@ func TestValidateDependencies_Valid(t *testing.T) {
 	assert.Len(t, result.Errors, 0)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies_SimpleCycle; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies_SimpleCycle; UPDATED=2026-08-29
 func TestValidateDependencies_SimpleCycle(t *testing.T) {
 	graph := NewDependencyGraph()
 	// Create cycle: A -> B -> A
@@ -43,7 +43,7 @@ func TestValidateDependencies_SimpleCycle(t *testing.T) {
 	assert.Contains(t, cycleStr, "CBIN-101")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies_ComplexCycle; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies_ComplexCycle; UPDATED=2026-08-29
 func TestValidateDependencies_ComplexCycle(t *testing.T) {
 	graph := NewDependencyGraph()
 	// Create cycle: A -> B -> C -> A
@@ -59,7 +59,7 @@ func TestValidateDependencies_ComplexCycle(t *testing.T) {
 	assert.Len(t, result.Cycles[0], 4) // CBIN-100 -> CBIN-101 -> CBIN-102 -> CBIN-100
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies_MultipleCycles; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies_MultipleCycles; UPDATED=2026-08-29
 func TestValidateDependencies_MultipleCycles(t *testing.T) {
 	graph := NewDependencyGraph()
 	// Cycle 1: A -> B -> A
@@ -77,7 +77,7 @@ func TestValidateDependencies_MultipleCycles(t *testing.T) {
 	assert.GreaterOrEqual(t, len(result.Cycles), 1)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies_SelfCycle; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies_SelfCycle; UPDATED=2026-08-29
 func TestValidateDependencies_SelfCycle(t *testing.T) {
 	graph := NewDependencyGraph()
 	// Self-cycle: A -> A
@@ -91,7 +91,7 @@ func TestValidateDependencies_SelfCycle(t *testing.T) {
 	assert.Contains(t, result.Cycles[0], "CBIN-100")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies_DAG; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies_DAG; UPDATED=2026-08-29
 func TestValidateDependencies_DAG(t *testing.T) {
 	graph := NewDependencyGraph()
 	// Valid DAG:
@@ -112,7 +112,7 @@ func TestValidateDependencies_DAG(t *testing.T) {
 	assert.Len(t, result.Cycles, 0)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies_EmptyGraph; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateDependencies_EmptyGraph; UPDATED=2026-08-29
 func TestValidateDependencies_EmptyGraph(t *testing.T) {
 	graph := NewDependencyGraph()
 	validator := NewDependencyValidator(graph)
@@ -122,7 +122,7 @@ func TestValidateDependencies_EmptyGraph(t *testing.T) {
 	assert.Len(t, result.Cycles, 0)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateRequirementExists; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidateRequirementExists; UPDATED=2026-08-29
 func TestValidateRequirementExists(t *testing.T) {
 	// Mock spec finder that knows about CBIN-146 and CBIN-145
 	specFinder := &MockSpecFinder{
@@ -146,7 +146,7 @@ func TestValidateRequirementExists(t *testing.T) {
 	assert.Equal(t, "CBIN-999", result.MissingRequirements[0])
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidationResult_FormatErrors; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestValidationResult_FormatErrors; UPDATED=2026-08-29
 func TestValidationResult_FormatErrors(t *testing.T) {
 	result := ValidationResult{
 		IsValid: false,
@@ -168,7 +168,7 @@ func TestValidationResult_FormatErrors(t *testing.T) {
 	assert.Contains(t, formatted, "CBIN-999")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestDetectCycles_LongPath; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyValidator"; ASPECT=Engine; STATUS=TESTED; TEST=TestDetectCycles_LongPath; UPDATED=2026-08-29
 func TestDetectCycles_LongPath(t *testing.T) {
 	graph := NewDependencyGraph()
 	// Create long cycle: A -> B -> C -> D -> E -> A

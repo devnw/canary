@@ -1,6 +1,6 @@
 package gate
 
-// CANARY: REQ=CBIN-210; FEATURE="GenericScanner"; ASPECT=Engine; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-02
+// CANARY: REQ=CP-273; FEATURE="GenericScanner"; ASPECT=Engine; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-02
 import (
 	"bufio"
 	"errors"
@@ -113,6 +113,11 @@ func (s *Scanner) ScanRepository(root string) (ScanResult, error) {
 			ln++
 			m := scannerCanaryRe.FindStringSubmatch(sc.Text())
 			if len(m) < 2 {
+				continue
+			}
+			// A MIGRATE line is free-text guidance, not a KV token, and must
+			// never reach parseKV (a MIGRATE line must never abort a scan).
+			if strings.HasPrefix(strings.TrimSpace(m[1]), "MIGRATE") {
 				continue
 			}
 			segment := normalizeSegment(m[1])

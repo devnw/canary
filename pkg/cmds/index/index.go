@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/spf13/cobra"
 
 	"devnw.dev/canary/pkg/canaryscan"
@@ -16,7 +18,28 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-124; FEATURE="IndexCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-285; FEATURE="IndexIgnoreFilter"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CP_285_IndexRespectsCanaryIgnore,TestCANARY_CP_285_IsGrepMatchIgnored; UPDATED=2026-08-29
+// isGrepMatchIgnored reports whether file (as reported by grep -r rooted at
+// rootPath, e.g. "<rootPath>/pkg/docs/x.go" or a relative variant) falls
+// under a .canaryignore pattern. `canary index` used to shell out to grep
+// over the entire tree with no .canaryignore filtering, so ignored
+// directories (docs/, specs/, etc.) were silently indexed even though
+// `canary scan` correctly excluded them -- causing the index and the scan
+// report to diverge. ignorePatterns may be nil, in which case nothing is
+// ignored.
+func isGrepMatchIgnored(rootPath, file string, ignorePatterns *ignore.GitIgnore) bool {
+	if ignorePatterns == nil {
+		return false
+	}
+	rel, err := filepath.Rel(rootPath, file)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		rel = file
+	}
+	rel = filepath.ToSlash(rel)
+	return ignorePatterns.MatchesPath(rel)
+}
+
+// CANARY: REQ=CP-245; FEATURE="IndexCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 var IndexCmd = &cobra.Command{
 	Use:   "index [flags]",
 	Short: "Build or rebuild the CANARY token database",
@@ -57,6 +80,21 @@ The database is stored at .canary/canary.db by default.`,
 			}
 		}
 
+		// The index is derived state: rebuild it from scratch so rows for
+		// tokens that no longer exist on disk (remapped REQ IDs, deleted
+		// files) never survive a re-index (CP-285).
+		if err := db.DeleteAllTokens(); err != nil {
+			return fmt.Errorf("clear token index: %w", err)
+		}
+
+		// Load .canaryignore up front (CP-285) so grep matches under ignored
+		// directories (docs/, specs/, etc.) never reach the index -- keeping
+		// `canary index` consistent with what `canary scan` reports.
+		ignorePatterns, ierr := canaryscan.LoadCanaryIgnore(rootPath)
+		if ierr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to load .canaryignore: %v\n", ierr)
+		}
+
 		// Scan for all CANARY tokens
 		grepCmd := exec.Command("grep",
 			"-rn",
@@ -89,6 +127,9 @@ The database is stored at .canary/canary.db by default.`,
 			}
 
 			file := parts[0]
+			if isGrepMatchIgnored(rootPath, file, ignorePatterns) {
+				continue
+			}
 			lineNum := 0
 			//nolint:errcheck // Best-effort parse, default to 0 on failure
 			fmt.Sscanf(parts[1], "%d", &lineNum)
@@ -176,10 +217,6 @@ The database is stored at .canary/canary.db by default.`,
 
 		// Index diagram references (mermaid) so `canary view` can answer without grepping.
 		reg := sources.LoadFromRoot(rootPath)
-		ignorePatterns, ierr := canaryscan.LoadCanaryIgnore(rootPath)
-		if ierr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to load .canaryignore: %v\n", ierr)
-		}
 		diagRefs, derr := canaryscan.ScanDiagramRefs(rootPath, nil, reg, ignorePatterns)
 		if derr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: diagram ref scan failed: %v\n", derr)
@@ -193,6 +230,34 @@ The database is stored at .canary/canary.db by default.`,
 				fmt.Fprintf(os.Stderr, "Warning: failed to index diagram refs: %v\n", err)
 			} else if len(refs) > 0 {
 				fmt.Printf("Indexed %d diagram reference(s)\n", len(refs))
+			}
+		}
+
+		// CANARY: REQ=CP-274; FEATURE="MigrateNotesIndex"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-29
+		// Index CANARY:MIGRATE guidance notes so `canary view` can surface
+		// migration guidance without grepping. One ref row per (note,
+		// associated ReqID); a note that matched no requirement still gets
+		// one row with req_id='' so it isn't silently dropped.
+		migrateNotes, merr := canaryscan.ScanMigrateNotes(rootPath, nil, ignorePatterns, reg)
+		if merr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: migrate note scan failed: %v\n", merr)
+		}
+		if merr == nil {
+			migRefs := make([]storage.Ref, 0, len(migrateNotes))
+			for _, n := range migrateNotes {
+				// n.ReqIDs is already normalized by ExtractMigrateNotes.
+				if len(n.ReqIDs) == 0 {
+					migRefs = append(migRefs, storage.Ref{ReqID: "", Kind: "migrate", FilePath: n.File, LineNumber: n.Line, Context: n.Text})
+					continue
+				}
+				for _, id := range n.ReqIDs {
+					migRefs = append(migRefs, storage.Ref{ReqID: id, Kind: "migrate", FilePath: n.File, LineNumber: n.Line, Context: n.Text})
+				}
+			}
+			if err := db.ReplaceRefs("migrate", migRefs); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to index migration notes: %v\n", err)
+			} else if len(migrateNotes) > 0 {
+				fmt.Printf("Indexed %d migration note(s)\n", len(migrateNotes))
 			}
 		}
 

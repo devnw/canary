@@ -116,3 +116,40 @@ func TestCBIN139_AspectScopedIDGen_CaseInsensitive(t *testing.T) {
 		t.Errorf("GenerateNextID() = %q, want %q", got, want)
 	}
 }
+
+func TestCBIN139_GenerateNextIDIn(t *testing.T) {
+	// Create temporary root directory
+	tmpRoot := t.TempDir()
+
+	// Create .canary/specs with some existing specs
+	specsDir := filepath.Join(tmpRoot, ".canary", "specs")
+	if err := os.MkdirAll(specsDir, 0755); err != nil {
+		t.Fatalf("Failed to create specs dir: %v", err)
+	}
+
+	// Create some existing specs
+	_ = os.MkdirAll(filepath.Join(specsDir, "CBIN-CLI-001-feature1"), 0755)
+	_ = os.MkdirAll(filepath.Join(specsDir, "CBIN-CLI-003-feature2"), 0755) // Gap at 002
+	_ = os.MkdirAll(filepath.Join(specsDir, "CBIN-API-001-feature3"), 0755)
+
+	tests := []struct {
+		aspect string
+		want   string
+	}{
+		{"CLI", "CBIN-CLI-004"},       // Next after 003 (ignores gap)
+		{"API", "CBIN-API-002"},       // Next after 001
+		{"Engine", "CBIN-Engine-001"}, // First for this aspect
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.aspect, func(t *testing.T) {
+			got, err := GenerateNextIDIn(tmpRoot, "CBIN", tt.aspect)
+			if err != nil {
+				t.Fatalf("GenerateNextIDIn() error = %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("GenerateNextIDIn() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

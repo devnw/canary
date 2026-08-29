@@ -15,7 +15,7 @@ $ARGUMENTS
 List all implementation files for a requirement, grouped by aspect with token counts.
 
 1. **Parse requirement ID**:
-   - Extract REQ-ID from arguments (e.g., {{.ReqID}}-SECURITY_REVIEW-XXX)
+   - Extract REQ-ID from arguments (e.g., <PROJECT_KEY>-<ASPECT>-XXX)
    - Validate format
 
 2. **Run canary files command**:
@@ -45,7 +45,7 @@ List all implementation files for a requirement, grouped by aspect with token co
 ## Example Output
 
 ```markdown
-## Implementation Files for {{.ReqID}}-API-105
+## Implementation Files for <PROJECT_KEY>-API-105
 
 ### API
 - src/api/user.go (4 tokens)

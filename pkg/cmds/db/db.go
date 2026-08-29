@@ -8,7 +8,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-129; FEATURE="MigrateCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-250; FEATURE="MigrateCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 var MigrateCmd = &cobra.Command{
 	Use:   "migrate <steps>",
 	Short: "Run database migrations",
@@ -34,7 +34,7 @@ Steps can be:
 	},
 }
 
-// CANARY: REQ=CBIN-129; FEATURE="RollbackCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CP-250; FEATURE="RollbackCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 var RollbackCmd = &cobra.Command{
 	Use:   "rollback <steps>",
 	Short: "Roll back database migrations",

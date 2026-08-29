@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_FullDependency; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_FullDependency; UPDATED=2026-08-29
 func TestParseDependencies_FullDependency(t *testing.T) {
 	specContent := `# Specification
 
@@ -39,7 +39,7 @@ func TestParseDependencies_FullDependency(t *testing.T) {
 	assert.Contains(t, deps[1].Description, "LegacyMigration")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_PartialFeatures; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_PartialFeatures; UPDATED=2026-08-29
 func TestParseDependencies_PartialFeatures(t *testing.T) {
 	specContent := `# Specification
 
@@ -74,7 +74,7 @@ func TestParseDependencies_PartialFeatures(t *testing.T) {
 	assert.Contains(t, deps[1].RequiredFeatures, "GapService")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_PartialAspect; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_PartialAspect; UPDATED=2026-08-29
 func TestParseDependencies_PartialAspect(t *testing.T) {
 	specContent := `# Specification
 
@@ -105,7 +105,7 @@ func TestParseDependencies_PartialAspect(t *testing.T) {
 	assert.Equal(t, "Engine", deps[1].RequiredAspect)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_MixedTypes; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_MixedTypes; UPDATED=2026-08-29
 func TestParseDependencies_MixedTypes(t *testing.T) {
 	specContent := `# Specification
 
@@ -141,7 +141,7 @@ func TestParseDependencies_MixedTypes(t *testing.T) {
 	assert.Equal(t, "Storage", deps[2].RequiredAspect)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_NoDependencies; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_NoDependencies; UPDATED=2026-08-29
 func TestParseDependencies_NoDependencies(t *testing.T) {
 	specContent := `# Specification
 
@@ -155,7 +155,7 @@ func TestParseDependencies_NoDependencies(t *testing.T) {
 	assert.Len(t, deps, 0)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_EmptyDependencySection; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_EmptyDependencySection; UPDATED=2026-08-29
 func TestParseDependencies_EmptyDependencySection(t *testing.T) {
 	specContent := `# Specification
 
@@ -170,7 +170,7 @@ func TestParseDependencies_EmptyDependencySection(t *testing.T) {
 	assert.Len(t, deps, 0)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_InvalidFormat; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_InvalidFormat; UPDATED=2026-08-29
 func TestParseDependencies_InvalidFormat(t *testing.T) {
 	testCases := []struct {
 		name    string
@@ -211,7 +211,7 @@ func TestParseDependencies_InvalidFormat(t *testing.T) {
 	}
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependenciesFromFile; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependenciesFromFile; UPDATED=2026-08-29
 func TestParseDependenciesFromFile(t *testing.T) {
 	// This will test the file-based parser
 	// For now, just test that it handles non-existent files
@@ -219,7 +219,7 @@ func TestParseDependenciesFromFile(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_PreservesDescription; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="DependencyParser"; ASPECT=Engine; STATUS=TESTED; TEST=TestParseDependencies_PreservesDescription; UPDATED=2026-08-29
 func TestParseDependencies_PreservesDescription(t *testing.T) {
 	specContent := `## Dependencies
 

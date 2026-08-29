@@ -25,17 +25,19 @@ Canary MCP Server
 =================
 Server listening on http://localhost:8080
 
-Available MCP Tools:
-  - list     - List CANARY tokens
-  - show     - Show requirement details
-  - create   - Create new token
-  - status   - Show progress
-  - search   - Search tokens
-  - next     - Get next priority
-  - scan     - Scan codebase
+Available MCP Tools (19 total):
+  - view, deps                                   - one-call requirement context
+  - list, show, create, status, search, next     - core token management
+  - scan, specify, plan, implement, index        - workflow (specify/plan/index are stubs)
+  - files, grep, prioritize                      - query & management
+  - bug-list, bug-create                         - bug tracking (bug-create is a stub)
+  - gap-mark                                     - gap analysis (stub)
 
 Press Ctrl+C to stop
 ```
+
+Five tools are stubs returning placeholder responses today: `specify`, `plan`,
+`index`, `bug-create`, `gap-mark`.
 
 ### 3. Test the Server
 
@@ -80,12 +82,22 @@ curl -X POST http://localhost:8080/mcp \
 
 ## Available Tools
 
+### view
+Full picture of one requirement in a single call: status, files, tests, deps, spec/plan, diagrams, ticket. Use this FIRST instead of chaining show/status/files.
+- `reqId`: Required
+- `limit`: Max entries per list section (default: 10)
+
+### deps
+Dependency IDs for a requirement (forward or reverse). IDs only; follow up with `view` for detail.
+- `reqId`: Required
+- `direction`: `forward` (default) or `reverse`
+
 ### list
 List CANARY tokens with optional filtering.
 - `status`: STUB, IMPL, TESTED, BENCHED
 - `aspect`: API, CLI, Engine, etc.
 - `owner`: Filter by owner
-- `limit`: Max results (default: 100)
+- `limit`: Max results (default: 20, max: 100); response includes `total` (true match count before capping)
 
 ### show
 Display all tokens for a specific requirement.
@@ -118,7 +130,7 @@ Get next priority requirement.
 - `aspect`: Optional filter
 
 ### scan
-Scan codebase (placeholder).
+Scan codebase for CANARY tokens (calls the real `canaryscan` scanner).
 - `root`: Directory to scan (default: ".")
 - `projectOnly`: Boolean filter
 

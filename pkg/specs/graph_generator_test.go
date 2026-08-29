@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestBuildGraphFromSpecs; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestBuildGraphFromSpecs; UPDATED=2026-08-29
 func TestBuildGraphFromSpecs(t *testing.T) {
 	// Mock spec loader that returns dependencies
 	specLoader := &MockSpecLoader{
@@ -32,7 +32,7 @@ func TestBuildGraphFromSpecs(t *testing.T) {
 	assert.Len(t, graph.GetDependencies("CBIN-146"), 1)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestGetTransitiveDependencies; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestGetTransitiveDependencies; UPDATED=2026-08-29
 func TestGetTransitiveDependencies(t *testing.T) {
 	graph := NewDependencyGraph()
 	// CBIN-147 -> CBIN-146 -> CBIN-129
@@ -48,7 +48,7 @@ func TestGetTransitiveDependencies(t *testing.T) {
 	assert.Contains(t, transitive, "CBIN-129")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestGetTransitiveDependencies_NoDuplicates; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestGetTransitiveDependencies_NoDuplicates; UPDATED=2026-08-29
 func TestGetTransitiveDependencies_NoDuplicates(t *testing.T) {
 	graph := NewDependencyGraph()
 	// Diamond dependency:
@@ -72,7 +72,7 @@ func TestGetTransitiveDependencies_NoDuplicates(t *testing.T) {
 	assert.Contains(t, transitive, "CBIN-129")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestFormatASCIITree; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestFormatASCIITree; UPDATED=2026-08-29
 func TestFormatASCIITree(t *testing.T) {
 	graph := NewDependencyGraph()
 	graph.AddDependency(Dependency{Source: "CBIN-147", Target: "CBIN-146", Type: DependencyTypeFull})
@@ -104,7 +104,7 @@ func TestFormatASCIITree(t *testing.T) {
 	assert.Contains(t, tree, "└──")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestFormatASCIITree_WithStatus; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestFormatASCIITree_WithStatus; UPDATED=2026-08-29
 func TestFormatASCIITree_WithStatus(t *testing.T) {
 	graph := NewDependencyGraph()
 	graph.AddDependency(Dependency{Source: "CBIN-147", Target: "CBIN-146", Type: DependencyTypeFull})
@@ -124,7 +124,7 @@ func TestFormatASCIITree_WithStatus(t *testing.T) {
 	assert.Contains(t, tree, "✅") // Satisfied
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestFormatASCIITree_Blocking; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestFormatASCIITree_Blocking; UPDATED=2026-08-29
 func TestFormatASCIITree_Blocking(t *testing.T) {
 	graph := NewDependencyGraph()
 	graph.AddDependency(Dependency{Source: "CBIN-147", Target: "CBIN-146", Type: DependencyTypeFull})
@@ -144,7 +144,7 @@ func TestFormatASCIITree_Blocking(t *testing.T) {
 	assert.Contains(t, tree, "❌") // Blocking
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestFormatASCIITree_EmptyGraph; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestFormatASCIITree_EmptyGraph; UPDATED=2026-08-29
 func TestFormatASCIITree_EmptyGraph(t *testing.T) {
 	graph := NewDependencyGraph()
 
@@ -156,7 +156,7 @@ func TestFormatASCIITree_EmptyGraph(t *testing.T) {
 	assert.Contains(t, tree, "No dependencies")
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestFormatDependencyChain; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestFormatDependencyChain; UPDATED=2026-08-29
 func TestFormatDependencyChain(t *testing.T) {
 	deps := []string{"CBIN-147", "CBIN-146", "CBIN-129"}
 
@@ -166,7 +166,7 @@ func TestFormatDependencyChain(t *testing.T) {
 	assert.Equal(t, "CBIN-147 → CBIN-146 → CBIN-129", chain)
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestGetDependencyDepth; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestGetDependencyDepth; UPDATED=2026-08-29
 func TestGetDependencyDepth(t *testing.T) {
 	graph := NewDependencyGraph()
 	// CBIN-147 -> CBIN-146 -> CBIN-129 (depth 2)
@@ -179,7 +179,7 @@ func TestGetDependencyDepth(t *testing.T) {
 	assert.Equal(t, 2, depth) // Two levels deep
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestGetDependencyDepth_NoDepencies; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestGetDependencyDepth_NoDepencies; UPDATED=2026-08-29
 func TestGetDependencyDepth_NoDependencies(t *testing.T) {
 	graph := NewDependencyGraph()
 
@@ -189,7 +189,7 @@ func TestGetDependencyDepth_NoDependencies(t *testing.T) {
 	assert.Equal(t, 0, depth) // No dependencies
 }
 
-// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestFormatCompactList; UPDATED=2025-10-18
+// CANARY: REQ=CBIN-147; FEATURE="GraphGenerator"; ASPECT=Engine; STATUS=TESTED; TEST=TestFormatCompactList; UPDATED=2026-08-29
 func TestFormatCompactList(t *testing.T) {
 	graph := NewDependencyGraph()
 	graph.AddDependency(Dependency{Source: "CBIN-147", Target: "CBIN-146", Type: DependencyTypeFull})

@@ -15,7 +15,7 @@ $ARGUMENTS
 Display implementation progress for a requirement with completion percentage and breakdown.
 
 1. **Parse requirement ID**:
-   - Extract REQ-ID from arguments (e.g., {{.ReqID}}-SECURITY_REVIEW-102)
+   - Extract REQ-ID from arguments (e.g., <PROJECT_KEY>-<ASPECT>-102)
    - Validate format
 
 2. **Run canary status command**:
@@ -48,7 +48,7 @@ Display implementation progress for a requirement with completion percentage and
 ## Example Output
 
 ```markdown
-## Implementation Status for {{.ReqID}}-API-102
+## Implementation Status for <PROJECT_KEY>-API-102
 
 Progress: [========================--------] 75%
 
@@ -78,7 +78,7 @@ STUB (not started):
 
 **Next Steps:**
 1. Add tests for 3 IMPL features
-2. Plan implementation for 2 STUB features using `/canary.plan {{.ReqID}}-API-102`
+2. Plan implementation for 2 STUB features using `/canary.plan <PROJECT_KEY>-API-102`
 3. Consider adding benchmarks for performance-critical features
 ```
 

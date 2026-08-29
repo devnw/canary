@@ -35,7 +35,7 @@ List CANARY requirements with priority-based ordering and comprehensive filterin
    - `--spec-status <value>`: Filter by spec status (draft, approved, in-progress, completed, archived)
 
    **Output control:**
-   - `--limit N`: Maximum results (0 = unlimited, default: 10 for agent context)
+   - `--limit N`: Maximum results (default: 20; `0` also means the default 20; `-1` = unlimited — use deliberately)
    - `--order-by <clause>`: Custom SQL ORDER BY clause
    - `--json`: Output as JSON for parsing
    - `--include-hidden`: Show test files, templates, and examples (hidden by default)
@@ -43,7 +43,7 @@ List CANARY requirements with priority-based ordering and comprehensive filterin
    **Default behavior:**
    - Hides test files, templates, and AI agent directories
    - Orders by: priority ASC, updated_at DESC
-   - Limit: unlimited (use --limit 10 for typical agent queries)
+   - Limit: 20 (use `--limit -1` only when you deliberately need every result)
 
 4. **Display results**:
    - Show requirement ID and feature name
@@ -75,7 +75,7 @@ List CANARY requirements with priority-based ordering and comprehensive filterin
 
    **View all work for an aspect:**
    ```bash
-   canary list --aspect CLI --limit 0
+   canary list --aspect CLI --limit -1
    ```
 
 6. **Analyze and recommend**:
@@ -134,7 +134,7 @@ canary list --status STUB --limit 3
 canary list --limit 10
 
 # Comprehensive view (higher token usage)
-canary list --limit 0
+canary list --limit -1
 ```
 
 **Workflow Queries:**

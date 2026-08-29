@@ -53,24 +53,24 @@ Search for CANARY tokens matching a keyword or pattern across features, files, t
 
 Found 8 matches:
 
-📌 {{.ReqID}}-API-120 - UserAuthentication
+📌 <PROJECT_KEY>-API-120 - UserAuthentication
    Status: TESTED | Aspect: API | Priority: 1
    Location: src/api/auth/user.go:45
-   Test: TestCANARY_{{.ReqID}}_API_120_UserAuthentication
+   Test: TestCANARY_<PROJECT_KEY>_API_120_UserAuthentication
    Match: Feature name
 
-📌 {{.ReqID}}-API-120 - AuthMiddleware
+📌 <PROJECT_KEY>-API-120 - AuthMiddleware
    Status: TESTED | Aspect: API | Priority: 2
    Location: src/api/auth/middleware.go:23
-   Test: TestCANARY_{{.ReqID}}_API_120_AuthMiddleware
+   Test: TestCANARY_<PROJECT_KEY>_API_120_AuthMiddleware
    Match: Feature name
 
-📌 {{.ReqID}}-API-121 - OAuth2Integration
+📌 <PROJECT_KEY>-API-121 - OAuth2Integration
    Status: IMPL | Aspect: API | Priority: 1
    Location: src/api/auth/oauth.go:67
    Match: File path
 
-📌 {{.ReqID}}-Security-134 - SessionValidation
+📌 <PROJECT_KEY>-Security-134 - SessionValidation
    Status: TESTED | Aspect: Security | Priority: 1
    Location: src/api/auth/session.go:89
    Test: TestAuthSession
@@ -78,14 +78,14 @@ Found 8 matches:
 
 **Summary:**
 - Total matches: 8
-- Requirements: 3 ({{.ReqID}}-API-120, {{.ReqID}}-API-121, {{.ReqID}}-Security-134)
+- Requirements: 3 (<PROJECT_KEY>-API-120, <PROJECT_KEY>-API-121, <PROJECT_KEY>-Security-134)
 - Status: TESTED (5), IMPL (3)
 - Primary location: src/api/auth/
 
 **Suggested refinements:**
 - `canary grep src/api/auth` - Focus on auth directory
-- `canary grep {{.ReqID}}-API-120` - See all tokens for {{.ReqID}}-API-120
-- `canary show {{.ReqID}}-API-121` - View details of OAuth2Integration
+- `canary grep <PROJECT_KEY>-API-120` - See all tokens for <PROJECT_KEY>-API-120
+- `canary show <PROJECT_KEY>-API-121` - View details of OAuth2Integration
 ```
 
 ## Use Cases
@@ -112,7 +112,7 @@ canary grep BenchParser       # Tokens with parser benchmarks
 
 **Find by Requirement:**
 ```bash
-canary grep {{.ReqID}}-API-120    # All tokens for {{.ReqID}}-API-120
+canary grep <PROJECT_KEY>-API-120    # All tokens for <PROJECT_KEY>-API-120
 ```
 
 ## Guidelines

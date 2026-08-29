@@ -16,16 +16,16 @@ canary implement CBIN-001
 Requirement: CBIN-001 - User Authentication
 Current Phase: PHASE-2 (Implementation)
 
-? Completed:
+Completed:
   - Specification created
   - Implementation plan generated
   - Scaffolding in place
 
-?? Current Focus:
+Current Focus:
   - Implement password hashing (src/auth/hash.go)
   - Add login endpoint (src/api/auth.go)
 
-?? Next Steps:
+Next Steps:
   1. Review plan: .canary/specs/CBIN-001-user-auth/plan.md
   2. Add CANARY tokens to implementation files
   3. Write tests: TestCANARY_CBIN_001_*

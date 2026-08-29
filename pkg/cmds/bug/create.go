@@ -108,15 +108,7 @@ Examples:
 		}
 
 		// Generate CANARY comment format
-		canaryComment := fmt.Sprintf(
-			"// CANARY: BUG=%s; TITLE=\"%s\";\n"+
-				"//         ASPECT=%s; STATUS=%s;\n"+
-				"//         SEVERITY=%s; PRIORITY=%s;\n"+
-				"//         UPDATED=%s",
-			bugID, title, aspect, status,
-			severity, priority,
-			time.Now().Format("2006-01-02"),
-		)
+		canaryComment := buildBugToken(bugID, title, title, aspect, status, severity, priority, time.Now().UTC().Format("2006-01-02"))
 
 		fmt.Printf("? Created bug token: %s\n", bugID)
 		fmt.Printf("?? Title: %s\n", title)
@@ -124,6 +116,7 @@ Examples:
 		fmt.Printf("?? Location: %s:%d\n", filePath, lineNum)
 		fmt.Printf("\n%s CANARY comment to add:\n", color.YellowString("?"))
 		fmt.Println(canaryComment)
+		fmt.Println("Note: add this comment to your source file — the DB row is rebuilt from source on the next 'canary index'.")
 
 		return nil
 	},

@@ -26,8 +26,12 @@
 .amazonq/
 
 # Documentation directories (often contain example tokens)
-docs/
-specs/
+# Anchored to root only (CP-285): a bare "docs/"/"specs/" matches ANY
+# directory with that name at any depth under gitignore semantics, which
+# silently excluded nested dirs like pkg/docs/, pkg/specs/, and
+# pkg/cmds/specs/ from scans/upgrades.
+/docs/
+/specs/
 
 # Build artifacts
 bin/
@@ -75,3 +79,14 @@ status.csv
 # Plugin template/example content (contains example tokens)
 claude-plugin/
 cursor-plugin/
+
+# Init asset templates: spec-template.md/plan-template.md embed literal
+# REQID-XXX example CANARY tokens (with placeholder UPDATED=YYYY-MM-DD dates)
+# that specify.go/plan.go substitute via strings.ReplaceAll at generation
+# time. They are not real project requirements.
+pkg/cmds/init/base/templates/spec-template.md
+pkg/cmds/init/base/templates/plan-template.md
+
+# Root README teaching examples (not real tokens)
+/README.md
+/README_CANARY.md

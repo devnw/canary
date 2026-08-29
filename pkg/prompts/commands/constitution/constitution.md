@@ -28,7 +28,7 @@ Stored in `.canary/memory/constitution.md`:
 Every feature must start with a CANARY requirement token.
 
 ## Article II: Status Progression
-Status must progress: STUB ? IMPL ? TESTED ? BENCHED
+Status must progress: STUB -> IMPL -> TESTED -> BENCHED
 
 ## Article III: Test-First Development  
 Tests must be written before promoting STATUS to TESTED.

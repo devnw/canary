@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CBIN-140; FEATURE="GapCLI"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
+// CANARY: REQ=CP-257; FEATURE="GapCLI"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 package gap
 
 import (
@@ -16,12 +16,12 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CBIN-205; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-28
+// CANARY: REQ=CP-271; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-28
 // defaultGapQueryLimit caps gap query output to protect agent context.
 // Deliberately small; pass --limit -1 to explicitly request everything.
 const defaultGapQueryLimit = 20
 
-// CANARY: REQ=CBIN-140; FEATURE="GapMarkCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
+// CANARY: REQ=CP-257; FEATURE="GapMarkCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 var GapCmd = &cobra.Command{
 	Use:   "gap <subcommand>",
 	Short: "Manage gap analysis entries for implementation mistakes",
@@ -42,7 +42,7 @@ Subcommands:
   config    View or update gap analysis configuration`,
 }
 
-// CANARY: REQ=CBIN-140; FEATURE="GapMarkCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
+// CANARY: REQ=CP-257; FEATURE="GapMarkCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 var gapMarkCmd = &cobra.Command{
 	Use:   "mark <req-id> <feature> --category <category> --description <description>",
 	Short: "Record a new gap analysis entry",
@@ -121,7 +121,7 @@ Examples:
 	},
 }
 
-// CANARY: REQ=CBIN-140; FEATURE="GapQueryCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
+// CANARY: REQ=CP-257; FEATURE="GapQueryCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 var gapQueryCmd = &cobra.Command{
 	Use:   "query [flags]",
 	Short: "Query gap analysis entries with filters",
@@ -195,7 +195,7 @@ Examples:
 	},
 }
 
-// CANARY: REQ=CBIN-140; FEATURE="GapReportCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
+// CANARY: REQ=CP-257; FEATURE="GapReportCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 var gapReportCmd = &cobra.Command{
 	Use:   "report <req-id>",
 	Short: "Generate gap analysis report for a requirement",
@@ -236,7 +236,7 @@ Example:
 	},
 }
 
-// CANARY: REQ=CBIN-140; FEATURE="GapHelpfulCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
+// CANARY: REQ=CP-257; FEATURE="GapHelpfulCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 var gapHelpfulCmd = &cobra.Command{
 	Use:   "helpful <gap-id>",
 	Short: "Mark a gap entry as helpful",
@@ -273,7 +273,7 @@ Example:
 	},
 }
 
-// CANARY: REQ=CBIN-140; FEATURE="GapUnhelpfulCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
+// CANARY: REQ=CP-257; FEATURE="GapUnhelpfulCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 var gapUnhelpfulCmd = &cobra.Command{
 	Use:   "unhelpful <gap-id>",
 	Short: "Mark a gap entry as unhelpful",
@@ -309,7 +309,7 @@ Example:
 	},
 }
 
-// CANARY: REQ=CBIN-140; FEATURE="GapConfigCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
+// CANARY: REQ=CP-257; FEATURE="GapConfigCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 var gapConfigCmd = &cobra.Command{
 	Use:   "config [flags]",
 	Short: "View or update gap analysis configuration",
@@ -392,7 +392,7 @@ Examples:
 	},
 }
 
-// CANARY: REQ=CBIN-140; FEATURE="GapCategoriesCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
+// CANARY: REQ=CP-257; FEATURE="GapCategoriesCmd"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 var gapCategoriesCmd = &cobra.Command{
 	Use:   "categories",
 	Short: "List available gap categories",

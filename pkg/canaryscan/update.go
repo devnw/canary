@@ -1,3 +1,4 @@
+// CANARY: REQ=CP-277; FEATURE="StalenessConfig"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_304_StaleDaysFromConfig,TestCANARY_CBIN_304_UpdateStaleV2IDs,TestCANARY_CBIN_304_UpdateStaleAddsMissingUpdated,TestCANARY_CBIN_304_RunReportsActualRewriteCount; UPDATED=2026-08-29
 package canaryscan
 
 import (
@@ -7,40 +8,70 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	ignore "github.com/sabhiram/go-gitignore"
 )
 
+// diagReqRe extracts the REQ ID from a CANARY_STALE diagnostic line
+// (format: "CANARY_STALE REQ=<id> updated=<date> age_days=<n> threshold=<n>").
+// REQ IDs are opaque, source-defined strings (e.g. "CBIN-304", legacy
+// "PLAT-4521", or v2 multi-segment IDs like "CBIN-CLI-001"), so match
+// anything up to the next whitespace rather than assuming a shape.
+var diagReqRe = regexp.MustCompile(`REQ=(\S+)`)
+
+// updatedDateRe matches an existing UPDATED=YYYY-MM-DD attribute within a token line.
+var updatedDateRe = regexp.MustCompile(`(UPDATED=)([0-9]{4}-[0-9]{2}-[0-9]{2})`)
+
 // UpdateStaleTokens rewrites UPDATED in source files for tokens matching staleDiags REQ IDs.
-// Only updates TESTED/BENCHED tokens. Returns files that were modified.
-func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string) (map[string]bool, error) {
+// Only updates TESTED/BENCHED tokens. Existing UPDATED=YYYY-MM-DD values are rewritten to
+// today; a token line missing UPDATED= entirely gains one. Returns the set of files that
+// were modified and the number of individual token lines actually rewritten (which may
+// differ from len(staleDiags): several diags can share one REQ, or a REQ can span multiple
+// physical token lines/files).
+//
+// ignorePatterns (from LoadCanaryIgnore) is honored the same way Scan honors it: relative
+// path matched first, dirs skipped via SkipDir; nil means no .canaryignore patterns apply.
+// This keeps the rewrite walk in sync with the read walk that produced staleDiags in the
+// first place — without it, a file excluded from scanning by .canaryignore could still be
+// silently mutated by --update-stale.
+func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string, ignorePatterns *ignore.GitIgnore) (updatedFiles map[string]bool, tokenCount int, err error) {
 	staleReqs := make(map[string]bool)
-	reqRe := regexp.MustCompile(`REQ=([A-Z][A-Z0-9]*-\d+)`)
 	for _, diag := range staleDiags {
-		matches := reqRe.FindStringSubmatch(diag)
+		matches := diagReqRe.FindStringSubmatch(diag)
 		if len(matches) > 1 {
 			staleReqs[matches[1]] = true
 		}
 	}
 	if len(staleReqs) == 0 {
-		return nil, nil
+		return nil, 0, nil
 	}
-	updatedFiles := make(map[string]bool)
+	updatedFiles = make(map[string]bool)
 	refTime := time.Now().UTC()
 	if t := RefTimeFromEnv(); !t.IsZero() {
 		refTime = t
 	}
 	today := refTime.Format("2006-01-02")
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+	walkErr := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
+		rel, _ := filepath.Rel(root, path)
+		relForIgnore := rel
+		if relForIgnore == "" {
+			relForIgnore = "."
+		}
+		if ignorePatterns != nil && ignorePatterns.MatchesPath(relForIgnore) {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
 		if info.IsDir() {
-			rel, _ := filepath.Rel(root, path)
 			if rel != "." && skip.MatchString(rel) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		rel, _ := filepath.Rel(root, path)
 		if skip.MatchString(rel) {
 			return nil
 		}
@@ -53,16 +84,14 @@ func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string) (m
 		}
 		lines := strings.Split(string(content), "\n")
 		modified := false
+		fileTokenCount := 0
 		for i, line := range lines {
-			if !tokenLineRe.MatchString(line) {
-				continue
-			}
 			match := tokenLineRe.FindStringSubmatch(line)
 			if len(match) < 2 {
 				continue
 			}
-			attrs, err := parseKV(match[1])
-			if err != nil {
+			attrs, perr := parseKV(match[1])
+			if perr != nil {
 				continue
 			}
 			reqID, hasReq := attrs["REQ"]
@@ -73,10 +102,21 @@ func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string) (m
 			if !hasStatus || (status != "TESTED" && status != "BENCHED") {
 				continue
 			}
-			updatedRe := regexp.MustCompile(`(UPDATED=)([0-9]{4}-[0-9]{2}-[0-9]{2})`)
-			if updatedRe.MatchString(line) {
-				lines[i] = updatedRe.ReplaceAllString(line, fmt.Sprintf("${1}%s", today))
+			if updatedDateRe.MatchString(line) {
+				lines[i] = updatedDateRe.ReplaceAllString(line, fmt.Sprintf("${1}%s", today))
 				modified = true
+				fileTokenCount++
+				continue
+			}
+			// Token line is missing UPDATED= entirely: add it rather than
+			// silently skipping (the previous behavior could only rewrite
+			// an existing date and left dateless tokens untouched forever).
+			prefix := line[:len(line)-len(match[1])]
+			newContent, changed := addMissingUpdated(match[1], today)
+			if changed {
+				lines[i] = prefix + newContent
+				modified = true
+				fileTokenCount++
 			}
 		}
 		if modified {
@@ -85,11 +125,54 @@ func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string) (m
 				return fmt.Errorf("write %s: %w", path, err)
 			}
 			updatedFiles[path] = true
+			tokenCount += fileTokenCount
 		}
 		return nil
 	})
-	if err != nil {
-		return nil, err
+	if walkErr != nil {
+		return nil, 0, walkErr
 	}
-	return updatedFiles, nil
+	return updatedFiles, tokenCount, nil
+}
+
+// addMissingUpdated appends "; UPDATED=<today>" to a CANARY token's content
+// (the text captured after "CANARY:" by tokenLineRe) when it lacks an
+// UPDATED= attribute. Mirrors pkg/upgrade's addUpdatedContent: CRLF-safe,
+// and inserts before a trailing "*/" or "-->" comment closer rather than
+// after it. Defensive: refuses to touch content that already carries any
+// UPDATED= attribute (even a malformed one), so it can never append a
+// duplicate.
+func addMissingUpdated(content, today string) (string, bool) {
+	if strings.Contains(content, "UPDATED=") {
+		return content, false
+	}
+	cr := ""
+	body := content
+	if strings.HasSuffix(body, "\r") {
+		cr = "\r"
+		body = strings.TrimSuffix(body, "\r")
+	}
+	if strings.TrimSpace(body) == "" {
+		return content, false
+	}
+	suffix := ""
+	trimmedRight := strings.TrimRight(body, " \t")
+	for _, suf := range []string{"*/", "-->"} {
+		if strings.HasSuffix(trimmedRight, suf) {
+			suffix = suf
+			body = strings.TrimSpace(strings.TrimSuffix(trimmedRight, suf))
+			break
+		}
+	}
+	if suffix == "" {
+		body = trimmedRight
+	}
+	if !strings.HasSuffix(strings.TrimSpace(body), ";") {
+		body += ";"
+	}
+	body += " UPDATED=" + today
+	if suffix != "" {
+		body += " " + suffix
+	}
+	return body + cr, true
 }

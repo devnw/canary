@@ -26,6 +26,9 @@ type ProjectConfig struct {
 	Scanner struct {
 		ExcludePaths []string `yaml:"exclude_paths"`
 	} `yaml:"scanner"`
+	Verification struct {
+		StalenessDays int `yaml:"staleness_days"`
+	} `yaml:"verification"`
 }
 
 type aggregateKey struct{ req, feature, aspect, owner, updated string }
@@ -105,6 +108,9 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 		}
 		matches := tokenLineRe.FindAllStringSubmatch(string(b), -1)
 		for _, m := range matches {
+			if isMigrateCapture(m[1]) {
+				continue
+			}
 			fields, perr := parseKV(m[1])
 			if perr != nil {
 				return fmt.Errorf("%s: %w", path, perr)
@@ -197,9 +203,22 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 		}
 	}
 
+	// Extract CANARY:MIGRATE guidance notes (Task CBIN-301).
+	notes, nerr := ScanMigrateNotes(root, skip, ignorePatterns, reg)
+	if nerr != nil {
+		fmt.Fprintf(os.Stderr, "Warning: migrate notes scan failed: %v\n", nerr)
+	}
+	sort.Slice(notes, func(i, j int) bool {
+		if notes[i].File != notes[j].File {
+			return notes[i].File < notes[j].File
+		}
+		return notes[i].Line < notes[j].Line
+	})
+
 	return Report{
-		GeneratedAt:  getTimestamp(),
-		Requirements: reqs,
-		Summary:      Summary{ByStatus: byStatus, ByAspect: byAspect, TotalTokens: total, UniqueRequirements: len(reqs)},
+		GeneratedAt:    getTimestamp(),
+		Requirements:   reqs,
+		Summary:        Summary{ByStatus: byStatus, ByAspect: byAspect, TotalTokens: total, UniqueRequirements: len(reqs)},
+		MigrationNotes: notes,
 	}, nil
 }

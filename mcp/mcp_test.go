@@ -336,6 +336,130 @@ func TestCANARY_CBIN_205_SearchLimitRaised(t *testing.T) {
 	}
 }
 
+// TestCANARY_CBIN_205_ListCapped verifies handleList truncates results to
+// the shared capLimit default of 20 while reporting the true match count via
+// Total, mirroring TestCANARY_CBIN_205_SearchCapped.
+func TestCANARY_CBIN_205_ListCapped(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+
+	for i := 0; i < 30; i++ {
+		tok := &storage.Token{
+			ReqID:    fmt.Sprintf("CBIN-L%03d", i),
+			Feature:  fmt.Sprintf("ListFeature%03d", i),
+			Aspect:   "API",
+			Status:   "IMPL",
+			Priority: i + 1,
+			FilePath: fmt.Sprintf("listfile%03d.go", i),
+		}
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatalf("failed to insert test token %d: %v", i, err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	_, result, err := handleList(ctx, req, &ListParams{Status: "IMPL"})
+	if err != nil {
+		t.Fatalf("handleList failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	if len(result.Tokens) != 20 {
+		t.Errorf("expected 20 tokens (default cap), got %d", len(result.Tokens))
+	}
+	if result.Total != 30 {
+		t.Errorf("expected Total=30, got %d", result.Total)
+	}
+	if result.TotalIsLowerBound {
+		t.Errorf("expected TotalIsLowerBound=false (30 < 101), got true")
+	}
+}
+
+// TestCANARY_CBIN_205_ListLowerBound verifies handleList sets TotalIsLowerBound
+// to true when results exceed the maxToolLimit+1 overfetch ceiling.
+func TestCANARY_CBIN_205_ListLowerBound(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+
+	for i := 0; i < 102; i++ {
+		tok := &storage.Token{
+			ReqID:    fmt.Sprintf("CBIN-LB%03d", i),
+			Feature:  fmt.Sprintf("ListBoundFeature%03d", i),
+			Aspect:   "API",
+			Status:   "IMPL",
+			Priority: i + 1,
+			FilePath: fmt.Sprintf("listboundfile%03d.go", i),
+		}
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatalf("failed to insert test token %d: %v", i, err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	_, result, err := handleList(ctx, req, &ListParams{Status: "IMPL"})
+	if err != nil {
+		t.Fatalf("handleList failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	if len(result.Tokens) != 20 {
+		t.Errorf("expected 20 tokens (default cap), got %d", len(result.Tokens))
+	}
+	if result.Total <= maxToolLimit {
+		t.Errorf("expected Total > %d, got %d", maxToolLimit, result.Total)
+	}
+	if !result.TotalIsLowerBound {
+		t.Errorf("expected TotalIsLowerBound=true (>101 tokens), got false")
+	}
+}
+
+// TestCANARY_CBIN_205_ListLimitRaised verifies an explicit Limit above the
+// default (but within the hard ceiling) returns all matches.
+func TestCANARY_CBIN_205_ListLimitRaised(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+
+	for i := 0; i < 30; i++ {
+		tok := &storage.Token{
+			ReqID:    fmt.Sprintf("CBIN-L%03d", i),
+			Feature:  fmt.Sprintf("ListFeature%03d", i),
+			Aspect:   "API",
+			Status:   "IMPL",
+			Priority: i + 1,
+			FilePath: fmt.Sprintf("listfile%03d.go", i),
+		}
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatalf("failed to insert test token %d: %v", i, err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	_, result, err := handleList(ctx, req, &ListParams{Status: "IMPL", Limit: 100})
+	if err != nil {
+		t.Fatalf("handleList failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	if len(result.Tokens) != 30 {
+		t.Errorf("expected 30 tokens (Limit=100 raised above match count), got %d", len(result.Tokens))
+	}
+}
+
 // TestCANARY_CBIN_205_NextDefaultFindsWork verifies handleNext with no
 // filters finds a seeded STUB token rather than reporting "all complete".
 func TestCANARY_CBIN_205_NextDefaultFindsWork(t *testing.T) {
@@ -669,6 +793,57 @@ func TestCANARY_CBIN_204_MCPView(t *testing.T) {
 		!strings.Contains(text.Text, "50% complete") ||
 		!strings.Contains(text.Text, "depends on CBIN-101") {
 		t.Errorf("summary missing expected fields: %q", text.Text)
+	}
+}
+
+// TestCANARY_CBIN_301_MCPViewMigrateNotes verifies handleView's summary
+// mentions the migration note count, and that migrate refs surface through
+// MigrateNotes without cross-contaminating Diagrams.
+// CANARY: REQ=CBIN-301; FEATURE="MigrateNotesView"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_301_MCPViewMigrateNotes; UPDATED=2026-08-29
+func TestCANARY_CBIN_301_MCPViewMigrateNotes(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+
+	toks := []*storage.Token{
+		{ReqID: "CBIN-105", Feature: "Scanner", Aspect: "Engine", Status: "TESTED",
+			FilePath: "scan.go", LineNumber: 10, Test: "TestScan"},
+	}
+	for _, tok := range toks {
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatalf("failed to insert test token: %v", err)
+		}
+	}
+	if err := db.ReplaceRefs("diagram", []storage.Ref{
+		{ReqID: "CBIN-105", Kind: "diagram", FilePath: "docs/arch.md", LineNumber: 7},
+	}); err != nil {
+		t.Fatalf("failed to insert diagram ref: %v", err)
+	}
+	if err := db.ReplaceRefs("migrate", []storage.Ref{
+		{ReqID: "CBIN-105", Kind: "migrate", FilePath: "old/legacy.go", LineNumber: 20, Context: "move to new client"},
+	}); err != nil {
+		t.Fatalf("failed to insert migrate ref: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	result, out, err := handleView(ctx, req, &ViewParams{ReqID: "CBIN-105"})
+	if err != nil {
+		t.Fatalf("handleView failed: %v", err)
+	}
+	if len(out.Diagrams) != 1 || out.Diagrams[0] != "docs/arch.md:7" {
+		t.Errorf("Diagrams = %v, want only the diagram ref", out.Diagrams)
+	}
+	if len(out.MigrateNotes) != 1 || out.MigrateNotes[0] != "old/legacy.go:20: move to new client" {
+		t.Errorf("MigrateNotes = %v", out.MigrateNotes)
+	}
+	text, ok := result.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatalf("expected TextContent, got %T", result.Content[0])
+	}
+	if !strings.Contains(text.Text, "1 migration notes") {
+		t.Errorf("summary missing migration note count: %q", text.Text)
 	}
 }
 

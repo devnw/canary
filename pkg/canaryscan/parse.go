@@ -12,7 +12,11 @@ import (
 )
 
 var (
-	tokenLineRe = regexp.MustCompile(`(?m)^[ \t]*(?:\/\/|#|\/\*)?[ \t]*CANARY:\s*(.*)$`)
+	// CP-285: prefix group also accepts "--" (SQL line-comment) so tokens
+	// in .sql files scan. Alternatives share no common prefix character
+	// class with each other, so ordering here does not create shadowing;
+	// "--" is listed last purely for readability, matching upgrade.go.
+	tokenLineRe = regexp.MustCompile(`(?m)^[ \t]*(?:\/\/|#|\/\*|--)?[ \t]*CANARY:\s*(.*)$`)
 	kvRe        = regexp.MustCompile(`\s*([A-Za-z_]+)\s*=\s*([^;]+)\s*`)
 )
 
@@ -34,6 +38,17 @@ var (
 func DefaultSkipRegex() *regexp.Regexp {
 	r, _ := regexp.Compile(defaultSkipPattern)
 	return r
+}
+
+// migrateCapturePrefix marks a tokenLineRe capture as CANARY:MIGRATE
+// free-text guidance rather than a KV token.
+const migrateCapturePrefix = "MIGRATE"
+
+// isMigrateCapture reports whether m (the capture group of a tokenLineRe
+// match) is a CANARY:MIGRATE guidance line. Such lines must never reach
+// parseKV — that is what keeps a MIGRATE line from ever aborting a scan.
+func isMigrateCapture(m string) bool {
+	return strings.HasPrefix(strings.TrimSpace(m), migrateCapturePrefix)
 }
 
 func parseKV(s string) (map[string]string, error) {

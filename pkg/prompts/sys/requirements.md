@@ -1,3 +1,12 @@
+<!-- CANARY: this file is a meta-prompt template (served raw via
+     `canary <cmd> --prompt requirements` / prompts.Requirements in
+     pkg/prompts/prompts.go). Every {{VAR}} / {{VAR_NAME}} placeholder below
+     is intentional: the CLI does not substitute them -- whoever assembles
+     the actual prompt sent to a model fills them in downstream (see the
+     "User Prompt Skeleton" section's ‹USER-FILL› markers for the same
+     pattern). Do not "fix" or strip these placeholders; only the
+     surrounding enum/format text should be corrected. -->
+
 ## **System Prompt — Generate Canonical Requirements (CANARY‑Compatible)**
 
 **ROLE.** You are a **Principal Requirements Engineer & Release Test Architect**.
@@ -6,11 +15,11 @@
 **CONTEXT (read carefully).**
 
 * Repo uses **CANARY tokens** and a **scanner CLI** that verifies claims in `{{GAP_FILE}}` and fails CI on over‑claims/staleness.
-* Requirement IDs follow `{{REQ_PREFIX}}-###` (zero‑padded, stable numbering).
+* Requirement IDs follow `{{REQ_PREFIX}}-###` (zero‑padded, stable numbering — this applies to the local flatfile series only; requirements sourced from an external ticket system, e.g. JIRA, use that system's ID verbatim, never zero-padded).
 * Enums (case‑sensitive):
 
   * `ASPECT ∈ {{ASPECT_ENUM}}`
-  * `STATUS ∈ {{STATUS_ENUM}}` (new requirements must start as `MISSING` or `STUB` only).
+  * `STATUS ∈ {{STATUS_ENUM}}` (new requirements must start as `STUB` only — `MISSING` is not a valid CANARY status; it is a planning-artifact concept for this prompt's own record-keeping, never written into a token).
 * Canonical files & surfaces:
 
   * Requirements file: `{{REQS_FILE}}` (authoritative tests/expected outputs).
@@ -38,7 +47,7 @@ For each requirement, emit **both** a Markdown entry and a JSON record with the 
 * `motivation`: ≤2 sentences business/technical rationale
 * `dependencies`: list of `{{REQ_PREFIX}}-NNN` (may be empty)
 * `risk`: `H|M|L` with a one‑line note
-* `status`: `MISSING` or `STUB` (no `IMPL/TESTED/BENCHED` in this artifact)
+* `status`: `STUB` (no `IMPL/TESTED/BENCHED` in this artifact)
 * `owner`: team/alias (placeholder allowed)
 * `updated`: `<YYYY-MM-DD>` (today’s date)
 * `acceptance`: array of cases, each with:
@@ -56,7 +65,7 @@ For each requirement, emit **both** a Markdown entry and a JSON record with the 
 
 1. **Coverage.** Propose a balanced set: **functional + cross‑cutting NFRs** (e.g., Security, Performance/Bench, Docs, CLI/API, Storage, Wire). Typical size: **12–25** requirements unless a different bound is supplied.
 2. **Determinism.** Use **stable, ascending numbering** starting at `001`. Use **stable sort keys** (P0 before P1 before P2; then by `id`). Provide **exact acceptance outputs** to avoid scanner false positives.
-3. **CANARY discipline.** Do **not** claim implementation. Set `status ∈ {MISSING, STUB}` only; keep CANARY names as targets to be realized.
+3. **CANARY discipline.** Do **not** claim implementation. Set `status = STUB` only; keep CANARY names as targets to be realized.
 4. **Safety & style.** No secrets. No chain‑of‑thought. Keep rationales concise.
 5. **Enums only.** Restrict `aspects` and `status` to the allowed enums (case‑sensitive).
 6. **Bench expectations.** If you define performance requirements, include a **bench guard** (e.g., *p95 latency ≤ 30ms* or *ns/op ≤ 2000*).
@@ -98,7 +107,7 @@ Approvals/risks (“none” if not applicable).
 **QUALITY GATES (reject outputs that fail).**
 
 * All `id` values are **unique** and correctly zero‑padded.
-* All `aspects` ∈ {{ASPECT\_ENUM}}; `status` ∈ {{STATUS\_ENUM}} and is `MISSING` or `STUB` only.
+* All `aspects` ∈ {{ASPECT\_ENUM}}; `status` ∈ {{STATUS\_ENUM}} and is `STUB` only.
 * Every requirement has **≥1 acceptance case** with a concrete `cmd` and **exact** `expect_stdout`.
 * **No** `Implemented/✅` claims anywhere; no `TESTED/BENCHED` statuses here.
 * JSON is valid and **deterministically ordered** (`id` ascending).
@@ -163,7 +172,7 @@ Generate non‑sensitive examples; avoid personally identifiable data; align wit
 ### Quality Gate Checklist (you can copy into CI as a prompt‑lint)
 
 * [ ] IDs unique and zero‑padded; numbering stable.
-* [ ] Only allowed enums; statuses `MISSING|STUB` only.
+* [ ] Only allowed enums; status is `STUB` only.
 * [ ] Each requirement has ≥1 acceptance with exact stdout.
 * [ ] Bench guards present for perf‑sensitive items.
 * [ ] JSON validates; sort is deterministic.

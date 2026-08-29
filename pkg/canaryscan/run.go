@@ -23,6 +23,27 @@ func AnnotateSources(rep *Report, reg *sources.Registry) {
 	}
 }
 
+// DefaultStaleDays is the fallback staleness window (in days) when neither
+// Config.StaleDays nor .canary/project.yaml's verification.staleness_days is set.
+const DefaultStaleDays = 30
+
+// staleThreshold resolves the effective staleness window: Config.StaleDays if
+// set (>0), else project.yaml's verification.staleness_days if set (>0), else
+// DefaultStaleDays. Errors loading project.yaml (e.g. file missing) are
+// treated as "not configured" so the default still applies.
+func staleThreshold(cfg Config) time.Duration {
+	days := cfg.StaleDays
+	if days <= 0 {
+		if projCfg, err := LoadProjectConfig(cfg.Root); err == nil && projCfg != nil && projCfg.Verification.StalenessDays > 0 {
+			days = projCfg.Verification.StalenessDays
+		}
+	}
+	if days <= 0 {
+		days = DefaultStaleDays
+	}
+	return time.Duration(days) * 24 * time.Hour
+}
+
 // ScanSummaryLine returns a single parseable line for rep so agents get metrics without reading status.json.
 func ScanSummaryLine(rep Report) string {
 	s := rep.Summary
@@ -84,15 +105,16 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 	if refTime.IsZero() {
 		refTime = time.Now().UTC()
 	}
+	threshold := staleThreshold(cfg)
 	if cfg.UpdateStale {
-		staleDiags := Stale(rep, 30*24*time.Hour, refTime)
+		staleDiags := Stale(rep, threshold, refTime)
 		if len(staleDiags) > 0 {
-			updatedFiles, err := UpdateStaleTokens(cfg.Root, cfg.SkipRegex, staleDiags)
+			updatedFiles, tokenCount, err := UpdateStaleTokens(cfg.Root, cfg.SkipRegex, staleDiags, ignorePatterns)
 			if err != nil {
 				_, _ = fmt.Fprintf(stderr, "CANARY_UPDATE_ERROR: %v\n", err)
 				return 3
 			}
-			_, _ = fmt.Fprintf(stderr, "Updated %d stale tokens in %d files\n", len(staleDiags), len(updatedFiles))
+			_, _ = fmt.Fprintf(stderr, "Updated %d stale tokens in %d files\n", tokenCount, len(updatedFiles))
 			rep, err = Scan(cfg.Root, cfg.SkipRegex, projectFilter, ignorePatterns)
 			if err != nil {
 				_, _ = fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
@@ -123,7 +145,7 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 		diags = append(diags, VerifyClaims(rep, cfg.VerifyPath, reg)...)
 	}
 	if cfg.Strict && !cfg.UpdateStale {
-		diags = append(diags, Stale(rep, 30*24*time.Hour, refTime)...)
+		diags = append(diags, Stale(rep, threshold, refTime)...)
 	}
 	if len(diags) > 0 {
 		for _, d := range diags {
@@ -142,7 +164,8 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 
 // RunFromArgs is a convenience that builds Config from flag-like args and runs with os.Stdout/os.Stderr.
 // Used by tools/canary main. skipExpr is the regex string; if empty, default is used.
-func RunFromArgs(root, out, csv, verifyPath, skipExpr string, strict, updateStale, projectOnly bool) int {
+// staleDays overrides the staleness window in days; 0 means "use config/default".
+func RunFromArgs(root, out, csv, verifyPath, skipExpr string, strict, updateStale, projectOnly bool, staleDays int) int {
 	skip := DefaultSkipRegex()
 	if skipExpr != "" {
 		var err error
@@ -161,6 +184,7 @@ func RunFromArgs(root, out, csv, verifyPath, skipExpr string, strict, updateStal
 		SkipRegex:   skip,
 		UpdateStale: updateStale,
 		ProjectOnly: projectOnly,
+		StaleDays:   staleDays,
 	}
 	return Run(cfg, os.Stdout, os.Stderr)
 }

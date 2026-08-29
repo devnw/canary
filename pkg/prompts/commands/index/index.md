@@ -40,7 +40,7 @@ Summary:
 ```
 
 ## Standards
-- Use `internal/storage` for database operations
+- Use `pkg/storage` for database operations
 - Perform upsert (insert or update)
 - Track last indexed timestamp
 - Show progress for large codebases

@@ -1,4 +1,4 @@
--- CANARY: REQ=CBIN-146; FEATURE="MultiProjectSupport"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-18
+-- CANARY: REQ=CP-261; FEATURE="MultiProjectSupport"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-18
 -- Add multi-project support to CANARY database
 
 -- Create projects table for project registry
