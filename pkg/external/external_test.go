@@ -275,3 +275,26 @@ func TestCANARY_ENG_3959_Resolve_FreshCache_NoStaleNote(t *testing.T) {
 func freshTime() time.Time { return time.Now().UTC() }
 
 func contains(s, substr string) bool { return strings.Contains(s, substr) }
+
+// TestCANARY_ENG_3959_Resolve_DegenerateIMPLToDone pins the semantics the
+// doneSet comment documents: a (degenerate but legal) StatusMap that sends a
+// NON-done canary status to "Done" must not make "Done" satisfy the
+// dependency unless TESTED/BENCHED also target it.
+func TestCANARY_ENG_3959_Resolve_DegenerateIMPLToDone(t *testing.T) {
+	root := t.TempDir()
+	if err := SaveCache(root, map[string]string{"ENG-7": "Done"}, freshTime()); err != nil {
+		t.Fatal(err)
+	}
+	reg := newRegistry(t, []sources.Source{{
+		Name: "eng", Type: "jira", Key: "ENG",
+		StatusMap: map[string]string{
+			"IMPL":    "Done",     // degenerate: non-done status targets Done
+			"TESTED":  "Verified", // done-set is {Verified, Shipped}
+			"BENCHED": "Shipped",
+		},
+	}})
+	res := Resolve("ENG-7", reg, root)
+	if res.State != StateUnsatisfied {
+		t.Fatalf("Done must NOT satisfy when TESTED/BENCHED target other names: got %s (%s)", res.State, res.Detail)
+	}
+}
