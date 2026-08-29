@@ -95,6 +95,56 @@ sources:
 	}
 }
 
+func TestCANARY_ENG_3958_LoadSources_ProjectDestinationFields(t *testing.T) {
+	root := writeProjectYAML(t, `
+project:
+  name: "demo"
+  key: "CBIN"
+sources:
+  - name: platform
+    type: jira
+    key: "PLAT"
+    project: "PLATPROJ"
+    destination: true
+`)
+	cfg, err := Load(root)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(cfg.Sources) != 1 {
+		t.Fatalf("len(Sources) = %d, want 1", len(cfg.Sources))
+	}
+	got := cfg.Sources[0]
+	if got.Project != "PLATPROJ" {
+		t.Errorf("Project = %q, want PLATPROJ", got.Project)
+	}
+	if !got.Destination {
+		t.Error("Destination = false, want true")
+	}
+}
+
+func TestCANARY_ENG_3958_LoadSources_ProjectDestinationDefaultToZeroValue(t *testing.T) {
+	// A source with no project/destination fields must parse to the zero
+	// value — old configs behave exactly as before.
+	root := writeProjectYAML(t, `
+project:
+  name: "demo"
+  key: "CBIN"
+sources:
+  - name: core
+    type: flatfile
+    key: "CBIN"
+`)
+	cfg, err := Load(root)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	got := cfg.Sources[0]
+	if got.Project != "" || got.Destination {
+		t.Errorf("Project/Destination = %q/%v, want empty/false", got.Project, got.Destination)
+	}
+}
+
 func TestCANARY_CBIN_201_LoadSources_AbsentIsEmpty(t *testing.T) {
 	root := writeProjectYAML(t, "project:\n  name: demo\n")
 	cfg, err := Load(root)

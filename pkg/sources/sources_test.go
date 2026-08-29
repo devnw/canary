@@ -239,6 +239,73 @@ func TestCANARY_CBIN_306_FromProjectConfig_TicketSyncFieldsPassThrough(t *testin
 	}
 }
 
+func TestCANARY_ENG_3958_DestinationSource_MarkedWins(t *testing.T) {
+	r, err := NewRegistry([]Source{
+		{Name: "core", Type: "flatfile", Key: "CBIN"},
+		{Name: "platform", Type: "jira", Key: "PLAT", Project: "PLATPROJ"},
+		{Name: "security", Type: "jira", Key: "SEC", Project: "SECPROJ", Destination: true},
+	})
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+	src, ok := r.DestinationSource()
+	if !ok || src.Name != "security" || src.Project != "SECPROJ" {
+		t.Errorf("DestinationSource() = %+v, %v; want marked source security/SECPROJ", src, ok)
+	}
+}
+
+func TestCANARY_ENG_3958_DestinationSource_DefaultFirstNonFlatfile(t *testing.T) {
+	r, err := NewRegistry([]Source{
+		{Name: "core", Type: "flatfile", Key: "CBIN"},
+		{Name: "platform", Type: "jira", Key: "PLAT", Project: "PLATPROJ"},
+		{Name: "security", Type: "jira", Key: "SEC", Project: "SECPROJ"},
+	})
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+	src, ok := r.DestinationSource()
+	if !ok || src.Name != "platform" {
+		t.Errorf("DestinationSource() = %+v, %v; want first non-flatfile source (platform)", src, ok)
+	}
+}
+
+func TestCANARY_ENG_3958_DestinationSource_NoneWhenOnlyFlatfile(t *testing.T) {
+	r, err := NewRegistry([]Source{
+		{Name: "core", Type: "flatfile", Key: "CBIN"},
+	})
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+	if _, ok := r.DestinationSource(); ok {
+		t.Error("DestinationSource() should return false when only flatfile sources are configured")
+	}
+}
+
+func TestCANARY_ENG_3958_NewRegistry_DuplicateDestinationError(t *testing.T) {
+	_, err := NewRegistry([]Source{
+		{Name: "platform", Type: "jira", Key: "PLAT", Destination: true},
+		{Name: "security", Type: "jira", Key: "SEC", Destination: true},
+	})
+	if err == nil {
+		t.Error("NewRegistry must reject more than one Destination=true source")
+	}
+}
+
+func TestCANARY_ENG_3958_FromProjectConfig_ProjectDestinationPassThrough(t *testing.T) {
+	cfg := &config.ProjectConfig{}
+	cfg.Project.Key = "CBIN"
+	cfg.Sources = []config.SourceConfig{
+		{Name: "core", Type: "flatfile", Key: "CBIN"},
+		{Name: "platform", Type: "jira", Key: "PLAT", Project: "PLATPROJ", Destination: true},
+	}
+
+	r := FromProjectConfig(cfg)
+	src, ok := r.DestinationSource()
+	if !ok || src.Name != "platform" || src.Project != "PLATPROJ" || !src.Destination {
+		t.Errorf("DestinationSource() = %+v, %v; want platform/PLATPROJ/true", src, ok)
+	}
+}
+
 func TestCANARY_CBIN_201_LoadFromRootWithProjectYAML(t *testing.T) {
 	// LoadFromRoot with a real .canary/project.yaml written to a temp dir declaring a jira source PLAT
 	// → TicketURL("PLAT-42") expands correctly.

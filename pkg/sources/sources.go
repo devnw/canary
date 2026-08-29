@@ -31,6 +31,15 @@ type Source struct {
 	// StatusMap overrides the default CANARY-status -> remote-status-name
 	// mapping (STUB/IMPL/TESTED/BENCHED keys) for this source only.
 	StatusMap map[string]string
+
+	// Project is this source's ticket-system project key (e.g. a JIRA
+	// project). Optional; empty means this source contributes no project
+	// of its own to `canary ticket sync`.
+	Project string
+	// Destination marks this source as the target for create_issue
+	// actions. At most one source may set this — see
+	// Registry.DestinationSource.
+	Destination bool
 }
 
 var validTypes = map[string]struct{}{"flatfile": {}, "jira": {}, "github": {}, "gitlab": {}}
@@ -51,6 +60,7 @@ func NewRegistry(list []Source) (*Registry, error) {
 	}
 	byKey := make(map[string]Source, len(list))
 	keys := make([]string, 0, len(list))
+	destinations := 0
 	for _, s := range list {
 		if _, ok := validTypes[s.Type]; !ok {
 			return nil, fmt.Errorf("sources: %q has unknown type %q", s.Name, s.Type)
@@ -61,8 +71,14 @@ func NewRegistry(list []Source) (*Registry, error) {
 		if _, dup := byKey[s.Key]; dup {
 			return nil, fmt.Errorf("sources: duplicate key %q", s.Key)
 		}
+		if s.Destination {
+			destinations++
+		}
 		byKey[s.Key] = s
 		keys = append(keys, regexp.QuoteMeta(s.Key))
+	}
+	if destinations > 1 {
+		return nil, fmt.Errorf("sources: at most one source may set destination: true, found %d", destinations)
 	}
 	alt := strings.Join(keys, "|")
 	return &Registry{
@@ -101,12 +117,14 @@ func FromProjectConfig(cfg *config.ProjectConfig) *Registry {
 	list := make([]Source, 0, len(cfg.Sources))
 	for _, s := range cfg.Sources {
 		list = append(list, Source{
-			Name:      s.Name,
-			Type:      s.Type,
-			Key:       s.Key,
-			URL:       s.URL,
-			API:       s.API,
-			StatusMap: s.StatusMap,
+			Name:        s.Name,
+			Type:        s.Type,
+			Key:         s.Key,
+			URL:         s.URL,
+			API:         s.API,
+			StatusMap:   s.StatusMap,
+			Project:     s.Project,
+			Destination: s.Destination,
 		})
 	}
 	r, err := NewRegistry(list)
@@ -134,6 +152,27 @@ func (r *Registry) ClaimPattern() *regexp.Regexp { return r.claim }
 
 // Sources returns the configured sources in declaration order.
 func (r *Registry) Sources() []Source { return r.list }
+
+// DestinationSource returns the source that `canary ticket sync` targets
+// when promoting a flatfile requirement (create_issue actions): the source
+// with Destination=true, if one is marked (NewRegistry rejects more than
+// one); otherwise the first non-flatfile source in declaration order.
+// Returns false when no source is marked and only flatfile sources are
+// configured — there is nothing to promote a requirement to.
+// CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_ENG_3958_DestinationSource_MarkedWins,TestCANARY_ENG_3958_DestinationSource_DefaultFirstNonFlatfile,TestCANARY_ENG_3958_DestinationSource_NoneWhenOnlyFlatfile,TestCANARY_ENG_3958_NewRegistry_DuplicateDestinationError; UPDATED=2026-08-29
+func (r *Registry) DestinationSource() (Source, bool) {
+	for _, s := range r.list {
+		if s.Destination {
+			return s, true
+		}
+	}
+	for _, s := range r.list {
+		if s.Type != "flatfile" {
+			return s, true
+		}
+	}
+	return Source{}, false
+}
 
 // Resolve returns the source owning id's prefix.
 func (r *Registry) Resolve(id string) (Source, bool) {

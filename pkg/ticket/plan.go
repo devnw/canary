@@ -11,6 +11,7 @@
 // JiraClient (jira.go) is the only piece that talks to the network, and only
 // when the CLI layer (pkg/cmds/ticket) is told to --apply.
 // CANARY: REQ=CP-279; FEATURE="TicketSync"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_306_ComputePlan_FlatfileCreateAndRemapPairing,TestCANARY_CBIN_306_ComputePlan_FlatfileNoNonFlatfileSource_NoAction,TestCANARY_CBIN_306_ComputePlan_JiraStatusMismatch_Transition,TestCANARY_CBIN_306_ComputePlan_MatchingStatus_NoAction,TestCANARY_CBIN_306_ComputePlan_EmptyRemoteStatus_AllTransitionsProposed,TestCANARY_CBIN_306_ComputePlan_StatusMapOverrideHonored,TestCANARY_CBIN_306_ComputePlan_RollupIsWorstOfTokens,TestCANARY_CBIN_306_ComputePlan_UnresolvedPrefixSkipped,TestCANARY_CBIN_306_ComputePlan_DeterministicOrdering,TestCANARY_CBIN_306_RollupStatus; UPDATED=2026-08-29
+// CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_ENG_3958_ComputePlan_CreateIssueStampsDestinationProject,TestCANARY_ENG_3958_ComputePlan_CreateIssueProjectEmptyWhenDestinationUnset; UPDATED=2026-08-29
 package ticket
 
 import (
@@ -31,7 +32,8 @@ type Action struct {
 	To          string `json:"to,omitempty"`      // JIRA status name (transition target)
 	Summary     string `json:"summary,omitempty"` // for create_issue
 	Description string `json:"description,omitempty"`
-	Source      string `json:"source"` // owning source's Name
+	Source      string `json:"source"`            // owning source's Name
+	Project     string `json:"project,omitempty"` // create_issue only: the destination source's Project (empty if unset)
 }
 
 // statusRank orders CANARY statuses from least to most advanced.
@@ -176,6 +178,14 @@ func ComputePlan(tokens []*storage.Token, reg *sources.Registry, remoteStatus ma
 		}
 	}
 
+	// destProject is stamped onto every create_issue action: the
+	// destination source's configured Project, or "" when none is
+	// resolvable (no destination source, or its Project is unset).
+	destProject := ""
+	if dest, ok := reg.DestinationSource(); ok {
+		destProject = dest.Project
+	}
+
 	var actions []Action
 	for _, reqID := range reqIDs {
 		toks := byReq[reqID]
@@ -194,6 +204,7 @@ func ComputePlan(tokens []*storage.Token, reg *sources.Registry, remoteStatus ma
 				Summary:     fmt.Sprintf("%s: %s", reqID, primaryFeature(toks)),
 				Description: buildDescription(toks),
 				Source:      src.Name,
+				Project:     destProject,
 			})
 			actions = append(actions, Action{
 				Type:   "remap",

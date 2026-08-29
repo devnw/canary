@@ -18,6 +18,7 @@ import (
 // external ticket system (jira, github, gitlab) whose keys appear in REQ= fields.
 // CANARY: REQ=CP-267; FEATURE="TicketSources"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_201_LoadSources; UPDATED=2026-08-28
 // CANARY: REQ=CP-279; FEATURE="TicketSync"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_306_LoadSources_TicketSyncFields; UPDATED=2026-08-29
+// CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_ENG_3958_LoadSources_ProjectDestinationFields; UPDATED=2026-08-29
 type SourceConfig struct {
 	Name string `yaml:"name"`
 	Type string `yaml:"type"` // flatfile | jira | github | gitlab
@@ -33,6 +34,16 @@ type SourceConfig struct {
 	// StatusMap overrides the default CANARY-status -> remote-status-name
 	// mapping (STUB/IMPL/TESTED/BENCHED keys) for this source only.
 	StatusMap map[string]string `yaml:"status_map,omitempty"`
+	// Project is the ticket-system project key this source creates issues
+	// in and fetches remote status for (e.g. a JIRA project key). Optional;
+	// when unset, this source contributes no project of its own to `canary
+	// ticket sync`.
+	Project string `yaml:"project,omitempty"`
+	// Destination marks this source as the target for create_issue actions
+	// promoting flatfile requirements. At most one source may set this; see
+	// Registry.DestinationSource in pkg/sources for the resolution rule
+	// when no source is marked.
+	Destination bool `yaml:"destination,omitempty"`
 }
 
 // ProjectConfig represents the .canary/project.yaml configuration

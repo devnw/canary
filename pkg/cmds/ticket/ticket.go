@@ -9,6 +9,7 @@
 // present and --apply is set — applying it via the JIRA REST client and
 // writing a completed plan plus a remap map for `canary upgrade --map`.
 // CANARY: REQ=CP-279; FEATURE="TicketSync"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_306_Sync_NoCredsPlanOnly,TestCANARY_CBIN_306_Sync_NoCredsApplyDegradesGracefully,TestCANARY_CBIN_306_Sync_ApplyWithCreds_EndToEnd,TestCANARY_CBIN_306_Sync_ApplyNoCreds_ProjectRequired,TestCANARY_CBIN_306_Sync_PartialProgress,TestCANARY_CBIN_306_PrintActions_Bounded; UPDATED=2026-08-29
+// CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3958_Sync_ApplyWithDestinationSource_NoProjectFlag,TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge; UPDATED=2026-08-29
 package ticket
 
 import (
@@ -76,11 +77,19 @@ BaseURL fallback. Precedence is env > source.API: an explicit JIRA_BASE_URL
 always wins. JIRA_EMAIL and JIRA_API_TOKEN have no config-file fallback and
 must always come from the environment.
 
-With credentials AND --apply: fetches remote status for --project, applies
-create_issue and transition actions via the JIRA REST API, fills created
-keys into their paired remap actions, and writes the completed plan to
---plan plus a remap map ({"OLD-ID":"NEW-ID"}) to <plan>.map.json — ready for
-'canary upgrade --map <plan>.map.json --write'.`,
+With credentials AND --apply: the effective project for creating new
+issues is --project when set, otherwise the configured destination
+source's "project:" field (the source with "destination: true", or — when
+none is marked — the first non-flatfile source; see "sources:" in
+.canary/project.yaml). --project is only required when a create_issue
+action exists and neither resolves to a project. Remote status is fetched
+and merged across every configured jira-type source that has its own
+"project:" set (falling back to --project for sources that don't), so a
+single sync can cover multiple JIRA projects. Applies create_issue and
+transition actions via the JIRA REST API, fills created keys into their
+paired remap actions, and writes the completed plan to --plan plus a remap
+map ({"OLD-ID":"NEW-ID"}) to <plan>.map.json — ready for 'canary upgrade
+--map <plan>.map.json --write'.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runTicketSync(cmd, dbPath, planPath, project, issueType, apply, limit)
@@ -90,7 +99,7 @@ keys into their paired remap actions, and writes the completed plan to
 	cmd.Flags().StringVar(&dbPath, "db", ".canary/canary.db", "path to the CANARY index database")
 	cmd.Flags().StringVar(&planPath, "plan", ".canary/ticket-plan.json", "path to write the JSON sync plan")
 	cmd.Flags().BoolVar(&apply, "apply", false, "apply the plan against JIRA (requires JIRA_BASE_URL/JIRA_EMAIL/JIRA_API_TOKEN)")
-	cmd.Flags().StringVar(&project, "project", "", "JIRA project key (required to create issues or fetch remote status under --apply)")
+	cmd.Flags().StringVar(&project, "project", "", "JIRA project key; overrides the configured destination source's project (required under --apply only when neither is set and the plan would create issues)")
 	cmd.Flags().StringVar(&issueType, "issue-type", "Story", "JIRA issue type for created issues")
 	cmd.Flags().IntVar(&limit, "limit", DefaultPlanLimit, "max actions shown in the table (raise when you need more; the full plan is always written to --plan)")
 	return cmd
@@ -179,31 +188,32 @@ func runTicketSync(cmd *cobra.Command, dbPath, planPath, project, issueType stri
 	return nil
 }
 
-// applyAndReport fetches remote status (when --project is set), computes
-// the plan against it, applies create_issue + transition actions via
-// client, writes the completed plan and its remap map, and prints the
-// CANARY_TICKET_SYNC summary.
+// applyAndReport resolves the effective creation project (--project, else
+// the configured destination source's project), fetches and merges remote
+// status across every jira-type source, computes the plan against it,
+// applies create_issue + transition actions via client, writes the
+// completed plan and its remap map, and prints the CANARY_TICKET_SYNC
+// summary.
 func applyAndReport(cmd *cobra.Command, tokens []*storage.Token, reg *sources.Registry, creds jiraCreds, planPath, project, issueType string, limit int) error {
-	// Require --project when the plan contains create/transition actions that
-	// would need it to apply successfully.
+	// Require an effective project when the plan contains create_issue
+	// actions that would need one to apply successfully. Transition
+	// actions target an already-existing issue by key and never need a
+	// project.
 	actions, err := ticket.ComputePlan(tokens, reg, nil)
 	if err != nil {
 		return err
 	}
 
-	if project == "" && hasMutableActions(actions) {
-		return fmt.Errorf("--project is required with --apply (plan contains create/transition actions)")
+	effProject := effectiveCreationProject(project, reg)
+	if effProject == "" && hasUnresolvedCreateProject(actions) {
+		return fmt.Errorf("--project is required with --apply (plan contains create_issue actions and no destination source has a configured project)")
 	}
 
 	client := &ticket.JiraClient{BaseURL: creds.BaseURL, Email: creds.Email, Token: creds.Token}
 
-	var remoteStatus map[string]string
-	if project != "" {
-		rs, err := ticket.FetchRemoteStatus(client, project)
-		if err != nil {
-			return fmt.Errorf("fetch remote status for project %s: %w", project, err)
-		}
-		remoteStatus = rs
+	remoteStatus, err := remoteStatusForSources(client, reg, project)
+	if err != nil {
+		return err
 	}
 
 	actions, err = ticket.ComputePlan(tokens, reg, remoteStatus)
@@ -211,7 +221,7 @@ func applyAndReport(cmd *cobra.Command, tokens []*storage.Token, reg *sources.Re
 		return err
 	}
 
-	created, transitioned, applyErrors := applyActions(client, actions, project, issueType)
+	created, transitioned, applyErrors := applyActions(client, actions, effProject, issueType)
 
 	if err := writePlan(planPath, actions); err != nil {
 		return err
@@ -236,15 +246,73 @@ func applyAndReport(cmd *cobra.Command, tokens []*storage.Token, reg *sources.Re
 	return nil
 }
 
-// hasMutableActions checks if the plan contains any create_issue or
-// transition actions that would require --project to apply.
-func hasMutableActions(actions []ticket.Action) bool {
+// effectiveCreationProject resolves the JIRA project used to create new
+// issues: the --project flag when set, otherwise the configured
+// destination source's Project (see sources.Registry.DestinationSource).
+// Empty when neither resolves.
+// CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3958_Sync_ApplyWithDestinationSource_NoProjectFlag; UPDATED=2026-08-29
+func effectiveCreationProject(flagProject string, reg *sources.Registry) string {
+	if flagProject != "" {
+		return flagProject
+	}
+	if reg == nil {
+		return ""
+	}
+	dest, ok := reg.DestinationSource()
+	if !ok {
+		return ""
+	}
+	return dest.Project
+}
+
+// hasUnresolvedCreateProject reports whether the plan contains a
+// create_issue action — the only action type that requires a resolvable
+// project to apply. Transition actions target an already-existing issue by
+// key and never need one.
+func hasUnresolvedCreateProject(actions []ticket.Action) bool {
 	for _, a := range actions {
-		if a.Type == "create_issue" || a.Type == "transition" {
+		if a.Type == "create_issue" {
 			return true
 		}
 	}
 	return false
+}
+
+// remoteStatusForSources fetches and merges remote status across every
+// jira-type source in reg: each source's own Project is queried first;
+// sources with no Project configured fall back to fallbackProject (the
+// --project flag), preserving single-project configs' historical behavior.
+// A given project is only fetched once even when shared by multiple
+// sources. Sources (and the fallback) that resolve to no project at all are
+// skipped — they contribute nothing to merge.
+// CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge; UPDATED=2026-08-29
+func remoteStatusForSources(client *ticket.JiraClient, reg *sources.Registry, fallbackProject string) (map[string]string, error) {
+	if reg == nil {
+		return nil, nil
+	}
+	merged := map[string]string{}
+	fetched := map[string]bool{}
+	for _, s := range reg.Sources() {
+		if s.Type != "jira" {
+			continue
+		}
+		p := s.Project
+		if p == "" {
+			p = fallbackProject
+		}
+		if p == "" || fetched[p] {
+			continue
+		}
+		fetched[p] = true
+		rs, err := ticket.FetchRemoteStatus(client, p)
+		if err != nil {
+			return nil, fmt.Errorf("fetch remote status for project %s: %w", p, err)
+		}
+		for k, v := range rs {
+			merged[k] = v
+		}
+	}
+	return merged, nil
 }
 
 // applyActions applies create_issue actions first (filling each created key

@@ -15,6 +15,7 @@ import (
 	"strings"
 	"testing"
 
+	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/storage"
 	"devnw.dev/canary/pkg/ticket"
 )
@@ -228,6 +229,159 @@ func TestCANARY_CBIN_306_Sync_ApplyWithCreds_EndToEnd(t *testing.T) {
 	}
 	if idMap["CBIN-105"] != "CP-1" {
 		t.Errorf("remap map = %+v, want CBIN-105 -> CP-1", idMap)
+	}
+}
+
+// seedProjectWithDestination mirrors seedProject but declares a single
+// jira source ("platform") with an api: field (pointing at apiURL), a
+// project: field, and destination: true, plus one flatfile token
+// (CBIN-105) and no jira tokens — isolating the create_issue path so the
+// test can assert it needs no --project flag.
+func seedProjectWithDestination(t *testing.T, apiURL string) string {
+	t.Helper()
+	root := t.TempDir()
+	canaryDir := filepath.Join(root, ".canary")
+	if err := os.MkdirAll(canaryDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	yaml := `project:
+  name: Demo
+  key: CBIN
+sources:
+  - name: core
+    type: flatfile
+    key: CBIN
+  - name: platform
+    type: jira
+    key: PLAT
+    api: ` + apiURL + `
+    project: CP
+    destination: true
+`
+	if err := os.WriteFile(filepath.Join(canaryDir, "project.yaml"), []byte(yaml), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	dbPath := filepath.Join(canaryDir, "canary.db")
+	if err := storage.MigrateDB(dbPath, "all"); err != nil {
+		t.Fatalf("MigrateDB: %v", err)
+	}
+	db, err := storage.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+
+	if err := db.UpsertToken(&storage.Token{ReqID: "CBIN-105", Feature: "Scanner", Aspect: "Engine", Status: "TESTED", FilePath: "scan.go"}); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+// TestCANARY_ENG_3958_Sync_ApplyWithDestinationSource_NoProjectFlag proves
+// that --apply succeeds without a --project flag when the configured jira
+// source carries "project:" and "destination: true" — the create_issue
+// action is applied against that source's project.
+func TestCANARY_ENG_3958_Sync_ApplyWithDestinationSource_NoProjectFlag(t *testing.T) {
+	var createCalls int
+	var createdProject string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/rest/api/3/issue":
+			createCalls++
+			var body struct {
+				Fields struct {
+					Project struct {
+						Key string `json:"key"`
+					} `json:"project"`
+				} `json:"fields"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			createdProject = body.Fields.Project.Key
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"id":"1","key":"CP-1"}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/search":
+			_, _ = w.Write([]byte(`{"issues":[],"total":0,"startAt":0,"maxResults":50}`))
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	root := seedProjectWithDestination(t, srv.URL)
+	chdir(t, root)
+
+	// Deliberately no JIRA_BASE_URL: BaseURL comes from the source's api:
+	// field, mirroring the existing source-API-fallback tests.
+	t.Setenv("JIRA_BASE_URL", "")
+	t.Setenv("JIRA_EMAIL", "agent@example.com")
+	t.Setenv("JIRA_API_TOKEN", "sekret")
+
+	out, err := execSync(t, "--apply", "--plan", ".canary/plan.json")
+	if err != nil {
+		t.Fatalf("Execute: %v (no --project flag; destination source configures project=CP)", err)
+	}
+	if !strings.Contains(out, "CANARY_TICKET_SYNC created=1") {
+		t.Fatalf("output = %q", out)
+	}
+	if createCalls != 1 {
+		t.Errorf("createCalls = %d, want 1", createCalls)
+	}
+	if createdProject != "CP" {
+		t.Errorf("created issue project = %q, want CP (from destination source config)", createdProject)
+	}
+}
+
+// TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge proves that
+// remoteStatusForSources fetches and merges remote status for every
+// jira-type source with a configured Project, without one source's fetch
+// clobbering another's (their issue-key spaces are disjoint by prefix, as
+// they always are for distinct sources).
+func TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method != http.MethodGet || r.URL.Path != "/rest/api/3/search" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		switch r.URL.Query().Get("jql") {
+		case "project=PLATPROJ":
+			_, _ = w.Write([]byte(`{"issues":[{"key":"PLAT-1","fields":{"status":{"name":"To Do"}}}],"total":1,"startAt":0,"maxResults":50}`))
+		case "project=SECPROJ":
+			_, _ = w.Write([]byte(`{"issues":[{"key":"SEC-9","fields":{"status":{"name":"Done"}}}],"total":1,"startAt":0,"maxResults":50}`))
+		default:
+			t.Errorf("unexpected jql: %s", r.URL.Query().Get("jql"))
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	defer srv.Close()
+
+	reg, err := sources.NewRegistry([]sources.Source{
+		{Name: "core", Type: "flatfile", Key: "CBIN"},
+		{Name: "platform", Type: "jira", Key: "PLAT", Project: "PLATPROJ"},
+		{Name: "security", Type: "jira", Key: "SEC", Project: "SECPROJ"},
+	})
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+
+	client := &ticket.JiraClient{BaseURL: srv.URL, Email: "agent@example.com", Token: "sekret"}
+	merged, err := remoteStatusForSources(client, reg, "")
+	if err != nil {
+		t.Fatalf("remoteStatusForSources: %v", err)
+	}
+	want := map[string]string{"PLAT-1": "To Do", "SEC-9": "Done"}
+	if len(merged) != len(want) {
+		t.Fatalf("merged = %+v, want %+v", merged, want)
+	}
+	for k, v := range want {
+		if merged[k] != v {
+			t.Errorf("merged[%q] = %q, want %q (no clobbering across sources)", k, merged[k], v)
+		}
 	}
 }
 
