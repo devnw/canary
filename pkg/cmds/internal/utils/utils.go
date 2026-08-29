@@ -91,7 +91,7 @@ func LoadProjectConfig() (*config.ProjectConfig, error) {
 	return config.Load(".")
 }
 
-// CANARY: REQ=CP-271; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_205_EffectiveLimit; UPDATED=2026-08-28
+// CANARY: REQ=ENG-4323; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_205_EffectiveLimit; UPDATED=2026-08-28
 // EffectiveLimit maps CLI --limit semantics (0/unset => def, -1 => unlimited)
 // to the storage layer's convention (0 => unlimited). Defaults are
 // deliberately small to protect agent context; callers pass -1 to

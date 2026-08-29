@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CP-257; FEATURE="ProjectConfig"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
+// CANARY: REQ=ENG-4317; FEATURE="ProjectConfig"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
 package config
 
 import (
@@ -16,7 +16,7 @@ import (
 
 // SourceConfig describes one requirement-ID source: a flatfile prefix or an
 // external ticket system (jira, github, gitlab) whose keys appear in REQ= fields.
-// CANARY: REQ=CP-267; FEATURE="TicketSources"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_201_LoadSources; UPDATED=2026-08-28
+// CANARY: REQ=ENG-4322; FEATURE="TicketSources"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_201_LoadSources; UPDATED=2026-08-28
 // CANARY: REQ=CP-279; FEATURE="TicketSync"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_306_LoadSources_TicketSyncFields; UPDATED=2026-08-29
 // CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_ENG_3958_LoadSources_ProjectDestinationFields; UPDATED=2026-08-29
 type SourceConfig struct {

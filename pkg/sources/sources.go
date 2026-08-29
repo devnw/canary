@@ -6,7 +6,7 @@
 // Package sources resolves requirement-ID prefixes to their origin: a local
 // flatfile series (e.g. CBIN-105) or an external ticket system (JIRA, GitLab,
 // GitHub) configured in .canary/project.yaml under `sources:`.
-// CANARY: REQ=CP-267; FEATURE="TicketSources"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_201_RegistryPattern; UPDATED=2026-08-28
+// CANARY: REQ=ENG-4322; FEATURE="TicketSources"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_201_RegistryPattern; UPDATED=2026-08-28
 package sources
 
 import (

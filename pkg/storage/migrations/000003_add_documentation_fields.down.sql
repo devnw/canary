@@ -1,4 +1,4 @@
--- CANARY: REQ=CP-255; FEATURE="DocDatabaseSchema"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
+-- CANARY: REQ=ENG-4315; FEATURE="DocDatabaseSchema"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-10-16
 -- Rollback documentation tracking fields from tokens table
 
 -- Drop indices first

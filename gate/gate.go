@@ -45,7 +45,7 @@ func RegisterCommentStyle(ext string, style CommentStyle) {
 	DefaultCommentStyles[strings.ToLower(ext)] = style
 }
 
-// CANARY: REQ=CP-265; FEATURE="GenericSectionGater"; ASPECT=API; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-02
+// CANARY: REQ=ENG-4321; FEATURE="GenericSectionGater"; ASPECT=API; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-02
 // Package gate provides generic file section gating utilities supporting
 // multiple comment syntaxes (single-line and multi-line) via an Options pattern.
 

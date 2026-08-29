@@ -8,7 +8,7 @@ import (
 	"devnw.dev/canary/pkg/migrate"
 )
 
-// CANARY: REQ=CP-251; FEATURE="MigrateFromCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=ENG-4313; FEATURE="MigrateFromCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 var MigrateFromCmd = &cobra.Command{
 	Use:   "migrate-from <system-type> [directory]",
 	Short: "Migrate from spec-kit or legacy canary to unified canary system",
@@ -108,7 +108,7 @@ Use --dry-run to preview changes before applying them.`,
 	},
 }
 
-// CANARY: REQ=CP-251; FEATURE="DetectCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=ENG-4313; FEATURE="DetectCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 var DetectCmd = &cobra.Command{
 	Use:   "detect [directory]",
 	Short: "Detect what type of system exists (spec-kit or legacy canary)",

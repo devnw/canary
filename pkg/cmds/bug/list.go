@@ -106,7 +106,7 @@ Examples:
 	},
 }
 
-// CANARY: REQ=CP-271; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-28
+// CANARY: REQ=ENG-4323; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-28
 // defaultBugListLimit caps bug list output to protect agent context.
 // Deliberately small; pass --limit -1 to explicitly request everything.
 const defaultBugListLimit = 20

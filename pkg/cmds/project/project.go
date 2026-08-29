@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CP-261; FEATURE="ProjectCLI"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-18
+// CANARY: REQ=ENG-4319; FEATURE="ProjectCLI"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-18
 package project
 
 import (

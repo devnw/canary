@@ -3,7 +3,7 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CP-260; FEATURE="MigrateCommand"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
+// CANARY: REQ=ENG-4318; FEATURE="MigrateCommand"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 
 package migrate
 
@@ -19,7 +19,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CP-260; FEATURE="MigrateParentCommand"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
+// CANARY: REQ=ENG-4318; FEATURE="MigrateParentCommand"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 var OrphanCmd = &cobra.Command{
 	Use:   "orphan",
 	Short: "Manage orphaned CANARY tokens (tokens without specifications)",
@@ -47,7 +47,7 @@ The orphan command:
   canary orphan run --all --dry-run`,
 }
 
-// CANARY: REQ=CP-260; FEATURE="MigrateDetectCommand"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
+// CANARY: REQ=ENG-4318; FEATURE="MigrateDetectCommand"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 var migrateDetectCmd = &cobra.Command{
 	Use:   "detect",
 	Short: "Detect orphaned requirements",
@@ -114,7 +114,7 @@ excluded.`,
 	},
 }
 
-// CANARY: REQ=CP-260; FEATURE="MigrateRunCommand"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
+// CANARY: REQ=ENG-4318; FEATURE="MigrateRunCommand"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
 var migrateRunCmd = &cobra.Command{
 	Use:   "run [REQ-ID]",
 	Short: "Migrate orphaned requirements to specifications",

@@ -17,7 +17,7 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CP-271; FEATURE="ContextCaps"; ASPECT=API; STATUS=IMPL; UPDATED=2026-08-28
+// CANARY: REQ=ENG-4323; FEATURE="ContextCaps"; ASPECT=API; STATUS=IMPL; UPDATED=2026-08-28
 // GrepTokens returns tokens whose feature/file/test/bench/reqID match pattern
 // (case-insensitive substring), bounded by limit (<=0 uses the storage
 // layer's own small default; see storage.DefaultSearchLimit).
