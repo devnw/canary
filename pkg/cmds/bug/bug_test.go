@@ -413,7 +413,7 @@ func padNumber(num int, width int) string {
 
 // TestCANARY_CBIN_302_BugTokenSingleLineParseable verifies that bug tokens
 // are emitted as single-line tokens that the scanner can parse correctly.
-// CANARY: REQ=CBIN-302; FEATURE="Bug tokens are single-line parseable"; ASPECT=Encode; STATUS=TESTED; UPDATED=2025-08-29
+// CANARY: REQ=CBIN-302; FEATURE="Bug tokens are single-line parseable"; ASPECT=Encode; STATUS=TESTED; UPDATED=2026-08-29
 func TestCANARY_CBIN_302_BugTokenSingleLineParseable(t *testing.T) {
 	// Create a temp directory to hold the test file
 	tmpRoot := t.TempDir()
