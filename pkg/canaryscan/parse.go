@@ -12,7 +12,11 @@ import (
 )
 
 var (
-	tokenLineRe = regexp.MustCompile(`(?m)^[ \t]*(?:\/\/|#|\/\*)?[ \t]*CANARY:\s*(.*)$`)
+	// CP-285: prefix group also accepts "--" (SQL line-comment) so tokens
+	// in .sql files scan. Alternatives share no common prefix character
+	// class with each other, so ordering here does not create shadowing;
+	// "--" is listed last purely for readability, matching upgrade.go.
+	tokenLineRe = regexp.MustCompile(`(?m)^[ \t]*(?:\/\/|#|\/\*|--)?[ \t]*CANARY:\s*(.*)$`)
 	kvRe        = regexp.MustCompile(`\s*([A-Za-z_]+)\s*=\s*([^;]+)\s*`)
 )
 

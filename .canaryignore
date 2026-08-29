@@ -26,8 +26,12 @@
 .amazonq/
 
 # Documentation directories (often contain example tokens)
-docs/
-specs/
+# Anchored to root only (CP-285): a bare "docs/"/"specs/" matches ANY
+# directory with that name at any depth under gitignore semantics, which
+# silently excluded nested dirs like pkg/docs/, pkg/specs/, and
+# pkg/cmds/specs/ from scans/upgrades.
+/docs/
+/specs/
 
 # Build artifacts
 bin/

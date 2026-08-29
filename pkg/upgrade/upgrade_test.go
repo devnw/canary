@@ -219,6 +219,35 @@ func TestCANARY_CBIN_302_Remap(t *testing.T) {
 	}
 }
 
+// TestCANARY_CP_285_RemapSQLCommentToken proves upgrade's tokenLineRe (kept
+// in sync with pkg/canaryscan/parse.go's) recognizes a "--" SQL
+// line-comment CANARY token, so --map remaps REQ IDs inside .sql migration
+// files the same way it does for // and # comment tokens.
+// CANARY: REQ=CP-285; FEATURE="SQLCommentTokens"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CP_285_RemapSQLCommentToken; UPDATED=2026-08-29
+func TestCANARY_CP_285_RemapSQLCommentToken(t *testing.T) {
+	dir := t.TempDir()
+	sqlPath := writeFile(t, dir, "migrations/001_widgets.sql",
+		`-- CANARY: REQ=CBIN-101; FEATURE="X"; ASPECT=Storage; STATUS=IMPL; UPDATED=2025-01-01`+"\n"+
+			"CREATE TABLE widgets (id INTEGER PRIMARY KEY);\n")
+
+	o := upgrade.Options{Root: dir, Write: true, Map: map[string]string{"CBIN-101": "CP-12"}}
+	changes, err := upgrade.Run(o)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(changes) != 1 {
+		t.Fatalf("expected 1 change (SQL comment token), got %d: %+v", len(changes), changes)
+	}
+
+	got := readFile(t, sqlPath)
+	if !strings.Contains(got, "REQ=CP-12") {
+		t.Errorf("SQL comment token not remapped: %q", got)
+	}
+	if !strings.HasPrefix(got, "-- CANARY:") {
+		t.Errorf("SQL comment prefix should be preserved: %q", got)
+	}
+}
+
 // TestCANARY_CBIN_302_Idempotent proves a second run over already-upgraded
 // output makes zero further changes.
 // CANARY: REQ=CBIN-302; FEATURE="TokenUpgrade"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_302_Idempotent; UPDATED=2026-08-29

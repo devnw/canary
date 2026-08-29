@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/spf13/cobra"
 
 	"devnw.dev/canary/pkg/canaryscan"
@@ -15,6 +17,27 @@ import (
 	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/storage"
 )
+
+// CANARY: REQ=CP-285; FEATURE="IndexIgnoreFilter"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CP_285_IndexRespectsCanaryIgnore,TestCANARY_CP_285_IsGrepMatchIgnored; UPDATED=2026-08-29
+// isGrepMatchIgnored reports whether file (as reported by grep -r rooted at
+// rootPath, e.g. "<rootPath>/pkg/docs/x.go" or a relative variant) falls
+// under a .canaryignore pattern. `canary index` used to shell out to grep
+// over the entire tree with no .canaryignore filtering, so ignored
+// directories (docs/, specs/, etc.) were silently indexed even though
+// `canary scan` correctly excluded them -- causing the index and the scan
+// report to diverge. ignorePatterns may be nil, in which case nothing is
+// ignored.
+func isGrepMatchIgnored(rootPath, file string, ignorePatterns *ignore.GitIgnore) bool {
+	if ignorePatterns == nil {
+		return false
+	}
+	rel, err := filepath.Rel(rootPath, file)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		rel = file
+	}
+	rel = filepath.ToSlash(rel)
+	return ignorePatterns.MatchesPath(rel)
+}
 
 // CANARY: REQ=CP-245; FEATURE="IndexCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 var IndexCmd = &cobra.Command{
@@ -57,6 +80,21 @@ The database is stored at .canary/canary.db by default.`,
 			}
 		}
 
+		// The index is derived state: rebuild it from scratch so rows for
+		// tokens that no longer exist on disk (remapped REQ IDs, deleted
+		// files) never survive a re-index (CP-285).
+		if err := db.DeleteAllTokens(); err != nil {
+			return fmt.Errorf("clear token index: %w", err)
+		}
+
+		// Load .canaryignore up front (CP-285) so grep matches under ignored
+		// directories (docs/, specs/, etc.) never reach the index -- keeping
+		// `canary index` consistent with what `canary scan` reports.
+		ignorePatterns, ierr := canaryscan.LoadCanaryIgnore(rootPath)
+		if ierr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to load .canaryignore: %v\n", ierr)
+		}
+
 		// Scan for all CANARY tokens
 		grepCmd := exec.Command("grep",
 			"-rn",
@@ -89,6 +127,9 @@ The database is stored at .canary/canary.db by default.`,
 			}
 
 			file := parts[0]
+			if isGrepMatchIgnored(rootPath, file, ignorePatterns) {
+				continue
+			}
 			lineNum := 0
 			//nolint:errcheck // Best-effort parse, default to 0 on failure
 			fmt.Sscanf(parts[1], "%d", &lineNum)
@@ -176,10 +217,6 @@ The database is stored at .canary/canary.db by default.`,
 
 		// Index diagram references (mermaid) so `canary view` can answer without grepping.
 		reg := sources.LoadFromRoot(rootPath)
-		ignorePatterns, ierr := canaryscan.LoadCanaryIgnore(rootPath)
-		if ierr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to load .canaryignore: %v\n", ierr)
-		}
 		diagRefs, derr := canaryscan.ScanDiagramRefs(rootPath, nil, reg, ignorePatterns)
 		if derr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: diagram ref scan failed: %v\n", derr)

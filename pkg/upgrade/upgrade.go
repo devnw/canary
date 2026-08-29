@@ -259,8 +259,10 @@ func isProbablyText(b []byte) bool {
 
 var (
 	// tokenLineRe mirrors pkg/canaryscan/parse.go's tokenLineRe: group 1 is
-	// everything after "CANARY:" on the line.
-	tokenLineRe = regexp.MustCompile(`^[ \t]*(?://|#|/\*)?[ \t]*CANARY:\s*(.*)$`)
+	// everything after "CANARY:" on the line. CP-285: prefix group also
+	// accepts "--" (SQL line-comment) so the upgrade rewriter (e.g. --map)
+	// sees and remaps tokens in .sql files, matching the scanner.
+	tokenLineRe = regexp.MustCompile(`^[ \t]*(?://|#|/\*|--)?[ \t]*CANARY:\s*(.*)$`)
 	// lineMarkerRe splits a line into leading whitespace (1), an optional
 	// comment marker (2), the whitespace following it (3), and the rest (4).
 	lineMarkerRe = regexp.MustCompile(`^(\s*)(//|#|/\*)?(\s*)(.*)$`)

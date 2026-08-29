@@ -85,3 +85,13 @@ func (db *DB) GetRefsByKind(kind string, limit int) ([]*Ref, error) {
 	}
 	return out, rows.Err()
 }
+
+// DeleteAllTokens clears the tokens table. `canary index` treats the token
+// index as fully derived state: each run rebuilds it from a whole-tree scan,
+// so rows for tokens that no longer exist on disk (renamed or remapped REQ
+// IDs, deleted files) must not survive a re-index.
+// CANARY: REQ=CP-285; FEATURE="IndexRebuild"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CP_285_IndexRebuildPrunes; UPDATED=2026-08-29
+func (db *DB) DeleteAllTokens() error {
+	_, err := db.conn.Exec(`DELETE FROM tokens`)
+	return err
+}

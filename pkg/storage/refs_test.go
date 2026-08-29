@@ -163,3 +163,39 @@ func TestCANARY_CBIN_301_GetRefsByKindLimit(t *testing.T) {
 		t.Errorf("GetRefsByKind(limit=5) = %d, want 5", len(got))
 	}
 }
+
+func TestCANARY_CP_285_IndexRebuildPrunes(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := tmpDir + "/canary.db"
+	if err := MigrateDB(dbPath, "all"); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	old := &Token{ReqID: "CBIN-101", Feature: "Old", Aspect: "API", Status: "IMPL", FilePath: "a.go", LineNumber: 1}
+	if err := db.UpsertToken(old); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.DeleteAllTokens(); err != nil {
+		t.Fatalf("DeleteAllTokens: %v", err)
+	}
+	fresh := &Token{ReqID: "CP-235", Feature: "New", Aspect: "API", Status: "TESTED", FilePath: "a.go", LineNumber: 1}
+	if err := db.UpsertToken(fresh); err != nil {
+		t.Fatal(err)
+	}
+	got, lerr := db.ListTokens(nil, "", "", 0)
+	if lerr != nil {
+		t.Fatal(lerr)
+	}
+	for _, tok := range got {
+		if tok.ReqID == "CBIN-101" {
+			t.Fatalf("stale row survived rebuild: %+v", tok)
+		}
+	}
+	if len(got) != 1 || got[0].ReqID != "CP-235" {
+		t.Fatalf("rebuild state wrong: %v", got)
+	}
+}
