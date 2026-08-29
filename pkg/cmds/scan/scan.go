@@ -24,10 +24,11 @@ Flags:
   --out <file>            Output status.json path (default "status.json")
   --csv <file>            Optional status.csv path
   --verify <file>         GAP_ANALYSIS file to verify claims
-  --strict                Enforce staleness on TESTED/BENCHED tokens (30 days)
+  --strict                Enforce staleness on TESTED/BENCHED tokens (default 30 days; see --stale-days)
   --update-stale          Rewrite UPDATED field for stale tokens
   --skip <regex>          Skip path regex (RE2)
   --project-only          Filter by project requirement ID pattern
+  --stale-days <n>        Staleness window in days (0 = use .canary/project.yaml verification.staleness_days, else 30)
 
 Examples:
   # Basic scan
@@ -50,6 +51,7 @@ Examples:
 		updateStale, _ := cmd.Flags().GetBool("update-stale")
 		skipStr, _ := cmd.Flags().GetString("skip")
 		projectOnly, _ := cmd.Flags().GetBool("project-only")
+		staleDays, _ := cmd.Flags().GetInt("stale-days")
 
 		skip := canaryscan.DefaultSkipRegex()
 		if skipStr != "" {
@@ -69,6 +71,7 @@ Examples:
 			SkipRegex:   skip,
 			UpdateStale: updateStale,
 			ProjectOnly: projectOnly,
+			StaleDays:   staleDays,
 		}
 		code := canaryscan.Run(cfg, os.Stdout, os.Stderr)
 		if code != 0 {
@@ -83,8 +86,9 @@ func init() {
 	ScanCmd.Flags().String("out", "status.json", "output status.json path")
 	ScanCmd.Flags().String("csv", "", "optional status.csv path")
 	ScanCmd.Flags().String("verify", "", "GAP_ANALYSIS file to verify claims")
-	ScanCmd.Flags().Bool("strict", false, "enforce staleness on TESTED/BENCHED tokens (30 days)")
+	ScanCmd.Flags().Bool("strict", false, "enforce staleness on TESTED/BENCHED tokens (default 30 days; see --stale-days)")
 	ScanCmd.Flags().Bool("update-stale", false, "rewrite UPDATED field for stale tokens")
 	ScanCmd.Flags().String("skip", "", "skip path regex (RE2); default excludes .git, node_modules, vendor, bin, etc.")
 	ScanCmd.Flags().Bool("project-only", false, "filter by project requirement ID pattern")
+	ScanCmd.Flags().Int("stale-days", 0, "staleness window in days (0 = use .canary/project.yaml verification.staleness_days, else 30)")
 }

@@ -26,6 +26,9 @@ type ProjectConfig struct {
 	Scanner struct {
 		ExcludePaths []string `yaml:"exclude_paths"`
 	} `yaml:"scanner"`
+	Verification struct {
+		StalenessDays int `yaml:"staleness_days"`
+	} `yaml:"verification"`
 }
 
 type aggregateKey struct{ req, feature, aspect, owner, updated string }
