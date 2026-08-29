@@ -16,36 +16,42 @@ canary mcp --port 9000 --host 0.0.0.0
 ```
 
 ## MCP Tools Exposed
-The server exposes 18 tools for AI assistants:
+The server exposes 19 tools for AI assistants. Five are stubs returning placeholder
+responses today (tracked in docs/GAP_ANALYSIS.md, GAP-0005): **specify**, **plan**,
+**index**, **bug-create**, **gap-mark**.
+
+### One-Call Hierarchical Context
+1. **view** - Full picture of a requirement: status, files, tests, deps, spec/plan, diagrams, ticket. Use FIRST instead of separate show/status/files calls.
+2. **deps** - Dependency IDs (forward or reverse) for a requirement; IDs only, follow up with view for detail.
 
 ### Core Token Management
-1. **list** - List/filter tokens
-2. **show** - Show requirement details
-3. **create** - Generate token template
-4. **status** - Show progress stats
-5. **search** - Search by keywords
-6. **next** - Get next priority requirement
+3. **list** - List/filter tokens (default limit 20, max 100; `Total` reports the true match count)
+4. **show** - Show requirement details
+5. **create** - Generate token template
+6. **status** - Show progress stats
+7. **search** - Search by keywords (default limit 20, max 100; `-1` unlimited via the CLI)
+8. **next** - Get next priority requirement
 
 ### Workflow
-7. **scan** - Scan codebase
-8. **specify** - Create specification
-9. **plan** - Generate plan
-10. **implement** - Get implementation guidance
-11. **index** - Index tokens to database
+9. **scan** - Scan codebase (real: calls the canaryscan scanner)
+10. **specify** - Create specification (stub — not yet implemented)
+11. **plan** - Generate plan (stub — not yet implemented)
+12. **implement** - Get implementation guidance
+13. **index** - Index tokens to database (stub — not yet implemented)
 
 ### Query & Navigation
-12. **files** - Find files for requirement
-13. **grep** - Search by pattern
+14. **files** - Find files for requirement
+15. **grep** - Search by pattern
 
 ### Management
-14. **prioritize** - Set priority
+16. **prioritize** - Set priority
 
 ### Bug Tracking
-15. **bug-list** - List bugs
-16. **bug-create** - Create bug
+17. **bug-list** - List bugs
+18. **bug-create** - Create bug (stub — not yet implemented)
 
 ### Gap Analysis
-17. **gap-mark** - Mark gap claims
+19. **gap-mark** - Mark gap claims (stub — not yet implemented)
 
 ## Server Output
 ```
@@ -57,11 +63,12 @@ Available endpoints:
   GET  /health         - Health check
   POST /mcp            - MCP endpoint
 
-Available MCP Tools (18 total):
-  ? list, show, create, status, search, next
-  ? scan, specify, plan, implement, index
-  ? files, grep, prioritize
-  ? bug-list, bug-create, gap-mark
+Available MCP Tools (19 total):
+  - view, deps
+  - list, show, create, status, search, next
+  - scan, specify, plan, implement, index
+  - files, grep, prioritize
+  - bug-list, bug-create, gap-mark
 
 Press Ctrl+C to stop
 ```

@@ -48,6 +48,7 @@ type ListParams struct {
 type ListResult struct {
 	Tokens []*storage.Token `json:"tokens"`
 	Count  int              `json:"count"`
+	Total  int              `json:"total"`
 }
 
 // handleList implements the list tool handler
@@ -71,22 +72,25 @@ func handleList(ctx context.Context, req *mcp.CallToolRequest, params *ListParam
 		filters["owner"] = params.Owner
 	}
 
-	limit := params.Limit
-	if limit == 0 {
-		limit = 25 // Default limit to reduce context; use limit param for more
-	}
-	if limit > 50 {
-		limit = 50 // Cap to avoid large responses
-	}
-
-	tokens, err := db.ListTokens(filters, "", "", limit)
+	// Overfetch by one past maxToolLimit so Total reflects the true match
+	// count (or a lower bound past the ceiling) before capping, matching
+	// handleSearch's cap/Total pattern.
+	all, err := db.ListTokens(filters, "", "", maxToolLimit+1)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list tokens: %w", err)
+	}
+
+	total := len(all)
+	limit := capLimit(params.Limit)
+	tokens := all
+	if len(tokens) > limit {
+		tokens = tokens[:limit]
 	}
 
 	result := &ListResult{
 		Tokens: tokens,
 		Count:  len(tokens),
+		Total:  total,
 	}
 
 	// Compact summary in content so agents get the gist without parsing full result.

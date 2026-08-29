@@ -1,56 +1,49 @@
 # Deps Command Prompt
 
 ## Purpose
-Show and manage requirement dependencies.
+Check, visualize, and validate requirement dependencies declared in spec files.
 
 ## Task
-Implement `canary deps` to track and visualize requirement dependencies.
+`canary deps` is a parent command with four real subcommands. There is no `show`, `list`, or `add` subcommand -- dependencies are declared inside spec.md files (via `DEPENDS_ON=`), not added through the CLI.
 
-## Expected Behavior
+## Subcommands
+
+### check <req-id>
+Is this requirement's dependencies satisfied? Only `TESTED`/`BENCHED` status counts; `IMPL` is insufficient.
 ```bash
-# Show dependencies for a requirement
-canary deps show CBIN-001
-
-# List all dependencies
-canary deps list
-
-# Add dependency
-canary deps add CBIN-042 --depends-on CBIN-001
-
-# Check for circular dependencies
-canary deps check
+canary deps check CBIN-147 [--show-satisfied]
 ```
 
-## Output Format
+### graph <req-id>
+Visual dependency tree (direct + transitive), from `.canary/specs/`.
+```bash
+canary deps graph CBIN-147 [--status] [--format ascii|mermaid]
 ```
-Dependencies for CBIN-001 (User Authentication):
+- `--format mermaid` renders a flowchart with click-through ticket links where a source is configured (default: `ascii`, a Unicode box-drawing tree).
+- `--status` marks each dependency satisfied (✅) or blocking (❌).
 
-Depends On:
-  ? CBIN-005 (Database Schema)     [TESTED]
-  ? CBIN-010 (Encryption Library)  [BENCHED]
-
-Required By:
-  ? CBIN-015 (OAuth2 Integration)  [IMPL]
-  ? CBIN-020 (Session Management)  [STUB]
-
-Dependency Status: ? All dependencies satisfied
-
-Implementation Order:
-  1. CBIN-001 (ready - dependencies met)
-  2. CBIN-015 (blocked - waiting for CBIN-001)
-  3. CBIN-020 (blocked - waiting for CBIN-001)
+### reverse <req-id>
+What would be blocked if this requirement changes?
+```bash
+canary deps reverse CBIN-146
 ```
 
-## Dependency Graph
-- Track "depends-on" relationships
-- Detect circular dependencies
-- Calculate implementation order
-- Show blocking/blocked requirements
-- Visualize dependency tree
+### validate
+Check the whole graph for circular dependencies, self-dependencies, and dependencies on missing requirements.
+```bash
+canary deps validate
+```
+
+## Output Format (graph, ascii)
+```
+CBIN-147
+├── CBIN-005 [TESTED]
+└── CBIN-010 [BENCHED]
+
+Dependency Status: ✅ All dependencies satisfied
+```
 
 ## Standards
-- Store dependencies in database
-- Validate no circular dependencies
-- Consider in `canary next` command
-- Show status of dependencies
-- Warn about implementing without dependencies
+- Dependencies are parsed from `.canary/specs/<REQ-ID>-*/spec.md`; requirements without a spec file have no dependency graph.
+- `check`/`graph --status` classify a dependency as satisfied only when ALL of its tokens are `TESTED` or `BENCHED`.
+- `validate` should be run in CI alongside `canary scan --verify` to catch cycles before they block `canary next`.

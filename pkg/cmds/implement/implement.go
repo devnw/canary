@@ -288,6 +288,7 @@ func renderImplementPrompt(spec *RequirementSpec, flags *ImplementFlags) (string
 		"Checklist":    checklist,
 		"Progress":     progress,
 		"Today":        time.Now().UTC().Format("2006-01-02"),
+		"Aspect":       detectAspect(spec.ReqID),
 	}
 
 	// Render
@@ -336,6 +337,32 @@ func calculateProgress(reqID string) (*ProgressStats, error) {
 	}
 
 	return stats, nil
+}
+
+// detectAspect returns the ASPECT= value from the first existing CANARY
+// token found for reqID (via the same grep calculateProgress uses), or
+// "API" when no token exists yet -- e.g. before the first STUB token is
+// placed. Used to populate the implement-prompt-template.md {{.Aspect}}
+// placeholder in the suggested TEST= function name.
+func detectAspect(reqID string) string {
+	grepCmd := exec.Command("grep", "-rn", "--include=*.go", "--include=*.md",
+		fmt.Sprintf("CANARY:.*REQ=%s", reqID), ".")
+
+	output, err := grepCmd.CombinedOutput()
+	if err != nil && len(output) == 0 {
+		return "API"
+	}
+
+	for _, line := range strings.Split(string(output), "\n") {
+		if line == "" {
+			continue
+		}
+		if aspect := utils.ExtractField(line, "ASPECT"); aspect != "" {
+			return aspect
+		}
+	}
+
+	return "API"
 }
 
 // extractImplementationChecklist extracts checklist section from spec

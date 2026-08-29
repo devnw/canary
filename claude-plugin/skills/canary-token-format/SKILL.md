@@ -23,7 +23,7 @@ description: >
 
 | Field | Format | Description |
 |-------|--------|-------------|
-| `REQ` | `<KEY>-<NNN>` | Requirement ID (zero-padded 3+ digits) |
+| `REQ` | `<KEY>-<NNN>` | Requirement ID. Zero-padded 3+ digits applies to the local flatfile series only — external ticket-source IDs (JIRA, GitHub, GitLab; see Ticket-System IDs below) are written verbatim, never zero-padded |
 | `FEATURE` | `"QuotedName"` | Feature name in quotes |
 | `ASPECT` | See list below | Architectural aspect |
 | `STATUS` | `STUB\|IMPL\|TESTED\|BENCHED` | Implementation status |
@@ -112,6 +112,26 @@ Documentation types: `user`, `api`, `technical`, `feature`, `architecture`
 ## Ticket-System IDs
 
 `REQ=` accepts any configured source key, not just the local flatfile series: `REQ=PLAT-4521` (JIRA), `REQ=GH-7` (GitHub), `REQ=GL-88` (GitLab). Sources are declared in `.canary/project.yaml` under `sources:` (name, type, key, and an optional `url` template). External IDs are written verbatim — never zero-padded.
+
+## CANARY:MIGRATE Notes
+
+Free-text guidance left by whoever last touched legacy or unmigrated code, for adoption/migration context — not a KV token, so it's never validated against REQ/FEATURE/ASPECT/STATUS:
+
+```
+CANARY:MIGRATE <free text>
+```
+
+Works in any common comment style (`//`, `#`, `--`, `<!-- -->`, `/* */`, markdown `[//]: #`):
+
+```go
+// CANARY:MIGRATE legacy handler predates the token system; needs a REQ before refactor
+```
+
+```python
+# CANARY:MIGRATE TODO: reconcile with PLAT-4521 once ported
+```
+
+Any requirement IDs mentioned in the free text are extracted automatically. MIGRATE notes surface in `canary scan`'s `status.json` (`migration_notes`), `canary index` (stored as `migrate` refs so `view` can read them back without re-grepping), `canary view <REQ-ID>` (when the note's text mentions that ID), and `canary onboard` (pre-seeded adoption guidance for a fresh codebase).
 
 ## Bug Tokens
 

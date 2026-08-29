@@ -41,6 +41,11 @@ Read `.canary/project.yaml` for the project key, name, and scanner settings. The
 ## CLI Quick Reference
 
 ```bash
+# View first — one call for the full picture
+canary view <REQ-ID>                           # status, files, tests, deps, spec, ticket
+canary view <REQ-ID> --json                    # machine-readable
+canary view <REQ-ID> --limit 20                # raise section limits (default 10)
+
 # Workflow
 canary scan --root . --out status.json        # Scan for tokens
 canary scan --root . --verify GAP_ANALYSIS.md --strict  # Verify claims
@@ -49,17 +54,31 @@ canary next --prompt                           # Next priority with guidance
 canary implement <query> --prompt              # Implementation guidance
 
 # Query
-canary list --status STUB --limit 10           # List by status
+canary list --status STUB --limit 10 --json    # List by status (add --json for tooling)
 canary show <REQ-ID>                           # Show tokens for requirement
-canary status <REQ-ID>                         # Progress summary
+canary status <REQ-ID> --json                  # Progress summary
 canary grep <pattern>                          # Search tokens
-canary files <REQ-ID>                          # Implementation files
+canary search <keywords>                       # Search across features/files/tests
+canary files <REQ-ID> --json                   # Implementation files
+canary deps graph <REQ-ID> --format mermaid    # Dependency tree (ascii or mermaid)
+canary deps check <REQ-ID>                     # Are dependencies satisfied?
+canary gap query --req-id <REQ-ID>             # Past implementation gaps
+
+# Drift, upgrade, onboarding
+canary drift --strict                          # Token-vs-reality drift (exit 2 on findings)
+canary upgrade --root . --write                # Rewrite legacy token shapes
+canary onboard --root .                        # Fresh-codebase adoption analysis
+canary ticket sync --project <KEY>              # Reconcile tokens against JIRA (plan-only without creds)
 
 # Management
 canary scan --root . --update-stale            # Update stale tokens
 canary index                                   # Rebuild token database
 canary doc status --all                        # Check documentation freshness
 ```
+
+List-shaped commands (`list`, `search`, `drift`, `view`, `onboard`, `ticket sync`, `upgrade`) default to a small `--limit` (20; `view` defaults to 10 per section) to protect agent context. `list` and `search` accept `--limit -1` for unlimited; the rest just take a larger `--limit`. Truncated output includes a hint to raise it.
+
+Ticket sources (JIRA, etc.) are configured in `.canary/project.yaml`'s `sources:` list; without credentials, `ticket sync` still computes and writes a plan, it just never touches the network.
 
 ## MCP Server (Optional)
 
@@ -69,7 +88,14 @@ If `canary mcp` is running, MCP tools are available as supplements to CLI comman
 canary mcp  # Starts HTTP server on localhost:8080/mcp
 ```
 
-MCP provides 18 tools: list, show, create, scan, specify, plan, implement, status, search, next, files, grep, index, prioritize, bug-list, bug-create, gap-mark, and more.
+MCP provides 19 tools. Lead with `view` and `deps` for hierarchical context in one call:
+- **One-call context:** view, deps
+- **Core:** list, show, create, status, search, next
+- **Workflow:** scan, specify (stub — not yet implemented), plan (stub — not yet implemented), implement, index (stub — not yet implemented)
+- **Query:** files, grep
+- **Management:** prioritize
+- **Bug tracking:** bug-list, bug-create (stub — not yet implemented)
+- **Gap analysis:** gap-mark (stub — not yet implemented)
 
 ## Development Workflow
 

@@ -198,7 +198,7 @@ Identify the next highest priority unimplemented requirement.
 
 ### 7. scan - Scan Codebase
 
-Scan codebase for CANARY tokens (placeholder implementation).
+Scan codebase for CANARY tokens (fully implemented — calls the real `canaryscan` scanner, the same engine the `canary scan` CLI command uses).
 
 **Parameters:**
 - `root` (string, optional): Root directory to scan (default: .)
@@ -241,9 +241,10 @@ AI assistants with MCP support can connect to the server and use these tools dir
 
 ```
 mcp/
-??? mcp.go          # Server initialization and HTTP handler
-??? tools.go        # MCP tool implementations
-??? mcp_test.go     # Unit tests for MCP tools
+|-- mcp.go            # Server initialization and HTTP handler
+|-- tools.go          # Core MCP tool implementations
+|-- tools_extended.go # Extended MCP tool implementations (incl. view, deps)
+|-- mcp_test.go       # Unit tests for MCP tools
 ```
 
 ### Tool Implementation Pattern
@@ -288,7 +289,7 @@ mcp.AddTool(server, &mcp.Tool{
 
 The MCP server leverages existing Canary infrastructure:
 
-- **Database Access**: Uses `internal/storage` package directly
+- **Database Access**: Uses `pkg/storage` package directly
 - **Token Management**: Reuses storage.Token structures
 - **Filtering**: Applies same filter logic as CLI commands
 - **Business Logic**: Calls existing internal packages
@@ -304,14 +305,15 @@ The MCP server leverages existing Canary infrastructure:
 
 ### Planned Tools:
 
-- [ ] `specify` - Create requirement specifications
-- [ ] `plan` - Generate implementation plans
-- [ ] `implement` - Generate implementation guidance
-- [ ] `gap-mark` - Record gap analysis entries
+- [x] `view` - Full requirement context in one call (status, files, tests, deps, spec, ticket)
+- [x] `deps` - Dependency IDs, forward or reverse
+- [ ] `specify` - Create requirement specifications (stub exists; real generation pending)
+- [ ] `plan` - Generate implementation plans (stub exists; real generation pending)
+- [x] `implement` - Generate implementation guidance
+- [ ] `gap-mark` - Record gap analysis entries (stub exists; database integration pending)
 - [ ] `gap-query` - Query gap analysis
-- [ ] `bug-create` - Create bug tracking tokens
-- [ ] `bug-list` - List bug tokens
-- [ ] `deps-check` - Check requirement dependencies
+- [ ] `bug-create` - Create bug tracking tokens (stub exists; collision-safe ID generation pending)
+- [x] `bug-list` - List bug tokens
 
 ### Advanced Features:
 

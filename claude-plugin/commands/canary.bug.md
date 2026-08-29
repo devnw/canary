@@ -21,7 +21,7 @@ defaults:
   bugs_root: .canary/bugs
   template_report: .canary/templates/bug-report-template.md
   id_lockfile: .canary/.bug.id.lock
-  bug_id_regex: '^BUG-[A-Za-z]+-[0-9]{3}$'
+  bug_id_regex: '^BUG(-[A-Za-z]+)?-[0-9]{3,}$'
   aspect_vocab: ["API","CLI","Engine","Storage","Security","Docs","Frontend","Data","Infra"]
   severity_vocab: ["S1-Critical","S2-High","S3-Medium","S4-Low"]
   priority_vocab: ["P0","P1","P2","P3"]

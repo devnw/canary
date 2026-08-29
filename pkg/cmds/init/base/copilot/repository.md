@@ -29,23 +29,36 @@ Per Article IV of `.canary/memory/constitution.md`:
 
 **All command details are in `.canary/commands/` - read these files for complete workflows:**
 
+**One-Call Context:**
+- `/canary.view` → `.canary/commands/view.md` — full picture of a requirement in one call: `canary view <REQ-ID>`
+- `/canary.deps` → `.canary/commands/deps.md` — check/graph/reverse/validate dependencies
+
 **Requirement Management:**
 - `/canary.specify` → `.canary/commands/specify.md`
 - `/canary.plan` → `.canary/commands/plan.md`
 - `/canary.scan` → `.canary/commands/scan.md`
 - `/canary.verify` → `.canary/commands/verify.md`
 - `/canary.update-stale` → `.canary/commands/update-stale.md`
+- `/canary.drift` → `.canary/commands/drift.md` — code-vs-token drift detection (`--strict` for CI)
+- `/canary.upgrade` → `.canary/commands/upgrade.md` — rewrite legacy token shapes (dry run by default)
+- `/canary.onboard` → `.canary/commands/onboard.md` — fresh-codebase adoption analysis
+- `/canary.ticket` → `.canary/commands/ticket.md` — reconcile tokens against configured ticket sources
 
 **Query & Implementation:**
 - `/canary.show` → `.canary/commands/show.md`
 - `/canary.status` → `.canary/commands/status.md`
 - `/canary.files` → `.canary/commands/files.md`
 - `/canary.grep` → `.canary/commands/grep.md`
+- `/canary.search` → `.canary/commands/search.md`
 - `/canary.list` → `.canary/commands/list.md`
 - `/canary.next` → `.canary/commands/next.md`
 - `/canary.implement` → `.canary/commands/implement.md`
+- `/canary.gap` → `.canary/commands/gap.md`
+- `/canary.index` → `.canary/commands/index.md`
 
 **Each command file contains step-by-step workflows, examples, and validation criteria.**
+
+**Ticket sources** (JIRA, etc.) are configured in `.canary/project.yaml`'s `sources:` list; `canary ticket sync` stays plan-only without credentials.
 
 ## Constitutional Principles
 

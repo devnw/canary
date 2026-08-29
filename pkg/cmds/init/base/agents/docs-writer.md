@@ -2,8 +2,8 @@
 name: {{ .AgentPrefix }}-docs-writer
 description: >
   Use this agent when new features, functions, modules, or architectural changes
-  have been added to the Geode graph database or related projects (clients, CLI,
-  tooling) and require comprehensive, synchronized documentation updates.
+  have been added to this project (libraries, clients, CLI, tooling) and require
+  comprehensive, synchronized documentation updates.
 
   The agent performs a full documentation synthesis pass — including README updates,
   developer guides, API references, design notes, and changelogs — ensuring accuracy
@@ -21,15 +21,15 @@ description: >
   </example>
 
   <example>
-  Context: User has added a new GQL temporal operator set in src/parser/
-  user: "Added temporal interval comparison support."
-  assistant: "I'll use the canary-docs-writer agent to update GQL.md, examples, and feature matrix."
+  Context: User has added a new parser feature in src/parser/
+  user: "Added interval comparison support to the query language."
+  assistant: "I'll use the canary-docs-writer agent to update the language reference, examples, and feature matrix."
   </example>
 
   <example>
-  Context: User updated the capture pipeline in the Go client.
-  user: "Updated the capture client to stream metrics via QUIC."
-  assistant: "Let’s invoke canary-docs-writer to refresh client.md, API docs, and integration guide."
+  Context: User updated the ingestion pipeline in the client library.
+  user: "Updated the client to stream metrics via a new transport."
+  assistant: "Let's invoke canary-docs-writer to refresh client.md, API docs, and integration guide."
   </example>
 model: {{ .AgentModel }}
 color: {{ .AgentColor }}

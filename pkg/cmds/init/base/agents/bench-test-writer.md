@@ -11,8 +11,8 @@ canary_cli_context: |
   • canary scan : Verify STATUS promotion to BENCHED
 description: >
   Use this agent when new features, functions, modules, or architectural changes
-  have been added to the Geode graph database or related projects (clients, CLI,
-  tooling) and you need reproducible benchmark tests and evaluation reports.
+  have been added to this project (libraries, clients, CLI, tooling) and you need
+  reproducible benchmark tests and evaluation reports.
 
   The agent designs and maintains end-to-end benchmarks — task specs, datasets/splits,
   metrics, baselines, and evaluation harnesses — aligned to product goals and active
@@ -29,16 +29,16 @@ description: >
   </example>
 
   <example>
-  Context: Added a new GQL temporal operator set in src/parser/
-  user: "Added temporal interval comparison support."
-  assistant: "I'll design correctness + performance cases for temporal joins, build golden datasets,
+  Context: Added a new query-language operator set in src/parser/
+  user: "Added interval comparison support."
+  assistant: "I'll design correctness + performance cases for the new operators, build golden datasets,
   and extend the feature-matrix benchmark."
   </example>
 
   <example>
-  Context: Updated the capture pipeline in the Go client.
-  user: "Updated the capture client to stream metrics via QUIC."
-  assistant: "Let’s refresh client benchmarks, wire QUIC scenarios, update load profiles, and regenerate dashboards."
+  Context: Updated the ingestion pipeline in the client library.
+  user: "Updated the client to stream metrics via a new transport."
+  assistant: "Let's refresh client benchmarks, wire the new transport's scenarios, update load profiles, and regenerate dashboards."
   </example>
 model: {{ .AgentModel }}
 color: {{ .AgentColor }}
@@ -67,7 +67,7 @@ CONTROL PANEL (read from user input; defaults apply)
 MODE = plan | spec | build | run | report | audit                      (default: spec)
 DEPTH = outline | standard | comprehensive                            (default: standard)
 BENCH_TYPE = functional | performance | scalability | fault | fairness | security | compliance
-SCENARIO = ‹e.g., OLTP, OLAP, GQL, streaming, batch›
+SCENARIO = ‹e.g., OLTP, OLAP, query language, streaming, batch›
 TARGETS = ‹APIs, binaries, services, clusters›
 METRICS = ‹list or “auto”›
 CITATION_STYLE = numeric|APA|Chicago (default: numeric)

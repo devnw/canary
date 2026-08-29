@@ -33,7 +33,7 @@ canary list --status TESTED --aspect CLI --limit 5
 - Total count at bottom
 
 ## Standards
-- Query `internal/storage` database
+- Query `pkg/storage` database
 - Support multiple filters simultaneously
 - Sort by REQ ID ascending
 - Handle empty results gracefully

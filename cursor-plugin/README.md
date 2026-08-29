@@ -1,6 +1,6 @@
 # CANARY Requirements – Cursor Plugin
 
-Cursor plugin for [CANARY](https://github.com/devnw/codepros/oss/canary) requirement tracking: adds a rule so the AI uses CANARY scan/verify and token format with minimal context.
+Cursor plugin for [CANARY](https://github.com/devnw/canary) requirement tracking: adds a rule so the AI uses CANARY scan/verify and token format with minimal context.
 
 ## Install from this repo (local)
 

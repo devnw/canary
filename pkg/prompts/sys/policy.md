@@ -1,3 +1,10 @@
+<!-- CANARY: this file is a meta-prompt template (served raw via
+     `canary <cmd> --prompt policy` / prompts.Policy in pkg/prompts/prompts.go).
+     Every {{VAR}} placeholder below is intentional: the CLI does not
+     substitute them -- whoever assembles the actual prompt sent to a model
+     fills them in downstream. Do not "fix" or strip these placeholders;
+     only the surrounding text should be corrected. -->
+
 ### 3) **CANARY POLICY SNIPPET — Drop‑in for Any Repo**
 
 ```md

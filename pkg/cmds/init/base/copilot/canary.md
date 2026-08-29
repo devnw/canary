@@ -119,6 +119,8 @@ See `.canary/commands/specify.md` for complete token format details.
 
 **All commands are documented in `.canary/commands/` - read those files for workflows:**
 
+- `/canary.view` → `commands/view.md` - Full picture of a requirement in one call (status, files, tests, deps, spec, ticket); e.g. `canary view <REQ-ID>`
+- `/canary.deps` → `commands/deps.md` - Check/graph/reverse/validate requirement dependencies (`canary deps graph <REQ-ID> --format mermaid`)
 - `/canary.specify` → `commands/specify.md` - Create new requirement specification
 - `/canary.plan` → `commands/plan.md` - Generate implementation plan
 - `/canary.implement` → `commands/implement.md` - Get implementation guidance
@@ -128,8 +130,19 @@ See `.canary/commands/specify.md` for complete token format details.
 - `/canary.status` → `commands/status.md` - Show implementation progress
 - `/canary.files` → `commands/files.md` - List files containing tokens
 - `/canary.grep` → `commands/grep.md` - Search tokens by keyword
+- `/canary.search` → `commands/search.md` - Search tokens by keyword across all fields
+- `/canary.gap` → `commands/gap.md` - Record and query implementation-gap learnings
+- `/canary.index` → `commands/index.md` - Rebuild the token database
+- `/canary.onboard` → `commands/onboard.md` - Fresh-codebase adoption analysis (languages, entry points, MIGRATE notes)
+- `/canary.upgrade` → `commands/upgrade.md` - Rewrite legacy on-disk token shapes (dry run by default)
+- `/canary.drift` → `commands/drift.md` - Detect code-vs-token drift (`canary drift --strict` for CI)
+- `/canary.ticket` → `commands/ticket.md` - Reconcile tokens against configured ticket sources (e.g. JIRA)
 
 **For complete workflows, examples, and validation criteria, read the command file.**
+
+## Ticket Sources
+
+External ticket sources (JIRA, etc.) are configured in `.canary/project.yaml`'s `sources:` list. `canary ticket sync` computes a reconciliation plan against them, and without credentials it stays plan-only and never touches the network.
 
 ## Related Files
 

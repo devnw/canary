@@ -82,12 +82,12 @@ CBIN-001,UserAuth,API,TESTED,src/auth.go,TestCANARY_CBIN_001_UserAuth,,backend,2
 ## Standards
 - Use streaming file processing for performance
 - Handle malformed tokens gracefully (warn, don't fail)
-- Normalize requirement IDs (CBIN-001, CBIN-1 ? CBIN-001)
+- Normalize requirement IDs (CBIN-001, CBIN-1 -> CBIN-001)
 - Stable sort for deterministic output
 - No secrets in output
 
 ## Implementation Notes
-- See `internal/storage` for token database schema
-- Use `internal/reqid` for requirement ID normalization
-- Use `internal/docs` for GAP_ANALYSIS.md parsing
+- See `pkg/storage` for token database schema
+- Use `pkg/reqid` for requirement ID normalization
+- Use `pkg/docs` for GAP_ANALYSIS.md parsing
 - Performance target: <10s for 50k files

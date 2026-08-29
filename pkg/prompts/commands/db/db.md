@@ -53,7 +53,7 @@ Fragmentation: 8.2%
 - **restore**: Restore from backup
 
 ## Standards
-- Use `internal/storage` database layer
+- Use `pkg/storage` database layer
 - Read-only queries by default
 - Validate imports before applying
 - Atomic operations (backup before modify)

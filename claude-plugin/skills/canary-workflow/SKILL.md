@@ -15,8 +15,10 @@ CANARY tracks requirements by embedding structured tokens directly in source cod
 1. **Specify** — Define what to build
 2. **Plan** — Design how to build it
 3. **Implement** — Build it (test-first)
-4. **Scan** — Verify token status
-5. **Verify** — Confirm claims match reality
+4. **View** — Check the full picture in one call (status, files, tests, deps)
+5. **Scan** — Verify token status
+6. **Verify** — Confirm claims match reality
+7. **Drift** — Catch tokens that fell out of sync with the code (ongoing)
 
 ## Step-by-Step Workflow
 
@@ -75,7 +77,15 @@ This generates comprehensive implementation guidance. Follow TDD:
 4. Add `TEST=TestFunctionName` to auto-promote to TESTED
 5. Add `BENCH=BenchFunctionName` to auto-promote to BENCHED
 
-### 6. Scan for Status
+### 6. View the Full Picture
+
+```
+/canary.view PROJ-105
+```
+
+One call for status, files, tests, dependency IDs, spec/plan paths, and ticket URL — use this instead of chaining `show`/`status`/`files` when you need the whole context for a requirement.
+
+### 7. Scan for Status
 
 ```
 /canary.scan
@@ -87,13 +97,21 @@ Runs `canary scan` and reports:
 - Stale tokens needing updates
 - Action items
 
-### 7. Verify Claims
+### 8. Verify Claims
 
 ```
 /canary.verify
 ```
 
 Checks that `GAP_ANALYSIS.md` claims match actual token status. Catches overclaims (claiming a feature is tested when it's only implemented).
+
+### 9. Check Drift (Ongoing)
+
+```
+/canary.drift --strict
+```
+
+Rescans the repo and reports tokens whose file was committed after their `UPDATED` date (code-drift), tokens stale past the staleness window, and (with an indexed database) doc-drift. `--strict` exits 2 on any finding — good for CI.
 
 ## Quick Priority Workflow
 
@@ -109,7 +127,8 @@ Automatically selects the highest-priority unfinished requirement and generates 
 
 - `/canary.update-stale` — Refresh UPDATED dates on stale tokens (>30 days)
 - `/canary.list --status IMPL` — Find implementations needing tests
-- `/canary.doc status --all` — Check documentation freshness
+- `/canary.doc` with arguments `status --all` — Check documentation freshness (invokes `canary doc status --all`)
+- `/canary.drift --strict` — Check for code/token drift (exit 2 on any finding)
 
 ## Key Principle: Minimal Context
 
