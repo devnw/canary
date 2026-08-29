@@ -37,6 +37,7 @@ import (
 	"devnw.dev/canary/pkg/cmds/specify"
 	"devnw.dev/canary/pkg/cmds/specs"
 	"devnw.dev/canary/pkg/cmds/status"
+	"devnw.dev/canary/pkg/cmds/upgrade"
 	"devnw.dev/canary/pkg/cmds/view"
 )
 
@@ -85,6 +86,7 @@ func Commands() []*cobra.Command {
 		legacy.DetectCmd,
 		legacy.MigrateFromCmd,
 		migrate.OrphanCmd,
+		upgrade.UpgradeCmd,
 
 		// Documentation and dependencies
 		doc.DocCmd,
