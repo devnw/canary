@@ -3,7 +3,6 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CBIN-141; FEATURE="SpecifyTemplatePlaceholderContract"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_141_CLI_SpecifyRendersRealID; UPDATED=2026-08-29
 package specify
 
 import (
@@ -78,5 +77,13 @@ func TestCANARY_CBIN_141_CLI_SpecifyRendersRealID(t *testing.T) {
 
 	if strings.Contains(body, "{{") {
 		t.Errorf("spec.md contains unrendered template syntax \"{{\":\n%s", body)
+	}
+
+	if strings.Contains(body, "REQID-") {
+		t.Errorf("spec.md contains unrendered placeholder \"REQID-\"")
+	}
+
+	if strings.Contains(body, "SECURITY_REVIEW") {
+		t.Errorf("spec.md contains unrendered placeholder \"SECURITY_REVIEW\"")
 	}
 }

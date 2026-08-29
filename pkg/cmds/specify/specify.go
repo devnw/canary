@@ -14,6 +14,7 @@ import (
 )
 
 // CANARY: REQ=CBIN-120; FEATURE="SpecifyCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-141; FEATURE="SpecifyTemplatePlaceholderContract"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_141_CLI_SpecifyRendersRealID; UPDATED=2026-08-29
 var SpecifyCmd = &cobra.Command{
 	Use:   "specify <feature-description>",
 	Short: "Create a new requirement specification",

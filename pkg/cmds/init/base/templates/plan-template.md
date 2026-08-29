@@ -1,7 +1,7 @@
 <!-- CANARY: REQ=CBIN-Docs-116; FEATURE="PlanTemplate"; ASPECT=Docs; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16 -->
-# Implementation Plan: REQID-XXX [FEATURE NAME]
+# Implementation Plan: REQID-XXX
 
-**Requirement:** REQID-XXX (e.g., REQID-CLI-001, REQID-API-042)
+**Requirement:** REQID-XXX
 **Specification:** [Link to spec.md]
 **Status:** STUB → IMPL
 **Created:** YYYY-MM-DD
@@ -27,7 +27,6 @@
 ```go
 // File: [path/to/file.go]
 // CANARY: REQ=REQID-XXX; FEATURE="FeatureName"; ASPECT=API; STATUS=IMPL; OWNER=team; UPDATED=YYYY-MM-DD
-// Example: REQ=REQID-API-105; FEATURE="UserAuth"; ASPECT=API; STATUS=IMPL; OWNER=team; UPDATED=2025-10-16
 
 package [package]
 

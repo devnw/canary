@@ -16,6 +16,7 @@ import (
 )
 
 // CANARY: REQ=CBIN-121; FEATURE="PlanCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=CBIN-142; FEATURE="PlanTemplatePlaceholderContract"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_142_CLI_PlanRendersRealID; UPDATED=2026-08-29
 var PlanCmd = &cobra.Command{
 	Use:   "plan <CBIN-XXX> [tech-stack]",
 	Short: "Generate technical implementation plan for a requirement",
