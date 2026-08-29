@@ -196,6 +196,34 @@ The database is stored at .canary/canary.db by default.`,
 			}
 		}
 
+		// CANARY: REQ=CBIN-301; FEATURE="MigrateNotesIndex"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-29
+		// Index CANARY:MIGRATE guidance notes so `canary view` can surface
+		// migration guidance without grepping. One ref row per (note,
+		// associated ReqID); a note that matched no requirement still gets
+		// one row with req_id='' so it isn't silently dropped.
+		migrateNotes, merr := canaryscan.ScanMigrateNotes(rootPath, nil, ignorePatterns, reg)
+		if merr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: migrate note scan failed: %v\n", merr)
+		}
+		if merr == nil {
+			migRefs := make([]storage.Ref, 0, len(migrateNotes))
+			for _, n := range migrateNotes {
+				// n.ReqIDs is already normalized by ExtractMigrateNotes.
+				if len(n.ReqIDs) == 0 {
+					migRefs = append(migRefs, storage.Ref{ReqID: "", Kind: "migrate", FilePath: n.File, LineNumber: n.Line, Context: n.Text})
+					continue
+				}
+				for _, id := range n.ReqIDs {
+					migRefs = append(migRefs, storage.Ref{ReqID: id, Kind: "migrate", FilePath: n.File, LineNumber: n.Line, Context: n.Text})
+				}
+			}
+			if err := db.ReplaceRefs("migrate", migRefs); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to index migration notes: %v\n", err)
+			} else if len(migrateNotes) > 0 {
+				fmt.Printf("Indexed %d migration note(s)\n", len(migrateNotes))
+			}
+		}
+
 		fmt.Printf("\n✅ Indexed %d CANARY tokens\n", indexed)
 		fmt.Printf("Database: %s\n", dbPath)
 

@@ -598,6 +598,7 @@ type ViewParams struct {
 // handleView returns the full bounded picture of one requirement: status,
 // files, tests, deps, spec/plan, diagrams, and ticket URL, in one call.
 // CANARY: REQ=CBIN-204; FEATURE="RequirementView"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_204_MCPView,TestCANARY_CBIN_204_MCPViewUnknown,TestCANARY_CBIN_204_MCPViewEmptyReqID; UPDATED=2026-08-28
+// CANARY: REQ=CBIN-301; FEATURE="MigrateNotesView"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_301_MCPViewMigrateNotes; UPDATED=2026-08-29
 func handleView(ctx context.Context, req *mcp.CallToolRequest, params *ViewParams) (*mcp.CallToolResult, *view.View, error) {
 	if params.ReqID == "" {
 		return nil, nil, fmt.Errorf("reqId is required")
@@ -624,6 +625,9 @@ func handleView(ctx context.Context, req *mcp.CallToolRequest, params *ViewParam
 	}
 	summary := fmt.Sprintf("%s: %d%% complete, %d files, %d tests, %d diagrams",
 		v.ReqID, v.Completion, v.FilesTotal, len(v.Tests), diagramsTotal)
+	if v.MigrateNotesTotal > 0 {
+		summary += fmt.Sprintf(", %d migration notes", v.MigrateNotesTotal)
+	}
 	if len(v.DependsOn) > 0 {
 		summary += ", depends on " + strings.Join(v.DependsOn, ",")
 	}

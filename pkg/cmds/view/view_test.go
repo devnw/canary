@@ -130,3 +130,65 @@ func TestCANARY_CBIN_204_BuildView_NotFound(t *testing.T) {
 		t.Error("unknown requirement must return an error")
 	}
 }
+
+// CANARY: REQ=CBIN-301; FEATURE="MigrateNotesView"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_301_BuildView_MigrateNotes,TestCANARY_CBIN_301_BuildView_MigrateNotesCap; UPDATED=2026-08-29
+func TestCANARY_CBIN_301_BuildView_MigrateNotes(t *testing.T) {
+	dbPath, root := seedDB(t)
+
+	db, err := storage.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+
+	if err := db.ReplaceRefs("migrate", []storage.Ref{
+		{ReqID: "CBIN-105", Kind: "migrate", FilePath: "old/legacy.go", LineNumber: 20, Context: "move to new client"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	v, err := BuildView(dbPath, root, "CBIN-105", 10)
+	if err != nil {
+		t.Fatalf("BuildView: %v", err)
+	}
+
+	// Regression: diagram and migrate refs must not cross-contaminate.
+	if len(v.Diagrams) != 1 || v.Diagrams[0] != "docs/arch.md:7" {
+		t.Errorf("Diagrams = %v, want only the diagram ref", v.Diagrams)
+	}
+	if v.DiagramsTotal != 1 {
+		t.Errorf("DiagramsTotal = %d, want 1", v.DiagramsTotal)
+	}
+	if len(v.MigrateNotes) != 1 || v.MigrateNotes[0] != "old/legacy.go:20: move to new client" {
+		t.Errorf("MigrateNotes = %v", v.MigrateNotes)
+	}
+	if v.MigrateNotesTotal != 1 {
+		t.Errorf("MigrateNotesTotal = %d, want 1", v.MigrateNotesTotal)
+	}
+}
+
+func TestCANARY_CBIN_301_BuildView_MigrateNotesCap(t *testing.T) {
+	dbPath, root := seedDB(t)
+
+	db, err := storage.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+
+	if err := db.ReplaceRefs("migrate", []storage.Ref{
+		{ReqID: "CBIN-105", Kind: "migrate", FilePath: "a.go", LineNumber: 1, Context: "note a"},
+		{ReqID: "CBIN-105", Kind: "migrate", FilePath: "b.go", LineNumber: 2, Context: "note b"},
+		{ReqID: "CBIN-105", Kind: "migrate", FilePath: "c.go", LineNumber: 3, Context: "note c"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	v, err := BuildView(dbPath, root, "CBIN-105", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(v.MigrateNotes) != 1 || v.MigrateNotesTotal != 3 {
+		t.Errorf("cap not applied: notes=%v total=%d", v.MigrateNotes, v.MigrateNotesTotal)
+	}
+}

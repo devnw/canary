@@ -7,6 +7,7 @@
 // files, tests, dependencies, spec/plan, diagrams, ticket link — into one
 // bounded, agent-friendly answer.
 // CANARY: REQ=CBIN-204; FEATURE="RequirementView"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_204_BuildView; UPDATED=2026-08-28
+// CANARY: REQ=CBIN-301; FEATURE="MigrateNotesView"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_301_BuildView_MigrateNotes,TestCANARY_CBIN_301_BuildView_MigrateNotesCap; UPDATED=2026-08-29
 package view
 
 import (
@@ -28,23 +29,25 @@ import (
 // spec/plan location, diagram refs, and (when configured) the owning ticket
 // system — in one bounded call.
 type View struct {
-	ReqID         string         `json:"req_id"`
-	Source        string         `json:"source,omitempty"`
-	TicketURL     string         `json:"ticket_url,omitempty"`
-	Statuses      map[string]int `json:"statuses"`       // status -> token count
-	Completion    int            `json:"completion_pct"` // TESTED+BENCHED tokens / total
-	Features      []string       `json:"features"`       // "Feature (ASPECT, STATUS)"
-	Files         []string       `json:"files"`          // capped at limit
-	FilesTotal    int            `json:"files_total"`
-	Tests         []string       `json:"tests"`
-	Benches       []string       `json:"benches,omitempty"`
-	DependsOn     []string       `json:"depends_on,omitempty"`
-	Blocks        []string       `json:"blocks,omitempty"`
-	RelatedTo     []string       `json:"related_to,omitempty"`
-	SpecPath      string         `json:"spec_path,omitempty"`
-	PlanPath      string         `json:"plan_path,omitempty"`
-	Diagrams      []string       `json:"diagrams,omitempty"` // "file:line"
-	DiagramsTotal int            `json:"diagrams_total,omitempty"`
+	ReqID             string         `json:"req_id"`
+	Source            string         `json:"source,omitempty"`
+	TicketURL         string         `json:"ticket_url,omitempty"`
+	Statuses          map[string]int `json:"statuses"`       // status -> token count
+	Completion        int            `json:"completion_pct"` // TESTED+BENCHED tokens / total
+	Features          []string       `json:"features"`       // "Feature (ASPECT, STATUS)"
+	Files             []string       `json:"files"`          // capped at limit
+	FilesTotal        int            `json:"files_total"`
+	Tests             []string       `json:"tests"`
+	Benches           []string       `json:"benches,omitempty"`
+	DependsOn         []string       `json:"depends_on,omitempty"`
+	Blocks            []string       `json:"blocks,omitempty"`
+	RelatedTo         []string       `json:"related_to,omitempty"`
+	SpecPath          string         `json:"spec_path,omitempty"`
+	PlanPath          string         `json:"plan_path,omitempty"`
+	Diagrams          []string       `json:"diagrams,omitempty"` // "file:line"
+	DiagramsTotal     int            `json:"diagrams_total,omitempty"`
+	MigrateNotes      []string       `json:"migrate_notes,omitempty"` // "file:line: text"
+	MigrateNotesTotal int            `json:"migrate_notes_total,omitempty"`
 }
 
 // DefaultViewLimit bounds list sections (files, diagrams) by default; agents
@@ -135,11 +138,20 @@ func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
 
 	if refs, err := db.GetRefsByReqID(reqID); err == nil {
 		for _, r := range refs {
-			v.Diagrams = append(v.Diagrams, fmt.Sprintf("%s:%d", r.FilePath, r.LineNumber))
+			switch r.Kind {
+			case "diagram":
+				v.Diagrams = append(v.Diagrams, fmt.Sprintf("%s:%d", r.FilePath, r.LineNumber))
+			case "migrate":
+				v.MigrateNotes = append(v.MigrateNotes, fmt.Sprintf("%s:%d: %s", r.FilePath, r.LineNumber, r.Context))
+			}
 		}
 		v.DiagramsTotal = len(v.Diagrams)
 		if len(v.Diagrams) > limit {
 			v.Diagrams = v.Diagrams[:limit]
+		}
+		v.MigrateNotesTotal = len(v.MigrateNotes)
+		if len(v.MigrateNotes) > limit {
+			v.MigrateNotes = v.MigrateNotes[:limit]
 		}
 	}
 	return v, nil
@@ -242,6 +254,13 @@ func printView(cmd *cobra.Command, v *View, limit int) {
 		fmt.Fprintf(out, "Diagrams: %s", strings.Join(v.Diagrams, ", "))
 		if v.DiagramsTotal > len(v.Diagrams) {
 			fmt.Fprintf(out, " … +%d more (use --limit %d)", v.DiagramsTotal-len(v.Diagrams), v.DiagramsTotal)
+		}
+		fmt.Fprintln(out)
+	}
+	if len(v.MigrateNotes) > 0 {
+		fmt.Fprintf(out, "Migrate:  %s", strings.Join(v.MigrateNotes, ", "))
+		if v.MigrateNotesTotal > len(v.MigrateNotes) {
+			fmt.Fprintf(out, " … +%d more (use --limit %d)", v.MigrateNotesTotal-len(v.MigrateNotes), v.MigrateNotesTotal)
 		}
 		fmt.Fprintln(out)
 	}

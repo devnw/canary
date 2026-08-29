@@ -56,3 +56,32 @@ func (db *DB) GetRefsByReqID(reqID string) ([]*Ref, error) {
 	}
 	return out, rows.Err()
 }
+
+// maxRefsByKind caps GetRefsByKind results when limit<=0 is requested.
+const maxRefsByKind = 100
+
+// CANARY: REQ=CBIN-301; FEATURE="MigrateRefsIndex"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_301_MigrateRefsRoundTrip,TestCANARY_CBIN_301_GetRefsByKindLimit; UPDATED=2026-08-29
+
+// GetRefsByKind returns refs of the given kind across all requirements,
+// ordered by file then line. limit<=0 defaults to a 100-row cap.
+func (db *DB) GetRefsByKind(kind string, limit int) ([]*Ref, error) {
+	if limit <= 0 {
+		limit = maxRefsByKind
+	}
+	rows, err := db.conn.Queryx(
+		`SELECT req_id, kind, file_path, line_number, COALESCE(context,'') AS context
+		 FROM refs WHERE kind = ? ORDER BY file_path, line_number LIMIT ?`, kind, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []*Ref
+	for rows.Next() {
+		var r Ref
+		if err := rows.StructScan(&r); err != nil {
+			return nil, err
+		}
+		out = append(out, &r)
+	}
+	return out, rows.Err()
+}

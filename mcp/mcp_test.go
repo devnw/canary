@@ -672,6 +672,57 @@ func TestCANARY_CBIN_204_MCPView(t *testing.T) {
 	}
 }
 
+// TestCANARY_CBIN_301_MCPViewMigrateNotes verifies handleView's summary
+// mentions the migration note count, and that migrate refs surface through
+// MigrateNotes without cross-contaminating Diagrams.
+// CANARY: REQ=CBIN-301; FEATURE="MigrateNotesView"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_301_MCPViewMigrateNotes; UPDATED=2026-08-29
+func TestCANARY_CBIN_301_MCPViewMigrateNotes(t *testing.T) {
+	ctx := context.Background()
+	db := setupMCPTestDB(t)
+
+	toks := []*storage.Token{
+		{ReqID: "CBIN-105", Feature: "Scanner", Aspect: "Engine", Status: "TESTED",
+			FilePath: "scan.go", LineNumber: 10, Test: "TestScan"},
+	}
+	for _, tok := range toks {
+		if err := db.UpsertToken(tok); err != nil {
+			t.Fatalf("failed to insert test token: %v", err)
+		}
+	}
+	if err := db.ReplaceRefs("diagram", []storage.Ref{
+		{ReqID: "CBIN-105", Kind: "diagram", FilePath: "docs/arch.md", LineNumber: 7},
+	}); err != nil {
+		t.Fatalf("failed to insert diagram ref: %v", err)
+	}
+	if err := db.ReplaceRefs("migrate", []storage.Ref{
+		{ReqID: "CBIN-105", Kind: "migrate", FilePath: "old/legacy.go", LineNumber: 20, Context: "move to new client"},
+	}); err != nil {
+		t.Fatalf("failed to insert migrate ref: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("failed to close seeding db: %v", err)
+	}
+
+	req := &mcp.CallToolRequest{}
+	result, out, err := handleView(ctx, req, &ViewParams{ReqID: "CBIN-105"})
+	if err != nil {
+		t.Fatalf("handleView failed: %v", err)
+	}
+	if len(out.Diagrams) != 1 || out.Diagrams[0] != "docs/arch.md:7" {
+		t.Errorf("Diagrams = %v, want only the diagram ref", out.Diagrams)
+	}
+	if len(out.MigrateNotes) != 1 || out.MigrateNotes[0] != "old/legacy.go:20: move to new client" {
+		t.Errorf("MigrateNotes = %v", out.MigrateNotes)
+	}
+	text, ok := result.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatalf("expected TextContent, got %T", result.Content[0])
+	}
+	if !strings.Contains(text.Text, "1 migration notes") {
+		t.Errorf("summary missing migration note count: %q", text.Text)
+	}
+}
+
 // TestCANARY_CBIN_204_MCPViewUnknown verifies handleView returns an error
 // (not a panic, not an empty success) when the requirement has no tokens.
 func TestCANARY_CBIN_204_MCPViewUnknown(t *testing.T) {
