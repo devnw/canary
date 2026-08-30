@@ -90,7 +90,8 @@ func TestCANARY_ENG_3960_MCP_Next_ExternalUnsatisfied_Blocking(t *testing.T) {
 
 // TestCANARY_ENG_3960_MCP_Next_ExternalUnknown_NotBlocking proves the MCP
 // mirror always uses the non-strict default: an external dependency with no
-// cached status does not block (MCP has no --strict-external flag).
+// cached status does not block (MCP keeps the older permissive rule; the
+// CLI blocks unless --allow-unknown-external).
 func TestCANARY_ENG_3960_MCP_Next_ExternalUnknown_NotBlocking(t *testing.T) {
 	t.Chdir(t.TempDir()) // no cache file
 	db, tok := mcpTestDB(t, "ENG-1")

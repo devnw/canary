@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"devnw.dev/canary/pkg/canaryscan"
 	"devnw.dev/canary/pkg/storage"
 )
 
@@ -52,9 +53,15 @@ func runContract(t *testing.T, root, bin string, args ...string) {
 // item, in one project) depending on CBIN-200, which exists under two
 // projects -- so resolving that dependency is exactly the ambiguity
 // PROJECT_REQUIRED exists to refuse.
+//
+// The index is stamped with metadata matching the repository's HEAD, because
+// `next` only consults an index that still describes the tree in front of it;
+// an unstamped one is scanned around, which would ask a different question
+// than the one under test.
 func seedAmbiguousDep(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
+	initGitRepo(t, root)
 	db := openDBAt(t, dbPathIn(root))
 
 	err := db.UpsertToken(&storage.Token{
@@ -69,6 +76,17 @@ func seedAmbiguousDep(t *testing.T) string {
 	}
 	seedToken(t, db, "projA", "CBIN-200")
 	seedToken(t, db, "projB", "CBIN-200")
+
+	if merr := db.PutIndexMeta(storage.IndexMeta{
+		Root:         ".",
+		ProjectID:    "projA",
+		CommitSHA:    headCommit(t, root),
+		ParserSchema: canaryscan.ParserSchemaVersion,
+		ScanDigest:   "fixture",
+		IndexedAt:    "2026-01-01T00:00:00Z",
+	}); merr != nil {
+		t.Fatalf("record index metadata: %v", merr)
+	}
 
 	if cerr := db.Close(); cerr != nil {
 		t.Fatalf("close db: %v", cerr)

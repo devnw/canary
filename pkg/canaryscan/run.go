@@ -136,22 +136,26 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 	threshold := staleThreshold(cfg, projCfg)
 
 	// Evidence is loaded once, for whichever consumers need it: --verify
-	// (which decides pass/fail from it) and --update-stale (which reports
-	// which stale claims still have current proof). A missing store is not
-	// an error — it means nothing has been proven yet.
+	// (which decides pass/fail from it), --update-stale (which reports which
+	// stale claims still have current proof), and the report's own
+	// verification export, which peers read. A missing store is not an error —
+	// it means nothing has been proven yet. A malformed one is: silently
+	// treating unparseable evidence as absent would hide tampering.
 	var recs []evidence.Record
 	var commit string
-	if cfg.VerifyPath != "" || cfg.UpdateStale {
-		evFile, err := evidence.Load(evidencePath(cfg.Root))
-		switch {
-		case err == nil:
-			recs = evFile.Records
-		case errors.Is(err, fs.ErrNotExist):
-			// no evidence recorded yet
-		default:
-			_, _ = fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
-			return 3
-		}
+	evidenceLoaded := false
+	evFile, everr := evidence.Load(evidencePath(cfg.Root))
+	switch {
+	case everr == nil:
+		recs = evFile.Records
+		evidenceLoaded = true
+	case errors.Is(everr, fs.ErrNotExist):
+		// no evidence recorded yet
+	default:
+		_, _ = fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", everr)
+		return 3
+	}
+	if evidenceLoaded || cfg.VerifyPath != "" || cfg.UpdateStale {
 		var cerr error
 		commit, cerr = HeadCommit(cfg.Root)
 		if cerr != nil {
@@ -160,12 +164,24 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 			// A plain --update-stale run (no --verify requested) is a report,
 			// not a verification: it must not emit the CANARY_VERIFY_FAIL
 			// marker, which is reserved for actual --verify failures.
-			if cfg.VerifyPath != "" {
+			switch {
+			case cfg.VerifyPath != "":
 				_, _ = fmt.Fprintf(stderr, "CANARY_VERIFY_FAIL reason=no_commit err=%q\n", cerr)
-			} else {
+			case cfg.UpdateStale:
 				_, _ = fmt.Fprintf(stderr, "CANARY_UPDATE_STALE_SKIP reason=no_commit err=%q\n", cerr)
 			}
 		}
+	}
+
+	// The verification export: which requirements are provably done at this
+	// commit. It is written only when both halves of that question have an
+	// answer — a store to read and a commit to bind it to — so a consumer can
+	// tell "nothing is verified" (an empty list) from "this scan could not
+	// tell" (the key absent entirely).
+	// CANARY: REQ=ENG-3961; FEATURE="PeerVerificationExport"; ASPECT=Wire; STATUS=TESTED; TEST=TestScanReportCarriesVerifiedExport,TestVerifiedRequirementsIsDeterministic,TestAuditF23_PeerWithoutVerifiedExportIsUnknown; UPDATED=2026-08-30
+	if evidenceLoaded && commit != "" {
+		verified := VerifiedRequirements(rep, recs, projCfg.ProjectID(), commit)
+		rep.Verified = &verified
 	}
 
 	if cfg.UpdateStale {

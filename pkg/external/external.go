@@ -14,7 +14,7 @@
 // to State=unknown (or falls through to the next source) rather than
 // blocking or erroring.
 // CANARY: REQ=ENG-3959; FEATURE="ExternalResolve"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_ENG_3959_Cache_RoundTrip,TestCANARY_ENG_3959_Cache_LoadMissing_NoError,TestCANARY_ENG_3959_Cache_LoadCorrupt_Error,TestCANARY_ENG_3959_Resolve_FlatfileSource_Unknown,TestCANARY_ENG_3959_Resolve_UnresolvedPrefix_Unknown,TestCANARY_ENG_3959_Resolve_NilRegistry_Unknown,TestCANARY_ENG_3959_Resolve_NoCacheFile_Unknown,TestCANARY_ENG_3959_Resolve_CachedDone_Satisfied,TestCANARY_ENG_3959_Resolve_CachedNotDone_Unsatisfied,TestCANARY_ENG_3959_Resolve_AbsentFromCache_Unknown,TestCANARY_ENG_3959_Resolve_CustomStatusMap_DoneSet,TestCANARY_ENG_3959_Resolve_StaleCache_DetailNote,TestCANARY_ENG_3959_Resolve_FreshCache_NoStaleNote,TestCANARY_ENG_3960_Resolution_IsExternal,TestCANARY_ENG_3960_Resolution_ShortDetail; UPDATED=2026-08-29
-// CANARY: REQ=ENG-3961; FEATURE="PeerProjects"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_ENG_3961_Resolve_PeerSatisfied,TestCANARY_ENG_3961_Resolve_PeerUnsatisfied,TestCANARY_ENG_3961_Resolve_PeerNotFound,TestCANARY_ENG_3961_Resolve_PeerMissingFile,TestCANARY_ENG_3961_Resolve_PeerMalformedJSON,TestCANARY_ENG_3961_Resolve_PeerRelativeRoot,TestCANARY_ENG_3961_Resolve_PeerBeatsTicketCache,TestCANARY_ENG_3961_Resolve_UnknownPrefixResolvedByPeer,TestCANARY_ENG_3961_Resolve_LocalFlatfileNeverConsultsPeer,TestCANARY_ENG_3961_Resolve_SecondPeerFallsThroughFirst; UPDATED=2026-08-29
+// CANARY: REQ=ENG-3961; FEATURE="PeerProjects"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_ENG_3961_Resolve_PeerSatisfied,TestCANARY_ENG_3961_Resolve_PeerUnsatisfied,TestCANARY_ENG_3961_Resolve_PeerNotFound,TestCANARY_ENG_3961_Resolve_PeerMissingFile,TestCANARY_ENG_3961_Resolve_PeerMalformedJSON,TestCANARY_ENG_3961_Resolve_PeerRelativeRoot,TestCANARY_ENG_3961_Resolve_PeerBeatsTicketCache,TestCANARY_ENG_3961_Resolve_UnknownPrefixResolvedByPeer,TestCANARY_ENG_3961_Resolve_LocalFlatfileNeverConsultsPeer,TestCANARY_ENG_3961_Resolve_SecondPeerFallsThroughFirst,TestCANARY_ENG_3961_Resolve_PeerLegacyExportUnknown,TestCANARY_ENG_3961_Resolve_PeerStaleExportUnknown; UPDATED=2026-08-30
 package external
 
 import (
@@ -74,6 +74,12 @@ func (r Resolution) IsExternal() bool {
 // callers like `deps check` and `view` stay on one line.
 func (r Resolution) ShortDetail() string {
 	if r.State == StateUnknown {
+		// A peer that owns the id and cannot vouch for it (stale or
+		// export-less) is a different problem from an uncached ticket, and
+		// naming the wrong fix sends the reader to the wrong command.
+		if strings.HasPrefix(r.Detail, "peer:") || strings.HasPrefix(r.Detail, "peers:") {
+			return r.Detail
+		}
 		return "no cached ticket status"
 	}
 	if i := strings.Index(r.Detail, "; "); i >= 0 {
@@ -246,10 +252,17 @@ func Resolve(id string, reg *sources.Registry, root string) Resolution {
 		if reg != nil {
 			peers = reg.Peers()
 		} else {
-			// Backward compatibility: when reg == nil, load peers fresh from config.
-			if cfg, err := config.Load(root); err == nil {
-				peers = cfg.Peers
+			// Backward compatibility: when reg == nil, load peers fresh from
+			// config. A config that cannot be read is reported as unknown
+			// rather than swallowed into an empty peer list: "this project
+			// declares no peers" and "this project's peer list could not be
+			// read" are different answers, and only one of them is safe to
+			// act on.
+			cfg, err := config.Load(root)
+			if err != nil {
+				return Resolution{ID: id, State: StateUnknown, Detail: "peers: config unreadable: " + err.Error()}
 			}
+			peers = cfg.Peers
 		}
 		if res, found := resolvePeer(id, root, peers); found {
 			return res
@@ -284,11 +297,17 @@ func Resolve(id string, reg *sources.Registry, root string) Resolution {
 
 // peerReport is the minimal shape decoded from a peer project's
 // status.json (the pkg/canaryscan.Report JSON produced by `canary scan
-// --out status.json`). Only the fields Resolve needs — requirement id and
-// each feature's status — are decoded; everything else in the peer's
-// report (summary, diagrams, migration notes, ...) is ignored.
+// --out status.json`). Only the fields Resolve needs — the requirement ids
+// and feature statuses it declares, and the verification export that says
+// which of them are actually proven — are decoded; everything else in the
+// peer's report (summary, diagrams, migration notes, ...) is ignored.
 type peerReport struct {
 	Requirements []peerRequirement `json:"requirements"`
+	// Verified is a pointer so a report that omits the key (one written by a
+	// canary old enough to predate the export) is distinguishable from one
+	// that ran the check and verified nothing. The first is unknown; the
+	// second is an answer.
+	Verified *[]string `json:"verified"`
 }
 
 // peerRequirement is one requirement entry in a peer's status.json.
@@ -304,24 +323,20 @@ type peerFeature struct {
 }
 
 // statusRank orders CANARY statuses from least to most complete, used to
-// pick the "worst" (least complete) status to report in an unsatisfied
-// peer Detail. TESTED and BENCHED never appear here — a requirement with
-// any TESTED/BENCHED feature is satisfied before this ranking is consulted.
-var statusRank = map[string]int{"STUB": 0, "IMPL": 1}
+// pick the "worst" (least complete) status to report in an unsatisfied peer
+// Detail. It is display only: a status is a declaration, and no declaration
+// decides whether a peer's requirement is done — the peer's verification
+// export does.
+var statusRank = map[string]int{"STUB": 0, "IMPL": 1, "TESTED": 2, "BENCHED": 3}
 
-// peerRequirementState classifies r's aggregate state the same way
-// Requirement.Features roll up in `canary scan`'s own status reporting: any
-// TESTED or BENCHED feature makes the requirement satisfied. Otherwise it
-// returns the worst (least complete, by statusRank) feature status found,
-// for display in the unsatisfied Detail; an unrecognized or absent status
-// falls back to the first feature's status seen (or "" when r has no
-// features at all).
-func peerRequirementState(r peerRequirement) (satisfied bool, worst string) {
+// peerWorstStatus returns the worst (least complete, by statusRank) feature
+// status declared by r, for display in an unsatisfied Detail. An unrecognized
+// status falls back to the first one seen; a requirement with no features at
+// all yields "".
+func peerWorstStatus(r peerRequirement) string {
+	worst := ""
 	worstRank := -1
 	for _, f := range r.Features {
-		if f.Status == "TESTED" || f.Status == "BENCHED" {
-			return true, ""
-		}
 		rank, known := statusRank[f.Status]
 		switch {
 		case !known && worst == "":
@@ -331,7 +346,29 @@ func peerRequirementState(r peerRequirement) (satisfied bool, worst string) {
 			worst = f.Status
 		}
 	}
-	return false, worst
+	return worst
+}
+
+// peerStaleNote returns a note when a peer's status.json was last written
+// more than staleAfter ago (relative to refTime(), so CANARY_TEST_TIMESTAMP
+// pins it), and "" when it is fresh. An export that old describes a tree the
+// peer has almost certainly moved past, so it answers nothing.
+func peerStaleNote(modTime time.Time) string {
+	age := refTime().Sub(modTime.UTC())
+	if age <= staleAfter {
+		return ""
+	}
+	return fmt.Sprintf("stale export, %s old", age.Round(time.Hour))
+}
+
+// containsID reports whether list holds id.
+func containsID(list []string, id string) bool {
+	for _, v := range list {
+		if v == id {
+			return true
+		}
+	}
+	return false
 }
 
 // peerStatusPath resolves peer.Root's status.json path, joining a relative
@@ -349,30 +386,48 @@ func peerStatusPath(root string, peer config.PeerConfig) string {
 // order, for id — read-only, never writing or creating anything. For each
 // peer:
 //   - peer.Root/status.json missing or unreadable: soft skip, try the next
-//     peer (degradation is sacred — an absent or unreachable peer must never
-//     error Resolve).
+//     peer (an absent or unreachable peer must never error Resolve, and it
+//     must not shadow an answer a later peer or the ticket cache can give).
 //   - status.json present but not valid JSON in the expected shape: soft
 //     skip, same as missing.
 //   - id not found among the peer's requirements: try the next peer.
-//   - id found with >=1 TESTED/BENCHED feature: satisfied, Detail
+//   - id found, export written more than 24h ago (mtime vs refTime()):
+//     unknown, Detail "peer:<name> (stale export, <age> old)". An export
+//     that old describes a tree the peer has moved past.
+//   - id found, report carries no "verified" key at all (written by a canary
+//     predating the verification export): unknown, Detail "peer:<name> (no
+//     verification export)". A peer that only publishes declarations cannot
+//     say anything is done.
+//   - id found and listed in the peer's "verified" export: satisfied, Detail
 //     "peer:<name>".
-//   - id found but no TESTED/BENCHED feature: unsatisfied, Detail
-//     "peer:<name> (<worst status>)" (worst status omitted when the
-//     requirement has no features at all).
+//   - id found and NOT listed there: unsatisfied, Detail "peer:<name>
+//     (<worst declared status>)" (the status is omitted when the requirement
+//     declares no features).
 //
 // The first peer (in declaration order) that has an entry for id wins —
-// later peers are not consulted once one has answered. Returns found=false
-// when no peer in the list has an entry for id (including when peers is
-// empty), letting Resolve fall through to its own ticket-cache logic.
+// later peers are not consulted once one has answered, including when its
+// answer is unknown: a peer that owns an id and cannot vouch for it is the
+// authority on that, and falling through to a ticket cache would answer a
+// different question.
+//
+// Returns found=false when no peer in the list has an entry for id
+// (including when peers is empty), letting Resolve fall through to its own
+// ticket-cache logic.
 //
 // Reads each consulted peer's status.json fresh on every call. That is a
 // known performance follow-up left for later if peer-heavy repos need it —
 // Resolve is not currently called in a loop tight enough to matter.
+// CANARY: REQ=ENG-3961; FEATURE="PeerProjects"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_ENG_3961_Resolve_PeerSatisfied,TestCANARY_ENG_3961_Resolve_PeerUnsatisfied,TestCANARY_ENG_3961_Resolve_PeerLegacyExportUnknown,TestCANARY_ENG_3961_Resolve_PeerStaleExportUnknown; UPDATED=2026-08-30
 func resolvePeer(id, root string, peers []config.PeerConfig) (Resolution, bool) {
 	for _, peer := range peers {
-		data, err := os.ReadFile(peerStatusPath(root, peer))
+		path := peerStatusPath(root, peer)
+		info, err := os.Stat(path)
 		if err != nil {
 			continue // missing/unreadable status.json: soft skip
+		}
+		data, err := os.ReadFile(path) //nolint:gosec // path derives from configured peer roots
+		if err != nil {
+			continue
 		}
 		var report peerReport
 		if err := json.Unmarshal(data, &report); err != nil {
@@ -383,12 +438,17 @@ func resolvePeer(id, root string, peers []config.PeerConfig) (Resolution, bool) 
 			if r.ID != id {
 				continue
 			}
-			satisfied, worst := peerRequirementState(r)
-			if satisfied {
+			if note := peerStaleNote(info.ModTime()); note != "" {
+				return Resolution{ID: id, State: StateUnknown, Detail: fmt.Sprintf("peer:%s (%s)", peer.Name, note)}, true
+			}
+			if report.Verified == nil {
+				return Resolution{ID: id, State: StateUnknown, Detail: "peer:" + peer.Name + " (no verification export)"}, true
+			}
+			if containsID(*report.Verified, id) {
 				return Resolution{ID: id, State: StateSatisfied, Detail: "peer:" + peer.Name}, true
 			}
 			detail := "peer:" + peer.Name
-			if worst != "" {
+			if worst := peerWorstStatus(r); worst != "" {
 				detail = fmt.Sprintf("peer:%s (%s)", peer.Name, worst)
 			}
 			return Resolution{ID: id, State: StateUnsatisfied, Detail: detail}, true

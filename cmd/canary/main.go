@@ -97,10 +97,12 @@ func init() {
 	// nextCmd flags
 	next.NextCmd.Flags().String("db", ".canary/canary.db", "path to database file")
 	next.NextCmd.Flags().Bool("prompt", false, "generate full implementation prompt (default: summary only)")
-	next.NextCmd.Flags().Bool("json", false, "output in JSON format")
+	next.NextCmd.Flags().String("prompt-arg", "", "extra prompt file or embedded prompt name to expose to the prompt template")
+	next.NextCmd.Flags().String("format", next.FormatText, "output format: json or text")
+	next.NextCmd.Flags().Bool("json", false, "output in JSON format (deprecated: use --format json)")
 	next.NextCmd.Flags().Bool("dry-run", false, "show what would be selected without generating prompt")
 	next.NextCmd.Flags().String("status", "", "filter by status (STUB, IMPL, TESTED, BENCHED)")
 	next.NextCmd.Flags().String("aspect", "", "filter by aspect (API, CLI, Engine, Storage, etc.)")
-	next.NextCmd.Flags().Bool("strict-external", false, "block on external (ticket-source) dependencies with unknown/uncached status, not just unsatisfied ones")
+	next.NextCmd.Flags().Bool("allow-unknown-external", false, "do not block on external (ticket-source/peer) dependencies whose state cannot be resolved from disk")
 	next.NextCmd.Flags().String("project", "", "scope the query to one project id (default: unscoped -- required only when the index holds more than one project)")
 }

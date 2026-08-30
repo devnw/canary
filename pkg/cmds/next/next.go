@@ -3,32 +3,51 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CP-252; FEATURE="NextPriorityCommand"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; UPDATED=2026-08-29
+// CANARY: REQ=CP-252; FEATURE="NextPriorityCommand"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; UPDATED=2026-08-30
 package next
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"text/template"
 	"time"
 
 	"github.com/spf13/cobra"
 
+	"devnw.dev/canary/pkg/canaryscan"
 	"devnw.dev/canary/pkg/cmds/internal/utils"
 	"devnw.dev/canary/pkg/config"
-	"devnw.dev/canary/pkg/external"
 	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/storage"
-	"errors"
-	"io/fs"
 )
 
-// CANARY: REQ=CP-252; FEATURE="NextCmd"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; DOC=user:docs/user/next-priority-guide.md; DOC_HASH=17524f7a14d2c410; UPDATED=2026-08-29
+// Output formats accepted by --format.
+const (
+	FormatJSON = "json"
+	FormatText = "text"
+)
+
+// Sources a selection can come from, reported verbatim in --format json's
+// "source" field so a caller always knows what the answer was computed from.
+const (
+	SourceDatabase   = "database"
+	SourceFilesystem = "filesystem"
+)
+
+// scanPriority is the priority a candidate selected from a filesystem scan
+// carries. The scan report aggregates features, not raw token fields, so a
+// PRIORITY declaration is not available there; 5 is the same neutral default
+// `canary index` gives a token that declares none.
+const scanPriority = 5
+
+// CANARY: REQ=CP-252; FEATURE="NextCmd"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; DOC=user:docs/user/next-priority-guide.md; DOC_HASH=17524f7a14d2c410; UPDATED=2026-08-30
 var NextCmd = &cobra.Command{
 	Use:   "next [flags]",
 	Short: "Identify and implement next highest priority requirement",
@@ -36,10 +55,12 @@ var NextCmd = &cobra.Command{
 comprehensive implementation guidance.
 
 This command automatically:
-- Queries database or scans filesystem for CANARY tokens
+- Uses the token index when it still describes this tree, and scans the tree
+  itself when it does not
 - Identifies highest priority STUB or IMPL requirement
 - Excludes hidden requirements (test files, templates, examples)
-- Verifies dependencies are satisfied
+- Requires every dependency to be proven complete -- passing evidence at the
+  current commit for a local one, a satisfied external/peer state otherwise
 - Generates comprehensive implementation prompt with:
   - Specification details
   - Constitutional principles
@@ -48,23 +69,24 @@ This command automatically:
 
 Priority determination factors:
 1. PRIORITY field (1=highest, 10=lowest)
-2. STATUS (STUB > IMPL > TESTED)
-3. DEPENDS_ON (dependencies must be TESTED/BENCHED)
-4. UPDATED field (older tokens get priority boost)`,
+2. STATUS (STUB before IMPL)
+3. DEPENDS_ON (every dependency must be proven complete by evidence, or
+   satisfied as an external/peer requirement)
+
+The answer names its own source: "database" when the index is present and
+still describes this tree, "filesystem" when the tree had to be scanned
+directly. Completion is only ever claimed from a current index.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		promptArg, _ := cmd.Flags().GetString("prompt-arg")
-		if promptArg != "" {
-			if _, err := utils.LoadPrompt(promptArg); err != nil {
-				return err
-			}
+		format, err := resolveFormat(cmd)
+		if err != nil {
+			return err
 		}
 		dbPath, _ := cmd.Flags().GetString("db")
 		promptFlag, _ := cmd.Flags().GetBool("prompt")
-		jsonOutput, _ := cmd.Flags().GetBool("json")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		filterStatus, _ := cmd.Flags().GetString("status")
 		filterAspect, _ := cmd.Flags().GetString("aspect")
-		strictExternal, _ := cmd.Flags().GetBool("strict-external")
+		allowUnknownExternal, _ := cmd.Flags().GetBool("allow-unknown-external")
 
 		// Build filters
 		filters := make(map[string]string)
@@ -78,7 +100,14 @@ Priority determination factors:
 		// Select next priority
 		projectID := utils.ReadProjectID(cmd)
 
-		token, err := selectNextPriorityStrict(dbPath, projectID, filters, strictExternal)
+		sel, err := selectNext(selection{
+			DBPath:               dbPath,
+			Root:                 ".",
+			ProjectID:            projectID,
+			Filters:              filters,
+			AllowUnknownExternal: allowUnknownExternal,
+			Stderr:               cmd.ErrOrStderr(),
+		})
 		if err != nil {
 			// A PROJECT_REQUIRED refusal reaching here is the contract, not
 			// a failure to select: it must arrive as the machine-readable
@@ -89,60 +118,130 @@ Priority determination factors:
 			return fmt.Errorf("select next priority: %w", err)
 		}
 
-		if token == nil {
-			fmt.Println("🎉 All requirements completed! No work available.")
-			fmt.Println("\nSuggestions:")
-			fmt.Println("  • Run: canary scan --verify GAP_ANALYSIS.md")
-			fmt.Println("  • Review completed requirements")
-			fmt.Println("  • Consider creating new specifications")
+		out := cmd.OutOrStdout()
+
+		// JSON is a machine contract and outranks the human-facing modes: a
+		// caller that asked for parseable output gets it, dry-run or not.
+		if format == FormatJSON {
+			return emitJSON(out, sel)
+		}
+
+		if sel.Token == nil {
+			printNoWork(out, sel.Source, sel.Blocked)
 			return nil
 		}
 
 		if dryRun {
-			fmt.Printf("Next priority (dry run): %s - %s\n", token.ReqID, token.Feature)
-			fmt.Printf("Priority: %d | Status: %s | Aspect: %s\n", token.Priority, token.Status, token.Aspect)
-			fmt.Printf("Location: %s\n", token.FilePath)
+			fmt.Fprintf(out, "Next priority (dry run): %s - %s\n", sel.Token.ReqID, sel.Token.Feature)
+			fmt.Fprintf(out, "Priority: %d | Status: %s | Aspect: %s\n", sel.Token.Priority, sel.Token.Status, sel.Token.Aspect)
+			fmt.Fprintf(out, "Location: %s\n", sel.Token.FilePath)
+			fmt.Fprintf(out, "Source: %s\n", sel.Source)
 			return nil
 		}
 
-		// Render prompt
-		output, err := renderPrompt(token, projectID, promptFlag)
+		// The prompt template (and any --prompt-arg it embeds) is read only
+		// on the path that actually renders one: a --json or --dry-run run
+		// used to fail on a missing template it was never going to use.
+		promptArg, _ := cmd.Flags().GetString("prompt-arg")
+		output, err := renderPrompt(sel.Token, projectID, promptFlag, promptArg)
 		if err != nil {
 			return fmt.Errorf("render prompt: %w", err)
 		}
 
-		if jsonOutput {
-			out := nextJSONOutput{
-				ReqID:    token.ReqID,
-				Feature:  token.Feature,
-				Aspect:   token.Aspect,
-				Status:   token.Status,
-				Priority: token.Priority,
-				FilePath: token.FilePath,
-				Updated:  token.UpdatedAt,
-			}
-			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "  ")
-			if err := enc.Encode(out); err != nil {
-				return fmt.Errorf("json encode: %w", err)
-			}
-			return nil
-		}
-
-		fmt.Println(output)
+		fmt.Fprintln(out, output)
 		return nil
 	},
 }
 
-// nextJSONOutput is the structure emitted for next --json.
+// resolveFormat resolves the output format from --format, with the
+// deprecated --json as an alias. An explicit --format always wins, so the two
+// can never disagree silently.
+func resolveFormat(cmd *cobra.Command) (string, error) {
+	format, _ := cmd.Flags().GetString("format")
+	if format == "" {
+		format = FormatText
+	}
+	if jsonFlag, _ := cmd.Flags().GetBool("json"); jsonFlag && !cmd.Flags().Changed("format") {
+		format = FormatJSON
+	}
+	if format != FormatJSON && format != FormatText {
+		return "", fmt.Errorf("unknown --format %q (want %q or %q)", format, FormatJSON, FormatText)
+	}
+	return format, nil
+}
+
+// nextJSONOutput is the structure emitted for next --format json. Source is
+// always present; the requirement fields are absent when there was nothing to
+// select, in which case Message says why.
 type nextJSONOutput struct {
-	ReqID    string `json:"req_id"`
-	Feature  string `json:"feature"`
-	Aspect   string `json:"aspect"`
-	Status   string `json:"status"`
-	Priority int    `json:"priority"`
-	FilePath string `json:"file_path"`
-	Updated  string `json:"updated"`
+	ReqID    string `json:"req_id,omitempty"`
+	Feature  string `json:"feature,omitempty"`
+	Aspect   string `json:"aspect,omitempty"`
+	Status   string `json:"status,omitempty"`
+	Priority int    `json:"priority,omitempty"`
+	FilePath string `json:"file_path,omitempty"`
+	Updated  string `json:"updated,omitempty"`
+	Source   string `json:"source"`
+	Message  string `json:"message,omitempty"`
+}
+
+// emitJSON writes the one JSON object that is the whole of stdout in JSON
+// mode.
+func emitJSON(w io.Writer, sel result) error {
+	out := nextJSONOutput{Source: sel.Source}
+	if sel.Token == nil {
+		out.Message = noWorkMessage(sel.Source, sel.Blocked)
+	} else {
+		out.ReqID = sel.Token.ReqID
+		out.Feature = sel.Token.Feature
+		out.Aspect = sel.Token.Aspect
+		out.Status = sel.Token.Status
+		out.Priority = sel.Token.Priority
+		out.FilePath = sel.Token.FilePath
+		out.Updated = sel.Token.UpdatedAt
+	}
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(out); err != nil {
+		return fmt.Errorf("json encode: %w", err)
+	}
+	return nil
+}
+
+// noWorkMessage is what "nothing to select" means for each source. Work that
+// exists but is blocked is never completion, whatever the source; and only an
+// index that still describes this tree can support the claim that everything
+// is done. A filesystem scan that found no candidate says exactly that and no
+// more.
+func noWorkMessage(source string, blocked int) string {
+	if blocked > 0 {
+		return fmt.Sprintf("no unblocked requirements (%d blocked by unmet dependencies)", blocked)
+	}
+	if source == SourceDatabase {
+		return "all requirements completed"
+	}
+	return "no actionable requirements found"
+}
+
+// printNoWork writes the human-facing form of noWorkMessage.
+func printNoWork(w io.Writer, source string, blocked int) {
+	if blocked > 0 {
+		fmt.Fprintf(w, "%s\n", noWorkMessage(source, blocked))
+		fmt.Fprintln(w, "\nEvery remaining candidate is waiting on a dependency:")
+		fmt.Fprintln(w, "  • Run: canary deps check <REQ-ID>   (see stderr above for unresolved external dependencies)")
+		return
+	}
+	if source == SourceDatabase {
+		fmt.Fprintln(w, "🎉 All requirements completed! No work available.")
+		fmt.Fprintln(w, "\nSuggestions:")
+		fmt.Fprintln(w, "  • Run: canary verify")
+		fmt.Fprintln(w, "  • Review completed requirements")
+		fmt.Fprintln(w, "  • Consider creating new specifications")
+		return
+	}
+	fmt.Fprintf(w, "no actionable requirements found (source=%s)\n", SourceFilesystem)
+	fmt.Fprintln(w, "\nThe tree was scanned directly because no current index was available.")
+	fmt.Fprintln(w, "  • Run: canary index   (then re-run canary next)")
 }
 
 // PromptData holds template variables for prompt generation
@@ -164,6 +263,11 @@ type PromptData struct {
 	Today             string
 	SuggestedTestFile string
 	PackageName       string
+	// PromptArg is the --prompt-arg value as given, and PromptContent the
+	// prompt it resolved to. Both are empty when no extra prompt was asked
+	// for.
+	PromptArg     string
+	PromptContent string
 }
 
 // RelatedSpec represents a related specification reference
@@ -173,58 +277,266 @@ type RelatedSpec struct {
 	SpecFile string
 }
 
-// selectNextPriority identifies the highest priority unimplemented requirement
-// Uses database if available, falls back to filesystem scan. External
-// dependencies with unknown (uncached) status are treated as non-blocking
-// (the safe default); use selectNextPriorityStrict for --strict-external.
-func selectNextPriority(dbPath, projectID string, filters map[string]string) (*storage.Token, error) {
-	return selectNextPriorityStrict(dbPath, projectID, filters, false)
+// selection are the resolved inputs of one `next` run.
+type selection struct {
+	DBPath string
+	// Root is the tree the answer is about: where the config, the evidence
+	// store, the git HEAD and (in filesystem mode) the scan all come from.
+	Root string
+	// ProjectID scopes index queries. Empty means "every project", which the
+	// index refuses only when it would be ambiguous.
+	ProjectID            string
+	Filters              map[string]string
+	AllowUnknownExternal bool
+	Stderr               io.Writer
 }
 
-// selectNextPriorityStrict is selectNextPriority with control over whether
-// external dependencies of unknown (uncached) status block selection.
-// CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3960_Next_ExternalSatisfied_NotBlocking,TestCANARY_ENG_3960_Next_ExternalUnsatisfied_Blocking,TestCANARY_ENG_3960_Next_ExternalUnknown_NotBlockingByDefault,TestCANARY_ENG_3960_Next_ExternalUnknown_StrictBlocks,TestCANARY_ENG_3960_Next_LocalMissingDep_StillBlocking; UPDATED=2026-08-29
-func selectNextPriorityStrict(dbPath, projectID string, filters map[string]string, strictExternal bool) (*storage.Token, error) {
-	// Read-only: a repository with no index falls back to a filesystem scan
-	// rather than creating an empty database and reporting nothing to do.
-	db, err := storage.OpenRO(dbPath)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return selectFromFilesystem(filters)
-		}
-		// An index that exists but cannot be opened is still not a reason to
-		// invent an answer from an empty database.
-		return selectFromFilesystem(filters)
+// result is one selection outcome: the chosen token (nil when there is
+// nothing to do) and the source that answer came from.
+type result struct {
+	Token  *storage.Token
+	Source string
+	// Blocked counts the candidates that were passed over because a
+	// dependency was not complete. It is what separates "there is nothing
+	// left to do" from "everything left is waiting on something".
+	Blocked int
+}
+
+// selectNextPriority identifies the highest-priority actionable requirement
+// under the default policy, discarding the source. It exists for callers
+// (tests, benchmarks) that only want the token.
+func selectNextPriority(dbPath, projectID string, filters map[string]string) (*storage.Token, error) {
+	res, err := selectNext(selection{DBPath: dbPath, ProjectID: projectID, Filters: filters, Stderr: io.Discard})
+	return res.Token, err
+}
+
+// selectNext picks the next requirement to work on and names where the answer
+// came from.
+//
+// The index is used only when it still describes the tree in front of us (see
+// openFreshIndex); otherwise the tree is scanned with the same scanner
+// `canary scan` uses. Both paths then apply one dependency rule (depGate), so
+// "may this start?" cannot depend on which source answered.
+// CANARY: REQ=CP-252; FEATURE="NextSourceDecision"; ASPECT=CLI; STATUS=TESTED; TEST=TestAuditF13,TestAuditF13_EmptyTreeNeverClaimsCompletion,TestAuditF13_StaleIndexFallsBackToFilesystem,TestCANARY_CBIN_132_CLI_StaleIndexIsNotUsed; UPDATED=2026-08-30
+func selectNext(s selection) (result, error) {
+	if s.Root == "" {
+		s.Root = "."
+	}
+	if s.Stderr == nil {
+		s.Stderr = os.Stderr
 	}
 
-	defer func() { _ = db.Close() }()
-	return selectFromDatabase(db, projectID, filters, strictExternal)
+	cfg, err := config.Load(s.Root)
+	if err != nil {
+		return result{}, fmt.Errorf("load .canary/project.yaml: %w", err)
+	}
+	reg, err := sources.FromProjectConfig(cfg)
+	if err != nil {
+		return result{}, fmt.Errorf("load .canary/project.yaml: %w", err)
+	}
+	recs, err := loadEvidenceRecords(s.Root)
+	if err != nil {
+		return result{}, err
+	}
+	// A tree with no readable HEAD leaves commit empty, which no evidence
+	// record can match: every dependency then fails closed rather than being
+	// assumed done.
+	commit, _ := canaryscan.HeadCommit(s.Root)
+
+	gate := &depGate{
+		root:                 s.Root,
+		evidenceProjectID:    evidenceProjectID(cfg, s.ProjectID),
+		commit:               commit,
+		recs:                 recs,
+		reg:                  reg,
+		allowUnknownExternal: s.AllowUnknownExternal,
+		warned:               map[string]bool{},
+		stderr:               s.Stderr,
+	}
+
+	if db := openFreshIndex(s.DBPath, s.Root); db != nil {
+		defer func() { _ = db.Close() }()
+		token, err := selectFromDatabase(db, s.ProjectID, s.Filters, cfg.Requirements.IDPattern, gate)
+		return result{Token: token, Source: SourceDatabase, Blocked: gate.blockedCount}, err
+	}
+
+	token, err := selectFromScan(s.Root, s.Filters, cfg.Requirements.IDPattern, reg, gate)
+	return result{Token: token, Source: SourceFilesystem, Blocked: gate.blockedCount}, err
 }
 
-// selectFromDatabase queries the database for next priority
-func selectFromDatabase(db *storage.DB, projectID string, filters map[string]string, strictExternal bool) (*storage.Token, error) {
+// evidenceProjectID is the project evidence is looked up under: the --project
+// override when given, else the configured project.key. It is deliberately
+// not the (possibly empty) index scope -- evidence records always carry a
+// concrete project, so an empty one would match nothing.
+func evidenceProjectID(cfg *config.ProjectConfig, override string) string {
+	if strings.TrimSpace(override) != "" {
+		return strings.TrimSpace(override)
+	}
+	return cfg.ProjectID()
+}
+
+// openFreshIndex opens the index read-only and returns it ONLY when it still
+// describes the tree at root. It returns nil -- meaning "scan the filesystem
+// instead" -- when:
+//
+//   - there is no database, or it cannot be opened (including a schema older
+//     than this binary's);
+//   - it carries no index metadata (it was created but never built);
+//   - it was built from a different root;
+//   - it was built at a different commit, or the current commit cannot be
+//     read at all (an unknowable freshness is not freshness);
+//   - it was built by a different token grammar.
+//
+// Nothing is ever created here: a read must not have a write side effect. The
+// old code opened whatever database it found and answered from it, which is
+// how `canary next` came to announce "all requirements completed" over an
+// index that had never been built.
+func openFreshIndex(dbPath, root string) *storage.DB {
+	db, err := storage.OpenRO(dbPath)
+	if err != nil {
+		return nil
+	}
+	meta, err := db.GetIndexMeta()
+	if err != nil || meta == nil {
+		_ = db.Close()
+		return nil
+	}
+	if !sameDir(meta.Root, root) || meta.ParserSchema != canaryscan.ParserSchemaVersion {
+		_ = db.Close()
+		return nil
+	}
+	head, err := canaryscan.HeadCommit(root)
+	if err != nil || head == "" || head != meta.CommitSHA {
+		_ = db.Close()
+		return nil
+	}
+	return db
+}
+
+// sameDir reports whether two directory paths name the same place, comparing
+// them absolute so the conventional "." recorded by `canary index` matches the
+// root a later `canary next` resolves.
+func sameDir(a, b string) bool {
+	absA, errA := filepath.Abs(a)
+	absB, errB := filepath.Abs(b)
+	if errA != nil || errB != nil {
+		return filepath.Clean(a) == filepath.Clean(b)
+	}
+	return absA == absB
+}
+
+// selectFromScan answers from a canonical filesystem scan -- the same scanner,
+// ignore rules and token grammar `canary scan` uses, so the two can never
+// disagree about what the tree contains.
+func selectFromScan(root string, filters map[string]string, idPattern string, reg *sources.Registry, gate *depGate) (*storage.Token, error) {
+	var projectFilter *regexp.Regexp
+	if idPattern != "" {
+		compiled, err := regexp.Compile(idPattern)
+		if err != nil {
+			return nil, fmt.Errorf("compile requirements.id_pattern %q: %w", idPattern, err)
+		}
+		projectFilter = compiled
+	}
+	ignorePatterns, err := canaryscan.LoadCanaryIgnore(root)
+	if err != nil {
+		return nil, fmt.Errorf("load .canaryignore: %w", err)
+	}
+	rep, err := canaryscan.Scan(root, canaryscan.StateSkipRegex(), projectFilter, ignorePatterns, reg)
+	if err != nil {
+		return nil, fmt.Errorf("scan %s: %w", root, err)
+	}
+
+	declared := scanDeclared(rep)
+	for _, cand := range scanCandidates(rep, filters) {
+		blocked, err := gate.blocked(cand.DependsOn, declared)
+		if err != nil {
+			return nil, err
+		}
+		if !blocked {
+			return cand, nil
+		}
+	}
+	return nil, nil
+}
+
+// scanCandidates turns a scan report into the ordered candidate list: filtered
+// the same way the index query filters, then sorted by priority (ascending),
+// then STUB before IMPL, then requirement id -- a total order, so two runs
+// over an unchanged tree pick the same requirement.
+func scanCandidates(rep canaryscan.Report, filters map[string]string) []*storage.Token {
+	var candidates []*storage.Token
+	_, hasStatusFilter := filters["status"]
+	for _, r := range rep.Requirements {
+		for _, f := range r.Features {
+			if want, ok := filters["status"]; ok && f.Status != want {
+				continue
+			}
+			if want, ok := filters["aspect"]; ok && f.Aspect != want {
+				continue
+			}
+			if !hasStatusFilter && f.Status != "STUB" && f.Status != "IMPL" {
+				continue
+			}
+			file := ""
+			if len(f.Files) > 0 {
+				file = f.Files[0]
+			}
+			if includeHidden, ok := filters["include_hidden"]; (!ok || includeHidden != "true") && isHiddenPath(file) {
+				continue
+			}
+			candidates = append(candidates, &storage.Token{
+				ReqID:     r.ID,
+				Feature:   f.Feature,
+				Aspect:    f.Aspect,
+				Status:    f.Status,
+				Priority:  scanPriority,
+				FilePath:  file,
+				Owner:     f.Owner,
+				UpdatedAt: f.Updated,
+				DependsOn: strings.Join(f.DependsOn, ","),
+			})
+		}
+	}
+	sort.SliceStable(candidates, func(i, j int) bool {
+		a, b := candidates[i], candidates[j]
+		if a.Priority != b.Priority {
+			return a.Priority < b.Priority
+		}
+		if ra, rb := statusOrder(a.Status), statusOrder(b.Status); ra != rb {
+			return ra < rb
+		}
+		if a.ReqID != b.ReqID {
+			return a.ReqID < b.ReqID
+		}
+		return a.Feature < b.Feature
+	})
+	return candidates
+}
+
+// statusOrder ranks statuses by how much work they represent: unstarted work
+// comes before work already in progress. Anything unrecognized sorts last.
+func statusOrder(status string) int {
+	switch status {
+	case "STUB":
+		return 0
+	case "IMPL":
+		return 1
+	case "TESTED":
+		return 2
+	case "BENCHED":
+		return 3
+	default:
+		return 4
+	}
+}
+
+// selectFromDatabase queries the index for next priority.
+func selectFromDatabase(db *storage.DB, projectID string, filters map[string]string, idPattern string, gate *depGate) (*storage.Token, error) {
 	// Build filters for incomplete requirements
 	if filters == nil {
 		filters = make(map[string]string)
 	}
-
-	// Load project config for ID pattern filtering
-	cfg, err := config.Load(".")
-	if err != nil {
-		return nil, fmt.Errorf("load .canary/project.yaml: %w", err)
-	}
-	idPattern := ""
-	if cfg.Requirements.IDPattern != "" {
-		idPattern = cfg.Requirements.IDPattern
-	}
-
-	// Source registry + per-run dedup for the "no cached status" stderr
-	// note, shared across every hasUnresolvedDependencies call this run.
-	reg, err := sources.FromProjectConfig(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("load .canary/project.yaml: %w", err)
-	}
-	warned := map[string]bool{}
+	declared := dbDeclared(db, projectID)
 
 	// If no status filter, only select STUB or IMPL by default
 	if _, hasStatusFilter := filters["status"]; !hasStatusFilter {
@@ -243,7 +555,7 @@ func selectFromDatabase(db *storage.DB, projectID string, filters map[string]str
 
 		// Filter out blocked tokens
 		for _, token := range tokens {
-			blocked, err := hasUnresolvedDependencies(db, projectID, token, reg, ".", strictExternal, warned)
+			blocked, err := gate.blocked(token.DependsOn, declared)
 			if err != nil {
 				return nil, err
 			}
@@ -265,7 +577,7 @@ func selectFromDatabase(db *storage.DB, projectID string, filters map[string]str
 		}
 
 		for _, token := range tokens {
-			blocked, err := hasUnresolvedDependencies(db, projectID, token, reg, ".", strictExternal, warned)
+			blocked, err := gate.blocked(token.DependsOn, declared)
 			if err != nil {
 				return nil, err
 			}
@@ -285,7 +597,7 @@ func selectFromDatabase(db *storage.DB, projectID string, filters map[string]str
 
 	// Find first unblocked token
 	for _, token := range tokens {
-		blocked, err := hasUnresolvedDependencies(db, projectID, token, reg, ".", strictExternal, warned)
+		blocked, err := gate.blocked(token.DependsOn, declared)
 		if err != nil {
 			return nil, err
 		}
@@ -295,83 +607,6 @@ func selectFromDatabase(db *storage.DB, projectID string, filters map[string]str
 	}
 
 	return nil, nil // No unblocked work available
-}
-
-// hasUnresolvedDependencies checks if a token has blocking dependencies.
-//
-// A dependency with at least one local CANARY token keeps the original
-// rule: blocking unless every token for it is TESTED/BENCHED.
-//
-// A dependency with ZERO local tokens is consulted against
-// external.Resolve(dep, reg, root):
-//   - Detail "not external" (local/flatfile id, or unconfigured prefix):
-//     unchanged legacy behavior — missing = blocking.
-//   - satisfied: not blocking.
-//   - unsatisfied: blocking.
-//   - unknown (no cached ticket status): NOT blocking by default
-//     (degradation is sacred) — a one-line stderr note is printed the
-//     first time a given dep is seen this run (warned dedups by id).
-//     strictExternal flips unknown to blocking.
-func hasUnresolvedDependencies(db *storage.DB, projectID string, token *storage.Token, reg *sources.Registry, root string, strictExternal bool, warned map[string]bool) (bool, error) {
-	if token.DependsOn == "" {
-		return false, nil
-	}
-
-	// Parse comma-separated dependencies
-	deps := strings.Split(token.DependsOn, ",")
-	for _, dep := range deps {
-		dep = strings.TrimSpace(dep)
-		if dep == "" {
-			continue
-		}
-
-		// Query dependency status. A contract refusal -- the same id under
-		// two projects with no --project to disambiguate -- is a question
-		// canary cannot answer, not a dependency that happens to be
-		// missing. Swallowing it reported every requirement as blocked and
-		// told the user "no work available", which is a lie about the tree
-		// rather than a refusal to guess.
-		depTokens, err := db.GetTokensByReqID(projectID, dep)
-		if err != nil && errors.Is(err, storage.ErrProjectRequired) {
-			return false, err
-		}
-		if err != nil || len(depTokens) == 0 {
-			res := external.Resolve(dep, reg, root)
-			if !res.IsExternal() {
-				return true, nil // Local dependency not found = blocking
-			}
-			switch res.State {
-			case external.StateSatisfied:
-				continue
-			case external.StateUnsatisfied:
-				return true, nil
-			default: // unknown
-				if strictExternal {
-					return true, nil
-				}
-				if warned != nil && !warned[dep] {
-					warned[dep] = true
-					fmt.Fprintf(os.Stderr, "note: external dependency %s has no cached status (canary ticket status --refresh)\n", dep)
-				}
-				continue
-			}
-		}
-
-		// Check if any token for this requirement is incomplete
-		allComplete := true
-		for _, depToken := range depTokens {
-			if depToken.Status != "TESTED" && depToken.Status != "BENCHED" {
-				allComplete = false
-				break
-			}
-		}
-
-		if !allComplete {
-			return true, nil // Dependency incomplete = blocking
-		}
-	}
-
-	return false, nil
 }
 
 // isHiddenPath determines if a token should be hidden based on its file path
@@ -396,125 +631,14 @@ func isHiddenPath(filePath string) bool {
 	return false
 }
 
-// selectFromFilesystem scans filesystem for CANARY tokens when database unavailable
-func selectFromFilesystem(filters map[string]string) (*storage.Token, error) {
-	// Use grep to find all CANARY tokens
-	grepCmd := exec.Command("grep",
-		"-rn",
-		"--include=*.go", "--include=*.md", "--include=*.py",
-		"--include=*.js", "--include=*.ts", "--include=*.java",
-		"--include=*.rb", "--include=*.rs",
-		"CANARY:",
-		".",
-	)
-
-	output, err := grepCmd.CombinedOutput()
-	if err != nil && len(output) == 0 {
-		return nil, nil // No tokens found
-	}
-
-	// Parse tokens from grep output
-	var candidates []*storage.Token
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-
-		// Parse grep output: file:line:content
-		parts := strings.SplitN(line, ":", 3)
-		if len(parts) < 3 {
-			continue
-		}
-
-		file := parts[0]
-		content := parts[2]
-
-		// Extract CANARY fields
-		reqID := utils.ExtractField(content, "REQ")
-		feature := utils.ExtractField(content, "FEATURE")
-		aspect := utils.ExtractField(content, "ASPECT")
-		status := utils.ExtractField(content, "STATUS")
-		priorityStr := utils.ExtractField(content, "PRIORITY")
-
-		if reqID == "" || feature == "" {
-			continue
-		}
-
-		// Apply filters
-		if filterStatus, ok := filters["status"]; ok && status != filterStatus {
-			continue
-		}
-		if filterAspect, ok := filters["aspect"]; ok && aspect != filterAspect {
-			continue
-		}
-
-		// Parse priority
-		priority := 5 // default
-		if priorityStr != "" {
-			//nolint:errcheck // Best-effort parse, default to 5 on failure
-			fmt.Sscanf(priorityStr, "%d", &priority)
-		}
-
-		// Only include STUB or IMPL unless filtered
-		if _, hasFilter := filters["status"]; !hasFilter {
-			if status != "STUB" && status != "IMPL" {
-				continue
-			}
-		}
-
-		// Skip hidden paths unless include_hidden is set
-		if includeHidden, ok := filters["include_hidden"]; !ok || includeHidden != "true" {
-			if isHiddenPath(file) {
-				continue
-			}
-		}
-
-		token := &storage.Token{
-			ReqID:    reqID,
-			Feature:  feature,
-			Aspect:   aspect,
-			Status:   status,
-			Priority: priority,
-			FilePath: file,
-			RawToken: content,
-		}
-
-		candidates = append(candidates, token)
-	}
-
-	if len(candidates) == 0 {
-		return nil, nil
-	}
-
-	// Sort by priority (1=highest), then by status (STUB > IMPL)
-	var best *storage.Token
-	for _, candidate := range candidates {
-		if best == nil {
-			best = candidate
-			continue
-		}
-
-		// Prefer higher priority (lower number)
-		if candidate.Priority < best.Priority {
-			best = candidate
-			continue
-		}
-		if candidate.Priority > best.Priority {
-			continue
-		}
-
-		// Same priority: prefer STUB over IMPL
-		if candidate.Status == "STUB" && best.Status == "IMPL" {
-			best = candidate
-		}
-	}
-
-	return best, nil
-}
-
-// renderPrompt generates implementation prompt from template
-func renderPrompt(token *storage.Token, projectID string, promptFlag bool) (string, error) {
+// renderPrompt generates the implementation prompt from the template.
+//
+// promptArg names an extra prompt (a file, or an embedded prompt's name) to
+// make available to the template as {{.PromptArg}}/{{.PromptContent}}. It is
+// resolved here, on the one path that renders a template, rather than at
+// command start: a --format json or --dry-run run has no template to fill and
+// must not fail on a prompt it will never use.
+func renderPrompt(token *storage.Token, projectID string, promptFlag bool, promptArg string) (string, error) {
 	if !promptFlag {
 		// Simple summary output
 		return fmt.Sprintf("Next: %s - %s (Priority: %d, Status: %s)\n"+
@@ -538,6 +662,14 @@ func renderPrompt(token *storage.Token, projectID string, promptFlag bool) (stri
 	data, err := loadPromptData(token, projectID)
 	if err != nil {
 		return "", fmt.Errorf("load prompt data: %w", err)
+	}
+	if promptArg != "" {
+		content, err := utils.LoadPrompt(promptArg)
+		if err != nil {
+			return "", err
+		}
+		data.PromptArg = promptArg
+		data.PromptContent = content
 	}
 
 	// Render template
@@ -710,31 +842,6 @@ func guessPackageName(aspect string) string {
 	}
 
 	return "main"
-}
-
-// extractField extracts a field value from a CANARY token string (already defined in main.go)
-// This is a duplicate for use in next.go - consider moving to shared utility
-// extractFieldInternal is used for internal parsing; kept for compatibility.
-//
-//nolint:unused
-func extractFieldInternal(token, field string) string {
-	// Look for FIELD="value" or FIELD=value
-	pattern := field + `="([^"]+)"`
-	re := regexp.MustCompile(pattern)
-	matches := re.FindStringSubmatch(token)
-	if len(matches) > 1 {
-		return matches[1]
-	}
-
-	// Try without quotes
-	pattern = field + `=([^;\s]+)`
-	re = regexp.MustCompile(pattern)
-	matches = re.FindStringSubmatch(token)
-	if len(matches) > 1 {
-		return matches[1]
-	}
-
-	return ""
 }
 
 // anyFilters widens a string filter map to the map[string]any shape

@@ -96,7 +96,7 @@ A requirement's `DEPENDS_ON=`/spec dependency can point at an ID owned by a conf
 **Unknown never blocks by default**: `unsatisfied` external dependencies block `canary next`'s selection and `canary deps check`'s exit code the same as a local unmet dependency; `unknown` never blocks either by default — degradation is sacred, since a missing/stale cache must never stall an agent. `canary deps validate` is more permissive still: by default it fails on neither `unsatisfied` nor `unknown` external counts (they're informational on the `external:` summary line only). Two flags opt into stricter behavior:
 
 ```bash
-canary next --strict-external            # unknown external deps also block selection
+canary next --allow-unknown-external    # do not block on external deps of unknown state (they block by default)
 canary deps validate --strict-external   # fail (non-zero exit) when any external dep is unsatisfied or unknown
 ```
 
@@ -167,4 +167,4 @@ IDs found inside fenced ` ```mermaid ` code blocks and standalone `.mmd` files a
 - Reference tickets with `REQ=<KEY>-<ID>` — same grammar, no padding.
 - `status.json`, `canary view`, `GAP_ANALYSIS.md` verification, and mermaid diagrams all understand ticket-sourced requirements alongside the local flatfile series.
 - Mark one source `destination: true` (or rely on the first non-flatfile default) to control where `ticket sync` creates new issues; `canary ticket status [--refresh]` reports or refreshes the remote-status cache independently of a sync run.
-- External dependencies (ticket-sourced or peer-owned) resolve to satisfied/unsatisfied/unknown; `unknown` never blocks `next`/`deps check` by default, and `deps validate` doesn't block on either without `--strict-external`. `peers:` lets sibling repos resolve each other's requirement IDs read-only.
+- External dependencies (ticket-sourced or peer-owned) resolve to satisfied/unsatisfied/unknown. For `next`, both `unsatisfied` and `unknown` block (pass `--allow-unknown-external` to accept an unresolvable one); `deps check` still reports `unknown` without blocking, and `deps validate` fails on either only with `--strict-external`. `peers:` lets sibling repos resolve each other's requirement IDs read-only — a peer answers "done" from the `verified` export in its status.json, never from a declared STATUS.

@@ -38,6 +38,17 @@ type Report struct {
 	Summary        Summary       `json:"summary"`
 	MigrationNotes []MigrateNote `json:"migration_notes,omitempty"`
 	Issues         []ScanIssue   `json:"issues,omitempty"`
+	// Verified lists, sorted, the requirement IDs every one of whose declared
+	// features had passing evidence at the scanned commit. It is the export a
+	// peer project reads to answer "is this requirement done?" -- declarations
+	// alone (STATUS=TESTED) never answer that.
+	//
+	// It is a pointer so absence is distinguishable from emptiness: nil means
+	// this scan could not check evidence at all (no store, or no commit to
+	// bind it to) and the key is omitted, which a reader must treat as
+	// unknown. A non-nil empty slice is emitted as "verified": [] and means
+	// the check ran and nothing passed.
+	Verified *[]string `json:"verified,omitempty"`
 }
 
 // Requirement groups features by requirement ID.

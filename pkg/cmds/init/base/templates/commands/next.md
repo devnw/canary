@@ -32,17 +32,17 @@ Identify and implement the next highest priority CANARY requirement.
 
 - `canary next` - Show next priority requirement summary
 - `canary next --prompt` - Generate full implementation guidance
-- `canary next --json` - Machine-readable output
+- `canary next --format json` - Machine-readable output (names the source it answered from: `database` or `filesystem`)
 - `canary next --status STUB` - Filter by status
 - `canary next --aspect API` - Filter by aspect
-- `canary next --strict-external` - Also block selection on external (ticket-source/peer) dependencies with unknown/uncached status, not just unsatisfied ones
+- `canary next --allow-unknown-external` - Do NOT block on external (ticket-source/peer) dependencies whose state cannot be resolved from disk (they block by default)
 
 ## Priority Factors
 
 The system determines priority based on:
 1. **PRIORITY field** (1=highest, 10=lowest)
 2. **STATUS** (STUB > IMPL > TESTED)
-3. **Dependencies** (DEPENDS_ON must be satisfied — an external dependency's cached ticket/peer status counts too; `unknown` never blocks unless `--strict-external`)
+3. **Dependencies** (a local DEPENDS_ON must have passing evidence at the current commit; an external/peer one must resolve satisfied — `unsatisfied` and `unknown` both block, unless `--allow-unknown-external`)
 4. **Age** (older UPDATED dates get priority boost)
 
 ## Constitutional Principles

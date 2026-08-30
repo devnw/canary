@@ -563,10 +563,11 @@ func firstUnblocked(db *storage.DB, projectID string, candidates []*storage.Toke
 // requirement that blocks selection. This is a minimal replica of the CLI's
 // unexported helper of the same name in pkg/cmds/next/next.go
 // (hasUnresolvedDependencies) -- kept in sync manually since it can't be
-// imported directly. Unlike the CLI, MCP has no --strict-external flag: an
-// external (ticket-source) dependency with zero local tokens always uses the
-// non-strict default (satisfied -> not blocking, unsatisfied -> blocking,
-// unknown/no-cached-status -> not blocking, degradation is sacred).
+// imported directly. It has NOT yet been brought in line with the CLI's
+// evidence-backed rule (a declared TESTED/BENCHED still satisfies a
+// dependency here, and an unknown external state still passes, where the CLI
+// now requires passing evidence and blocks on unknown). Tracked as follow-up
+// work; MCP callers get the older, more permissive answer until then.
 // CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_ENG_3960_MCP_Next_ExternalSatisfied_NotBlocking,TestCANARY_ENG_3960_MCP_Next_ExternalUnsatisfied_Blocking,TestCANARY_ENG_3960_MCP_Next_ExternalUnknown_NotBlocking,TestCANARY_ENG_3960_MCP_Next_LocalMissingDep_StillBlocking; UPDATED=2026-08-29
 func hasUnresolvedDependencies(db *storage.DB, projectID string, tok *storage.Token, reg *sources.Registry, warned map[string]bool) bool {
 	if tok.DependsOn == "" {

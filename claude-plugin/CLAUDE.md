@@ -82,7 +82,7 @@ canary doc status --all                        # Check documentation freshness
 
 List-shaped commands (`list`, `search`, `drift`, `view`, `onboard`, `ticket sync`, `upgrade`) default to a small `--limit` (20; `view` defaults to 10 per section) to protect agent context. `list` and `search` accept `--limit -1` for unlimited; the rest just take a larger `--limit`. Truncated output includes a hint to raise it.
 
-Ticket sources (JIRA, etc.) are configured in `.canary/project.yaml`'s `sources:` list; without credentials, `ticket sync` still computes and writes a plan, it just never touches the network. A `destination: true` source (or, by default, the first non-flatfile source) is where new issues are created. External dependencies (ticket-sourced or `peers:`-owned) resolve to satisfied/unsatisfied/unknown from the cache; `unknown` never blocks by default, and `deps validate` treats `unsatisfied` the same way — pass `--strict-external` (on `next`/`deps validate`) to make either fail.
+Ticket sources (JIRA, etc.) are configured in `.canary/project.yaml`'s `sources:` list; without credentials, `ticket sync` still computes and writes a plan, it just never touches the network. A `destination: true` source (or, by default, the first non-flatfile source) is where new issues are created. External dependencies (ticket-sourced or `peers:`-owned) resolve to satisfied/unsatisfied/unknown from the cache; on `next` an `unknown` blocks (pass `--allow-unknown-external` to accept it), while `deps validate` fails on `unsatisfied`/`unknown` only with `--strict-external`. A peer is "done" only for ids in its status.json `verified` export.
 
 ## MCP Server (Optional)
 

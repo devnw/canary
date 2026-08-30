@@ -218,7 +218,9 @@ peers:
 `
 	require.NoError(t, os.WriteFile(filepath.Join(root, ".canary", "project.yaml"), []byte(peerYAML), 0o644))
 
-	peerStatus := `{"requirements":[{"id":"ENG-12","features":[{"feature":"X","aspect":"Engine","status":"TESTED"}]}]}`
+	// The peer's verification export is what makes ENG-12 satisfied: a
+	// declared TESTED alone is a claim, and a peer's claim is not proof.
+	peerStatus := `{"requirements":[{"id":"ENG-12","features":[{"feature":"X","aspect":"Engine","status":"TESTED"}]}],"verified":["ENG-12"]}`
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "peer"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "peer", "status.json"), []byte(peerStatus), 0o644))
 

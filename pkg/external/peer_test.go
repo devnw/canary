@@ -7,9 +7,11 @@ package external
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"devnw.dev/canary/pkg/config"
 	"devnw.dev/canary/pkg/sources"
@@ -50,8 +52,11 @@ func newRegistryWithPeersFromRoot(t *testing.T, root string, sourcesList []sourc
 
 // writePeerStatus writes a canaryscan-shaped status.json at
 // <peerDir>/status.json holding the given requirements (id -> feature
-// statuses).
-func writePeerStatus(t *testing.T, peerDir string, requirements map[string][]string) {
+// statuses) and the verification export listing the ids that are actually
+// proven. An export is always written -- including an empty one -- because a
+// report with no "verified" key at all means something different (see
+// writeLegacyPeerStatus).
+func writePeerStatus(t *testing.T, peerDir string, requirements map[string][]string, verified ...string) {
 	t.Helper()
 	if err := os.MkdirAll(peerDir, 0o750); err != nil {
 		t.Fatal(err)
@@ -67,9 +72,11 @@ func writePeerStatus(t *testing.T, peerDir string, requirements map[string][]str
 	}
 	type report struct {
 		Requirements []requirement `json:"requirements"`
+		Verified     []string      `json:"verified"`
 	}
 
-	var rep report
+	rep := report{Verified: []string{}}
+	rep.Verified = append(rep.Verified, verified...)
 	for id, statuses := range requirements {
 		var feats []feature
 		for _, s := range statuses {
@@ -86,14 +93,13 @@ func writePeerStatus(t *testing.T, peerDir string, requirements map[string][]str
 	}
 }
 
-// TestCANARY_ENG_3961_Resolve_PeerSatisfied proves an id found in a peer's
-// status.json with a TESTED feature resolves satisfied with Detail
-// "peer:<name>".
+// TestCANARY_ENG_3961_Resolve_PeerSatisfied proves an id listed in a peer's
+// verification export resolves satisfied with Detail "peer:<name>".
 func TestCANARY_ENG_3961_Resolve_PeerSatisfied(t *testing.T) {
 	root := peerTestRoot(t, "peers:\n  - name: upstream\n    root: \"peer\"\n")
 	writePeerStatus(t, filepath.Join(root, "peer"), map[string][]string{
 		"UP-1": {"TESTED"},
-	})
+	}, "UP-1")
 	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{
 		{Name: "core", Type: "flatfile", Key: "CBIN"},
 		{Name: "up", Type: "jira", Key: "UP"},
@@ -111,9 +117,9 @@ func TestCANARY_ENG_3961_Resolve_PeerSatisfied(t *testing.T) {
 	}
 }
 
-// TestCANARY_ENG_3961_Resolve_PeerUnsatisfied proves an id found in a peer's
-// status.json with only STUB/IMPL features resolves unsatisfied with Detail
-// carrying the worst (least complete) status.
+// TestCANARY_ENG_3961_Resolve_PeerUnsatisfied proves an id a peer declares
+// but does not export as verified resolves unsatisfied, with Detail carrying
+// the worst (least complete) declared status.
 func TestCANARY_ENG_3961_Resolve_PeerUnsatisfied(t *testing.T) {
 	root := peerTestRoot(t, "peers:\n  - name: upstream\n    root: \"peer\"\n")
 	writePeerStatus(t, filepath.Join(root, "peer"), map[string][]string{
@@ -141,7 +147,7 @@ func TestCANARY_ENG_3961_Resolve_PeerNotFound(t *testing.T) {
 	root := peerTestRoot(t, "peers:\n  - name: upstream\n    root: \"peer\"\n")
 	writePeerStatus(t, filepath.Join(root, "peer"), map[string][]string{
 		"UP-1": {"TESTED"},
-	})
+	}, "UP-1")
 	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{
 		{Name: "core", Type: "flatfile", Key: "CBIN"},
 		{Name: "up", Type: "jira", Key: "UP"},
@@ -210,7 +216,7 @@ func TestCANARY_ENG_3961_Resolve_PeerRelativeRoot(t *testing.T) {
 	siblingDir := filepath.Join(filepath.Dir(root), "sibling-repo")
 	writePeerStatus(t, siblingDir, map[string][]string{
 		"UP-1": {"BENCHED"},
-	})
+	}, "UP-1")
 	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{
 		{Name: "core", Type: "flatfile", Key: "CBIN"},
 		{Name: "up", Type: "jira", Key: "UP"},
@@ -260,7 +266,7 @@ func TestCANARY_ENG_3961_Resolve_UnknownPrefixResolvedByPeer(t *testing.T) {
 	root := peerTestRoot(t, "peers:\n  - name: upstream\n    root: \"peer\"\n")
 	writePeerStatus(t, filepath.Join(root, "peer"), map[string][]string{
 		"ZZZ-1": {"TESTED"},
-	})
+	}, "ZZZ-1")
 	// Only CBIN is configured locally -- ZZZ is a totally unknown prefix.
 	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{{Name: "core", Type: "flatfile", Key: "CBIN"}})
 
@@ -283,7 +289,7 @@ func TestCANARY_ENG_3961_Resolve_LocalFlatfileNeverConsultsPeer(t *testing.T) {
 	root := peerTestRoot(t, "peers:\n  - name: upstream\n    root: \"peer\"\n")
 	writePeerStatus(t, filepath.Join(root, "peer"), map[string][]string{
 		"CBIN-1": {"TESTED"},
-	})
+	}, "CBIN-1")
 	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{{Name: "core", Type: "flatfile", Key: "CBIN"}})
 
 	res := Resolve("CBIN-1", reg, root)
@@ -299,10 +305,10 @@ func TestCANARY_ENG_3961_Resolve_SecondPeerFallsThroughFirst(t *testing.T) {
 	root := peerTestRoot(t, "peers:\n  - name: first\n    root: \"peer-a\"\n  - name: second\n    root: \"peer-b\"\n")
 	writePeerStatus(t, filepath.Join(root, "peer-a"), map[string][]string{
 		"UP-99": {"TESTED"}, // does not have UP-1
-	})
+	}, "UP-99")
 	writePeerStatus(t, filepath.Join(root, "peer-b"), map[string][]string{
 		"UP-1": {"BENCHED"},
-	})
+	}, "UP-1")
 	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{
 		{Name: "core", Type: "flatfile", Key: "CBIN"},
 		{Name: "up", Type: "jira", Key: "UP"},
@@ -314,5 +320,68 @@ func TestCANARY_ENG_3961_Resolve_SecondPeerFallsThroughFirst(t *testing.T) {
 	}
 	if res.Detail != "peer:second" {
 		t.Errorf("Detail = %q, want \"peer:second\"", res.Detail)
+	}
+}
+
+// writeLegacyPeerStatus writes a peer status.json with declarations but no
+// "verified" key at all -- the shape written by a canary predating the
+// verification export.
+func writeLegacyPeerStatus(t *testing.T, peerDir, id, status string) {
+	t.Helper()
+	if err := os.MkdirAll(peerDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	body := fmt.Sprintf(`{"requirements":[{"id":%q,"features":[{"feature":"X","aspect":"Engine","status":%q}]}]}`, id, status)
+	if err := os.WriteFile(filepath.Join(peerDir, "status.json"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestCANARY_ENG_3961_Resolve_PeerLegacyExportUnknown proves a peer that
+// publishes declarations but no verification export cannot answer whether a
+// requirement is done: the id resolves unknown, not satisfied. STATUS=TESTED
+// in someone else's repository is a claim, and a claim is not proof.
+func TestCANARY_ENG_3961_Resolve_PeerLegacyExportUnknown(t *testing.T) {
+	root := peerTestRoot(t, "peers:\n  - name: upstream\n    root: \"peer\"\n")
+	writeLegacyPeerStatus(t, filepath.Join(root, "peer"), "UP-1", "TESTED")
+	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{
+		{Name: "core", Type: "flatfile", Key: "CBIN"},
+		{Name: "up", Type: "jira", Key: "UP"},
+	})
+
+	res := Resolve("UP-1", reg, root)
+	if res.State != StateUnknown {
+		t.Fatalf("State = %q, want unknown (peer publishes no verification export)", res.State)
+	}
+	if !contains(res.Detail, "no verification export") {
+		t.Errorf("Detail = %q, want the missing-export reason", res.Detail)
+	}
+	if !res.IsExternal() {
+		t.Error("a peer-owned id must still be external")
+	}
+}
+
+// TestCANARY_ENG_3961_Resolve_PeerStaleExportUnknown proves an export older
+// than the staleness window answers nothing: it describes a tree the peer has
+// almost certainly moved past.
+func TestCANARY_ENG_3961_Resolve_PeerStaleExportUnknown(t *testing.T) {
+	root := peerTestRoot(t, "peers:\n  - name: upstream\n    root: \"peer\"\n")
+	peerDir := filepath.Join(root, "peer")
+	writePeerStatus(t, peerDir, map[string][]string{"UP-1": {"TESTED"}}, "UP-1")
+	old := time.Now().Add(-72 * time.Hour)
+	if err := os.Chtimes(filepath.Join(peerDir, "status.json"), old, old); err != nil {
+		t.Fatal(err)
+	}
+	reg := newRegistryWithPeersFromRoot(t, root, []sources.Source{
+		{Name: "core", Type: "flatfile", Key: "CBIN"},
+		{Name: "up", Type: "jira", Key: "UP"},
+	})
+
+	res := Resolve("UP-1", reg, root)
+	if res.State != StateUnknown {
+		t.Fatalf("State = %q, want unknown (stale peer export)", res.State)
+	}
+	if !contains(res.Detail, "stale export") {
+		t.Errorf("Detail = %q, want the staleness reason", res.Detail)
 	}
 }
