@@ -221,7 +221,7 @@ func listBugsFromFilesystem(aspect, status, severity, priority string, jsonOutpu
 		root = wd
 	}
 	skip := canaryscan.DefaultSkipRegex()
-	rep, err := canaryscan.Scan(root, skip, nil, nil)
+	rep, err := canaryscan.Scan(root, skip, nil, nil, nil)
 	if err != nil {
 		return fmt.Errorf("filesystem scan: %w", err)
 	}

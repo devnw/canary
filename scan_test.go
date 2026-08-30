@@ -14,37 +14,40 @@ import (
 	"devnw.dev/canary"
 )
 
-func TestAcceptance_ParseAndSummarizeFixture_WithPromotion(t *testing.T) {
+func TestAcceptance_ParseAndSummarizeFixture_DeclaredStatuses(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "file1.zig"), `// CANARY: REQ=REQ-GQL-042; FEATURE="CDC/Streaming"; ASPECT=API; STATUS=STUB; TEST=tests/e2e_cdc.zig:TestCANARY_REQ_GQL_042_StartStop; OWNER=streaming; UPDATED=2025-10-15`)
-	mustWrite(t, filepath.Join(dir, "file2.go"), `// CANARY: REQ=REQ-GQL-046; FEATURE="TDE"; ASPECT=Storage; STATUS=IMPL; TEST=TestCANARY_REQ_GQL_046_KeyRotate; OWNER=security; UPDATED=2025-10-15`)
+	mustWrite(t, filepath.Join(dir, "file2.go"), `// CANARY: REQ=REQ-GQL-046; FEATURE="TDE"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_REQ_GQL_046_KeyRotate; OWNER=security; UPDATED=2025-10-15`)
 
 	rep, err := canary.Scan(dir)
 	if err != nil {
 		t.Fatalf("scan: %v", err)
 	}
-	// STUB remains STUB
+	// STUB remains STUB even though the token names a test.
 	if rep.Summary.ByStatus["STUB"] != 1 {
 		t.Fatalf("expected STUB=1 got %+v", rep.Summary.ByStatus)
 	}
-	// IMPL with test is promoted to TESTED
+	// TESTED is reported because the token declares it, not because TEST= is present.
 	if rep.Summary.ByStatus["TESTED"] != 1 {
-		t.Fatalf("expected TESTED=1 (promotion) got %+v", rep.Summary.ByStatus)
+		t.Fatalf("expected TESTED=1 got %+v", rep.Summary.ByStatus)
 	}
 	if rep.Summary.ByStatus["IMPL"] != 0 {
-		t.Fatalf("expected IMPL=0 after promotion got %+v", rep.Summary.ByStatus)
+		t.Fatalf("expected IMPL=0 got %+v", rep.Summary.ByStatus)
 	}
 }
 
-func TestAcceptance_PromotionToBenched(t *testing.T) {
+func TestAcceptance_BenchReferenceDoesNotPromote(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "file3.zig"), `// CANARY: REQ=REQ-GQL-050; FEATURE="RecursiveQuery"; ASPECT=Planner; STATUS=IMPL; BENCH=BenchmarkCANARY_REQ_GQL_050_RecursivePerf; UPDATED=2025-10-15`)
 	rep, err := canary.Scan(dir)
 	if err != nil {
 		t.Fatalf("scan: %v", err)
 	}
-	if rep.Summary.ByStatus["BENCHED"] != 1 {
-		t.Fatalf("expected BENCHED=1 promotion got %+v", rep.Summary.ByStatus)
+	if rep.Summary.ByStatus["IMPL"] != 1 {
+		t.Fatalf("expected declared IMPL=1 got %+v", rep.Summary.ByStatus)
+	}
+	if rep.Summary.ByStatus["BENCHED"] != 0 {
+		t.Fatalf("BENCH= must not promote: got %+v", rep.Summary.ByStatus)
 	}
 }
 

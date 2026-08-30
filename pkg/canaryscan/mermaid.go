@@ -79,11 +79,15 @@ func ExtractDiagramRefs(relPath, content string, reg *sources.Registry) []Diagra
 // root-relative with forward slashes. ignorePatterns (from LoadCanaryIgnore)
 // is honored the same way Scan honors it: relative path matched first, dirs
 // skipped via SkipDir; nil means no .canaryignore patterns apply.
-func ScanDiagramRefs(root string, skip *regexp.Regexp, reg *sources.Registry, ignorePatterns *ignore.GitIgnore) ([]DiagramRef, error) {
+//
+// A file that cannot be read is reported as a ScanIssue rather than silently
+// skipped, so callers can tell an empty result from an incomplete one.
+func ScanDiagramRefs(root string, skip *regexp.Regexp, reg *sources.Registry, ignorePatterns *ignore.GitIgnore) ([]DiagramRef, []ScanIssue, error) {
 	if skip == nil {
 		skip = DefaultSkipRegex()
 	}
 	var out []DiagramRef
+	var issues []ScanIssue
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -113,7 +117,10 @@ func ScanDiagramRefs(root string, skip *regexp.Regexp, reg *sources.Registry, ig
 		}
 		b, err := os.ReadFile(path)
 		if err != nil {
-			return nil // unreadable markdown is not fatal to a scan
+			// Unreadable markdown is not fatal to a scan, but it is not
+			// invisible either.
+			issues = append(issues, ScanIssue{Path: path, Reason: IssueReadError, Detail: err.Error()})
+			return nil
 		}
 		rel, rerr := filepath.Rel(root, path)
 		if rerr != nil {
@@ -122,5 +129,5 @@ func ScanDiagramRefs(root string, skip *regexp.Regexp, reg *sources.Registry, ig
 		out = append(out, ExtractDiagramRefs(filepath.ToSlash(rel), string(b), reg)...)
 		return nil
 	})
-	return out, err
+	return out, issues, err
 }

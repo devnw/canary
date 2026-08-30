@@ -49,7 +49,7 @@ func TestCANARY_CP_285_NestedDocsDirsScanned(t *testing.T) {
 		t.Fatal("expected non-nil ignorePatterns")
 	}
 
-	rep, err := Scan(root, DefaultSkipRegex(), nil, ignorePatterns)
+	rep, err := Scan(root, DefaultSkipRegex(), nil, ignorePatterns, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

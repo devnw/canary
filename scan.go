@@ -14,10 +14,11 @@ import (
 	"devnw.dev/canary/gate"
 )
 
-// Scan now delegates to the generic gate.Scanner, converting the result into the legacy report.
-// Backward-compatible: existing tests and callers expect auto-promotion logic preserved.
+// Scan now delegates to the generic gate.Scanner, converting the result into
+// the legacy report. STATUS is a declaration: TEST=/BENCH= references are
+// recorded as evidence but never change it.
 func Scan(root string) (Report, error) {
-	sc := gate.NewScanner() // default with promotion
+	sc := gate.NewScanner()
 	res, err := sc.ScanRepository(root)
 	if err != nil {
 		return Report{}, err

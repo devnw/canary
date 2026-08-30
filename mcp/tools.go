@@ -622,7 +622,7 @@ func handleScan(ctx context.Context, req *mcp.CallToolRequest, params *ScanParam
 		root = "."
 	}
 	skipRegex := canaryscan.DefaultSkipRegex()
-	rep, err := canaryscan.Scan(root, skipRegex, nil, nil)
+	rep, err := canaryscan.Scan(root, skipRegex, nil, nil, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("scan %s: %w", root, err)
 	}

@@ -154,7 +154,7 @@ func Feature%d() {}
 	var hashes []string
 	var jsons []string
 	for run := 0; run < 5; run++ {
-		rep, err := canaryscan.Scan(dir, canaryscan.DefaultSkipRegex(), nil, nil)
+		rep, err := canaryscan.Scan(dir, canaryscan.DefaultSkipRegex(), nil, nil, nil)
 		if err != nil {
 			t.Fatalf("scan %d failed: %v", run, err)
 		}

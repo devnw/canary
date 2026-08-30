@@ -52,6 +52,13 @@ func ScanSummaryLine(rep Report) string {
 		s.ByStatus["STUB"], s.ByStatus["IMPL"], s.ByStatus["TESTED"], s.ByStatus["BENCHED"])
 }
 
+// printIssues writes one parseable line per scan issue to w.
+func printIssues(w io.Writer, issues []ScanIssue) {
+	for _, is := range issues {
+		_, _ = fmt.Fprintf(w, "CANARY_SCAN_ISSUE path=%s reason=%s\n", is.Path, is.Reason)
+	}
+}
+
 // Run runs the full scan pipeline: load config, scan, optional update-stale, write outputs, verify, strict.
 // It writes to stdout/stderr via the given writers (use os.Stdout, os.Stderr from CLI).
 // Returns exit code: 0 success, 2 verify/staleness failure, 3 parse/IO error.
@@ -67,8 +74,6 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 	}
 
 	reg := sources.LoadFromRoot(cfg.Root)
-	activeRegistry = reg
-	defer func() { activeRegistry = nil }()
 
 	var projectFilter *regexp.Regexp
 	if cfg.ProjectOnly {
@@ -94,7 +99,7 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 		_, _ = fmt.Fprintf(stderr, "Loaded .canaryignore patterns\n")
 	}
 
-	rep, err := Scan(cfg.Root, cfg.SkipRegex, projectFilter, ignorePatterns)
+	rep, err := Scan(cfg.Root, cfg.SkipRegex, projectFilter, ignorePatterns, reg)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
 		return 3
@@ -109,13 +114,14 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 	if cfg.UpdateStale {
 		staleDiags := Stale(rep, threshold, refTime)
 		if len(staleDiags) > 0 {
-			updatedFiles, tokenCount, err := UpdateStaleTokens(cfg.Root, cfg.SkipRegex, staleDiags, ignorePatterns)
+			updatedFiles, tokenCount, updateIssues, err := UpdateStaleTokens(cfg.Root, cfg.SkipRegex, staleDiags, ignorePatterns)
 			if err != nil {
 				_, _ = fmt.Fprintf(stderr, "CANARY_UPDATE_ERROR: %v\n", err)
 				return 3
 			}
+			printIssues(stderr, updateIssues)
 			_, _ = fmt.Fprintf(stderr, "Updated %d stale tokens in %d files\n", tokenCount, len(updatedFiles))
-			rep, err = Scan(cfg.Root, cfg.SkipRegex, projectFilter, ignorePatterns)
+			rep, err = Scan(cfg.Root, cfg.SkipRegex, projectFilter, ignorePatterns, reg)
 			if err != nil {
 				_, _ = fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
 				return 3
@@ -137,6 +143,10 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 		}
 	}
 
+	// Every file the scan could not fully read is surfaced, always — a
+	// partial scan must never look like a clean one.
+	printIssues(stderr, rep.Issues)
+
 	// One-line stdout summary so agents get metrics without reading status.json.
 	_, _ = fmt.Fprintln(stdout, ScanSummaryLine(rep))
 
@@ -147,11 +157,18 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 	if cfg.Strict && !cfg.UpdateStale {
 		diags = append(diags, Stale(rep, threshold, refTime)...)
 	}
+	// Under --strict an incomplete scan is a failure: the tree was not fully
+	// examined, so no clean verdict can be given for it.
+	if cfg.Strict {
+		for _, is := range rep.Issues {
+			diags = append(diags, fmt.Sprintf("SCAN_INCOMPLETE path=%s reason=%s", is.Path, is.Reason))
+		}
+	}
 	if len(diags) > 0 {
 		for _, d := range diags {
 			_, _ = fmt.Fprintln(stderr, d)
 		}
-		if cfg.VerifyPath != "" {
+		if cfg.VerifyPath != "" || (cfg.Strict && len(rep.Issues) > 0) {
 			_, _ = fmt.Fprintf(stdout, "CANARY_VERIFY_FAIL count=%d\n", len(diags))
 		}
 		return 2

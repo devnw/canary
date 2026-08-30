@@ -78,7 +78,7 @@ func TestCANARY_CBIN_304_UpdateStaleV2IDs(t *testing.T) {
 	}
 	diags := []string{"CANARY_STALE REQ=CBIN-CLI-001 updated=2020-01-01 age_days=2431 threshold=30"}
 
-	updatedFiles, tokenCount, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, nil)
+	updatedFiles, tokenCount, _, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestCANARY_CBIN_304_UpdateStaleAddsMissingUpdated(t *testing.T) {
 		}
 		diags := []string{"CANARY_STALE REQ=CBIN-305 updated=MISSING age_days=99999 threshold=30"}
 
-		updatedFiles, tokenCount, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, nil)
+		updatedFiles, tokenCount, _, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -141,7 +141,7 @@ func TestCANARY_CBIN_304_UpdateStaleAddsMissingUpdated(t *testing.T) {
 		}
 		diags := []string{"CANARY_STALE REQ=CBIN-306 updated=MISSING age_days=99999 threshold=30"}
 
-		updatedFiles, tokenCount, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, nil)
+		updatedFiles, tokenCount, _, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -225,7 +225,7 @@ func TestCANARY_CBIN_304_UpdateStaleHonorsCanaryIgnore(t *testing.T) {
 	}
 
 	diags := []string{"CANARY_STALE REQ=CBIN-602 updated=2020-01-01 age_days=2431 threshold=30"}
-	updatedFiles, tokenCount, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, ignorePatterns)
+	updatedFiles, tokenCount, _, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, ignorePatterns)
 	if err != nil {
 		t.Fatal(err)
 	}

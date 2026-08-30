@@ -48,7 +48,7 @@ func TestCANARY_CBIN_301_MigrateLineDoesNotAbortScan(t *testing.T) {
 	if err := os.WriteFile(migrateFile, []byte(migrateContent), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	rep, err := Scan(dir, nil, nil, nil)
+	rep, err := Scan(dir, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Scan returned error, MIGRATE line must never abort a scan: %v", err)
 	}

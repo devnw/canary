@@ -49,7 +49,6 @@ type ScannerOption func(*scannerConfig)
 
 type scannerConfig struct {
 	skipDirs map[string]bool
-	promote  bool
 }
 
 // WithSkipDirs adds directories to skip.
@@ -61,12 +60,9 @@ func WithSkipDirs(dirs ...string) ScannerOption {
 	}
 }
 
-// WithNoPromotion disables automatic status promotion.
-func WithNoPromotion() ScannerOption { return func(c *scannerConfig) { c.promote = false } }
-
 // NewScanner returns a configured Scanner.
 func NewScanner(opts ...ScannerOption) *Scanner {
-	c := scannerConfig{skipDirs: map[string]bool{".git": true, "node_modules": true, "vendor": true, "bin": true, "zig-out": true, ".zig-cache": true}, promote: true}
+	c := scannerConfig{skipDirs: map[string]bool{".git": true, "node_modules": true, "vendor": true, "bin": true, "zig-out": true, ".zig-cache": true}}
 	for _, o := range opts {
 		o(&c)
 	}
@@ -158,15 +154,9 @@ func (s *Scanner) ScanRepository(root string) (ScanResult, error) {
 	byStatus := map[string]int{}
 	byAspect := map[string]int{}
 	for k, v := range agg {
+		// STATUS is a declaration: TEST=/BENCH= are recorded as evidence
+		// references but never change it.
 		status := k.status
-		if s.cfg.promote {
-			if status == "IMPL" && len(v.tests) > 0 {
-				status = "TESTED"
-			}
-			if (status == "IMPL" || status == "TESTED") && len(v.benches) > 0 {
-				status = "BENCHED"
-			}
-		}
 		ft := FeatureTokens{Feature: k.feature, Aspect: k.aspect, Status: status, Files: keysList(v.files), Tests: keysList(v.tests), Benches: keysList(v.benches), Owner: k.owner, Updated: k.updated}
 		id := normalizeRequirement(k.id)
 		reqMap[id] = append(reqMap[id], ft)

@@ -1,7 +1,6 @@
 package canaryscan
 
 import (
-	"fmt"
 	"os"
 	"regexp"
 	"sort"
@@ -17,7 +16,10 @@ var (
 	// class with each other, so ordering here does not create shadowing;
 	// "--" is listed last purely for readability, matching upgrade.go.
 	tokenLineRe = regexp.MustCompile(`(?m)^[ \t]*(?:\/\/|#|\/\*|--)?[ \t]*CANARY:\s*(.*)$`)
-	kvRe        = regexp.MustCompile(`\s*([A-Za-z_]+)\s*=\s*([^;]+)\s*`)
+
+	// legacyBareReqRe matches an ID-only segment (no "="), e.g. "REQ-1" or
+	// "BUG-API-001", which older tokens used in place of "REQ=".
+	legacyBareReqRe = regexp.MustCompile(`^((?:REQ|TASK|BUG)(?:-[A-Z]+)?-?\d{1,4})$`)
 )
 
 const defaultSkipPattern = `(^|/)(.git|node_modules|vendor|bin|dist|build|zig-out|.zig-cache|canary-new)(/|$)`
@@ -51,32 +53,28 @@ func isMigrateCapture(m string) bool {
 	return strings.HasPrefix(strings.TrimSpace(m), migrateCapturePrefix)
 }
 
-func parseKV(s string) (map[string]string, error) {
-	out := map[string]string{}
-	legacyReqRe := regexp.MustCompile(`^((?:REQ|TASK|BUG)(?:-[A-Z]+)?-?\d{1,4})$`)
-	if strings.ContainsAny(s, "<>") || strings.Contains(s, "{{") || strings.Contains(s, "}}") || strings.Contains(s, "%s") {
-		return map[string]string{}, nil
+// parseKV is the map view of parseFields: keys upper-cased, REQ normalized
+// through reg (nil means the built-in padding rules). Later fields with the
+// same key win, matching the historical behavior.
+func parseKV(s string, reg *sources.Registry) (map[string]string, error) {
+	fields, err := parseFields(s)
+	if err != nil {
+		return nil, err
 	}
-	for _, seg := range strings.Split(s, ";") {
-		seg = strings.TrimSpace(seg)
-		if seg == "" {
+	out := map[string]string{}
+	for _, f := range fields {
+		k := strings.ToUpper(f.Key)
+		if k == "REQ" && legacyBareReqRe.MatchString(f.Value) {
+			out[k] = normalizeREQWithRegistry(f.Value, reg)
 			continue
 		}
-		if !strings.Contains(seg, "=") && legacyReqRe.MatchString(seg) {
-			out["REQ"] = normalizeREQ(seg)
-			continue
-		}
-		m := kvRe.FindStringSubmatch(seg)
-		if len(m) != 3 {
-			return nil, fmt.Errorf("bad kv segment %q", seg)
-		}
-		out[strings.ToUpper(m[1])] = strings.TrimSpace(m[2])
+		out[k] = f.Value
 	}
 	// So BUG tokens (BUG=BUG-API-001) are included in scan: use BUG as REQ when REQ missing.
 	if out["REQ"] == "" && out["BUG"] != "" {
 		v := unquote(out["BUG"])
-		if legacyReqRe.MatchString(v) {
-			out["REQ"] = normalizeREQ(v)
+		if legacyBareReqRe.MatchString(v) {
+			out["REQ"] = normalizeREQWithRegistry(v, reg)
 		} else {
 			out["REQ"] = v
 		}
@@ -117,14 +115,10 @@ func unquote(v string) string {
 	return v
 }
 
-// activeRegistry is the package-level registry used by parse-time
-// normalization; it is set by Run for the duration of a scan.
-var activeRegistry *sources.Registry
-
-func normalizeREQ(v string) string {
-	return normalizeREQWithRegistry(v, activeRegistry)
-}
-
+// normalizeREQWithRegistry canonicalizes a requirement ID: unicode dashes are
+// folded to ASCII, registry-resolved IDs follow their source's rules, and
+// legacy numeric suffixes are zero-padded to three digits. A nil registry
+// means "padding rules only".
 func normalizeREQWithRegistry(v string, reg *sources.Registry) string {
 	v = strings.TrimSpace(v)
 	v = strings.ReplaceAll(v, "‑", "-")
@@ -153,16 +147,6 @@ func normalizeREQWithRegistry(v string, reg *sources.Registry) string {
 		return pad(m[1], m[2])
 	}
 	return v
-}
-
-func promote(status string, hasTests, hasBenches bool) string {
-	if status == "IMPL" && hasTests {
-		status = "TESTED"
-	}
-	if (status == "IMPL" || status == "TESTED") && hasBenches {
-		status = "BENCHED"
-	}
-	return status
 }
 
 func getTimestamp() string {

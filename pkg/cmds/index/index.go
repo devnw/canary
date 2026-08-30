@@ -217,7 +217,10 @@ The database is stored at .canary/canary.db by default.`,
 
 		// Index diagram references (mermaid) so `canary view` can answer without grepping.
 		reg := sources.LoadFromRoot(rootPath)
-		diagRefs, derr := canaryscan.ScanDiagramRefs(rootPath, nil, reg, ignorePatterns)
+		diagRefs, diagIssues, derr := canaryscan.ScanDiagramRefs(rootPath, nil, reg, ignorePatterns)
+		for _, is := range diagIssues {
+			fmt.Fprintf(os.Stderr, "CANARY_SCAN_ISSUE path=%s reason=%s\n", is.Path, is.Reason)
+		}
 		if derr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: diagram ref scan failed: %v\n", derr)
 		}
@@ -238,7 +241,10 @@ The database is stored at .canary/canary.db by default.`,
 		// migration guidance without grepping. One ref row per (note,
 		// associated ReqID); a note that matched no requirement still gets
 		// one row with req_id='' so it isn't silently dropped.
-		migrateNotes, merr := canaryscan.ScanMigrateNotes(rootPath, nil, ignorePatterns, reg)
+		migrateNotes, noteIssues, merr := canaryscan.ScanMigrateNotes(rootPath, nil, ignorePatterns, reg)
+		for _, is := range noteIssues {
+			fmt.Fprintf(os.Stderr, "CANARY_SCAN_ISSUE path=%s reason=%s\n", is.Path, is.Reason)
+		}
 		if merr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: migrate note scan failed: %v\n", merr)
 		}

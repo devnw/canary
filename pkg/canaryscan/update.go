@@ -34,7 +34,11 @@ var updatedDateRe = regexp.MustCompile(`(UPDATED=)([0-9]{4}-[0-9]{2}-[0-9]{2})`)
 // This keeps the rewrite walk in sync with the read walk that produced staleDiags in the
 // first place — without it, a file excluded from scanning by .canaryignore could still be
 // silently mutated by --update-stale.
-func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string, ignorePatterns *ignore.GitIgnore) (updatedFiles map[string]bool, tokenCount int, err error) {
+//
+// Files that cannot be read or parsed are reported as ScanIssues rather than
+// silently skipped: a token that could not be examined must not look like a
+// token that needed no update.
+func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string, ignorePatterns *ignore.GitIgnore) (updatedFiles map[string]bool, tokenCount int, issues []ScanIssue, err error) {
 	staleReqs := make(map[string]bool)
 	for _, diag := range staleDiags {
 		matches := diagReqRe.FindStringSubmatch(diag)
@@ -43,7 +47,7 @@ func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string, ig
 		}
 	}
 	if len(staleReqs) == 0 {
-		return nil, 0, nil
+		return nil, 0, nil, nil
 	}
 	updatedFiles = make(map[string]bool)
 	refTime := time.Now().UTC()
@@ -77,6 +81,7 @@ func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string, ig
 		}
 		content, err := os.ReadFile(path)
 		if err != nil {
+			issues = append(issues, ScanIssue{Path: path, Reason: IssueReadError, Detail: err.Error()})
 			return nil
 		}
 		if !tokenLineRe.Match(content) {
@@ -90,8 +95,9 @@ func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string, ig
 			if len(match) < 2 {
 				continue
 			}
-			attrs, perr := parseKV(match[1])
+			attrs, perr := parseKV(match[1], nil)
 			if perr != nil {
+				issues = append(issues, ScanIssue{Path: path, Reason: IssueParseError, Detail: perr.Error()})
 				continue
 			}
 			reqID, hasReq := attrs["REQ"]
@@ -130,9 +136,9 @@ func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string, ig
 		return nil
 	})
 	if walkErr != nil {
-		return nil, 0, walkErr
+		return nil, 0, issues, walkErr
 	}
-	return updatedFiles, tokenCount, nil
+	return updatedFiles, tokenCount, issues, nil
 }
 
 // addMissingUpdated appends "; UPDATED=<today>" to a CANARY token's content

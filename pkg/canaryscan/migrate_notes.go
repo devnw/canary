@@ -76,11 +76,15 @@ func ExtractMigrateNotes(relPath, content string, reg *sources.Registry) []Migra
 // LoadCanaryIgnore) is honored the same way Scan honors it: relative path
 // matched first, dirs skipped via SkipDir; nil means no .canaryignore
 // patterns apply. Files larger than 1MB are skipped.
-func ScanMigrateNotes(root string, skip *regexp.Regexp, ignorePatterns *ignore.GitIgnore, reg *sources.Registry) ([]MigrateNote, error) {
+//
+// A file that cannot be read is reported as a ScanIssue rather than silently
+// skipped, so callers can tell an empty result from an incomplete one.
+func ScanMigrateNotes(root string, skip *regexp.Regexp, ignorePatterns *ignore.GitIgnore, reg *sources.Registry) ([]MigrateNote, []ScanIssue, error) {
 	if skip == nil {
 		skip = DefaultSkipRegex()
 	}
 	var out []MigrateNote
+	var issues []ScanIssue
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -109,7 +113,10 @@ func ScanMigrateNotes(root string, skip *regexp.Regexp, ignorePatterns *ignore.G
 		}
 		b, rerr := os.ReadFile(path)
 		if rerr != nil {
-			return nil // unreadable file is not fatal to a scan
+			// Unreadable file is not fatal to a scan, but it is not
+			// invisible either.
+			issues = append(issues, ScanIssue{Path: path, Reason: IssueReadError, Detail: rerr.Error()})
+			return nil
 		}
 		rel, relerr := filepath.Rel(root, path)
 		if relerr != nil {
@@ -118,5 +125,5 @@ func ScanMigrateNotes(root string, skip *regexp.Regexp, ignorePatterns *ignore.G
 		out = append(out, ExtractMigrateNotes(filepath.ToSlash(rel), string(b), reg)...)
 		return nil
 	})
-	return out, err
+	return out, issues, err
 }

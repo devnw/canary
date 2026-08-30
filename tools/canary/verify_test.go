@@ -46,7 +46,7 @@ func TestCANARY_CBIN_102_CLI_Verify(t *testing.T) {
 	}
 
 	// Execute: scan repo
-	rep, err := canaryscan.Scan(repoDir, canaryscan.DefaultSkipRegex(), nil, nil)
+	rep, err := canaryscan.Scan(repoDir, canaryscan.DefaultSkipRegex(), nil, nil, nil)
 	if err != nil {
 		t.Fatalf("scan failed: %v", err)
 	}

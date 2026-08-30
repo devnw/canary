@@ -49,7 +49,7 @@ func TestCANARY_CBIN_202_ScanAttachesDiagrams(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "arch.md"), []byte(md), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	rep, err := Scan(root, DefaultSkipRegex(), nil, nil)
+	rep, err := Scan(root, DefaultSkipRegex(), nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestCANARY_CBIN_202_CanaryIgnoreExcludesDiagramRefs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rep, err := Scan(root, DefaultSkipRegex(), nil, ignorePatterns)
+	rep, err := Scan(root, DefaultSkipRegex(), nil, ignorePatterns, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

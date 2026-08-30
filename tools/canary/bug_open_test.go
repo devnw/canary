@@ -16,7 +16,7 @@ func TestBUGOpenStatus(t *testing.T) {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write temp file: %v", err)
 	}
-	rep, err := canaryscan.Scan(dir, canaryscan.DefaultSkipRegex(), nil, nil)
+	rep, err := canaryscan.Scan(dir, canaryscan.DefaultSkipRegex(), nil, nil, nil)
 	if err != nil {
 		t.Fatalf("scan error: %v", err)
 	}

@@ -42,7 +42,7 @@ func scanAndDetect(root string, staleDays int) ([]drift.Finding, error) {
 		return nil, fmt.Errorf("load .canaryignore: %w", err)
 	}
 
-	rep, err := canaryscan.Scan(root, skip, nil, ignorePatterns)
+	rep, err := canaryscan.Scan(root, skip, nil, ignorePatterns, nil)
 	if err != nil {
 		return nil, fmt.Errorf("scan: %w", err)
 	}

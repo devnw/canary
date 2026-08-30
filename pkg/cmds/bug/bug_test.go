@@ -437,7 +437,7 @@ func TestCANARY_CBIN_302_BugTokenSingleLineParseable(t *testing.T) {
 	}
 
 	// Scan the temp root
-	rep, err := canaryscan.Scan(tmpRoot, nil, nil, nil)
+	rep, err := canaryscan.Scan(tmpRoot, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Scanner failed (this is expected if token is multi-line): %v", err)
 	}

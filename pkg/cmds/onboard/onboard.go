@@ -235,7 +235,10 @@ func Analyze(root string, limit int) (*OnboardReport, error) {
 	}
 
 	reg := sources.LoadFromRoot(root)
-	notes, _ := canaryscan.ScanMigrateNotes(root, skip, ignorePatterns, reg) // unreadable files are skipped, not fatal
+	notes, noteIssues, _ := canaryscan.ScanMigrateNotes(root, skip, ignorePatterns, reg)
+	for _, is := range noteIssues {
+		fmt.Fprintf(os.Stderr, "CANARY_SCAN_ISSUE path=%s reason=%s\n", is.Path, is.Reason)
+	}
 
 	projectKey := "CBIN"
 	srcInfos := make([]SourceInfo, 0, len(reg.Sources()))

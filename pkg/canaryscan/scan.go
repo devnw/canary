@@ -1,7 +1,10 @@
 package canaryscan
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,6 +15,14 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"devnw.dev/canary/pkg/sources"
+)
+
+const (
+	// binarySniffBytes is how much of a file's head is inspected for a NUL
+	// byte before deciding it is binary.
+	binarySniffBytes = 8 << 10
+	// scanBufBytes is the read buffer used for the streaming line loop.
+	scanBufBytes = 64 << 10
 )
 
 // ProjectConfig is the .canary/project.yaml shape.
@@ -64,8 +75,10 @@ func LoadCanaryIgnore(root string) (*ignore.GitIgnore, error) {
 	return gi, nil
 }
 
-// Scan walks root and returns a Report. skip, projectFilter, and ignorePatterns may be nil.
-func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignorePatterns *ignore.GitIgnore) (Report, error) {
+// Scan walks root and returns a Report. skip, projectFilter, ignorePatterns
+// and reg may be nil. Files the scanner cannot fully process are recorded in
+// Report.Issues and skipped; only walk errors abort.
+func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignorePatterns *ignore.GitIgnore, reg *sources.Registry) (Report, error) {
 	if root == "" {
 		root = "."
 	}
@@ -73,6 +86,7 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 		skip = DefaultSkipRegex()
 	}
 	agg := map[aggregateKey]*aggregateVal{}
+	var issues []ScanIssue
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -102,38 +116,48 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 		if skip.MatchString(path) {
 			return nil
 		}
-		b, err := os.ReadFile(path)
-		if err != nil {
-			return err
+		captures, issue := readTokenCaptures(path, d)
+		if issue != nil {
+			issues = append(issues, *issue)
 		}
-		matches := tokenLineRe.FindAllStringSubmatch(string(b), -1)
-		for _, m := range matches {
-			if isMigrateCapture(m[1]) {
+		for _, cap := range captures {
+			if isMigrateCapture(cap) {
 				continue
 			}
-			fields, perr := parseKV(m[1])
+			fields, perr := parseKV(cap, reg)
 			if perr != nil {
-				return fmt.Errorf("%s: %w", path, perr)
+				issues = append(issues, ScanIssue{Path: path, Reason: IssueParseError, Detail: perr.Error()})
+				continue
 			}
 			if len(fields) == 0 {
 				continue
 			}
+			missing := ""
 			for _, k := range []string{"REQ", "FEATURE", "ASPECT", "STATUS", "UPDATED"} {
 				if fields[k] == "" {
-					absPath, _ := filepath.Abs(path)
-					return fmt.Errorf("%s (abs: %s): missing %s in token: %s", path, absPath, k, m[0])
+					missing = k
+					break
 				}
 			}
-			req := normalizeREQ(fields["REQ"])
+			if missing != "" {
+				issues = append(issues, ScanIssue{Path: path, Reason: IssueParseError,
+					Detail: fmt.Sprintf("missing %s in token: CANARY: %s", missing, cap)})
+				continue
+			}
+			req := normalizeREQWithRegistry(fields["REQ"], reg)
 			if projectFilter != nil && !projectFilter.MatchString(req) {
 				continue
 			}
 			aspect := fields["ASPECT"]
 			if _, ok := aspects[aspect]; !ok {
-				return fmt.Errorf("%s: invalid ASPECT %s", path, aspect)
+				issues = append(issues, ScanIssue{Path: path, Reason: IssueParseError,
+					Detail: fmt.Sprintf("invalid ASPECT %s", aspect)})
+				continue
 			}
 			if _, ok := statusSet[fields["STATUS"]]; !ok {
-				return fmt.Errorf("%s: invalid STATUS %s", path, fields["STATUS"])
+				issues = append(issues, ScanIssue{Path: path, Reason: IssueParseError,
+					Detail: fmt.Sprintf("invalid STATUS %s", fields["STATUS"])})
+				continue
 			}
 			k := aggregateKey{req: req, feature: unquote(fields["FEATURE"]), aspect: aspect, owner: fields["OWNER"], updated: fields["UPDATED"]}
 			a := agg[k]
@@ -163,10 +187,9 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 	byAspect := map[string]int{}
 	total := 0
 	for k, v := range agg {
-		if v.status == "FIXED" {
-			v.status = "REMOVED"
-		}
-		status := promote(v.status, len(v.tests) > 0, len(v.benches) > 0)
+		// STATUS is a declaration: it passes through verbatim. TEST=/BENCH=
+		// are recorded as evidence references but never change it.
+		status := v.status
 		f := Feature{Feature: k.feature, Aspect: k.aspect, Status: status, Files: mapKeys(v.files), Tests: mapKeys(v.tests), Benches: mapKeys(v.benches), Owner: k.owner, Updated: k.updated}
 		byReq[k.req] = append(byReq[k.req], f)
 		byStatus[status]++
@@ -181,11 +204,12 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 	sort.Slice(reqs, func(i, j int) bool { return reqs[i].ID < reqs[j].ID })
 
 	// Attach mermaid diagram references (Task CBIN-202).
-	reg := activeRegistry
-	if reg == nil {
-		reg = sources.Default()
+	effReg := reg
+	if effReg == nil {
+		effReg = sources.Default()
 	}
-	diagRefs, derr := ScanDiagramRefs(root, skip, reg, ignorePatterns)
+	diagRefs, diagIssues, derr := ScanDiagramRefs(root, skip, effReg, ignorePatterns)
+	issues = append(issues, diagIssues...)
 	if derr != nil {
 		fmt.Fprintf(os.Stderr, "Warning: diagram ref scan failed: %v\n", derr)
 	}
@@ -204,7 +228,8 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 	}
 
 	// Extract CANARY:MIGRATE guidance notes (Task CBIN-301).
-	notes, nerr := ScanMigrateNotes(root, skip, ignorePatterns, reg)
+	notes, noteIssues, nerr := ScanMigrateNotes(root, skip, ignorePatterns, effReg)
+	issues = append(issues, noteIssues...)
 	if nerr != nil {
 		fmt.Fprintf(os.Stderr, "Warning: migrate notes scan failed: %v\n", nerr)
 	}
@@ -220,5 +245,89 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 		Requirements:   reqs,
 		Summary:        Summary{ByStatus: byStatus, ByAspect: byAspect, TotalTokens: total, UniqueRequirements: len(reqs)},
 		MigrationNotes: notes,
+		Issues:         normalizeIssues(issues),
 	}, nil
+}
+
+// normalizeIssues sorts issues by path then reason and drops duplicates, so
+// the same unreadable file reported by two sub-scans appears once and the
+// JSON report is stable across runs.
+func normalizeIssues(issues []ScanIssue) []ScanIssue {
+	if len(issues) == 0 {
+		return nil
+	}
+	sort.Slice(issues, func(i, j int) bool {
+		if issues[i].Path != issues[j].Path {
+			return issues[i].Path < issues[j].Path
+		}
+		if issues[i].Reason != issues[j].Reason {
+			return issues[i].Reason < issues[j].Reason
+		}
+		return issues[i].Detail < issues[j].Detail
+	})
+	out := issues[:0]
+	seen := map[[2]string]struct{}{}
+	for _, is := range issues {
+		key := [2]string{is.Path, is.Reason}
+		if _, dup := seen[key]; dup {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, is)
+	}
+	return out
+}
+
+// readTokenCaptures streams path line by line and returns every CANARY token
+// body it finds. A non-nil issue means the file was skipped (wholly or from
+// the offending line on); it is never fatal to the surrounding walk.
+func readTokenCaptures(path string, d os.DirEntry) ([]string, *ScanIssue) {
+	info, ierr := d.Info()
+	if ierr != nil {
+		return nil, &ScanIssue{Path: path, Reason: IssueReadError, Detail: ierr.Error()}
+	}
+	if info.Size() > MaxFileBytes {
+		return nil, &ScanIssue{Path: path, Reason: IssueFileTooLarge,
+			Detail: fmt.Sprintf("%d bytes exceeds limit %d", info.Size(), MaxFileBytes)}
+	}
+	f, oerr := os.Open(path)
+	if oerr != nil {
+		return nil, &ScanIssue{Path: path, Reason: IssueReadError, Detail: oerr.Error()}
+	}
+	defer func() { _ = f.Close() }()
+
+	r := bufio.NewReaderSize(f, scanBufBytes)
+	head, perr := r.Peek(binarySniffBytes)
+	if perr != nil && perr != io.EOF && perr != bufio.ErrBufferFull {
+		return nil, &ScanIssue{Path: path, Reason: IssueReadError, Detail: perr.Error()}
+	}
+	if bytes.IndexByte(head, 0x00) >= 0 {
+		return nil, &ScanIssue{Path: path, Reason: IssueBinary, Detail: "NUL byte in first 8 KiB"}
+	}
+
+	var captures []string
+	var line []byte
+	for {
+		chunk, rerr := r.ReadSlice('\n')
+		if len(line)+len(chunk) > MaxLineBytes {
+			return captures, &ScanIssue{Path: path, Reason: IssueLineTooLarge,
+				Detail: fmt.Sprintf("logical line exceeds limit %d", MaxLineBytes)}
+		}
+		line = append(line, chunk...)
+		if rerr == bufio.ErrBufferFull {
+			continue
+		}
+		if rerr != nil && rerr != io.EOF {
+			return captures, &ScanIssue{Path: path, Reason: IssueReadError, Detail: rerr.Error()}
+		}
+		if len(line) > 0 {
+			if m := tokenLineRe.FindSubmatch(bytes.TrimRight(line, "\r\n")); m != nil {
+				captures = append(captures, string(m[1]))
+			}
+		}
+		if rerr == io.EOF {
+			return captures, nil
+		}
+		line = line[:0]
+	}
 }

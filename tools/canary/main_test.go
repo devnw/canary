@@ -42,7 +42,7 @@ func TestCANARY_CBIN_101_Engine_ScanBasic(t *testing.T) {
 	}
 
 	// Execute: scan directory
-	rep, err := canaryscan.Scan(dir, canaryscan.DefaultSkipRegex(), nil, nil)
+	rep, err := canaryscan.Scan(dir, canaryscan.DefaultSkipRegex(), nil, nil, nil)
 	if err != nil {
 		t.Fatalf("scan failed: %v", err)
 	}
@@ -96,7 +96,7 @@ func BenchmarkCANARY_CBIN_101_Engine_Scan(b *testing.B) {
 	skip := canaryscan.DefaultSkipRegex()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := canaryscan.Scan(dir, skip, nil, nil)
+		_, err := canaryscan.Scan(dir, skip, nil, nil, nil)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -116,7 +116,7 @@ func BenchmarkCANARY_CBIN_101_Engine_Scan50k(b *testing.B) {
 
 	// Run scan N times
 	for i := 0; i < b.N; i++ {
-		_, err := canaryscan.Scan(dir, skip, nil, nil)
+		_, err := canaryscan.Scan(dir, skip, nil, nil, nil)
 		if err != nil {
 			b.Fatal(err)
 		}

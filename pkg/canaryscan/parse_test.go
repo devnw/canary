@@ -17,7 +17,7 @@ func TestCANARY_CP_285_SQLCommentTokenLineRegexMatches(t *testing.T) {
 	if m == nil {
 		t.Fatalf("tokenLineRe did not match SQL comment token line: %q", line)
 	}
-	fields, err := parseKV(m[1])
+	fields, err := parseKV(m[1], nil)
 	if err != nil {
 		t.Fatalf("parseKV: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestCANARY_CP_285_SQLCommentTokenScanned(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rep, err := Scan(root, DefaultSkipRegex(), nil, nil)
+	rep, err := Scan(root, DefaultSkipRegex(), nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
