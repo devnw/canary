@@ -18,6 +18,18 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
+// blockedBy is hasUnresolvedDependencies with its error asserted away. None
+// of the external-dependency cases below can produce one -- an error here
+// would mean the fixture, not the rule under test, is broken.
+func blockedBy(t *testing.T, db *storage.DB, projectID string, tok *storage.Token, reg *sources.Registry, root string, strictExternal bool, warned map[string]bool) bool {
+	t.Helper()
+	got, err := hasUnresolvedDependencies(db, projectID, tok, reg, root, strictExternal, warned)
+	if err != nil {
+		t.Fatalf("hasUnresolvedDependencies: %v", err)
+	}
+	return got
+}
+
 func engRegistry(t *testing.T) *sources.Registry {
 	t.Helper()
 	reg, err := sources.NewRegistry([]sources.Source{
@@ -77,7 +89,7 @@ func TestCANARY_ENG_3960_Next_ExternalSatisfied_NotBlocking(t *testing.T) {
 	}
 	reg := engRegistry(t)
 
-	if hasUnresolvedDependencies(db, "", tok, reg, root, false, map[string]bool{}) {
+	if blockedBy(t, db, "", tok, reg, root, false, map[string]bool{}) {
 		t.Error("satisfied external dependency must not block")
 	}
 }
@@ -93,7 +105,7 @@ func TestCANARY_ENG_3960_Next_ExternalUnsatisfied_Blocking(t *testing.T) {
 	}
 	reg := engRegistry(t)
 
-	if !hasUnresolvedDependencies(db, "", tok, reg, root, false, map[string]bool{}) {
+	if !blockedBy(t, db, "", tok, reg, root, false, map[string]bool{}) {
 		t.Error("unsatisfied external dependency must block")
 	}
 }
@@ -107,7 +119,7 @@ func TestCANARY_ENG_3960_Next_ExternalUnknown_NotBlockingByDefault(t *testing.T)
 	root := t.TempDir() // no cache file at all
 	reg := engRegistry(t)
 
-	if hasUnresolvedDependencies(db, "", tok, reg, root, false, map[string]bool{}) {
+	if blockedBy(t, db, "", tok, reg, root, false, map[string]bool{}) {
 		t.Error("unknown external dependency must not block by default (degradation is sacred)")
 	}
 }
@@ -120,7 +132,7 @@ func TestCANARY_ENG_3960_Next_ExternalUnknown_StrictBlocks(t *testing.T) {
 	root := t.TempDir()
 	reg := engRegistry(t)
 
-	if !hasUnresolvedDependencies(db, "", tok, reg, root, true, map[string]bool{}) {
+	if !blockedBy(t, db, "", tok, reg, root, true, map[string]bool{}) {
 		t.Error("unknown external dependency must block under --strict-external")
 	}
 }
@@ -135,7 +147,7 @@ func TestCANARY_ENG_3960_Next_LocalMissingDep_StillBlocking(t *testing.T) {
 	root := t.TempDir()
 	reg := engRegistry(t)
 
-	if !hasUnresolvedDependencies(db, "", tok, reg, root, false, map[string]bool{}) {
+	if !blockedBy(t, db, "", tok, reg, root, false, map[string]bool{}) {
 		t.Error("missing local (flatfile) dependency must still block")
 	}
 }
@@ -156,8 +168,8 @@ func TestCANARY_ENG_3960_Next_ExternalUnknown_NoteOncePerRun(t *testing.T) {
 	}
 	origStderr := os.Stderr
 	os.Stderr = w
-	hasUnresolvedDependencies(db, "", tok, reg, root, false, warned)
-	hasUnresolvedDependencies(db, "", tok, reg, root, false, warned)
+	blockedBy(t, db, "", tok, reg, root, false, warned)
+	blockedBy(t, db, "", tok, reg, root, false, warned)
 	os.Stderr = origStderr
 	_ = w.Close()
 
@@ -197,7 +209,7 @@ func TestCANARY_ENG_3960_Next_LocalTokensWinOverExternalCache_IMPLBlocks(t *test
 	}
 	reg := engRegistry(t)
 
-	if !hasUnresolvedDependencies(db, "", tok, reg, root, false, map[string]bool{}) {
+	if !blockedBy(t, db, "", tok, reg, root, false, map[string]bool{}) {
 		t.Error("local IMPL token must block even though cached remote status is Done")
 	}
 }
@@ -220,7 +232,7 @@ func TestCANARY_ENG_3960_Next_LocalTokensWinOverExternalCache_TESTEDPasses(t *te
 	}
 	reg := engRegistry(t)
 
-	if hasUnresolvedDependencies(db, "", tok, reg, root, false, map[string]bool{}) {
+	if blockedBy(t, db, "", tok, reg, root, false, map[string]bool{}) {
 		t.Error("local TESTED token must satisfy the dependency even though cached remote status is In Progress")
 	}
 }

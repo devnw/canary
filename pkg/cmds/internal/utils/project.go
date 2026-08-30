@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"devnw.dev/canary/pkg/config"
+	"devnw.dev/canary/pkg/contract"
 	"devnw.dev/canary/pkg/storage"
 )
 
@@ -42,15 +43,20 @@ func AddProjectFlag(cmd *cobra.Command) {
 // it answers no question a single-project database could not already answer,
 // and the day someone adds a key to project.yaml every row indexed before
 // that change would silently vanish from every read.
-func ReadProjectID(cmd *cobra.Command, root string) (string, error) {
+//
+// It reads one flag off cmd and cannot fail, so it returns no error: an
+// error return every caller was obliged to check and no caller could ever
+// see is noise that hides the checks that matter. It takes no root either --
+// unlike WriteProjectID it never consults project.yaml.
+func ReadProjectID(cmd *cobra.Command) string {
 	if cmd != nil {
 		if f := cmd.Flags().Lookup(ProjectFlag); f != nil {
 			if v, err := cmd.Flags().GetString(ProjectFlag); err == nil && strings.TrimSpace(v) != "" {
-				return strings.TrimSpace(v), nil
+				return strings.TrimSpace(v)
 			}
 		}
 	}
-	return "", nil
+	return ""
 }
 
 // WriteProjectID resolves the project a *writing* command stores rows under.
@@ -100,6 +106,12 @@ func OpenIndexRO(cmd *cobra.Command, dbPath string) (*storage.DB, error) {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, ErrNoIndex
 		}
+		// A stale schema is the same shape of problem as a missing index --
+		// one sentence naming the one fix -- so it is passed through
+		// verbatim rather than buried under "open database:".
+		if errors.Is(err, storage.ErrSchemaOutOfDate) {
+			return nil, err
+		}
 		return nil, fmt.Errorf("open database: %w", err)
 	}
 	return db, nil
@@ -115,45 +127,59 @@ type contractResponse struct {
 // ExitCodeContract is the exit status a contract refusal uses. It is distinct
 // from 1 so a caller can tell "canary refused because you asked for something
 // it will not do" from "the command failed".
-const ExitCodeContract = 2
+const ExitCodeContract = contract.ExitCode
 
-// FailContract prints a one-line JSON contract on stdout and exits 2. Nothing
-// else may reach stdout on that path: the caller is a program parsing the
-// line, and a stray banner would corrupt it.
-func FailContract(code, message string) {
+// ErrContractFailed is the sentinel a command returns once it has already
+// printed its contract line. main() maps it to ExitCodeContract; nothing
+// prints it, because the JSON line on stdout is the entire message.
+var ErrContractFailed = contract.ErrFailed
+
+// FailContract prints the one-line JSON contract on stdout and returns
+// ErrContractFailed. Nothing else may reach stdout on that path: the caller
+// is a program parsing the line, and a stray banner would corrupt it.
+//
+// It returns rather than calling os.Exit because it runs inside RunE, where
+// exiting skips every deferred database Close and temp-file cleanup between
+// here and main. cmd is silenced so cobra adds neither the error nor the
+// command's usage block to the output.
+func FailContract(cmd *cobra.Command, code, message string) error {
+	if cmd != nil {
+		cmd.SilenceErrors = true
+		cmd.SilenceUsage = true
+	}
 	body, err := json.Marshal(contractResponse{OK: false, Code: code, Message: message})
 	if err != nil {
 		// Marshalling three strings cannot fail; if it somehow does, say so
 		// on stderr rather than emitting a broken contract on stdout.
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(ExitCodeContract)
+		return ErrContractFailed
 	}
 	fmt.Fprintf(os.Stdout, "%s\n", body)
-	os.Exit(ExitCodeContract)
+	return ErrContractFailed
 }
 
 // GuardContract turns a storage contract error into its machine-readable
-// refusal on stdout (exit 2) and passes every other error through unchanged.
-// It exists so the two contracts are emitted identically wherever they can
-// arise, rather than being re-spelled at each call site.
-func GuardContract(err error) error {
+// refusal on stdout (ErrContractFailed, exit 2) and passes every other error
+// through unchanged. It exists so the two contracts are emitted identically
+// wherever they can arise, rather than being re-spelled at each call site.
+func GuardContract(cmd *cobra.Command, err error) error {
 	switch {
 	case err == nil:
 		return nil
 	case errors.Is(err, storage.ErrProjectRequired):
-		FailProjectRequired()
+		return FailProjectRequired(cmd)
 	case errors.Is(err, storage.ErrInvalidOrderBy):
-		FailInvalidOrderBy()
+		return FailInvalidOrderBy(cmd)
 	}
 	return err
 }
 
 // FailInvalidOrderBy emits the INVALID_ORDER_BY contract.
-func FailInvalidOrderBy() {
-	FailContract("INVALID_ORDER_BY", "allowed values: "+strings.Join(storage.OrderKeys(), ","))
+func FailInvalidOrderBy(cmd *cobra.Command) error {
+	return FailContract(cmd, "INVALID_ORDER_BY", "allowed values: "+strings.Join(storage.OrderKeys(), ","))
 }
 
 // FailProjectRequired emits the PROJECT_REQUIRED contract.
-func FailProjectRequired() {
-	FailContract("PROJECT_REQUIRED", "duplicate requirement id across projects; pass --project")
+func FailProjectRequired(cmd *cobra.Command) error {
+	return FailContract(cmd, "PROJECT_REQUIRED", "duplicate requirement id across projects; pass --project")
 }

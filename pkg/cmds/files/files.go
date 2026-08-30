@@ -49,10 +49,7 @@ Examples:
 		dbPath, _ := cmd.Flags().GetString("db")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 
-		projectID, err := utils.ReadProjectID(cmd, ".")
-		if err != nil {
-			return err
-		}
+		projectID := utils.ReadProjectID(cmd)
 
 		// Read-only: never creates the database it could not find.
 		db, err := utils.OpenIndexRO(cmd, dbPath)
@@ -65,7 +62,7 @@ Examples:
 		excludeSpecs := !includeAll
 		fileGroups, err := db.GetFilesByReqID(projectID, reqID, excludeSpecs)
 		if err != nil {
-			return utils.GuardContract(err)
+			return utils.GuardContract(cmd, err)
 		}
 
 		if len(fileGroups) == 0 {

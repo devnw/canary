@@ -321,7 +321,10 @@ func handlePrioritize(ctx context.Context, req *mcp.CallToolRequest, params *Pri
 		return nil, nil, fmt.Errorf("reqId is required")
 	}
 
-	projectID := mcpProjectID()
+	// The one mutating tool resolves a real project id rather than the
+	// read-side "": an unscoped UPDATE would rewrite every project sharing
+	// the database, and storage refuses it outright.
+	projectID := mcpWriteProjectID()
 
 	dbPath := ".canary/canary.db"
 	// The one mutating tool: OpenRW may create and migrate.

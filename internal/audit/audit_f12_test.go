@@ -17,6 +17,21 @@ import (
 // -- left the index emptied or half-written with no way to tell. The whole
 // run is now one transaction: either the new index replaces the old one, or
 // the old one survives byte for byte.
+//
+// What this case proves specifically is PRE-FLIGHT REFUSAL: the injected bad
+// token is rejected by the scan before OpenRW is ever reached, so the
+// database is never opened for writing and the digest comparison below is
+// satisfied trivially. That is worth pinning on its own -- a run that
+// refuses must not so much as touch the file -- but it is not evidence about
+// the transaction.
+//
+// The rollback evidence lives at the storage layer, in
+// pkg/storage.TestReplaceIndexRollsBack: it drives ReplaceIndex to a failure
+// raised *inside* the transaction (the post-insert row-count check, which
+// runs after the token inserts, the ref rewrite, and the metadata write) and
+// proves the previous index survives intact and the half-written rows are
+// gone. Duplicating that at the CLI level would need an injected fault the
+// binary has no seam for, and would prove nothing the storage test does not.
 func TestAuditF12(t *testing.T) {
 	bin := buildCanary(t)
 	root := initIndexedRepo(t, bin)

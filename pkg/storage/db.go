@@ -327,10 +327,27 @@ func OpenRW(dbPath string) (*DB, error) {
 	return &DB{conn: conn, path: dbPath}, nil
 }
 
+// CANARY: REQ=CBIN-309; FEATURE="StaleSchemaGuard"; ASPECT=Storage; STATUS=TESTED; TEST=TestOpenRORefusesStaleSchema,TestStaleSchemaRefusesRead; UPDATED=2026-08-30
+
+// ErrSchemaOutOfDate is what a read-only open returns when the database on
+// disk predates the current schema. It is a state problem with one fix, and
+// it is deliberately NOT solved by migrating: a read command that rewrote the
+// schema behind the caller would be the very side effect OpenRO exists to
+// prevent, and it would do so while another process may be reading. The
+// message is the whole remedy, so commands surface it verbatim.
+var ErrSchemaOutOfDate = errors.New("index schema is out of date; run 'canary index'")
+
 // OpenRO opens dbPath read-only. A missing database is reported as
 // fs.ErrNotExist and NOTHING is created -- not the file, not its parent
 // directory. Read commands use this so running `canary list` in a repository
 // that was never indexed leaves the repository exactly as it found it.
+//
+// A database that exists but predates the current schema is refused with
+// ErrSchemaOutOfDate. This is the single choke point for that check because
+// every read command reaches the index through here: without it a v6
+// database answered `canary list` with a raw "no such column: content_hash"
+// from deep inside the query layer, which names neither the problem nor the
+// fix.
 //
 // The connection is opened with SQLite's own mode=ro and query_only, so a
 // write attempted through it fails at the engine rather than relying on every
@@ -341,6 +358,16 @@ func OpenRO(dbPath string) (*DB, error) {
 			return nil, fmt.Errorf("no index at %s: %w", dbPath, fs.ErrNotExist)
 		}
 		return nil, fmt.Errorf("stat database at %s: %w", dbPath, err)
+	}
+
+	stale, currentVersion, err := NeedsMigration(dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("check index schema at %s: %w", dbPath, err)
+	}
+	if stale {
+		slog.Debug("Refusing read against stale index schema",
+			"path", dbPath, "currentVersion", currentVersion, "targetVersion", LatestVersion)
+		return nil, ErrSchemaOutOfDate
 	}
 
 	name, err := dsn(dbPath, url.Values{

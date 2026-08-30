@@ -45,10 +45,7 @@ Examples:
 		effLimit := utils.EffectiveLimit(limit, defaultBugListLimit)
 		dbPath, _ := cmd.Flags().GetString("db")
 
-		projectID, err := utils.ReadProjectID(cmd, ".")
-		if err != nil {
-			return err
-		}
+		projectID := utils.ReadProjectID(cmd)
 
 		// Read-only: an unindexed repository falls back to the filesystem
 		// rather than creating a database to find nothing in.
@@ -71,7 +68,7 @@ Examples:
 		// Query database for all tokens (ListTokens is hardcoded for CBIN patterns)
 		allTokens, err := db.ListTokens(projectID, filters, "", "", 0)
 		if err != nil {
-			return utils.GuardContract(err)
+			return utils.GuardContract(cmd, err)
 		}
 
 		// Filter for BUG tokens only

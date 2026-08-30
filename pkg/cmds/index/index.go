@@ -253,14 +253,44 @@ func collectRefs(rootPath string, reg *sources.Registry, ignorePatterns *ignore.
 // oversized, unreadable) says a *file* was skipped, and a file with no
 // readable tokens contributes nothing to lose: an image or a database in the
 // tree must not be able to block the index.
+// A parse error is printed per file because each one names a token someone
+// has to go fix. The benign reasons are not: a repository with a vendor tree
+// or a pile of fixtures produces hundreds of identical "skipped a binary"
+// lines, and burying the handful of actionable lines under them is how the
+// actionable ones stop being read. Those are counted and summarised, one
+// line per reason.
 func reportIssues(kind string, issues []canaryscan.ScanIssue) error {
+	// Fixed order so the summary is stable run to run rather than following
+	// map iteration.
+	benignOrder := []string{
+		canaryscan.IssueBinary,
+		canaryscan.IssueFileTooLarge,
+		canaryscan.IssueReadError,
+		canaryscan.IssueLineTooLarge,
+	}
+	benign := make(map[string]int, len(benignOrder))
+	for _, reason := range benignOrder {
+		benign[reason] = 0
+	}
+
 	parseErrors := 0
 	for _, is := range issues {
+		if _, isBenign := benign[is.Reason]; isBenign {
+			benign[is.Reason]++
+			continue
+		}
 		fmt.Fprintf(os.Stderr, "CANARY_SCAN_ISSUE kind=%s path=%s reason=%s detail=%s\n", kind, is.Path, is.Reason, is.Detail)
 		if is.Reason == canaryscan.IssueParseError {
 			parseErrors++
 		}
 	}
+
+	for _, reason := range benignOrder {
+		if n := benign[reason]; n > 0 {
+			fmt.Fprintf(os.Stderr, "CANARY_SCAN_SKIPPED kind=%s reason=%s files=%d\n", kind, reason, n)
+		}
+	}
+
 	if parseErrors > 0 {
 		return fmt.Errorf("refusing to index: %d unparseable CANARY token(s) in the %s scan", parseErrors, kind)
 	}

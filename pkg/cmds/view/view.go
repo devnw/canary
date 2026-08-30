@@ -278,13 +278,10 @@ func CreateViewCommand() *cobra.Command {
 		Short: "Full picture of one requirement: tokens, files, tests, deps, spec, diagrams, ticket",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := utils.ReadProjectID(cmd, ".")
-			if err != nil {
-				return err
-			}
+			projectID := utils.ReadProjectID(cmd)
 			v, err := BuildView(".canary/canary.db", ".", projectID, args[0], limit)
 			if err != nil {
-				return utils.GuardContract(err)
+				return utils.GuardContract(cmd, err)
 			}
 			if jsonOut {
 				enc := json.NewEncoder(cmd.OutOrStdout())

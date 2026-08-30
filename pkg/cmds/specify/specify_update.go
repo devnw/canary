@@ -73,10 +73,7 @@ Examples:
 				dbPath := ".canary/canary.db"
 				if db, dbErr := storage.OpenRO(dbPath); dbErr == nil {
 					defer db.Close()
-					projectID, pErr := utils.ReadProjectID(cmd, ".")
-					if pErr != nil {
-						return pErr
-					}
+					projectID := utils.ReadProjectID(cmd)
 					specPath, err = specs.FindSpecInDB(db, projectID, query)
 				}
 			}

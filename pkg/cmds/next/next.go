@@ -76,13 +76,16 @@ Priority determination factors:
 		}
 
 		// Select next priority
-		projectID, err := utils.ReadProjectID(cmd, ".")
-		if err != nil {
-			return err
-		}
+		projectID := utils.ReadProjectID(cmd)
 
 		token, err := selectNextPriorityStrict(dbPath, projectID, filters, strictExternal)
 		if err != nil {
+			// A PROJECT_REQUIRED refusal reaching here is the contract, not
+			// a failure to select: it must arrive as the machine-readable
+			// line on stdout, unwrapped.
+			if guarded := utils.GuardContract(cmd, err); errors.Is(guarded, utils.ErrContractFailed) {
+				return guarded
+			}
 			return fmt.Errorf("select next priority: %w", err)
 		}
 
@@ -240,7 +243,11 @@ func selectFromDatabase(db *storage.DB, projectID string, filters map[string]str
 
 		// Filter out blocked tokens
 		for _, token := range tokens {
-			if !hasUnresolvedDependencies(db, projectID, token, reg, ".", strictExternal, warned) {
+			blocked, err := hasUnresolvedDependencies(db, projectID, token, reg, ".", strictExternal, warned)
+			if err != nil {
+				return nil, err
+			}
+			if !blocked {
 				return token, nil
 			}
 		}
@@ -258,7 +265,11 @@ func selectFromDatabase(db *storage.DB, projectID string, filters map[string]str
 		}
 
 		for _, token := range tokens {
-			if !hasUnresolvedDependencies(db, projectID, token, reg, ".", strictExternal, warned) {
+			blocked, err := hasUnresolvedDependencies(db, projectID, token, reg, ".", strictExternal, warned)
+			if err != nil {
+				return nil, err
+			}
+			if !blocked {
 				return token, nil
 			}
 		}
@@ -274,7 +285,11 @@ func selectFromDatabase(db *storage.DB, projectID string, filters map[string]str
 
 	// Find first unblocked token
 	for _, token := range tokens {
-		if !hasUnresolvedDependencies(db, projectID, token, reg, ".", strictExternal, warned) {
+		blocked, err := hasUnresolvedDependencies(db, projectID, token, reg, ".", strictExternal, warned)
+		if err != nil {
+			return nil, err
+		}
+		if !blocked {
 			return token, nil
 		}
 	}
@@ -297,9 +312,9 @@ func selectFromDatabase(db *storage.DB, projectID string, filters map[string]str
 //     (degradation is sacred) — a one-line stderr note is printed the
 //     first time a given dep is seen this run (warned dedups by id).
 //     strictExternal flips unknown to blocking.
-func hasUnresolvedDependencies(db *storage.DB, projectID string, token *storage.Token, reg *sources.Registry, root string, strictExternal bool, warned map[string]bool) bool {
+func hasUnresolvedDependencies(db *storage.DB, projectID string, token *storage.Token, reg *sources.Registry, root string, strictExternal bool, warned map[string]bool) (bool, error) {
 	if token.DependsOn == "" {
-		return false
+		return false, nil
 	}
 
 	// Parse comma-separated dependencies
@@ -310,21 +325,29 @@ func hasUnresolvedDependencies(db *storage.DB, projectID string, token *storage.
 			continue
 		}
 
-		// Query dependency status
+		// Query dependency status. A contract refusal -- the same id under
+		// two projects with no --project to disambiguate -- is a question
+		// canary cannot answer, not a dependency that happens to be
+		// missing. Swallowing it reported every requirement as blocked and
+		// told the user "no work available", which is a lie about the tree
+		// rather than a refusal to guess.
 		depTokens, err := db.GetTokensByReqID(projectID, dep)
+		if err != nil && errors.Is(err, storage.ErrProjectRequired) {
+			return false, err
+		}
 		if err != nil || len(depTokens) == 0 {
 			res := external.Resolve(dep, reg, root)
 			if !res.IsExternal() {
-				return true // Local dependency not found = blocking
+				return true, nil // Local dependency not found = blocking
 			}
 			switch res.State {
 			case external.StateSatisfied:
 				continue
 			case external.StateUnsatisfied:
-				return true
+				return true, nil
 			default: // unknown
 				if strictExternal {
-					return true
+					return true, nil
 				}
 				if warned != nil && !warned[dep] {
 					warned[dep] = true
@@ -344,11 +367,11 @@ func hasUnresolvedDependencies(db *storage.DB, projectID string, token *storage.
 		}
 
 		if !allComplete {
-			return true // Dependency incomplete = blocking
+			return true, nil // Dependency incomplete = blocking
 		}
 	}
 
-	return false
+	return false, nil
 }
 
 // isHiddenPath determines if a token should be hidden based on its file path

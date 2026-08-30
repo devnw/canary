@@ -197,14 +197,14 @@ Batch Operations:
 			// Get all tokens with documentation
 			tokens, err = db.ListTokens(projectID, nil, "", "req_asc", 0)
 			if err != nil {
-				return utils.GuardContract(err)
+				return utils.GuardContract(cmd, err)
 			}
 		} else {
 			// Get tokens for specific requirement
 			reqID := strings.ToUpper(args[0])
 			tokens, err = db.GetTokensByReqID(projectID, reqID)
 			if err != nil {
-				return utils.GuardContract(err)
+				return utils.GuardContract(cmd, err)
 			}
 			if len(tokens) == 0 {
 				return fmt.Errorf("no tokens found for requirement: %s", reqID)
@@ -329,10 +329,7 @@ Status values:
 		showAll, _ := cmd.Flags().GetBool("all")
 		staleOnly, _ := cmd.Flags().GetBool("stale-only")
 
-		projectID, err := utils.ReadProjectID(cmd, ".")
-		if err != nil {
-			return err
-		}
+		projectID := utils.ReadProjectID(cmd)
 
 		// Read-only: never creates the database it could not find.
 		db, err := utils.OpenIndexRO(cmd, dbPath)
@@ -348,13 +345,13 @@ Status values:
 			reqID := strings.ToUpper(args[0])
 			tokens, err = db.GetTokensByReqID(projectID, reqID)
 			if err != nil {
-				return utils.GuardContract(err)
+				return utils.GuardContract(cmd, err)
 			}
 		} else if showAll {
 			// Check all requirements with documentation
 			tokens, err = db.ListTokens(projectID, nil, "", "req_asc", 0)
 			if err != nil {
-				return utils.GuardContract(err)
+				return utils.GuardContract(cmd, err)
 			}
 		} else {
 			return fmt.Errorf("provide REQ-ID or use --all flag")
@@ -456,10 +453,7 @@ The report includes:
 		format, _ := cmd.Flags().GetString("format")
 		showUndocumented, _ := cmd.Flags().GetBool("show-undocumented")
 
-		projectID, err := utils.ReadProjectID(cmd, ".")
-		if err != nil {
-			return err
-		}
+		projectID := utils.ReadProjectID(cmd)
 
 		// Read-only: never creates the database it could not find.
 		db, err := utils.OpenIndexRO(cmd, dbPath)
@@ -471,7 +465,7 @@ The report includes:
 		// Get all tokens
 		tokens, err := db.ListTokens(projectID, nil, "", "req_asc", 0)
 		if err != nil {
-			return utils.GuardContract(err)
+			return utils.GuardContract(cmd, err)
 		}
 
 		// Statistics

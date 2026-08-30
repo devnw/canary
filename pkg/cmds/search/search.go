@@ -38,10 +38,7 @@ Keywords are matched case-insensitively using LIKE queries.`,
 		}
 		keywords := strings.Join(args, " ")
 
-		projectID, err := utils.ReadProjectID(cmd, ".")
-		if err != nil {
-			return err
-		}
+		projectID := utils.ReadProjectID(cmd)
 
 		// Read-only: a repository with no index is told to build one, never
 		// silently given an empty database.
@@ -54,7 +51,7 @@ Keywords are matched case-insensitively using LIKE queries.`,
 
 		tokens, err := db.SearchTokens(projectID, keywords, effLimit)
 		if err != nil {
-			return utils.GuardContract(err)
+			return utils.GuardContract(cmd, err)
 		}
 
 		if len(tokens) == 0 {

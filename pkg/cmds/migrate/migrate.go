@@ -63,10 +63,7 @@ excluded.`,
 		rootDir, _ := cmd.Flags().GetString("root")
 		showFeatures, _ := cmd.Flags().GetBool("show-features")
 
-		projectID, err := utils.ReadProjectID(cmd, rootDir)
-		if err != nil {
-			return err
-		}
+		projectID := utils.ReadProjectID(cmd)
 
 		// Read-only: orphan detection consumes the index.
 		db, err := utils.OpenIndexRO(cmd, dbPath)
@@ -156,10 +153,7 @@ Use --dry-run to preview changes without creating files.`,
 			return fmt.Errorf("cannot specify REQ-ID with --all flag")
 		}
 
-		projectID, err := utils.ReadProjectID(cmd, rootDir)
-		if err != nil {
-			return err
-		}
+		projectID := utils.ReadProjectID(cmd)
 
 		// Read-only: this command writes spec files, never the index.
 		db, err := utils.OpenIndexRO(cmd, dbPath)

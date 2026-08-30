@@ -7,6 +7,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -18,6 +19,7 @@ import (
 	canaryinit "devnw.dev/canary/pkg/cmds/init"
 	"devnw.dev/canary/pkg/cmds/legacy"
 	"devnw.dev/canary/pkg/cmds/next"
+	"devnw.dev/canary/pkg/contract"
 )
 
 var (
@@ -47,6 +49,13 @@ commands for scanning, creating, and managing requirement tokens.`,
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
+		// A refused contract has already said everything it has to say: one
+		// JSON line on stdout, nothing on stderr. Exiting here rather than
+		// inside RunE is what lets every deferred database Close and
+		// temp-file cleanup along the way actually run.
+		if errors.Is(err, contract.ErrFailed) {
+			os.Exit(contract.ExitCode)
+		}
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

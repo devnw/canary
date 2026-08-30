@@ -544,29 +544,34 @@ func shouldExcludeFile(path string) bool {
 	return false
 }
 
-// UpdatePriority updates the priority of a token within projectID ("" spans
-// every project).
+// CANARY: REQ=CBIN-308; FEATURE="ScopedWrites"; ASPECT=Storage; STATUS=TESTED; TEST=TestUpdatePriorityRejectsUnscoped,TestUpdateSpecStatusRejectsUnscoped,TestPrioritizeWritesOneProject; UPDATED=2026-08-30
+// UpdatePriority updates the priority of a token within projectID.
+//
+// projectID is required. The unscoped default a *read* enjoys has no writer
+// equivalent: an unscoped UPDATE does not answer a broader question, it
+// rewrites every project's rows in a shared database. Refusing here is the
+// same rule DeleteAllTokens and ReplaceIndex already enforce.
 func (db *DB) UpdatePriority(projectID, reqID, feature string, priority int) error {
-	query := `UPDATE tokens SET priority = ? WHERE req_id = ? AND feature = ?`
-	args := []any{priority, reqID, feature}
-	if projectID != "" {
-		query += ` AND COALESCE(project_id, '') = ?`
-		args = append(args, projectID)
+	if projectID == "" {
+		return errors.New("update priority: project id is required")
 	}
-	_, err := db.conn.Exec(query, args...)
+	_, err := db.conn.Exec(
+		`UPDATE tokens SET priority = ? WHERE req_id = ? AND feature = ? AND COALESCE(project_id, '') = ?`,
+		priority, reqID, feature, projectID,
+	)
 	return err
 }
 
-// UpdateSpecStatus updates the spec status within projectID ("" spans every
-// project).
+// UpdateSpecStatus updates the spec status within projectID. projectID is
+// required, for the reason spelled out on UpdatePriority.
 func (db *DB) UpdateSpecStatus(projectID, reqID, specStatus string) error {
-	query := `UPDATE tokens SET spec_status = ? WHERE req_id = ?`
-	args := []any{specStatus, reqID}
-	if projectID != "" {
-		query += ` AND COALESCE(project_id, '') = ?`
-		args = append(args, projectID)
+	if projectID == "" {
+		return errors.New("update spec status: project id is required")
 	}
-	_, err := db.conn.Exec(query, args...)
+	_, err := db.conn.Exec(
+		`UPDATE tokens SET spec_status = ? WHERE req_id = ? AND COALESCE(project_id, '') = ?`,
+		specStatus, reqID, projectID,
+	)
 	return err
 }
 

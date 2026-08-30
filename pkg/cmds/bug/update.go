@@ -46,10 +46,7 @@ Examples:
 			return fmt.Errorf("invalid bug ID format: %s (expected BUG-ASPECT-XXX)", bugID)
 		}
 
-		projectID, err := utils.ReadProjectID(cmd, ".")
-		if err != nil {
-			return err
-		}
+		projectID := utils.ReadProjectID(cmd)
 
 		// Mutating command: OpenRW may create and migrate.
 		db, err := storage.OpenRW(dbPath)
@@ -61,7 +58,7 @@ Examples:
 		// Get existing token
 		tokens, err := db.GetTokensByReqID(projectID, bugID)
 		if err != nil {
-			return utils.GuardContract(err)
+			return utils.GuardContract(cmd, err)
 		}
 		if len(tokens) == 0 {
 			return fmt.Errorf("bug not found: %s", bugID)

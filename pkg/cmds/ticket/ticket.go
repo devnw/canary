@@ -285,7 +285,7 @@ func runTicketSync(cmd *cobra.Command, dbPath, planPath, project, issueType stri
 	// own scope selector when the MCP/ticket surface is reworked.
 	tokens, err := db.ListTokens("", nil, idPattern, "req_asc", 0)
 	if err != nil {
-		return utils.GuardContract(err)
+		return utils.GuardContract(cmd, err)
 	}
 
 	creds := credsFromEnv(reg)

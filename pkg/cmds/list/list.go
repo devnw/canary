@@ -54,13 +54,10 @@ Use --include-hidden to show all requirements including hidden ones.`,
 		// nothing else on stdout -- not a database open, not a warning, not
 		// a partial table.
 		if !isKnownOrderKey(orderBy) {
-			utils.FailInvalidOrderBy()
+			return utils.FailInvalidOrderBy(cmd)
 		}
 
-		projectID, err := utils.ReadProjectID(cmd, ".")
-		if err != nil {
-			return err
-		}
+		projectID := utils.ReadProjectID(cmd)
 
 		// Read-only: never creates the database it could not find.
 		db, err := utils.OpenIndexRO(cmd, dbPath)
@@ -109,7 +106,7 @@ Use --include-hidden to show all requirements including hidden ones.`,
 
 		tokens, err := db.ListTokens(projectID, filters, idPattern, orderBy, effLimit)
 		if err != nil {
-			return utils.GuardContract(err)
+			return utils.GuardContract(cmd, err)
 		}
 
 		if len(tokens) == 0 {

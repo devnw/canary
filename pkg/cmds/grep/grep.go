@@ -54,10 +54,7 @@ Examples:
 			effLimit = utils.EffectiveLimit(limit, defaultGrepLimit)
 		}
 
-		projectID, err := utils.ReadProjectID(cmd, ".")
-		if err != nil {
-			return err
-		}
+		projectID := utils.ReadProjectID(cmd)
 
 		// Read-only: never creates the database it could not find.
 		db, err := utils.OpenIndexRO(cmd, dbPath)
@@ -69,7 +66,7 @@ Examples:
 		// Search for matching tokens
 		tokens, err := canary.GrepTokens(db, projectID, pattern, effLimit)
 		if err != nil {
-			return utils.GuardContract(err)
+			return utils.GuardContract(cmd, err)
 		}
 
 		if len(tokens) == 0 {

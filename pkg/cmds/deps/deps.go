@@ -1,6 +1,7 @@
 package deps
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -83,10 +84,7 @@ Example:
 			}
 
 			// Load token provider
-			projectID, err := utils.ReadProjectID(cmd, ".")
-			if err != nil {
-				return err
-			}
+			projectID := utils.ReadProjectID(cmd)
 			tokenProvider, err := createTokenProvider(projectID)
 			if err != nil {
 				return fmt.Errorf("failed to create token provider: %w", err)
@@ -95,6 +93,14 @@ Example:
 			// Check dependency status
 			checker := specs.NewStatusChecker(tokenProvider)
 			statuses := checker.CheckAllDependencies(deps)
+
+			// Before a single status line is printed: a dependency id that
+			// exists under two projects is a question this command refused
+			// to answer, and the refusal is the whole of stdout.
+			if err := utils.GuardContract(cmd, providerErr(tokenProvider)); err != nil {
+				return err
+			}
+
 			reg, err := sources.LoadFromRoot(".")
 			if err != nil {
 				return fmt.Errorf("load .canary/project.yaml: %w", err)
@@ -206,10 +212,7 @@ Example:
 				if err != nil {
 					return fmt.Errorf("load .canary/project.yaml: %w", err)
 				}
-				projectID, perr := utils.ReadProjectID(cmd, ".")
-				if perr != nil {
-					return perr
-				}
+				projectID := utils.ReadProjectID(cmd)
 				tokenProvider, _ := createTokenProvider(projectID)
 				// Local tokens always win: a node with at least one local
 				// CANARY token in the index is never styled as external,
@@ -229,10 +232,7 @@ Example:
 
 			// Add status checker if requested
 			if showStatus {
-				projectID, perr := utils.ReadProjectID(cmd, ".")
-				if perr != nil {
-					return perr
-				}
+				projectID := utils.ReadProjectID(cmd)
 				tokenProvider, err := createTokenProvider(projectID)
 				if err == nil {
 					statusChecker := &dependencyStatusAdapter{
@@ -359,10 +359,7 @@ Example:
 				return fmt.Errorf("load .canary/project.yaml: %w", err)
 			}
 
-			projectID, err := utils.ReadProjectID(cmd, ".")
-			if err != nil {
-				return err
-			}
+			projectID := utils.ReadProjectID(cmd)
 			tokenProvider, err := createTokenProvider(projectID)
 			if err != nil {
 				return fmt.Errorf("failed to create token provider: %w", err)
@@ -388,6 +385,12 @@ Example:
 			result := validator.Validate()
 
 			satisfied, unsatisfied, unknown := countExternalDeps(graph, reg, tokenProvider)
+
+			// Same rule as `deps check`: an ambiguous id is refused with the
+			// contract rather than reported as a missing spec.
+			if err := utils.GuardContract(cmd, providerErr(tokenProvider)); err != nil {
+				return err
+			}
 			externalLine := fmt.Sprintf("external: satisfied=%d unsatisfied=%d unknown=%d", satisfied, unsatisfied, unknown)
 			externalFailing := strictExternal && (unsatisfied > 0 || unknown > 0)
 
@@ -639,16 +642,37 @@ func (e *emptyTokenProvider) GetTokensByReqID(reqID string) []specs.TokenInfo {
 	return []specs.TokenInfo{}
 }
 
-// dbTokenProvider fetches tokens from the database
+// dbTokenProvider fetches tokens from the database.
+//
+// specs.TokenProvider cannot return an error, so a contract refusal is
+// latched here instead and read back with providerErr once the walk is
+// finished. The distinction matters: an ordinary query failure degrades to
+// "no local tokens" (the dependency is then resolved externally or reported
+// missing), but a PROJECT_REQUIRED refusal is canary declining to guess
+// which project the id belongs to -- reporting that as "missing spec" would
+// invent an answer out of a question it refused to answer.
 type dbTokenProvider struct {
 	db        *storage.DB
 	projectID string
+	err       error
+}
+
+// providerErr returns the contract refusal a provider latched during the
+// walk, if any. Providers that cannot refuse report nothing.
+func providerErr(p specs.TokenProvider) error {
+	if d, ok := p.(*dbTokenProvider); ok {
+		return d.err
+	}
+	return nil
 }
 
 func (d *dbTokenProvider) GetTokensByReqID(reqID string) []specs.TokenInfo {
 	// Use DB method to get tokens
 	dbTokens, err := d.db.GetTokensByReqID(d.projectID, reqID)
 	if err != nil {
+		if d.err == nil && errors.Is(err, storage.ErrProjectRequired) {
+			d.err = err
+		}
 		return []specs.TokenInfo{}
 	}
 
