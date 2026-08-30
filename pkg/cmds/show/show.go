@@ -70,6 +70,22 @@ Examples:
 		}
 
 		if len(tokens) == 0 {
+			// In JSON mode stdout carries only the (empty) token array,
+			// matching the success shape below; the diagnostic prose goes
+			// to stderr so a caller parsing stdout as JSON never chokes on
+			// it. The exit-1 "requirement not found" contract is unchanged
+			// in both modes.
+			if jsonOutput {
+				fmt.Fprintf(os.Stderr, "No tokens found for %s\n", reqID)
+				fmt.Fprintln(os.Stderr, "\nSuggestions:")
+				fmt.Fprintln(os.Stderr, "  • Run: canary list")
+				fmt.Fprintln(os.Stderr, "  • Check requirement ID format (e.g., CBIN-XXX)")
+				if jerr := outputTokensJSON([]*storage.Token{}); jerr != nil {
+					return jerr
+				}
+				return fmt.Errorf("requirement not found")
+			}
+
 			fmt.Printf("No tokens found for %s\n", reqID)
 			fmt.Println("\nSuggestions:")
 			fmt.Println("  • Run: canary list")

@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"devnw.dev/canary/pkg/cmds/internal/utils"
+	"devnw.dev/canary/pkg/storage"
 )
 
 // CANARY: REQ=ENG-4309; FEATURE="SearchCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
@@ -54,14 +55,20 @@ Keywords are matched case-insensitively using LIKE queries.`,
 			return utils.GuardContract(cmd, err)
 		}
 
+		// In JSON mode stdout carries the token array and nothing else: an
+		// empty result is the empty array, never a prose notice a caller
+		// parsing JSON would choke on.
+		if jsonOutput {
+			if tokens == nil {
+				tokens = []*storage.Token{}
+			}
+			enc := json.NewEncoder(os.Stdout)
+			return enc.Encode(tokens)
+		}
+
 		if len(tokens) == 0 {
 			fmt.Printf("No tokens found for: %s\n", keywords)
 			return nil
-		}
-
-		if jsonOutput {
-			enc := json.NewEncoder(os.Stdout)
-			return enc.Encode(tokens)
 		}
 
 		fmt.Printf("Search results for '%s' (%d tokens):\n\n", keywords, len(tokens))
