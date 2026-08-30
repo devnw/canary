@@ -66,7 +66,36 @@ func printDiff(w io.Writer, diff string) {
 	}
 }
 
-// CANARY: REQ=ENG-4300; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// guardedBasePaths lists the embedded base/ paths that a guarded writer owns
+// end to end. copyCanaryStructure is an unguarded bulk copy; anything it
+// writes that a later guarded writer also authors would be clobbered before
+// the guard ever ran, making the guard vacuous -- and, worse, would leave the
+// guarded writer facing a file that differs from what it means to write, so it
+// refuses and the shipped file keeps the bulk copy's raw template text.
+//
+// Every path here is therefore written exactly once, by its guarded owner:
+//
+//	agents/           -> copyAndProcessAgentFiles (template substitution)
+//	AGENT_CONTEXT.md  -> updateAgentContextFiles
+//
+// .canaryignore is skipped the same way just below, by the same reasoning.
+var guardedBasePaths = []string{
+	"base/agents",
+	"base/AGENT_CONTEXT.md",
+}
+
+// isGuardedBasePath reports whether an embedded base/ path is owned by a
+// guarded writer -- either the path itself or anything beneath it.
+func isGuardedBasePath(path string) bool {
+	for _, p := range guardedBasePaths {
+		if path == p || strings.HasPrefix(path, p+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// CANARY: REQ=ENG-4300; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=TESTED; TEST=TestInitAgentFilesAreSubstituted,TestInitAgentContextPreserved,TestInitAgentContextForce; OWNER=canary; UPDATED=2026-08-30
 // copyCanaryStructure copies the embedded base/ directory structure to the target .canary/ project directory
 func copyCanaryStructure(targetDir string) error {
 	targetCanary := filepath.Join(targetDir, ".canary")
@@ -91,6 +120,16 @@ func copyCanaryStructure(targetDir string) error {
 		// Skip certain files that are handled separately
 		if strings.HasSuffix(path, ".canaryignore") {
 			return nil // This is handled separately in the init command
+		}
+
+		// Skip every path a guarded writer owns: writing it here unguarded
+		// would clobber the user's copy and leave the guarded writer refusing
+		// its own (correct) content.
+		if isGuardedBasePath(path) {
+			if d.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
 		}
 
 		// Get relative path from base/

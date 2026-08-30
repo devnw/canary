@@ -64,3 +64,8 @@ bin_canary
 !.canary/
 .canary/*
 !.canary/project.yaml
+
+# Backups written by `canary init --force` and `canary upgrade --write`:
+# one generation deep (<file>.bak), overwritten by the next rewrite of the
+# same file, and skipped by `canary scan`.
+*.bak

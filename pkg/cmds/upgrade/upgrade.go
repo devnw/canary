@@ -46,6 +46,11 @@ GAP_ANALYSIS.md "✅ <ID>" claim lines.
 
 Dry run by default — nothing is written until --write is passed.
 
+With --write, each rewritten file's previous content is kept beside it as
+<file>.bak. Backups are one generation deep — the next rewrite of the same
+file overwrites its .bak — and "canary scan" skips *.bak, so a stale token
+inside a backup never counts toward status.
+
 Note: the md-heading rule converts "# CANARY:" markdown headings into
 "<!-- CANARY: ... -->" HTML comments so they stay readable, but "canary
 scan" does not parse HTML comments, so converted tokens are never counted

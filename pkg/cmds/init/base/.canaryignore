@@ -59,6 +59,12 @@ test-fixtures/
 .git/
 .direnv/
 
+# Backups written by `canary init --force` and `canary upgrade --write`.
+# One generation deep: <file>.bak holds the bytes replaced by the most recent
+# rewrite of that file and is overwritten by the next one. The scanner skips
+# them by default too, so a stale token inside a .bak never counts.
+*.bak
+
 # Generated files
 status.json
 status.csv

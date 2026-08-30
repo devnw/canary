@@ -5,12 +5,15 @@
 
 // Package safewrite is the single way this tool replaces a file on disk.
 //
-// Every write is staged in a temp file beside the target, fsynced, optionally
-// validated, and only then renamed into place, so a crash or an error partway
-// through can never leave a truncated or half-written file. A target that
-// already exists with different bytes is refused unless the caller passes
-// Force -- a tool that authors files into a user's repository must not
-// silently destroy the user's edits. Paths are confined to a caller-supplied
+// Every write -- the target's new content and the .bak holding its prior
+// content alike -- is staged in a temp file beside the target, fsynced,
+// optionally validated, and only then renamed into place, so a crash or an
+// error partway through can never leave a truncated or half-written file. The
+// containing directory is fsynced after the rename where the platform supports
+// it, so the rename itself is durable and not just the bytes behind it. A
+// target that already exists with different bytes is refused unless the
+// caller passes Force -- a tool that authors files into a user's repository
+// must not silently destroy the user's edits. Paths are confined to a caller-supplied
 // root with symlinks resolved, so a symlink planted in a project can never
 // redirect a write outside it.
 //
@@ -93,7 +96,7 @@ func Write(path string, data []byte, mode fs.FileMode, o Options) (Result, error
 		if bytes.Equal(old, data) {
 			return res, nil
 		}
-		res.Diff = Diff(old, data)
+		res.Diff = diffLines(old, data)
 		if !o.Force {
 			return res, fmt.Errorf("%w: %s", ErrWouldReplace, path)
 		}
@@ -117,9 +120,17 @@ func Write(path string, data []byte, mode fs.FileMode, o Options) (Result, error
 	}
 
 	if exists && o.Backup {
+		// The backup is staged and renamed like the target itself: it is the
+		// only surviving copy of the bytes about to be replaced, so a crash
+		// mid-backup must not be able to leave it truncated.
 		bak := real + ".bak"
-		if err := os.WriteFile(bak, old, oldMode); err != nil {
-			return res, fmt.Errorf("write backup %s: %w", bak, err)
+		bakTmp, berr := stage(dir, old, oldMode)
+		if berr != nil {
+			return res, fmt.Errorf("stage backup %s: %w", bak, berr)
+		}
+		if rerr := os.Rename(bakTmp, bak); rerr != nil {
+			_ = os.Remove(bakTmp)
+			return res, fmt.Errorf("write backup %s: %w", bak, rerr)
 		}
 		res.BackupPath = bak
 	}
@@ -127,6 +138,7 @@ func Write(path string, data []byte, mode fs.FileMode, o Options) (Result, error
 	if err := os.Rename(tmpPath, real); err != nil {
 		return res, fmt.Errorf("rename into %s: %w", path, err)
 	}
+	syncDir(dir)
 
 	res.Written = true
 	res.Replaced = exists
@@ -190,10 +202,36 @@ func stage(dir string, data []byte, mode fs.FileMode) (path string, err error) {
 	return path, nil
 }
 
+// syncDir fsyncs a directory so the renames just performed inside it are
+// themselves durable, not merely the bytes they point at: without it a crash
+// can lose the rename while keeping the staging file.
+//
+// This is best effort by design. Opening a directory as a file, and fsyncing
+// one, are not portable -- Windows refuses both -- and there is nothing useful
+// a caller could do about a failure here: the content is already fsynced and
+// the rename already succeeded, so the write is correct either way. Errors are
+// therefore ignored rather than surfaced.
+func syncDir(dir string) {
+	f, err := os.Open(dir) //nolint:gosec // dir is the confined target's parent
+	if err != nil {
+		return
+	}
+	_ = f.Sync()
+	_ = f.Close()
+}
+
 // Confine resolves symlinks in path and its parents and returns the resolved
 // path, or ErrRootEscape when it does not lie within the resolved root.
 // Components that do not exist yet are appended verbatim: a file about to be
 // created cannot be resolved, but every existing directory leading to it can.
+//
+// Note the ordering: filepath.Abs cleans the path lexically -- collapsing
+// "." and ".." textually -- before any symlink is resolved. So "root/link/../x"
+// is evaluated as "root/x", not as "<link's target>/../x". That is strictly
+// more restrictive than resolving ".." against the link's real parent: it can
+// reject a path that a symlink-first walk would have allowed inside the root,
+// but it can never let one out of it, which is the only direction that matters
+// for confinement.
 func Confine(root, path string) (string, error) {
 	if strings.TrimSpace(root) == "" {
 		return "", errors.New("safewrite: confinement root is required")
@@ -245,16 +283,19 @@ func resolve(p string) (string, error) {
 	}
 }
 
-// Diff renders a minimal, deterministic line diff of old against new: every
-// line the replacement drops as "-<line>", every line it introduces as
-// "+<line>". Removals come before additions and each group is sorted, so the
-// same pair of files always produces the same text -- this is a notice for a
-// human, not a patch to apply, and stable output keeps it diffable in logs.
-// Repeated lines are counted, so dropping one of three identical lines shows
-// up as exactly one removal.
-func Diff(old, new []byte) string {
-	removed := surplus(lineCounts(old), lineCounts(new))
-	added := surplus(lineCounts(new), lineCounts(old))
+// diffLines renders a minimal, deterministic line diff of old against
+// updated: every line the replacement drops as "-<line>", every line it
+// introduces as "+<line>". Removals come before additions and each group is
+// sorted, so the same pair of files always produces the same text -- this is a
+// notice for a human, not a patch to apply, and stable output keeps it
+// diffable in logs. Repeated lines are counted, so dropping one of three
+// identical lines shows up as exactly one removal.
+//
+// The rendering reaches callers through Result.Diff; nothing outside this
+// package needs to diff arbitrary byte slices, so this stays unexported.
+func diffLines(old, updated []byte) string {
+	removed := surplus(lineCounts(old), lineCounts(updated))
+	added := surplus(lineCounts(updated), lineCounts(old))
 	sort.Strings(removed)
 	sort.Strings(added)
 

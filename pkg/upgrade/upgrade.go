@@ -19,10 +19,11 @@
 // code blocks in markdown files: a fenced `# CANARY:` heading is a
 // documentation example, not a live token, so it is left alone like every
 // other rule's fenced content.
-// CANARY: REQ=CP-275; FEATURE="TokenUpgrade"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_302_AtomicWrite,TestCANARY_CBIN_302_CRLF,TestCANARY_CBIN_302_Combined,TestCANARY_CBIN_302_FenceProtection,TestCANARY_CBIN_302_Idempotent,TestCANARY_CBIN_302_MDHeadingFenceProtection,TestCANARY_CBIN_302_MigrateGuard,TestCANARY_CBIN_302_PlaceholderGuard,TestCANARY_CBIN_302_Remap,TestCANARY_CBIN_302_RemapCollision,TestCANARY_CBIN_302_Rules,TestCANARY_CBIN_302_RuleFiltering,TestCANARY_CBIN_302_UnicodeHyphenProse,TestCANARY_CBIN_302_ValidRule; UPDATED=2026-08-29
+// CANARY: REQ=CP-275; FEATURE="TokenUpgrade"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_302_AtomicWrite,TestCANARY_CBIN_302_CRLF,TestCANARY_CBIN_302_Combined,TestCANARY_CBIN_302_FenceProtection,TestCANARY_CBIN_302_Idempotent,TestCANARY_CBIN_302_MDHeadingFenceProtection,TestCANARY_CBIN_302_MigrateGuard,TestCANARY_CBIN_302_PlaceholderGuard,TestCANARY_CBIN_302_Remap,TestCANARY_CBIN_302_RemapCollision,TestCANARY_CBIN_302_Rules,TestCANARY_CBIN_302_RuleFiltering,TestCANARY_CBIN_302_UnicodeHyphenProse,TestCANARY_CBIN_302_ValidRule,TestGuardFailureSkipsFileAndContinues; UPDATED=2026-08-30
 package upgrade
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -102,6 +103,11 @@ func ValidRule(name string) bool {
 // file, and returns every Change found (in file, then rule-application,
 // order). When Options.Write is true, modified files are rewritten in
 // place (permissions preserved); otherwise Run never touches disk.
+//
+// A file that fails the token-preservation guard, or whose write fails, is
+// skipped and left byte-identical; the walk continues and the returned error
+// joins every such failure, naming each file. The changes found are returned
+// either way, so a partial write reports both what it did and what it refused.
 func Run(o Options) ([]Change, error) {
 	root := o.Root
 	if root == "" {
@@ -155,6 +161,13 @@ func Run(o Options) ([]Change, error) {
 	sort.Strings(files)
 
 	var all []Change
+	// A file this walk refuses to write is a per-file verdict, not a reason to
+	// abandon the remaining files: aborting mid-walk leaves the files already
+	// rewritten with no report of what stopped, and every later file unvisited.
+	// Failures are collected here, the offending file is skipped unwritten, and
+	// the joined error names every one of them at the end -- so the exit is
+	// still nonzero and the report is complete.
+	var writeErrs []error
 	for _, path := range files {
 		info, ierr := os.Stat(path)
 		if ierr != nil {
@@ -186,18 +199,20 @@ func Run(o Options) ([]Change, error) {
 			// thing it must never do is make a requirement disappear. Prove
 			// every pre-existing token survives before anything is written.
 			if gerr := checkTokensPreserved(content, newContent, enabled); gerr != nil {
-				return all, fmt.Errorf("%s: %w (file left unchanged)", rel, gerr)
+				writeErrs = append(writeErrs, fmt.Errorf("%s: %w (file left unchanged)", rel, gerr))
+				continue
 			}
 			if _, werr := safewrite.Write(path, []byte(newContent), info.Mode(), safewrite.Options{
 				Root:   root,
 				Force:  true, // --write is an explicit instruction to rewrite these files
 				Backup: true,
 			}); werr != nil {
-				return all, fmt.Errorf("write %s: %w", path, werr)
+				writeErrs = append(writeErrs, fmt.Errorf("write %s: %w", path, werr))
+				continue
 			}
 		}
 	}
-	return all, nil
+	return all, errors.Join(writeErrs...)
 }
 
 // ---- token-preservation guard -----------------------------------------------------

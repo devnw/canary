@@ -610,3 +610,48 @@ func TestCANARY_CBIN_302_MDHeadingFenceProtection(t *testing.T) {
 		t.Fatalf("fenced md-heading example was modified:\n got: %q\nwant: %q", got, content)
 	}
 }
+
+// TestGuardFailureSkipsFileAndContinues covers F-03: a token-preservation
+// failure used to abort the whole walk, leaving every file written before it
+// rewritten and every file after it unvisited, with no report of what failed.
+// The guard must now skip only the offending file, keep walking, and report
+// every failure together at the end.
+//
+// The fixture leans on the one shape that legitimately trips the guard: a
+// malformed token (unterminated quoted value) whose raw text is its identity,
+// so add-updated's edit reads as the token vanishing.
+func TestGuardFailureSkipsFileAndContinues(t *testing.T) {
+	dir := t.TempDir()
+	const bad = "// CANARY: REQ=CBIN-101; FEATURE=\"unterminated; STATUS=IMPL\n"
+	const good = "// CANARY: REQ=CBIN-102; FEATURE=\"X\"; ASPECT=API; STATUS=IMPL\n"
+
+	// Sorted walk order: a_bad, b_good, c_bad. A file after the first failure
+	// still gets rewritten, and both failures are named.
+	aBad := writeFile(t, dir, "a_bad.go", bad)
+	bGood := writeFile(t, dir, "b_good.go", good)
+	cBad := writeFile(t, dir, "c_bad.go", bad)
+
+	changes, err := upgrade.Run(upgrade.Options{Root: dir, Write: true, Rules: []string{"add-updated"}, Today: "2025-06-01"})
+	if err == nil {
+		t.Fatal("expected the guard failures to be reported")
+	}
+	for _, want := range []string{"a_bad.go", "c_bad.go"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error does not name %s: %v", want, err)
+		}
+	}
+	if len(changes) == 0 {
+		t.Fatal("expected the proposed changes to still be returned")
+	}
+
+	if got := readFile(t, aBad); got != bad {
+		t.Errorf("a_bad.go was rewritten despite the guard: %q", got)
+	}
+	if got := readFile(t, cBad); got != bad {
+		t.Errorf("c_bad.go was rewritten despite the guard: %q", got)
+	}
+	wantGood := "// CANARY: REQ=CBIN-102; FEATURE=\"X\"; ASPECT=API; STATUS=IMPL; UPDATED=2025-06-01\n"
+	if got := readFile(t, bGood); got != wantGood {
+		t.Errorf("b_good.go = %q, want %q -- the walk did not continue past the first guard failure", got, wantGood)
+	}
+}
