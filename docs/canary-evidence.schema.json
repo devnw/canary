@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devnw.dev/canary/schemas/canary-evidence.schema.json",
+  "title": "CANARY Evidence File",
+  "description": "Strict schema for canary evidence records, mirroring the validation rules enforced by pkg/evidence.Parse. Every field is required, additional properties are rejected at every level, and duplicate keys (which this schema alone cannot detect -- only the token-walk in Parse can) are likewise rejected by the parser.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "records"],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "project_id",
+          "requirement_id",
+          "feature",
+          "aspect",
+          "test_id",
+          "command",
+          "result",
+          "commit_sha",
+          "observed_at",
+          "runner",
+          "artifact_digest"
+        ],
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "requirement_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "feature": {
+            "type": "string",
+            "minLength": 1
+          },
+          "aspect": {
+            "type": "string",
+            "minLength": 1
+          },
+          "test_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "command": {
+            "type": "string",
+            "minLength": 1
+          },
+          "result": {
+            "const": "PASS"
+          },
+          "commit_sha": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|\\+00:00)$"
+          },
+          "runner": {
+            "type": "string",
+            "minLength": 1
+          },
+          "artifact_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  }
+}
