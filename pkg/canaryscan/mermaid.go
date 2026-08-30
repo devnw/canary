@@ -3,10 +3,11 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// CANARY: REQ=CP-268; FEATURE="MermaidRefs"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_202_ExtractDiagramRefs; UPDATED=2026-08-28
+// CANARY: REQ=CP-268; FEATURE="MermaidRefs"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_202_ExtractDiagramRefs,TestCANARY_CBIN_202_ScanDiagramRefsSkipsOversizedFile; UPDATED=2026-08-30
 package canaryscan
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -113,6 +114,14 @@ func ScanDiagramRefs(root string, skip *regexp.Regexp, reg *sources.Registry, ig
 			return nil
 		}
 		if skip.MatchString(path) {
+			return nil
+		}
+		if info, ierr := d.Info(); ierr != nil {
+			issues = append(issues, ScanIssue{Path: path, Reason: IssueReadError, Detail: ierr.Error()})
+			return nil
+		} else if info.Size() > MaxFileBytes {
+			issues = append(issues, ScanIssue{Path: path, Reason: IssueFileTooLarge,
+				Detail: fmt.Sprintf("%d bytes exceeds limit %d", info.Size(), MaxFileBytes)})
 			return nil
 		}
 		b, err := os.ReadFile(path)

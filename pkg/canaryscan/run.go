@@ -121,12 +121,23 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 			}
 			printIssues(stderr, updateIssues)
 			_, _ = fmt.Fprintf(stderr, "Updated %d stale tokens in %d files\n", tokenCount, len(updatedFiles))
+			// Issues found only during the rewrite walk (e.g. a file the
+			// walk could not read) must not be lost: merge them with the
+			// first pass's issues before the re-scan overwrites rep, and
+			// again with the re-scan's own issues below, so --strict sees
+			// every issue either walk found.
+			firstPassIssues := rep.Issues
 			rep, err = Scan(cfg.Root, cfg.SkipRegex, projectFilter, ignorePatterns, reg)
 			if err != nil {
 				_, _ = fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
 				return 3
 			}
 			AnnotateSources(&rep, reg)
+			merged := make([]ScanIssue, 0, len(firstPassIssues)+len(updateIssues)+len(rep.Issues))
+			merged = append(merged, firstPassIssues...)
+			merged = append(merged, updateIssues...)
+			merged = append(merged, rep.Issues...)
+			rep.Issues = normalizeIssues(merged)
 		} else {
 			_, _ = fmt.Fprintln(stderr, "No stale tokens found")
 		}

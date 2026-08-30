@@ -107,9 +107,14 @@ func mapKeys(m map[string]struct{}) []string {
 	return out
 }
 
+// unquote strips a matched pair of legacy SINGLE quotes ('...') from v.
+// Double-quote decoding is already performed upstream by decodeValue
+// (serialize.go) when a token field is parsed, so a value that legitimately
+// starts and ends with literal '"' characters (e.g. a decoded FEATURE value
+// of `"quoted"`) must not be stripped again here.
 func unquote(v string) string {
 	v = strings.TrimSpace(v)
-	if len(v) >= 2 && ((v[0] == '"' && v[len(v)-1] == '"') || (v[0] == '\'' && v[len(v)-1] == '\'')) {
+	if len(v) >= 2 && v[0] == '\'' && v[len(v)-1] == '\'' {
 		return v[1 : len(v)-1]
 	}
 	return v

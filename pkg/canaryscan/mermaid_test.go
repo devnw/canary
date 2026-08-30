@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -136,5 +137,48 @@ func TestCANARY_CBIN_202_ExtractDiagramRefsWholeFileMmd(t *testing.T) {
 	want := map[string][]int{"CBIN-105": {2}, "PLAT-4521": {2}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("refs = %v, want %v", got, want)
+	}
+}
+
+// TestCANARY_CBIN_202_ScanDiagramRefsSkipsOversizedFile proves ScanDiagramRefs
+// checks a file's size against MaxFileBytes before reading it, the same way
+// Scan's own token reader does, instead of doing an unbounded os.ReadFile. A
+// file over the limit must be reported as a "file_too_large" ScanIssue and
+// skipped rather than read into memory.
+func TestCANARY_CBIN_202_ScanDiagramRefsSkipsOversizedFile(t *testing.T) {
+	root := t.TempDir()
+
+	pad := strings.Repeat("x", MaxFileBytes+1)
+	big := "```mermaid\nflowchart TD\n  A[CBIN-105] --> B[other]\n```\n<!-- " + pad + " -->\n"
+	bigPath := filepath.Join(root, "big.md")
+	if err := os.WriteFile(bigPath, []byte(big), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	small := "```mermaid\nflowchart TD\n  A[CBIN-042] --> B[other]\n```\n"
+	if err := os.WriteFile(filepath.Join(root, "small.md"), []byte(small), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	refs, issues, err := ScanDiagramRefs(root, DefaultSkipRegex(), nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, r := range refs {
+		if r.File == "big.md" {
+			t.Errorf("refs from oversized file were read: %+v", r)
+		}
+	}
+	got := map[string]bool{}
+	for _, r := range refs {
+		got[r.ReqID] = true
+	}
+	if !got["CBIN-042"] {
+		t.Errorf("refs = %v, want small.md's CBIN-042 to still be scanned", refs)
+	}
+
+	if !hasIssue(issues, "big.md", IssueFileTooLarge) {
+		t.Errorf("issues = %+v, want a file_too_large issue for big.md", issues)
 	}
 }
