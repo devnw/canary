@@ -85,6 +85,33 @@ func mappedStatus(status string, statusMap map[string]string) string {
 	return DefaultStatusMap[status]
 }
 
+// DoneStatuses returns the set of remote status names that a "done" CANARY
+// status (TESTED or BENCHED) maps to across reg's non-flatfile sources,
+// honoring each source's StatusMap and the DefaultStatusMap fallback. A
+// transition whose target status is in this set advances an issue to done, so
+// the apply layer gates it on passing evidence rather than flipping the issue
+// blind.
+func DoneStatuses(reg *sources.Registry) map[string]bool {
+	done := map[string]bool{}
+	collect := func(sm map[string]string) {
+		for _, s := range []string{"TESTED", "BENCHED"} {
+			if name := mappedStatus(s, sm); name != "" {
+				done[name] = true
+			}
+		}
+	}
+	collect(nil) // the defaults always apply
+	if reg != nil {
+		for _, s := range reg.Sources() {
+			if s.Type == "flatfile" {
+				continue
+			}
+			collect(s.StatusMap)
+		}
+	}
+	return done
+}
+
 // descLimit bounds create_issue's Description to a handful of lines — small
 // by default, per project convention.
 const descLimit = 10

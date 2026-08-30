@@ -7,10 +7,12 @@ package ticket
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -179,7 +181,7 @@ func TestCANARY_CBIN_306_Sync_ApplyWithCreds_EndToEnd(t *testing.T) {
 			createCalls++
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"id":"1","key":"CP-1"}`))
-		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/search":
+		case r.Method == http.MethodPost && r.URL.Path == "/rest/api/3/search/jql":
 			searchCalls++
 			_, _ = w.Write([]byte(`{"issues":[{"key":"PLAT-42","fields":{"status":{"name":"To Do"}}}],"total":1,"startAt":0,"maxResults":50}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/issue/PLAT-42/transitions":
@@ -315,7 +317,7 @@ func TestCANARY_ENG_3958_Sync_ApplyWithDestinationSource_NoProjectFlag(t *testin
 			createdProject = body.Fields.Project.Key
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"id":"1","key":"CP-1"}`))
-		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/search":
+		case r.Method == http.MethodPost && r.URL.Path == "/rest/api/3/search/jql":
 			_, _ = w.Write([]byte(`{"issues":[],"total":0,"startAt":0,"maxResults":50}`))
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -357,22 +359,26 @@ func TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge(t *testing.T) {
 	var searchCalls int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.Method != http.MethodGet || r.URL.Path != "/rest/api/3/search" {
+		if r.Method != http.MethodPost || r.URL.Path != "/rest/api/3/search/jql" {
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 		searchCalls++
-		switch r.URL.Query().Get("jql") {
-		case "project=PLATPROJ":
+		var body struct {
+			JQL string `json:"jql"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		switch body.JQL {
+		case `project = "PLATPROJ"`:
 			// Platform source returns both X-1 and X-2
-			_, _ = w.Write([]byte(`{"issues":[{"key":"X-1","fields":{"status":{"name":"Done"}}},{"key":"X-2","fields":{"status":{"name":"In Progress"}}}],"total":2,"startAt":0,"maxResults":50}`))
-		case "project=SECPROJ":
+			_, _ = w.Write([]byte(`{"issues":[{"key":"X-1","fields":{"status":{"name":"Done"}}},{"key":"X-2","fields":{"status":{"name":"In Progress"}}}]}`))
+		case `project = "SECPROJ"`:
 			// Security source returns X-1 (same key!) with DIFFERENT status
 			// and X-3. When merged, X-1 should have Security's value (last-write-wins)
-			_, _ = w.Write([]byte(`{"issues":[{"key":"X-1","fields":{"status":{"name":"To Do"}}},{"key":"X-3","fields":{"status":{"name":"Blocked"}}}],"total":2,"startAt":0,"maxResults":50}`))
+			_, _ = w.Write([]byte(`{"issues":[{"key":"X-1","fields":{"status":{"name":"To Do"}}},{"key":"X-3","fields":{"status":{"name":"Blocked"}}}]}`))
 		default:
-			t.Errorf("unexpected jql: %s", r.URL.Query().Get("jql"))
+			t.Errorf("unexpected jql: %s", body.JQL)
 			w.WriteHeader(http.StatusBadRequest)
 		}
 	}))
@@ -388,7 +394,7 @@ func TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge(t *testing.T) {
 	}
 
 	client := &ticket.JiraClient{BaseURL: srv.URL, Email: "agent@example.com", Token: "sekret"}
-	merged, fetchedProjects, err := remoteStatusForSources(client, reg, "")
+	merged, fetchedProjects, err := remoteStatusForSources(context.Background(), client, reg, "")
 	if err != nil {
 		t.Fatalf("remoteStatusForSources: %v", err)
 	}
@@ -427,17 +433,20 @@ func TestCANARY_ENG_3958_RemoteStatusForSources_SharedProjectSingleFetch(t *test
 	var searchCalls int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.Method != http.MethodGet || r.URL.Path != "/rest/api/3/search" {
+		if r.Method != http.MethodPost || r.URL.Path != "/rest/api/3/search/jql" {
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 		searchCalls++
-		jql := r.URL.Query().Get("jql")
-		if jql == "project=SHARED" {
-			_, _ = w.Write([]byte(`{"issues":[{"key":"SHARED-42","fields":{"status":{"name":"In Progress"}}}],"total":1,"startAt":0,"maxResults":50}`))
+		var body struct {
+			JQL string `json:"jql"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body.JQL == `project = "SHARED"` {
+			_, _ = w.Write([]byte(`{"issues":[{"key":"SHARED-42","fields":{"status":{"name":"In Progress"}}}]}`))
 		} else {
-			t.Errorf("unexpected jql: %s", jql)
+			t.Errorf("unexpected jql: %s", body.JQL)
 			w.WriteHeader(http.StatusBadRequest)
 		}
 	}))
@@ -454,7 +463,7 @@ func TestCANARY_ENG_3958_RemoteStatusForSources_SharedProjectSingleFetch(t *test
 	}
 
 	client := &ticket.JiraClient{BaseURL: srv.URL, Email: "agent@example.com", Token: "sekret"}
-	merged, fetchedProjects, err := remoteStatusForSources(client, reg, "")
+	merged, fetchedProjects, err := remoteStatusForSources(context.Background(), client, reg, "")
 	if err != nil {
 		t.Fatalf("remoteStatusForSources: %v", err)
 	}
@@ -622,7 +631,7 @@ func TestCANARY_ENG_3958_Sync_ApplyWithDestinationSource_TransitionsUnaffected(t
 			createCalls++
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"id":"1","key":"CP-1"}`))
-		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/search":
+		case r.Method == http.MethodPost && r.URL.Path == "/rest/api/3/search/jql":
 			searchCalls++
 			_, _ = w.Write([]byte(`{"issues":[],"total":0,"startAt":0,"maxResults":50}`))
 		default:
@@ -669,7 +678,7 @@ func TestCANARY_CBIN_306_Sync_PartialProgress(t *testing.T) {
 			}
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"id":"1","key":"CP-1"}`))
-		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/search":
+		case r.Method == http.MethodPost && r.URL.Path == "/rest/api/3/search/jql":
 			searchCalls++
 			_, _ = w.Write([]byte(`{"issues":[{"key":"PLAT-42","fields":{"status":{"name":"To Do"}}}],"total":1,"startAt":0,"maxResults":50}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/issue/PLAT-42/transitions":
@@ -784,7 +793,7 @@ func TestCANARY_CBIN_306_Sync_ApplyWithSourceAPI_BaseURLFallback(t *testing.T) {
 			createCalls++
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"id":"1","key":"CP-1"}`))
-		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/search":
+		case r.Method == http.MethodPost && r.URL.Path == "/rest/api/3/search/jql":
 			searchCalls++
 			_, _ = w.Write([]byte(`{"issues":[{"key":"PLAT-42","fields":{"status":{"name":"To Do"}}}],"total":1,"startAt":0,"maxResults":50}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/issue/PLAT-42/transitions":
@@ -903,7 +912,7 @@ func TestCANARY_ENG_3959_Status_Refresh_WithCreds(t *testing.T) {
 	var searchCalls int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/search" {
+		if r.Method == http.MethodPost && r.URL.Path == "/rest/api/3/search/jql" {
 			searchCalls++
 			_, _ = w.Write([]byte(`{"issues":[{"key":"PLAT-42","fields":{"status":{"name":"Done"}}}],"total":1,"startAt":0,"maxResults":50}`))
 			return
@@ -1008,7 +1017,7 @@ func TestCANARY_ENG_3958_Status_Refresh_ProjectWithZeroIssues_CacheSaved(t *test
 	var searchCalls int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/search" {
+		if r.Method == http.MethodPost && r.URL.Path == "/rest/api/3/search/jql" {
 			searchCalls++
 			_, _ = w.Write([]byte(`{"issues":[],"total":0,"startAt":0,"maxResults":50}`))
 			return
@@ -1084,4 +1093,176 @@ func TestCANARY_ENG_3959_Status_Plain_ReportsCache(t *testing.T) {
 	if !strings.Contains(out, "CANARY_TICKET_STATUS cached=2 fetched_at=2026-08-28T00:00:00Z age=24h0m0s") {
 		t.Fatalf("output = %q", out)
 	}
+}
+
+// seedProjectDoneTransition writes a config whose jira "platform" source
+// carries its own project: (so remote status is really fetched) and seeds a
+// single jira token PLAT-42 at STATUS=TESTED — whose rollup maps to the
+// "Done" remote status. With the remote issue sitting at "To Do", the plan
+// proposes a transition to a *done* status: exactly the case the evidence
+// gate guards. No flatfile token is seeded, so no create_issue muddies the
+// scenario.
+func seedProjectDoneTransition(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	canaryDir := filepath.Join(root, ".canary")
+	if err := os.MkdirAll(canaryDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	yaml := `project:
+  name: Demo
+  key: CBIN
+sources:
+  - name: core
+    type: flatfile
+    key: CBIN
+  - name: platform
+    type: jira
+    key: PLAT
+    project: PLAT
+`
+	if err := os.WriteFile(filepath.Join(canaryDir, "project.yaml"), []byte(yaml), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	dbPath := filepath.Join(canaryDir, "canary.db")
+	if err := storage.MigrateDB(dbPath, "all"); err != nil {
+		t.Fatalf("MigrateDB: %v", err)
+	}
+	db, err := storage.OpenRW(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	if err := db.UpsertToken(&storage.Token{ReqID: "PLAT-42", Feature: "Sync", Aspect: "Engine", Status: "TESTED", FilePath: "sync.go"}); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+// doneTransitionServer returns an httptest JIRA server for the done-transition
+// scenario: PLAT-42 is remotely "To Do", and transitioning it to "Done" is
+// available. It counts the transition POSTs so a test can assert whether the
+// gate let the transition through.
+func doneTransitionServer(t *testing.T, transitionPOSTs *int) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/rest/api/3/search/jql":
+			_, _ = w.Write([]byte(`{"issues":[{"key":"PLAT-42","fields":{"status":{"name":"To Do"}}}]}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/rest/api/3/issue/PLAT-42/transitions":
+			_, _ = w.Write([]byte(`{"transitions":[{"id":"31","name":"Finish","to":{"name":"Done"}}]}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/rest/api/3/issue/PLAT-42/transitions":
+			*transitionPOSTs++
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+}
+
+// TestCANARY_ENG_3960_Sync_DoneTransitionGatedOnEvidence proves a transition
+// to a done status is refused when the requirement has no passing evidence:
+// the transition POST never reaches JIRA, the run reports transitioned=0
+// without erroring, and a redaction-safe note is printed.
+func TestCANARY_ENG_3960_Sync_DoneTransitionGatedOnEvidence(t *testing.T) {
+	root := seedProjectDoneTransition(t)
+	chdir(t, root)
+
+	var transitionPOSTs int
+	srv := doneTransitionServer(t, &transitionPOSTs)
+	defer srv.Close()
+
+	t.Setenv("JIRA_BASE_URL", srv.URL)
+	t.Setenv("JIRA_EMAIL", "agent@example.com")
+	t.Setenv("JIRA_API_TOKEN", "sekret")
+
+	out, err := execSync(t, "--apply", "--project", "PLAT", "--plan", ".canary/plan.json")
+	if err != nil {
+		t.Fatalf("Execute must not error when a done-transition is merely skipped: %v", err)
+	}
+	if !strings.Contains(out, "CANARY_TICKET_SYNC created=0 transitioned=0") {
+		t.Fatalf("output = %q, want transitioned=0 (done-transition gated)", out)
+	}
+	if transitionPOSTs != 0 {
+		t.Errorf("transition POSTs = %d, want 0 (blind done-transition must be refused)", transitionPOSTs)
+	}
+	if !strings.Contains(out, "skipping transition of PLAT-42 to done") {
+		t.Errorf("expected a redaction-safe skip note, got: %q", out)
+	}
+	// The note must never leak the token.
+	if strings.Contains(out, "sekret") {
+		t.Errorf("skip note leaked the token: %q", out)
+	}
+}
+
+// TestCANARY_ENG_3960_Sync_DoneTransitionAllowedWithEvidence proves the same
+// done-transition IS applied once passing evidence exists for the requirement
+// at the current commit and project.
+func TestCANARY_ENG_3960_Sync_DoneTransitionAllowedWithEvidence(t *testing.T) {
+	root := seedProjectDoneTransition(t)
+	chdir(t, root)
+	commit := gitInitCommit(t, root)
+
+	// Write passing evidence for PLAT-42/Sync/Engine at this project+commit.
+	ev := `{"schema_version":1,"records":[{` +
+		`"project_id":"CBIN",` +
+		`"requirement_id":"PLAT-42",` +
+		`"feature":"Sync",` +
+		`"aspect":"Engine",` +
+		`"test_id":"TestSync",` +
+		`"command":"go test ./...",` +
+		`"result":"PASS",` +
+		`"commit_sha":"` + commit + `",` +
+		`"observed_at":"2026-08-30T00:00:00Z",` +
+		`"runner":"ci",` +
+		`"artifact_digest":"sha256:` + strings.Repeat("a", 64) + `"` +
+		`}]}`
+	if err := os.WriteFile(filepath.Join(root, ".canary", "evidence.json"), []byte(ev), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var transitionPOSTs int
+	srv := doneTransitionServer(t, &transitionPOSTs)
+	defer srv.Close()
+
+	t.Setenv("JIRA_BASE_URL", srv.URL)
+	t.Setenv("JIRA_EMAIL", "agent@example.com")
+	t.Setenv("JIRA_API_TOKEN", "sekret")
+
+	out, err := execSync(t, "--apply", "--project", "PLAT", "--plan", ".canary/plan.json")
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !strings.Contains(out, "CANARY_TICKET_SYNC created=0 transitioned=1") {
+		t.Fatalf("output = %q, want transitioned=1 (evidence present)", out)
+	}
+	if transitionPOSTs != 1 {
+		t.Errorf("transition POSTs = %d, want 1 (evidence-backed done-transition applied)", transitionPOSTs)
+	}
+}
+
+// gitInitCommit initializes a git repo at root with one empty commit and
+// returns its full commit SHA — the reference point evidence binds to.
+func gitInitCommit(t *testing.T, root string) string {
+	t.Helper()
+	run := func(args ...string) {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = root
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t",
+			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t",
+		)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	run("init")
+	run("commit", "--allow-empty", "-m", "init")
+	out, err := exec.Command("git", "-C", root, "rev-parse", "HEAD").Output()
+	if err != nil {
+		t.Fatalf("git rev-parse: %v", err)
+	}
+	return strings.TrimSpace(string(out))
 }

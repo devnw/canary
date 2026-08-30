@@ -13,16 +13,22 @@
 package ticket
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
 
+	"devnw.dev/canary/pkg/canaryscan"
 	"devnw.dev/canary/pkg/cmds/internal/utils"
 	"devnw.dev/canary/pkg/config"
+	"devnw.dev/canary/pkg/evidence"
 	"devnw.dev/canary/pkg/external"
 	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/storage"
@@ -177,7 +183,7 @@ func runTicketStatus(cmd *cobra.Command, refresh bool, project string) error {
 	}
 
 	client := &ticket.JiraClient{BaseURL: creds.BaseURL, Email: creds.Email, Token: creds.Token}
-	statuses, fetchedProjects, err := remoteStatusForSources(client, reg, project)
+	statuses, fetchedProjects, err := remoteStatusForSources(cmd.Context(), client, reg, project)
 	if err != nil {
 		return err
 	}
@@ -294,7 +300,7 @@ func runTicketSync(cmd *cobra.Command, dbPath, planPath, project, issueType stri
 	// (no --apply, or --apply without credentials) is plan-only and never
 	// touches the network — degradation is sacred.
 	if apply && creds.present() {
-		return applyAndReport(cmd, tokens, reg, creds, planPath, project, issueType, limit)
+		return applyAndReport(cmd, tokens, reg, creds, planPath, project, issueType, cfg.ProjectID(), limit)
 	}
 
 	actions, err := ticket.ComputePlan(tokens, reg, nil)
@@ -321,7 +327,7 @@ func runTicketSync(cmd *cobra.Command, dbPath, planPath, project, issueType stri
 // applies create_issue + transition actions via client, writes the
 // completed plan and its remap map, and prints the CANARY_TICKET_SYNC
 // summary.
-func applyAndReport(cmd *cobra.Command, tokens []*storage.Token, reg *sources.Registry, creds jiraCreds, planPath, project, issueType string, limit int) error {
+func applyAndReport(cmd *cobra.Command, tokens []*storage.Token, reg *sources.Registry, creds jiraCreds, planPath, project, issueType, evidenceProjectID string, limit int) error {
 	// Require an effective project when the plan contains create_issue
 	// actions that would need one to apply successfully. Transition
 	// actions target an already-existing issue by key and never need a
@@ -338,7 +344,7 @@ func applyAndReport(cmd *cobra.Command, tokens []*storage.Token, reg *sources.Re
 
 	client := &ticket.JiraClient{BaseURL: creds.BaseURL, Email: creds.Email, Token: creds.Token}
 
-	remoteStatus, fetchedProjects, err := remoteStatusForSources(client, reg, project)
+	remoteStatus, fetchedProjects, err := remoteStatusForSources(cmd.Context(), client, reg, project)
 	if err != nil {
 		return err
 	}
@@ -371,7 +377,28 @@ func applyAndReport(cmd *cobra.Command, tokens []*storage.Token, reg *sources.Re
 		}
 	}
 
-	created, transitioned, applyErrors := applyActions(client, actions, effProject, issueType)
+	// Build the evidence gate that guards done-status transitions: before an
+	// issue is flipped to a done status, the requirement must pass
+	// evidence.Complete at the current project and commit. Recorded evidence
+	// is read from the local store; a missing store is not an error (nothing
+	// is proven yet, so a done-transition is refused rather than applied
+	// blind). An unreadable HEAD leaves commit empty, which no record matches,
+	// so every done-transition then fails closed.
+	recs, rerr := loadEvidenceRecords(".")
+	if rerr != nil {
+		return rerr
+	}
+	commit, _ := canaryscan.HeadCommit(".")
+	gate := &transitionGate{
+		done:      ticket.DoneStatuses(reg),
+		required:  requiredFeatures(tokens),
+		recs:      recs,
+		projectID: evidenceProjectID,
+		commit:    commit,
+		stderr:    cmd.ErrOrStderr(),
+	}
+
+	created, transitioned, applyErrors := applyActions(cmd.Context(), client, actions, effProject, issueType, gate)
 
 	if err := writePlan(planPath, actions); err != nil {
 		return err
@@ -463,7 +490,7 @@ func planContainsTransition(actions []ticket.Action) bool {
 // use this to distinguish "nothing to fetch" from "fetched, found nothing"
 // — see applyAndReport and runTicketStatus.
 // CANARY: REQ=ENG-3958; FEATURE="TicketDestination"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3958_RemoteStatusForSources_MultiSourceMerge,TestCANARY_ENG_3958_RemoteStatusForSources_SharedProjectSingleFetch; UPDATED=2026-08-29
-func remoteStatusForSources(client *ticket.JiraClient, reg *sources.Registry, fallbackProject string) (merged map[string]string, fetchedProjects int, err error) {
+func remoteStatusForSources(ctx context.Context, client *ticket.JiraClient, reg *sources.Registry, fallbackProject string) (merged map[string]string, fetchedProjects int, err error) {
 	if reg == nil {
 		return nil, 0, nil
 	}
@@ -481,7 +508,7 @@ func remoteStatusForSources(client *ticket.JiraClient, reg *sources.Registry, fa
 			continue
 		}
 		fetched[p] = true
-		rs, ferr := ticket.FetchRemoteStatus(client, p)
+		rs, ferr := ticket.FetchRemoteStatus(ctx, client, p)
 		if ferr != nil {
 			return nil, 0, fmt.Errorf("fetch remote status for project %s: %w", p, ferr)
 		}
@@ -497,12 +524,12 @@ func remoteStatusForSources(client *ticket.JiraClient, reg *sources.Registry, fa
 // in place. It collects errors per action instead of aborting on first error,
 // allowing partial progress. Returns counts of successful actions and a list
 // of error messages. Errors are formatted as "action_type issue/req: message".
-func applyActions(client *ticket.JiraClient, actions []ticket.Action, project, issueType string) (created, transitioned int, errs []string) {
+func applyActions(ctx context.Context, client *ticket.JiraClient, actions []ticket.Action, project, issueType string, gate *transitionGate) (created, transitioned int, errs []string) {
 	for i := range actions {
 		if actions[i].Type != "create_issue" {
 			continue
 		}
-		key, cerr := client.CreateIssue(project, issueType, actions[i].Summary, actions[i].Description)
+		key, cerr := client.CreateIssue(ctx, project, issueType, actions[i].Summary, actions[i].Description)
 		if cerr != nil {
 			errs = append(errs, fmt.Sprintf("create_issue %s: %v", actions[i].ReqID, cerr))
 			continue
@@ -520,7 +547,14 @@ func applyActions(client *ticket.JiraClient, actions []ticket.Action, project, i
 		if actions[i].Type != "transition" {
 			continue
 		}
-		if terr := client.TransitionIssue(actions[i].Issue, actions[i].To); terr != nil {
+		// A transition to a done status must be backed by passing evidence;
+		// an unverified one is skipped (with a redaction-safe stderr note)
+		// rather than flipping the issue blind. Non-done transitions pass
+		// straight through.
+		if !gate.allow(actions[i]) {
+			continue
+		}
+		if terr := client.TransitionIssue(ctx, actions[i].Issue, actions[i].To); terr != nil {
 			errs = append(errs, fmt.Sprintf("transition %s: %v", actions[i].Issue, terr))
 			continue
 		}
@@ -528,6 +562,81 @@ func applyActions(client *ticket.JiraClient, actions []ticket.Action, project, i
 	}
 
 	return created, transitioned, errs
+}
+
+// transitionGate guards done-status transitions on passing evidence. It is
+// built once per apply run from the local evidence store, the current commit,
+// and the tokens that back each requirement.
+// CANARY: REQ=CP-279; FEATURE="TicketSync"; ASPECT=Security; STATUS=TESTED; TEST=TestCANARY_ENG_3960_Sync_DoneTransitionGatedOnEvidence,TestCANARY_ENG_3960_Sync_DoneTransitionAllowedWithEvidence; UPDATED=2026-08-30
+type transitionGate struct {
+	done      map[string]bool
+	required  map[string][]evidence.FeatureKey
+	recs      []evidence.Record
+	projectID string
+	commit    string
+	stderr    io.Writer
+}
+
+// allow reports whether transition action a may be applied. A transition to a
+// non-done status always passes. A transition to a done status requires
+// evidence.Complete -- the single completion function -- to pass for the
+// requirement at the current project and commit; otherwise it is skipped with
+// a redaction-safe stderr note (requirement id, target status, and verdict
+// code only -- never a body, URL, or credential).
+func (g *transitionGate) allow(a ticket.Action) bool {
+	if g == nil || !g.done[a.To] {
+		return true
+	}
+	v := evidence.Complete(
+		map[string][]evidence.FeatureKey{a.ReqID: g.required[a.ReqID]},
+		g.recs, g.projectID, g.commit, false,
+	)
+	if v.OK {
+		return true
+	}
+	if g.stderr != nil {
+		fmt.Fprintf(g.stderr, "note: skipping transition of %s to done (%q): no passing evidence (%s)\n", a.ReqID, a.To, v.Code)
+	}
+	return false
+}
+
+// requiredFeatures maps each requirement to the deduplicated feature/aspect
+// keys its tokens declare -- the claims evidence.Complete must find passing
+// evidence for before a done-status transition is allowed.
+func requiredFeatures(tokens []*storage.Token) map[string][]evidence.FeatureKey {
+	req := map[string][]evidence.FeatureKey{}
+	seen := map[string]map[evidence.FeatureKey]bool{}
+	for _, t := range tokens {
+		if t == nil || t.ReqID == "" {
+			continue
+		}
+		key := evidence.FeatureKey{Feature: t.Feature, Aspect: t.Aspect}
+		if seen[t.ReqID] == nil {
+			seen[t.ReqID] = map[evidence.FeatureKey]bool{}
+		}
+		if seen[t.ReqID][key] {
+			continue
+		}
+		seen[t.ReqID][key] = true
+		req[t.ReqID] = append(req[t.ReqID], key)
+	}
+	return req
+}
+
+// loadEvidenceRecords reads root's evidence store. A missing store is not an
+// error -- nothing has been proven yet, so nothing is complete. A malformed
+// one IS an error: treating unparseable evidence as absent would hide
+// tampering behind a "transition skipped" that reads like ordinary caution.
+func loadEvidenceRecords(root string) ([]evidence.Record, error) {
+	path := filepath.Join(root, filepath.FromSlash(canaryscan.EvidenceFile))
+	f, err := evidence.Load(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return f.Records, nil
 }
 
 // countPendingRemap counts remap actions whose Issue is still unfilled

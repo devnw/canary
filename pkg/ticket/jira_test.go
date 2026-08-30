@@ -6,12 +6,14 @@
 package ticket
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestCANARY_CBIN_306_JiraClient_CreateIssue(t *testing.T) {
@@ -30,7 +32,7 @@ func TestCANARY_CBIN_306_JiraClient_CreateIssue(t *testing.T) {
 	defer srv.Close()
 
 	c := &JiraClient{BaseURL: srv.URL, Email: "agent@example.com", Token: "sekret"}
-	key, err := c.CreateIssue("CP", "Story", "CBIN-105: Scanner", "Feature/Engine: TESTED (scan.go)")
+	key, err := c.CreateIssue(context.Background(), "CP", "Story", "CBIN-105: Scanner", "Feature/Engine: TESTED (scan.go)")
 	if err != nil {
 		t.Fatalf("CreateIssue: %v", err)
 	}
@@ -89,7 +91,7 @@ func TestCANARY_CBIN_306_JiraClient_CreateIssue_ErrorStatus(t *testing.T) {
 	defer srv.Close()
 
 	c := &JiraClient{BaseURL: srv.URL, Email: "a@b.com", Token: "t"}
-	if _, err := c.CreateIssue("", "Story", "summary", "desc"); err == nil {
+	if _, err := c.CreateIssue(context.Background(), "", "Story", "summary", "desc"); err == nil {
 		t.Fatal("expected an error on a non-2xx response")
 	}
 }
@@ -119,7 +121,7 @@ func TestCANARY_CBIN_306_JiraClient_TransitionIssue_ResolvesIDByName(t *testing.
 	c := &JiraClient{BaseURL: srv.URL, Email: "a@b.com", Token: "t"}
 
 	// Case-insensitive match against "done".
-	if err := c.TransitionIssue("CP-12", "DONE"); err != nil {
+	if err := c.TransitionIssue(context.Background(), "CP-12", "DONE"); err != nil {
 		t.Fatalf("TransitionIssue: %v", err)
 	}
 	if getPath != "/rest/api/3/issue/CP-12/transitions" {
@@ -142,28 +144,36 @@ func TestCANARY_CBIN_306_JiraClient_TransitionIssue_NoMatch(t *testing.T) {
 	defer srv.Close()
 
 	c := &JiraClient{BaseURL: srv.URL, Email: "a@b.com", Token: "t"}
-	if err := c.TransitionIssue("CP-12", "Done"); err == nil {
+	if err := c.TransitionIssue(context.Background(), "CP-12", "Done"); err == nil {
 		t.Fatal("expected an error when no transition matches the target status name")
 	}
 }
 
+// TestCANARY_CBIN_306_FetchRemoteStatus_Paged exercises the token-paginated
+// POST /rest/api/3/search/jql loop: two pages linked by nextPageToken.
 func TestCANARY_CBIN_306_FetchRemoteStatus_Paged(t *testing.T) {
 	var jqlSeen []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		jqlSeen = append(jqlSeen, r.URL.Query().Get("jql"))
-		startAt := r.URL.Query().Get("startAt")
-		w.Header().Set("Content-Type", "application/json")
-		switch startAt {
-		case "", "0":
-			_, _ = w.Write([]byte(`{"issues":[{"key":"CP-1","fields":{"status":{"name":"To Do"}}},{"key":"CP-2","fields":{"status":{"name":"Done"}}}],"total":3,"startAt":0,"maxResults":2}`))
-		default:
-			_, _ = w.Write([]byte(`{"issues":[{"key":"CP-3","fields":{"status":{"name":"In Progress"}}}],"total":3,"startAt":2,"maxResults":2}`))
+		if r.Method != http.MethodPost || r.URL.Path != "/rest/api/3/search/jql" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+			return
 		}
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		jql, _ := body["jql"].(string)
+		jqlSeen = append(jqlSeen, jql)
+		w.Header().Set("Content-Type", "application/json")
+		if _, ok := body["nextPageToken"]; !ok {
+			_, _ = w.Write([]byte(`{"issues":[{"key":"CP-1","fields":{"status":{"name":"To Do"}}},{"key":"CP-2","fields":{"status":{"name":"Done"}}}],"nextPageToken":"page2"}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"issues":[{"key":"CP-3","fields":{"status":{"name":"In Progress"}}}]}`))
 	}))
 	defer srv.Close()
 
 	c := &JiraClient{BaseURL: srv.URL, Email: "a@b.com", Token: "t"}
-	got, err := FetchRemoteStatus(c, "CP")
+	got, err := FetchRemoteStatus(context.Background(), c, "CP")
 	if err != nil {
 		t.Fatalf("FetchRemoteStatus: %v", err)
 	}
@@ -180,8 +190,261 @@ func TestCANARY_CBIN_306_FetchRemoteStatus_Paged(t *testing.T) {
 		t.Fatalf("expected at least 2 paged requests, got %d", len(jqlSeen))
 	}
 	for _, jql := range jqlSeen {
-		if !strings.Contains(jql, "project") || !strings.Contains(jql, "CP") {
-			t.Errorf("jql = %q, want it to reference project CP", jql)
+		if jql != `project = "CP"` {
+			t.Errorf("jql = %q, want project = \"CP\" (validated + quoted)", jql)
 		}
+	}
+}
+
+// TestJiraSearchJQLPagination proves FetchRemoteStatus uses the token-based
+// POST /rest/api/3/search/jql endpoint, follows nextPageToken across pages,
+// quotes the project key inside the JQL, and never touches the deprecated
+// offset endpoint (GET /rest/api/3/search?jql=...).
+func TestJiraSearchJQLPagination(t *testing.T) {
+	var deprecatedHit bool
+	var bodies []map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Any hit on the old offset endpoint (path or ?jql= query) fails.
+		if r.URL.Path == "/rest/api/3/search" || strings.Contains(r.URL.RawQuery, "jql") {
+			deprecatedHit = true
+		}
+		if r.Method != http.MethodPost || r.URL.Path != "/rest/api/3/search/jql" {
+			t.Errorf("unexpected request: %s %s?%s", r.Method, r.URL.Path, r.URL.RawQuery)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		bodies = append(bodies, body)
+		w.Header().Set("Content-Type", "application/json")
+		if _, ok := body["nextPageToken"]; !ok {
+			_, _ = w.Write([]byte(`{"issues":[{"key":"CP-1","fields":{"status":{"name":"To Do"}}}],"nextPageToken":"tok-2"}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"issues":[{"key":"CP-2","fields":{"status":{"name":"Done"}}}]}`))
+	}))
+	defer srv.Close()
+
+	c := &JiraClient{BaseURL: srv.URL, Email: "a@b.com", Token: "t"}
+	got, err := FetchRemoteStatus(context.Background(), c, "CP")
+	if err != nil {
+		t.Fatalf("FetchRemoteStatus: %v", err)
+	}
+	if deprecatedHit {
+		t.Error("the deprecated /rest/api/3/search offset endpoint must never be used")
+	}
+	if len(bodies) != 2 {
+		t.Fatalf("expected exactly 2 paged POSTs, got %d", len(bodies))
+	}
+	if got["CP-1"] != "To Do" || got["CP-2"] != "Done" {
+		t.Errorf("got = %+v, want CP-1=To Do CP-2=Done", got)
+	}
+	if bodies[0]["jql"] != `project = "CP"` {
+		t.Errorf("page 1 jql = %v, want project = \"CP\"", bodies[0]["jql"])
+	}
+	if _, ok := bodies[0]["nextPageToken"]; ok {
+		t.Error("first page must not carry a nextPageToken")
+	}
+	if bodies[1]["nextPageToken"] != "tok-2" {
+		t.Errorf("page 2 nextPageToken = %v, want tok-2", bodies[1]["nextPageToken"])
+	}
+}
+
+// TestJiraSearchInvalidProjectKey proves an invalid project key is rejected
+// before any request is made (no network call at all).
+func TestJiraSearchInvalidProjectKey(t *testing.T) {
+	var calls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	c := &JiraClient{BaseURL: srv.URL, Email: "a@b.com", Token: "t"}
+	// A JQL-injection attempt in the project key must never reach the wire.
+	if _, err := FetchRemoteStatus(context.Background(), c, `CP" OR "1"="1`); err == nil {
+		t.Fatal("expected an error for an invalid project key")
+	}
+	if calls != 0 {
+		t.Errorf("made %d request(s) for an invalid project key, want 0", calls)
+	}
+}
+
+// TestJiraRetry429ThenSuccess covers the bounded retry policy: default
+// backoff (250ms, 500ms), a small Retry-After honored, and a large
+// Retry-After aborting immediately.
+func TestJiraRetry429ThenSuccess(t *testing.T) {
+	t.Run("default backoff 250ms then 500ms", func(t *testing.T) {
+		var slept []time.Duration
+		var calls int
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			if calls <= 2 {
+				w.WriteHeader(http.StatusTooManyRequests)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer srv.Close()
+
+		c := &JiraClient{BaseURL: srv.URL, Email: "a", Token: "t", Sleep: func(d time.Duration) { slept = append(slept, d) }}
+		if err := c.do(context.Background(), http.MethodGet, "/x", nil, nil); err != nil {
+			t.Fatalf("do: %v", err)
+		}
+		if calls != 3 {
+			t.Errorf("calls = %d, want 3 (two 429s then success)", calls)
+		}
+		want := []time.Duration{250 * time.Millisecond, 500 * time.Millisecond}
+		if len(slept) != len(want) {
+			t.Fatalf("slept = %v, want %v", slept, want)
+		}
+		for i := range want {
+			if slept[i] != want[i] {
+				t.Errorf("slept[%d] = %v, want %v", i, slept[i], want[i])
+			}
+		}
+	})
+
+	t.Run("Retry-After 2 honored as 2s", func(t *testing.T) {
+		var slept []time.Duration
+		var calls int
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			if calls == 1 {
+				w.Header().Set("Retry-After", "2")
+				w.WriteHeader(http.StatusTooManyRequests)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer srv.Close()
+
+		c := &JiraClient{BaseURL: srv.URL, Email: "a", Token: "t", Sleep: func(d time.Duration) { slept = append(slept, d) }}
+		if err := c.do(context.Background(), http.MethodGet, "/x", nil, nil); err != nil {
+			t.Fatalf("do: %v", err)
+		}
+		if len(slept) != 1 || slept[0] != 2*time.Second {
+			t.Errorf("slept = %v, want [2s] (Retry-After overrides backoff)", slept)
+		}
+	})
+
+	t.Run("Retry-After 6 aborts immediately", func(t *testing.T) {
+		var slept []time.Duration
+		var calls int
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			w.Header().Set("Retry-After", "6")
+			w.WriteHeader(http.StatusTooManyRequests)
+		}))
+		defer srv.Close()
+
+		c := &JiraClient{BaseURL: srv.URL, Email: "a", Token: "t", Sleep: func(d time.Duration) { slept = append(slept, d) }}
+		err := c.do(context.Background(), http.MethodGet, "/x", nil, nil)
+		if err == nil {
+			t.Fatal("expected an error when Retry-After exceeds the 5s ceiling")
+		}
+		if len(slept) != 0 {
+			t.Errorf("slept = %v, want none (a >5s Retry-After must abort without sleeping)", slept)
+		}
+		if calls != 1 {
+			t.Errorf("calls = %d, want 1 (no retry on an over-limit Retry-After)", calls)
+		}
+	})
+}
+
+// TestJiraNoRetryOn400 proves a non-retryable 4xx is returned at once, with
+// no retries and no backoff.
+func TestJiraNoRetryOn400(t *testing.T) {
+	var slept []time.Duration
+	var calls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer srv.Close()
+
+	c := &JiraClient{BaseURL: srv.URL, Email: "a", Token: "t", Sleep: func(d time.Duration) { slept = append(slept, d) }}
+	if err := c.do(context.Background(), http.MethodGet, "/x", nil, nil); err == nil {
+		t.Fatal("expected an error on 400")
+	}
+	if calls != 1 {
+		t.Errorf("calls = %d, want 1 (400 is never retried)", calls)
+	}
+	if len(slept) != 0 {
+		t.Errorf("slept = %v, want none", slept)
+	}
+}
+
+// TestJiraBodyCap proves an over-cap response body is rejected with the cap
+// error, and the body itself never appears in that error.
+func TestJiraBodyCap(t *testing.T) {
+	huge := strings.Repeat("A", 3<<20) // 3 MiB, over the 2 MiB cap
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(huge))
+	}))
+	defer srv.Close()
+
+	c := &JiraClient{BaseURL: srv.URL, Email: "a", Token: "t"}
+	err := c.do(context.Background(), http.MethodGet, "/x", nil, nil)
+	if err == nil {
+		t.Fatal("expected an error for an over-cap response body")
+	}
+	if !strings.Contains(err.Error(), "2 MiB") {
+		t.Errorf("error = %q, want it to mention the 2 MiB cap", err.Error())
+	}
+	if strings.Contains(err.Error(), "AAAA") {
+		t.Errorf("error leaked the response body: %q", err.Error())
+	}
+}
+
+// TestJiraErrorRedaction proves an error never carries the response body, a
+// credential, or a URL query string (for example ?jql=...).
+func TestJiraErrorRedaction(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"secret":"secret-token-xyz"}`))
+	}))
+	defer srv.Close()
+
+	// No-op Sleep so the 5xx retry schedule does not actually wait.
+	c := &JiraClient{BaseURL: srv.URL, Email: "agent@example.com", Token: "super-secret-token", Sleep: func(time.Duration) {}}
+	err := c.do(context.Background(), http.MethodGet, "/rest/api/3/search?jql=project%3DCP", nil, nil)
+	if err == nil {
+		t.Fatal("expected an error on 500")
+	}
+	msg := err.Error()
+	if strings.Contains(msg, "secret-token-xyz") {
+		t.Errorf("error leaked the response body: %q", msg)
+	}
+	if strings.Contains(msg, "super-secret-token") {
+		t.Errorf("error leaked the token: %q", msg)
+	}
+	if strings.Contains(msg, "?jql=") || strings.Contains(msg, "jql") {
+		t.Errorf("error leaked the query string: %q", msg)
+	}
+}
+
+// TestJiraStringRedactsToken proves the client's %v / String() form never
+// prints the Token.
+func TestJiraStringRedactsToken(t *testing.T) {
+	c := &JiraClient{BaseURL: "https://example.atlassian.net", Email: "a@b.com", Token: "super-secret-token"}
+	s := c.String()
+	if strings.Contains(s, "super-secret-token") {
+		t.Errorf("String() leaked the token: %q", s)
+	}
+	if !strings.Contains(s, "[redacted]") {
+		t.Errorf("String() = %q, want a [redacted] marker", s)
+	}
+	if v := "" + c.String(); strings.Contains(v, "super-secret-token") {
+		t.Errorf("%%v leaked the token: %q", v)
+	}
+}
+
+// TestJiraTimeout15s proves the default HTTP client carries a 15s timeout.
+func TestJiraTimeout15s(t *testing.T) {
+	c := &JiraClient{BaseURL: "https://example.atlassian.net", Email: "a@b.com", Token: "t"}
+	if got := c.httpClient().Timeout; got != 15*time.Second {
+		t.Errorf("default client timeout = %v, want 15s", got)
 	}
 }
