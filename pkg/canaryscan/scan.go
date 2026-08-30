@@ -28,6 +28,7 @@ type aggregateKey struct{ req, feature, aspect, owner, updated string }
 type aggregateVal struct {
 	status                string
 	files, tests, benches map[string]struct{}
+	deps                  map[string]struct{}
 }
 
 // LoadCanaryIgnore loads .canaryignore from root. Returns nil if file missing.
@@ -130,7 +131,7 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 			k := aggregateKey{req: req, feature: unquote(fields["FEATURE"]), aspect: aspect, owner: fields["OWNER"], updated: fields["UPDATED"]}
 			a := agg[k]
 			if a == nil {
-				a = &aggregateVal{status: fields["STATUS"], files: map[string]struct{}{}, tests: map[string]struct{}{}, benches: map[string]struct{}{}}
+				a = &aggregateVal{status: fields["STATUS"], files: map[string]struct{}{}, tests: map[string]struct{}{}, benches: map[string]struct{}{}, deps: map[string]struct{}{}}
 				agg[k] = a
 			}
 			a.files[path] = struct{}{}
@@ -142,6 +143,11 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 			for _, b := range splitList(fields["BENCH"]) {
 				if b != "" {
 					a.benches[b] = struct{}{}
+				}
+			}
+			for _, dep := range splitList(fields["DEPENDS_ON"]) {
+				if dep != "" {
+					a.deps[normalizeREQWithRegistry(dep, reg)] = struct{}{}
 				}
 			}
 		}
@@ -158,7 +164,7 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 		// STATUS is a declaration: it passes through verbatim. TEST=/BENCH=
 		// are recorded as evidence references but never change it.
 		status := v.status
-		f := Feature{Feature: k.feature, Aspect: k.aspect, Status: status, Files: mapKeys(v.files), Tests: mapKeys(v.tests), Benches: mapKeys(v.benches), Owner: k.owner, Updated: k.updated}
+		f := Feature{Feature: k.feature, Aspect: k.aspect, Status: status, Files: mapKeys(v.files), Tests: mapKeys(v.tests), Benches: mapKeys(v.benches), Owner: k.owner, Updated: k.updated, DependsOn: mapKeys(v.deps)}
 		byReq[k.req] = append(byReq[k.req], f)
 		byStatus[status]++
 		byAspect[k.aspect]++

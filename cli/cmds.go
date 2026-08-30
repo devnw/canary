@@ -17,6 +17,7 @@ import (
 	"devnw.dev/canary/pkg/cmds/deps"
 	"devnw.dev/canary/pkg/cmds/doc"
 	"devnw.dev/canary/pkg/cmds/drift"
+	evidencecmd "devnw.dev/canary/pkg/cmds/evidence"
 	"devnw.dev/canary/pkg/cmds/files"
 	"devnw.dev/canary/pkg/cmds/gap"
 	"devnw.dev/canary/pkg/cmds/grep"
@@ -39,6 +40,7 @@ import (
 	"devnw.dev/canary/pkg/cmds/status"
 	"devnw.dev/canary/pkg/cmds/ticket"
 	"devnw.dev/canary/pkg/cmds/upgrade"
+	"devnw.dev/canary/pkg/cmds/verify"
 	"devnw.dev/canary/pkg/cmds/view"
 )
 
@@ -56,6 +58,8 @@ func Commands() []*cobra.Command {
 	return []*cobra.Command{
 		// Core workflow commands
 		scan.ScanCmd,
+		verify.VerifyCmd,
+		evidencecmd.EvidenceCmd,
 		canaryinit.InitCmd,
 		create.CreateCmd,
 		constitution.ConstitutionCmd,

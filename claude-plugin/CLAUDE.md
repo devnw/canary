@@ -48,7 +48,10 @@ canary view <REQ-ID> --limit 20                # raise section limits (default 1
 
 # Workflow
 canary scan --root . --out status.json        # Scan for tokens
-canary scan --root . --verify GAP_ANALYSIS.md --strict  # Verify claims
+canary scan --root . --verify GAP_ANALYSIS.md --strict  # Verify claims (evidence-backed)
+canary verify --root . --claims GAP_ANALYSIS.md         # Verdict as one JSON line (exit 1 if unverified)
+canary evidence from-go-test --commit "$(git rev-parse HEAD)" < gotest.json > evidence.json
+canary evidence ingest --in evidence.json               # Merge into .canary/evidence.json
 canary create <ID> "Name" --aspect API --status STUB    # Create token
 canary next --prompt                           # Next priority with guidance
 canary implement <query> --prompt              # Implementation guidance
@@ -72,7 +75,7 @@ canary ticket sync --project <KEY>              # Reconcile tokens against JIRA 
 canary ticket status [--refresh]                # Report or refresh the cached remote-status snapshot
 
 # Management
-canary scan --root . --update-stale            # Update stale tokens
+canary scan --root . --update-stale            # Report evidence currency for stale tokens
 canary index                                   # Rebuild token database
 canary doc status --all                        # Check documentation freshness
 ```

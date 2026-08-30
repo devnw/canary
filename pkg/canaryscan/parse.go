@@ -24,6 +24,14 @@ var (
 
 const defaultSkipPattern = `(^|/)(.git|node_modules|vendor|bin|dist|build|zig-out|.zig-cache|canary-new)(/|$)`
 
+// stateSkipPattern is defaultSkipPattern plus `.canary`, canary's own state
+// directory. That directory holds the sqlite index, the remote-status cache
+// and the evidence store — artifacts of the tool, never sources of
+// requirements. Commands that must produce a clean verdict over a project
+// (verify, evidence) use it so a project that has ever run any canary command
+// does not report its own database as a binary scan issue.
+const stateSkipPattern = `(^|/)(\.git|\.canary|node_modules|vendor|bin|dist|build|zig-out|\.zig-cache|canary-new)(/|$)`
+
 var (
 	aspects   = map[string]struct{}{"API": {}, "CLI": {}, "Engine": {}, "Planner": {}, "Storage": {}, "Wire": {}, "Security": {}, "Docs": {}, "Decode": {}, "Encode": {}, "RoundTrip": {}, "Bench": {}, "FrontEnd": {}, "Dist": {}}
 	statuses  = []string{"MISSING", "STUB", "IMPL", "TESTED", "BENCHED", "REMOVED", "FIXED", "OPEN", "IN_PROGRESS", "VERIFIED", "BLOCKED", "WONTFIX", "DUPLICATE"}
@@ -40,6 +48,12 @@ var (
 func DefaultSkipRegex() *regexp.Regexp {
 	r, _ := regexp.Compile(defaultSkipPattern)
 	return r
+}
+
+// StateSkipRegex returns the default skip path regex extended with canary's
+// own `.canary` state directory. See stateSkipPattern.
+func StateSkipRegex() *regexp.Regexp {
+	return regexp.MustCompile(stateSkipPattern)
 }
 
 // migrateCapturePrefix marks a tokenLineRe capture as CANARY:MIGRATE

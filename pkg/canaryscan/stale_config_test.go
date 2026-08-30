@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"devnw.dev/canary/pkg/evidence"
 )
 
 func writeProjectYAML(t *testing.T, root string, stalenessDays int) {
@@ -64,176 +66,67 @@ func TestCANARY_CBIN_304_StaleDaysFromConfig(t *testing.T) {
 	})
 }
 
-// TestCANARY_CBIN_304_UpdateStaleV2IDs proves the diag REQ regex now matches
-// v2-style multi-segment IDs (e.g. CBIN-CLI-001), which the old
-// `REQ=([A-Z][A-Z0-9]*-\d+)` pattern could never match, silently no-opping.
-func TestCANARY_CBIN_304_UpdateStaleV2IDs(t *testing.T) {
-	t.Setenv("CANARY_TEST_TIMESTAMP", "2026-08-29T00:00:00Z")
-	root := t.TempDir()
-	src := "package x\n" +
-		"// CANARY: REQ=CBIN-CLI-001; FEATURE=\"V2ID\"; ASPECT=CLI; STATUS=TESTED; TEST=TestV2; UPDATED=2020-01-01\n"
-	path := filepath.Join(root, "x.go")
-	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
-		t.Fatal(err)
+// TestCANARY_CBIN_304_UpdateStaleReportsEvidenceCurrency proves --update-stale's
+// new job: for each stale requirement it reports whether that requirement has
+// passing evidence at the current commit -- "current" when every declared
+// feature/aspect does, "missing" otherwise. It also keeps the v2 multi-segment
+// ID coverage: the diag REQ regex must match IDs like CBIN-CLI-001, which the
+// old `REQ=([A-Z][A-Z0-9]*-\d+)` pattern could never match.
+func TestCANARY_CBIN_304_UpdateStaleReportsEvidenceCurrency(t *testing.T) {
+	rep := Report{Requirements: []Requirement{
+		{ID: "CBIN-CLI-001", Features: []Feature{{Feature: "V2ID", Aspect: "CLI", Status: "TESTED"}}},
+		{ID: "CBIN-777", Features: []Feature{{Feature: "Aging", Aspect: "API", Status: "TESTED"}}},
+	}}
+	diags := []string{
+		"CANARY_STALE REQ=CBIN-CLI-001 updated=2020-01-01 age_days=2431 threshold=30",
+		"CANARY_STALE REQ=CBIN-777 updated=2020-01-01 age_days=2431 threshold=30",
 	}
-	diags := []string{"CANARY_STALE REQ=CBIN-CLI-001 updated=2020-01-01 age_days=2431 threshold=30"}
+	recs := []evidence.Record{evRec("CBIN-CLI-001", "V2ID", "CLI")}
 
-	updatedFiles, tokenCount, _, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, nil)
-	if err != nil {
-		t.Fatal(err)
+	got := ReportEvidenceCurrency(rep, diags, recs, "p", testCommit)
+	want := []string{
+		"CANARY_UPDATE_STALE req=CBIN-777 evidence=missing",
+		"CANARY_UPDATE_STALE req=CBIN-CLI-001 evidence=current",
 	}
-	if len(updatedFiles) != 1 {
-		t.Fatalf("expected 1 file updated (regression: v2 ID silently no-ops), got %d: %v", len(updatedFiles), updatedFiles)
+	if len(got) != len(want) {
+		t.Fatalf("lines = %v, want %v", got, want)
 	}
-	if tokenCount != 1 {
-		t.Fatalf("expected 1 token rewritten, got %d", tokenCount)
-	}
-	b, _ := os.ReadFile(path)
-	if strings.Contains(string(b), "UPDATED=2020-01-01") {
-		t.Errorf("stale v2-ID token was not updated:\n%s", b)
-	}
-	if !strings.Contains(string(b), "UPDATED=2026-08-29") {
-		t.Errorf("UPDATED not rewritten to test timestamp:\n%s", b)
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("line %d = %q, want %q", i, got[i], want[i])
+		}
 	}
 }
 
-// TestCANARY_CBIN_304_UpdateStaleAddsMissingUpdated proves UpdateStaleTokens can now
-// ADD an UPDATED= attribute to a token line that lacks one entirely, rather than only
-// rewriting an existing date. canaryscan.Scan hard-errors on a token missing UPDATED,
-// so this drives UpdateStaleTokens directly with a synthetic diag rather than going
-// through Run/Scan.
-func TestCANARY_CBIN_304_UpdateStaleAddsMissingUpdated(t *testing.T) {
-	t.Setenv("CANARY_TEST_TIMESTAMP", "2026-08-29T00:00:00Z")
-
-	t.Run("line comment token", func(t *testing.T) {
-		root := t.TempDir()
-		src := "package x\n" +
-			"// CANARY: REQ=CBIN-305; FEATURE=\"NoUpdated\"; ASPECT=API; STATUS=TESTED; TEST=TestNoUpdated\n"
-		path := filepath.Join(root, "x.go")
-		if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		diags := []string{"CANARY_STALE REQ=CBIN-305 updated=MISSING age_days=99999 threshold=30"}
-
-		updatedFiles, tokenCount, _, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(updatedFiles) != 1 || tokenCount != 1 {
-			t.Fatalf("expected 1 file/1 token updated, got files=%d tokens=%d", len(updatedFiles), tokenCount)
-		}
-		b, _ := os.ReadFile(path)
-		if !strings.Contains(string(b), "UPDATED=2026-08-29") {
-			t.Errorf("expected UPDATED= to be added:\n%s", b)
-		}
-		if !strings.Contains(string(b), `TEST=TestNoUpdated; UPDATED=2026-08-29`) {
-			t.Errorf("expected UPDATED to be appended after existing content:\n%s", b)
-		}
-	})
-
-	t.Run("block comment token is CRLF-safe and preserves closer", func(t *testing.T) {
-		root := t.TempDir()
-		src := "package x\r\n" +
-			"/* CANARY: REQ=CBIN-306; FEATURE=\"Block\"; ASPECT=API; STATUS=BENCHED; BENCH=Bench6 */\r\n"
-		path := filepath.Join(root, "x.go")
-		if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		diags := []string{"CANARY_STALE REQ=CBIN-306 updated=MISSING age_days=99999 threshold=30"}
-
-		updatedFiles, tokenCount, _, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(updatedFiles) != 1 || tokenCount != 1 {
-			t.Fatalf("expected 1 file/1 token updated, got files=%d tokens=%d", len(updatedFiles), tokenCount)
-		}
-		b, _ := os.ReadFile(path)
-		content := string(b)
-		if !strings.Contains(content, "UPDATED=2026-08-29") {
-			t.Errorf("expected UPDATED= to be added:\n%s", content)
-		}
-		if !strings.Contains(content, "BENCH=Bench6; UPDATED=2026-08-29 */") {
-			t.Errorf("expected UPDATED inserted before the */ closer:\n%s", content)
-		}
-		if !strings.Contains(content, "*/\r\n") {
-			t.Errorf("expected CRLF line endings preserved:\n%q", content)
-		}
-	})
-}
-
-// TestCANARY_CBIN_304_RunReportsActualRewriteCount proves run.go's "Updated N stale
-// tokens" message reports the count of tokens actually rewritten by UpdateStaleTokens,
-// not len(staleDiags). Two files carry an identical stale TESTED token (same REQ,
-// FEATURE, ASPECT, OWNER, UPDATED), so Scan aggregates them into a single Feature and
-// Stale() emits exactly one diag -- but both physical files/lines get rewritten, so the
-// honest count is 2, not 1.
-func TestCANARY_CBIN_304_RunReportsActualRewriteCount(t *testing.T) {
+// TestCANARY_CBIN_304_UpdateStaleMutatesNothing proves --update-stale no longer
+// rewrites source. Rewriting UPDATED= made a stale claim look fresh without any
+// new proof -- exactly the failure evidence-backed verification exists to
+// prevent -- so the flag now only reports, and the file on disk is untouched
+// byte for byte.
+func TestCANARY_CBIN_304_UpdateStaleMutatesNothing(t *testing.T) {
 	t.Setenv("CANARY_TEST_TIMESTAMP", "2026-08-29T00:00:00Z")
 	root := t.TempDir()
 	src := "package x\n" +
 		"// CANARY: REQ=CBIN-501; FEATURE=\"Dup\"; ASPECT=API; STATUS=TESTED; TEST=TestDup; UPDATED=2020-01-01\n"
-	if err := os.WriteFile(filepath.Join(root, "a.go"), []byte(src), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "b.go"), []byte(src), 0o644); err != nil {
+	path := filepath.Join(root, "a.go")
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	var stdout, stderr bytes.Buffer
 	cfg := Config{Root: root, Out: filepath.Join(root, "status.json"), UpdateStale: true}
-	code := Run(cfg, &stdout, &stderr)
-	if code != 0 {
+	if code := Run(cfg, &stdout, &stderr); code != 0 {
 		t.Fatalf("expected exit 0, got %d; stderr=%s", code, stderr.String())
 	}
-	if !strings.Contains(stderr.String(), "Updated 2 stale tokens in 2 files") {
-		t.Errorf("expected honest count 'Updated 2 stale tokens in 2 files' (not the diag count of 1), got: %s", stderr.String())
-	}
-}
 
-// TestCANARY_CBIN_304_UpdateStaleHonorsCanaryIgnore proves UpdateStaleTokens
-// honors .canaryignore the same way Scan does: a stale token living in a
-// path .canaryignore excludes must never be rewritten by --update-stale,
-// even though its REQ ID can still show up in staleDiags (e.g. because a
-// duplicate, non-ignored copy of the same REQ elsewhere triggered the
-// staleness diag). Without loading .canaryignore in the rewrite walk, a file
-// the scanner treats as invisible could still be silently mutated on disk.
-func TestCANARY_CBIN_304_UpdateStaleHonorsCanaryIgnore(t *testing.T) {
-	t.Setenv("CANARY_TEST_TIMESTAMP", "2026-08-29T00:00:00Z")
-	root := t.TempDir()
-
-	if err := os.WriteFile(filepath.Join(root, ".canaryignore"), []byte("ignored/\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(filepath.Join(root, "ignored"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	src := "package x\n" +
-		"// CANARY: REQ=CBIN-602; FEATURE=\"Ignored\"; ASPECT=API; STATUS=TESTED; TEST=TestIgnored; UPDATED=2020-01-01\n"
-	ignoredPath := filepath.Join(root, "ignored", "x.go")
-	if err := os.WriteFile(ignoredPath, []byte(src), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	ignorePatterns, err := LoadCanaryIgnore(root)
-	if err != nil {
-		t.Fatalf("LoadCanaryIgnore: %v", err)
-	}
-	if ignorePatterns == nil {
-		t.Fatal("expected .canaryignore to be loaded")
-	}
-
-	diags := []string{"CANARY_STALE REQ=CBIN-602 updated=2020-01-01 age_days=2431 threshold=30"}
-	updatedFiles, tokenCount, _, err := UpdateStaleTokens(root, DefaultSkipRegex(), diags, ignorePatterns)
+	after, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(updatedFiles) != 0 || tokenCount != 0 {
-		t.Fatalf("expected 0 files/0 tokens updated (ignored path must not be rewritten), got files=%d tokens=%d: %v", len(updatedFiles), tokenCount, updatedFiles)
+	if string(after) != src {
+		t.Errorf("--update-stale mutated source:\n%s", after)
 	}
-	b, _ := os.ReadFile(ignoredPath)
-	if !strings.Contains(string(b), "UPDATED=2020-01-01") {
-		t.Errorf("ignored file's stale token should be left untouched, got:\n%s", b)
+	if !strings.Contains(stderr.String(), "CANARY_UPDATE_STALE req=CBIN-501 evidence=missing") {
+		t.Errorf("expected an evidence-currency report for CBIN-501, got: %s", stderr.String())
 	}
 }

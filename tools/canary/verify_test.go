@@ -13,7 +13,21 @@ import (
 	"testing"
 
 	"devnw.dev/canary/pkg/canaryscan"
+	"devnw.dev/canary/pkg/evidence"
 )
+
+// verifyCommit is the commit fixture evidence records bind to.
+const verifyCommit = "0123456789abcdef0123456789abcdef01234567"
+
+// passRecord builds one PASS evidence record at verifyCommit for project "p".
+func passRecord(req, feature, aspect string) evidence.Record {
+	return evidence.Record{
+		ProjectID: "p", RequirementID: req, Feature: feature, Aspect: aspect,
+		TestID: "TestFoo", Command: "go test ./...", Result: "PASS", CommitSHA: verifyCommit,
+		ObservedAt: "2026-08-30T00:00:00Z", Runner: "local",
+		ArtifactDigest: "sha256:" + strings.Repeat("ab", 32),
+	}
+}
 
 // TestCANARY_CBIN_102_CLI_Verify validates the verify gate functionality.
 // This test ensures the verifier can:
@@ -51,8 +65,10 @@ func TestCANARY_CBIN_102_CLI_Verify(t *testing.T) {
 		t.Fatalf("scan failed: %v", err)
 	}
 
-	// Execute: verify claims
-	diags := canaryscan.VerifyClaims(rep, gapFile, nil)
+	// Execute: verify claims. CBIN-888 is declared AND has passing evidence
+	// at the current commit; CBIN-999 is claimed with neither.
+	recs := []evidence.Record{passRecord("CBIN-888", "Present", "API")}
+	diags := canaryscan.VerifyClaims(rep, gapFile, nil, recs, "p", verifyCommit)
 
 	// Verify: overclaim detected
 	if len(diags) == 0 {
@@ -130,8 +146,14 @@ func setupGAPFixture(tb testing.TB, numClaims int) (string, *canaryscan.Report) 
 // Baseline target: allocs/op ≤ 10
 func BenchmarkCANARY_CBIN_102_CLI_Verify(b *testing.B) {
 	gapFile, rep := setupGAPFixture(b, 50)
+	benchRecords := make([]evidence.Record, 0, len(rep.Requirements))
+	for _, r := range rep.Requirements {
+		for _, f := range r.Features {
+			benchRecords = append(benchRecords, passRecord(r.ID, f.Feature, f.Aspect))
+		}
+	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = canaryscan.VerifyClaims(*rep, gapFile, nil)
+		_ = canaryscan.VerifyClaims(*rep, gapFile, nil, benchRecords, "p", verifyCommit)
 	}
 }

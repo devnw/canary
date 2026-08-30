@@ -1,15 +1,27 @@
 package canaryscan
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"regexp"
 	"time"
 
 	"devnw.dev/canary/pkg/config"
+	"devnw.dev/canary/pkg/evidence"
 	"devnw.dev/canary/pkg/sources"
 )
+
+// EvidenceFile is the evidence store's path relative to a project root.
+const EvidenceFile = ".canary/evidence.json"
+
+// evidencePath resolves the evidence store under root.
+func evidencePath(root string) string {
+	return filepath.Join(root, filepath.FromSlash(EvidenceFile))
+}
 
 // AnnotateSources stamps each requirement with its source name and ticket URL.
 func AnnotateSources(rep *Report, reg *sources.Registry) {
@@ -122,35 +134,41 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 		refTime = time.Now().UTC()
 	}
 	threshold := staleThreshold(cfg, projCfg)
+
+	// Evidence is loaded once, for whichever consumers need it: --verify
+	// (which decides pass/fail from it) and --update-stale (which reports
+	// which stale claims still have current proof). A missing store is not
+	// an error — it means nothing has been proven yet.
+	var recs []evidence.Record
+	var commit string
+	if cfg.VerifyPath != "" || cfg.UpdateStale {
+		evFile, err := evidence.Load(evidencePath(cfg.Root))
+		switch {
+		case err == nil:
+			recs = evFile.Records
+		case errors.Is(err, fs.ErrNotExist):
+			// no evidence recorded yet
+		default:
+			_, _ = fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
+			return 3
+		}
+		var cerr error
+		commit, cerr = HeadCommit(cfg.Root)
+		if cerr != nil {
+			// Without a commit nothing can be shown to be current, so every
+			// claim fails closed; the reason is surfaced rather than hidden.
+			_, _ = fmt.Fprintf(stderr, "CANARY_VERIFY_FAIL reason=no_commit err=%q\n", cerr)
+		}
+	}
+
 	if cfg.UpdateStale {
 		staleDiags := Stale(rep, threshold, refTime)
-		if len(staleDiags) > 0 {
-			updatedFiles, tokenCount, updateIssues, err := UpdateStaleTokens(cfg.Root, cfg.SkipRegex, staleDiags, ignorePatterns)
-			if err != nil {
-				_, _ = fmt.Fprintf(stderr, "CANARY_UPDATE_ERROR: %v\n", err)
-				return 3
-			}
-			printIssues(stderr, updateIssues)
-			_, _ = fmt.Fprintf(stderr, "Updated %d stale tokens in %d files\n", tokenCount, len(updatedFiles))
-			// Issues found only during the rewrite walk (e.g. a file the
-			// walk could not read) must not be lost: merge them with the
-			// first pass's issues before the re-scan overwrites rep, and
-			// again with the re-scan's own issues below, so --strict sees
-			// every issue either walk found.
-			firstPassIssues := rep.Issues
-			rep, err = Scan(cfg.Root, cfg.SkipRegex, projectFilter, ignorePatterns, reg)
-			if err != nil {
-				_, _ = fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
-				return 3
-			}
-			AnnotateSources(&rep, reg)
-			merged := make([]ScanIssue, 0, len(firstPassIssues)+len(updateIssues)+len(rep.Issues))
-			merged = append(merged, firstPassIssues...)
-			merged = append(merged, updateIssues...)
-			merged = append(merged, rep.Issues...)
-			rep.Issues = normalizeIssues(merged)
-		} else {
+		if len(staleDiags) == 0 {
 			_, _ = fmt.Fprintln(stderr, "No stale tokens found")
+		} else {
+			for _, line := range ReportEvidenceCurrency(rep, staleDiags, recs, projCfg.ProjectID(), commit) {
+				_, _ = fmt.Fprintln(stderr, line)
+			}
 		}
 	}
 
@@ -174,14 +192,14 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 
 	var diags []string
 	if cfg.VerifyPath != "" {
-		diags = append(diags, VerifyClaims(rep, cfg.VerifyPath, reg)...)
+		diags = append(diags, VerifyClaims(rep, cfg.VerifyPath, reg, recs, projCfg.ProjectID(), commit)...)
 	}
-	if cfg.Strict && !cfg.UpdateStale {
-		diags = append(diags, Stale(rep, threshold, refTime)...)
-	}
-	// Under --strict an incomplete scan is a failure: the tree was not fully
-	// examined, so no clean verdict can be given for it.
 	if cfg.Strict {
+		// --update-stale no longer rewrites anything, so it can no longer
+		// excuse a stale token from --strict.
+		diags = append(diags, Stale(rep, threshold, refTime)...)
+		// Under --strict an incomplete scan is a failure too: the tree was not
+		// fully examined, so no clean verdict can be given for it.
 		for _, is := range rep.Issues {
 			diags = append(diags, fmt.Sprintf("SCAN_INCOMPLETE path=%s reason=%s", is.Path, is.Reason))
 		}

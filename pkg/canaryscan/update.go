@@ -1,15 +1,12 @@
-// CANARY: REQ=CP-277; FEATURE="StalenessConfig"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_304_StaleDaysFromConfig,TestCANARY_CBIN_304_UpdateStaleV2IDs,TestCANARY_CBIN_304_UpdateStaleAddsMissingUpdated,TestCANARY_CBIN_304_RunReportsActualRewriteCount; UPDATED=2026-08-29
+// CANARY: REQ=CP-277; FEATURE="StalenessConfig"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_304_StaleDaysFromConfig,TestCANARY_CBIN_304_UpdateStaleReportsEvidenceCurrency,TestCANARY_CBIN_304_UpdateStaleMutatesNothing; UPDATED=2026-08-30
 package canaryscan
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
-	"strings"
-	"time"
+	"sort"
 
-	ignore "github.com/sabhiram/go-gitignore"
+	"devnw.dev/canary/pkg/evidence"
 )
 
 // diagReqRe extracts the REQ ID from a CANARY_STALE diagnostic line
@@ -19,166 +16,51 @@ import (
 // anything up to the next whitespace rather than assuming a shape.
 var diagReqRe = regexp.MustCompile(`REQ=(\S+)`)
 
-// updatedDateRe matches an existing UPDATED=YYYY-MM-DD attribute within a token line.
-var updatedDateRe = regexp.MustCompile(`(UPDATED=)([0-9]{4}-[0-9]{2}-[0-9]{2})`)
-
-// UpdateStaleTokens rewrites UPDATED in source files for tokens matching staleDiags REQ IDs.
-// Only updates TESTED/BENCHED tokens. Existing UPDATED=YYYY-MM-DD values are rewritten to
-// today; a token line missing UPDATED= entirely gains one. Returns the set of files that
-// were modified and the number of individual token lines actually rewritten (which may
-// differ from len(staleDiags): several diags can share one REQ, or a REQ can span multiple
-// physical token lines/files).
+// ReportEvidenceCurrency answers, for every requirement named by staleDiags,
+// whether it has passing evidence at the current commit.
 //
-// ignorePatterns (from LoadCanaryIgnore) is honored the same way Scan honors it: relative
-// path matched first, dirs skipped via SkipDir; nil means no .canaryignore patterns apply.
-// This keeps the rewrite walk in sync with the read walk that produced staleDiags in the
-// first place — without it, a file excluded from scanning by .canaryignore could still be
-// silently mutated by --update-stale.
+// This replaces the old --update-stale behavior, which rewrote UPDATED= dates
+// in source. Rewriting a date made a stale claim *look* fresh without any new
+// proof — the exact failure mode evidence-backed verification exists to
+// prevent. Nothing is mutated here: the report is the whole output, one line
+// per requirement, sorted by ID:
 //
-// Files that cannot be read or parsed are reported as ScanIssues rather than
-// silently skipped: a token that could not be examined must not look like a
-// token that needed no update.
-func UpdateStaleTokens(root string, skip *regexp.Regexp, staleDiags []string, ignorePatterns *ignore.GitIgnore) (updatedFiles map[string]bool, tokenCount int, issues []ScanIssue, err error) {
-	staleReqs := make(map[string]bool)
+//	CANARY_UPDATE_STALE req=<id> evidence=current
+//	CANARY_UPDATE_STALE req=<id> evidence=missing
+//
+// "current" means every feature/aspect the requirement declares has a PASS
+// record for this project at this commit; anything less is "missing".
+func ReportEvidenceCurrency(rep Report, staleDiags []string, recs []evidence.Record, projectID, commit string) []string {
+	seen := map[string]struct{}{}
+	var ids []string
 	for _, diag := range staleDiags {
-		matches := diagReqRe.FindStringSubmatch(diag)
-		if len(matches) > 1 {
-			staleReqs[matches[1]] = true
+		m := diagReqRe.FindStringSubmatch(diag)
+		if len(m) < 2 {
+			continue
 		}
+		if _, dup := seen[m[1]]; dup {
+			continue
+		}
+		seen[m[1]] = struct{}{}
+		ids = append(ids, m[1])
 	}
-	if len(staleReqs) == 0 {
-		return nil, 0, nil, nil
-	}
-	updatedFiles = make(map[string]bool)
-	refTime := time.Now().UTC()
-	if t := RefTimeFromEnv(); !t.IsZero() {
-		refTime = t
-	}
-	today := refTime.Format("2006-01-02")
-	walkErr := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, _ := filepath.Rel(root, path)
-		relForIgnore := rel
-		if relForIgnore == "" {
-			relForIgnore = "."
-		}
-		if ignorePatterns != nil && ignorePatterns.MatchesPath(relForIgnore) {
-			if info.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if info.IsDir() {
-			if rel != "." && skip.MatchString(rel) {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if skip.MatchString(rel) {
-			return nil
-		}
-		content, err := os.ReadFile(path)
-		if err != nil {
-			issues = append(issues, ScanIssue{Path: path, Reason: IssueReadError, Detail: err.Error()})
-			return nil
-		}
-		if !tokenLineRe.Match(content) {
-			return nil
-		}
-		lines := strings.Split(string(content), "\n")
-		modified := false
-		fileTokenCount := 0
-		for i, line := range lines {
-			match := tokenLineRe.FindStringSubmatch(line)
-			if len(match) < 2 {
-				continue
-			}
-			attrs, perr := parseKV(match[1], nil)
-			if perr != nil {
-				issues = append(issues, ScanIssue{Path: path, Reason: IssueParseError, Detail: perr.Error()})
-				continue
-			}
-			reqID, hasReq := attrs["REQ"]
-			if !hasReq || !staleReqs[reqID] {
-				continue
-			}
-			status, hasStatus := attrs["STATUS"]
-			if !hasStatus || (status != "TESTED" && status != "BENCHED") {
-				continue
-			}
-			if updatedDateRe.MatchString(line) {
-				lines[i] = updatedDateRe.ReplaceAllString(line, fmt.Sprintf("${1}%s", today))
-				modified = true
-				fileTokenCount++
-				continue
-			}
-			// Token line is missing UPDATED= entirely: add it rather than
-			// silently skipping (the previous behavior could only rewrite
-			// an existing date and left dateless tokens untouched forever).
-			prefix := line[:len(line)-len(match[1])]
-			newContent, changed := addMissingUpdated(match[1], today)
-			if changed {
-				lines[i] = prefix + newContent
-				modified = true
-				fileTokenCount++
-			}
-		}
-		if modified {
-			newContent := strings.Join(lines, "\n")
-			if err := os.WriteFile(path, []byte(newContent), info.Mode()); err != nil {
-				return fmt.Errorf("write %s: %w", path, err)
-			}
-			updatedFiles[path] = true
-			tokenCount += fileTokenCount
-		}
+	if len(ids) == 0 {
 		return nil
-	})
-	if walkErr != nil {
-		return nil, 0, issues, walkErr
 	}
-	return updatedFiles, tokenCount, issues, nil
-}
+	sort.Strings(ids)
 
-// addMissingUpdated appends "; UPDATED=<today>" to a CANARY token's content
-// (the text captured after "CANARY:" by tokenLineRe) when it lacks an
-// UPDATED= attribute. Mirrors pkg/upgrade's addUpdatedContent: CRLF-safe,
-// and inserts before a trailing "*/" or "-->" comment closer rather than
-// after it. Defensive: refuses to touch content that already carries any
-// UPDATED= attribute (even a malformed one), so it can never append a
-// duplicate.
-func addMissingUpdated(content, today string) (string, bool) {
-	if strings.Contains(content, "UPDATED=") {
-		return content, false
+	v := evidence.Complete(RequiredFeatures(rep, ids), recs, projectID, commit, true)
+	missing := map[string]struct{}{}
+	for _, m := range v.Missing {
+		missing[m.RequirementID] = struct{}{}
 	}
-	cr := ""
-	body := content
-	if strings.HasSuffix(body, "\r") {
-		cr = "\r"
-		body = strings.TrimSuffix(body, "\r")
-	}
-	if strings.TrimSpace(body) == "" {
-		return content, false
-	}
-	suffix := ""
-	trimmedRight := strings.TrimRight(body, " \t")
-	for _, suf := range []string{"*/", "-->"} {
-		if strings.HasSuffix(trimmedRight, suf) {
-			suffix = suf
-			body = strings.TrimSpace(strings.TrimSuffix(trimmedRight, suf))
-			break
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		state := "current"
+		if _, gone := missing[id]; gone {
+			state = "missing"
 		}
+		out = append(out, fmt.Sprintf("CANARY_UPDATE_STALE req=%s evidence=%s", id, state))
 	}
-	if suffix == "" {
-		body = trimmedRight
-	}
-	if !strings.HasSuffix(strings.TrimSpace(body), ";") {
-		body += ";"
-	}
-	body += " UPDATED=" + today
-	if suffix != "" {
-		body += " " + suffix
-	}
-	return body + cr, true
+	return out
 }

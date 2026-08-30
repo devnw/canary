@@ -80,7 +80,7 @@ Scan the codebase for CANARY requirement tokens and generate comprehensive statu
    - Missing OWNER assignments
 
 7. **Suggest next steps**:
-   - If stale tokens found: "Run `canary scan --update-stale` to auto-update"
+   - If stale tokens found: "Run `canary scan --update-stale` to report which still have current evidence"
    - If STUB tokens found: "Use `/canary.plan` to plan implementation for `<PROJECT_KEY>-<NNN>`"
    - If IMPL tokens without tests: "Add TEST= field and create test functions"
 
@@ -119,7 +119,7 @@ Scan the codebase for CANARY requirement tokens and generate comprehensive statu
 
 ### Action Items
 
-1. **Update Stale Tokens**: Run `canary scan --update-stale`
+1. **Check Stale Tokens**: Run `canary scan --update-stale` (reports evidence currency; rewrites nothing)
    - <PROJECT_KEY>-001: UserAuth (updated 2024-01-01, age 288 days)
    - <PROJECT_KEY>-004: Cache (updated 2024-01-01, age 288 days)
 

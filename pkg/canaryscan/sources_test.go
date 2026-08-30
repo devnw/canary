@@ -6,8 +6,22 @@ import (
 	"strings"
 	"testing"
 
+	"devnw.dev/canary/pkg/evidence"
 	"devnw.dev/canary/pkg/sources"
 )
+
+// testCommit is the commit fixture evidence records bind to.
+const testCommit = "0123456789abcdef0123456789abcdef01234567"
+
+// evRec builds one PASS evidence record at testCommit for project "p".
+func evRec(req, feature, aspect string) evidence.Record {
+	return evidence.Record{
+		ProjectID: "p", RequirementID: req, Feature: feature, Aspect: aspect,
+		TestID: "TestX", Command: "go test ./...", Result: "PASS", CommitSHA: testCommit,
+		ObservedAt: "2026-08-30T00:00:00Z", Runner: "local",
+		ArtifactDigest: "sha256:" + strings.Repeat("ab", 32),
+	}
+}
 
 func ticketRegistry(t *testing.T) *sources.Registry {
 	t.Helper()
@@ -31,7 +45,10 @@ func TestCANARY_CBIN_201_VerifyClaimsTicketSource(t *testing.T) {
 		{ID: "PLAT-4521", Features: []Feature{{Feature: "F", Aspect: "API", Status: "TESTED"}}},
 		{ID: "CBIN-105", Features: []Feature{{Feature: "G", Aspect: "API", Status: "IMPL"}}},
 	}}
-	diags := VerifyClaims(rep, gap, reg)
+	// Only PLAT-4521 has passing evidence at the current commit; CBIN-105
+	// is claimed with none, so it (and only it) is diagnosed.
+	recs := []evidence.Record{evRec("PLAT-4521", "F", "API")}
+	diags := VerifyClaims(rep, gap, reg, recs, "p", testCommit)
 	if len(diags) != 1 {
 		t.Fatalf("diags = %v, want exactly 1 (CBIN-105 overclaim)", diags)
 	}
@@ -46,9 +63,10 @@ func TestCANARY_CBIN_201_VerifyClaimsNilRegistryDefaultsToCBIN(t *testing.T) {
 		t.Fatal(err)
 	}
 	rep := Report{Requirements: []Requirement{
-		{ID: "CBIN-101", Features: []Feature{{Status: "TESTED"}}},
+		{ID: "CBIN-101", Features: []Feature{{Feature: "F", Aspect: "API", Status: "TESTED"}}},
 	}}
-	if diags := VerifyClaims(rep, gap, nil); len(diags) != 0 {
+	recs := []evidence.Record{evRec("CBIN-101", "F", "API")}
+	if diags := VerifyClaims(rep, gap, nil, recs, "p", testCommit); len(diags) != 0 {
 		t.Errorf("nil registry must keep legacy CBIN behavior, got %v", diags)
 	}
 }

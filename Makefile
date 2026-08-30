@@ -158,8 +158,17 @@ release:
 canary:
 	go build -o ./bin/canary ./cmd/canary && ./bin/canary --root . --out status.json --csv status.csv
 
-canary-verify:
-	./bin/canary --root . --verify GAP_ANALYSIS.md --strict
+# Generate evidence from a real test run and merge it into the evidence store.
+# Declarations prove nothing; only a passing test at this commit does.
+canary-evidence: canary-build
+	go test -count=1 -json ./... > gotest.json
+	./bin/canary evidence from-go-test --project CBIN --commit "$$(git rev-parse HEAD)" < gotest.json > evidence.json
+	./bin/canary evidence ingest --in evidence.json --out .canary/evidence.json
+
+# Verify GAP_ANALYSIS.md's claims against the evidence store. Run
+# canary-evidence first (or after any commit): evidence is bound to a commit.
+canary-verify: canary-build
+	./bin/canary verify --root . --claims GAP_ANALYSIS.md --project CBIN --format text
 
 canary-build:
 	go build -ldflags="-s -w" -o ./bin/canary ./cmd/canary

@@ -21,7 +21,7 @@ func main() {
 	verifyPath := flag.String("verify", "", "GAP_ANALYSIS file to verify claims")
 	strict := flag.Bool("strict", false, "enforce staleness on TESTED/BENCHED tokens (default 30d; see --stale-days)")
 	skipExpr := flag.String("skip", canaryscan.DefaultSkipRegex().String(), "skip path regex (RE2)")
-	updateStale := flag.Bool("update-stale", false, "rewrite UPDATED field for stale TESTED/BENCHED tokens")
+	updateStale := flag.Bool("update-stale", false, "report evidence currency for stale TESTED/BENCHED tokens (mutates nothing)")
 	projectOnly := flag.Bool("project-only", false, "filter by project requirement ID pattern from .canary/project.yaml")
 	staleDays := flag.Int("stale-days", 0, "staleness window in days (0 = use .canary/project.yaml verification.staleness_days, else 30)")
 	flag.Parse()

@@ -91,6 +91,30 @@ include:
       sign_needs: goreleaser-release
       allow_failure: false
 
+# Evidence-backed requirement verification. Declarations (STATUS=TESTED,
+# TEST=...) prove nothing on their own: this job runs the test suite, turns
+# the passing tests into evidence records bound to this commit, ingests them,
+# and only then asks whether GAP_ANALYSIS.md's claims hold. The project key
+# is hardcoded to this repo's .canary/project.yaml project.key.
+canary-verify:
+  stage: test
+  image: golang:$GO_VERSION
+  script:
+    - go build -o bin/canary ./cmd/canary
+    - go test -count=1 -json ./... > gotest.json
+    - COMMIT=$(git rev-parse HEAD)
+    - ./bin/canary evidence from-go-test --project CBIN --commit "$COMMIT" < gotest.json > evidence.json
+    - ./bin/canary evidence ingest --in evidence.json --out .canary/evidence.json
+    - ./bin/canary verify --root . --claims GAP_ANALYSIS.md --project CBIN --format json
+    - ./bin/canary scan --root . --out status.json
+    # The tree must be clean: verification reads the repo, it never edits it.
+    - git diff --exit-code
+  artifacts:
+    when: always
+    paths:
+      - evidence.json
+      - status.json
+
 # Override the govulncheck scanner image so the stdlib it analyzes tracks the
 # module's Go version rather than the (lagging) ci-catalog go image. Same
 # rationale as void's override.

@@ -14,6 +14,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"devnw.dev/canary/pkg/evidence"
 )
 
 func build(t *testing.T) string {
@@ -363,10 +365,7 @@ func TestAcceptance_UpdateStale(t *testing.T) {
 	// The harness pins CANARY_TEST_TIMESTAMP to 2025-10-16 (see build/run
 	// helpers above), so CBIN-001's fixture date must be genuinely stale
 	// relative to *that* pinned reference, not relative to whatever day this
-	// test happens to run. Built via concatenation (not a literal
-	// "UPDATED=2024-01-01" substring) so a repo-wide `--update-stale`
-	// dogfood run over this test's own source can never collaterally
-	// rewrite this fixture and silently vacuate the assertion below.
+	// test happens to run.
 	staleUpdated := "UPDATED=" + "2024-01-01"
 	content := `package test
 // CANARY: REQ=CBIN-001; FEATURE="StaleToken"; ASPECT=API; STATUS=TESTED; TEST=Test1; ` + staleUpdated + `
@@ -378,73 +377,68 @@ func TestAcceptance_UpdateStale(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Run with --update-stale
+	// CBIN-001 gets passing evidence at the current commit; CBIN-004 gets
+	// none. --update-stale reports that difference and changes nothing.
+	commit := headSHA(t, root)
+	evidenceDir := filepath.Join(root, ".canary")
+	if err := os.MkdirAll(evidenceDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	rec := evidence.Record{
+		ProjectID: "default", RequirementID: "CBIN-001", Feature: "StaleToken", Aspect: "API",
+		TestID: "Test1", Command: "go test ./...", Result: "PASS", CommitSHA: commit,
+		ObservedAt: "2026-08-30T00:00:00Z", Runner: "local",
+		ArtifactDigest: "sha256:" + strings.Repeat("ab", 32),
+	}
+	evData, err := json.Marshal(evidence.File{SchemaVersion: 1, Records: []evidence.Record{rec}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(evidenceDir, "evidence.json"), evData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
 	res := run(exe, "--root", root, "--update-stale", "--out", filepath.Join(root, "status.json"))
 	if res.code != 0 {
 		t.Fatalf("update-stale exit=%d stderr=%s", res.code, res.stderr)
 	}
 
-	// Verify file was updated
-	updatedContent, err := os.ReadFile(testFile)
+	// Nothing on disk may change: --update-stale reports, it does not rewrite.
+	after, err := os.ReadFile(testFile)
 	if err != nil {
-		t.Fatalf("read updated file: %v", err)
+		t.Fatalf("read file: %v", err)
+	}
+	if string(after) != content {
+		t.Errorf("--update-stale mutated source:\n%s", after)
 	}
 
-	// Parse lines to verify each token
-	lines := strings.Split(string(updatedContent), "\n")
-
-	// Helper to find line containing REQ ID
-	findLine := func(reqID string) string {
-		for _, line := range lines {
-			if strings.Contains(line, "REQ="+reqID) {
-				return line
-			}
+	// Evidence currency is reported for the stale TESTED/BENCHED tokens only.
+	for _, want := range []string{
+		"CANARY_UPDATE_STALE req=CBIN-001 evidence=current",
+		"CANARY_UPDATE_STALE req=CBIN-004 evidence=missing",
+	} {
+		if !strings.Contains(res.stderr, want) {
+			t.Errorf("expected %q in stderr, got: %s", want, res.stderr)
 		}
-		return ""
+	}
+	for _, unwanted := range []string{"req=CBIN-002", "req=CBIN-003"} {
+		if strings.Contains(res.stderr, unwanted) {
+			t.Errorf("fresh/IMPL token must not be reported (%s): %s", unwanted, res.stderr)
+		}
 	}
 
-	// CBIN-001 (TESTED, stale relative to the pinned CANARY_TEST_TIMESTAMP)
-	// should be updated, and positively rewritten to that pinned date
-	// (2025-10-16) rather than merely "not 2024-01-01 anymore".
-	line001 := findLine("CBIN-001")
-	if line001 == "" {
-		t.Error("CBIN-001 missing from updated file")
-	} else if strings.Contains(line001, "UPDATED=2024-01-01") {
-		t.Errorf("CBIN-001 should have UPDATED field changed from 2024-01-01, got: %s", line001)
-	} else if !strings.Contains(line001, "UPDATED=2025-10-16") {
-		t.Errorf("CBIN-001 should have UPDATED rewritten to the pinned CANARY_TEST_TIMESTAMP date 2025-10-16, got: %s", line001)
-	}
+	fmt.Println("ACCEPT UpdateStale reports evidence currency and rewrites nothing")
+}
 
-	// CBIN-002 (TESTED, fresh) should NOT be updated
-	line002 := findLine("CBIN-002")
-	if line002 == "" {
-		t.Error("CBIN-002 missing from updated file")
-	} else if !strings.Contains(line002, "UPDATED=2025-10-15") {
-		t.Errorf("CBIN-002 fresh token should remain UPDATED=2025-10-15, got: %s", line002)
+// headSHA returns the current commit SHA as seen from dir -- the commit
+// evidence records must bind to for --update-stale to call them current.
+func headSHA(t *testing.T, dir string) string {
+	t.Helper()
+	out, err := exec.Command("git", "-C", dir, "rev-parse", "HEAD").Output()
+	if err != nil {
+		t.Fatalf("git rev-parse HEAD in %s: %v", dir, err)
 	}
-
-	// CBIN-003 (IMPL, stale) should NOT be updated (only TESTED/BENCHED are updated)
-	line003 := findLine("CBIN-003")
-	if line003 == "" {
-		t.Error("CBIN-003 missing from updated file")
-	} else if !strings.Contains(line003, "UPDATED=2024-01-01") {
-		t.Errorf("CBIN-003 IMPL token should remain UPDATED=2024-01-01, got: %s", line003)
-	}
-
-	// CBIN-004 (BENCHED, stale) should be updated
-	line004 := findLine("CBIN-004")
-	if line004 == "" {
-		t.Error("CBIN-004 missing from updated file")
-	} else if strings.Contains(line004, "UPDATED=2024-01-01") {
-		t.Errorf("CBIN-004 should have UPDATED field changed from 2024-01-01, got: %s", line004)
-	}
-
-	// Verify stderr message
-	if !strings.Contains(res.stderr, "Updated") || !strings.Contains(res.stderr, "stale tokens") {
-		t.Errorf("expected update message in stderr, got: %s", res.stderr)
-	}
-
-	fmt.Println("ACCEPT UpdateStale rewrites stale TESTED/BENCHED tokens")
+	return strings.TrimSpace(string(out))
 }
 
 func TestMetadata(t *testing.T) {

@@ -23,9 +23,9 @@ Flags:
   --root <dir>            Root directory to scan (default ".")
   --out <file>            Output status.json path (default "status.json")
   --csv <file>            Optional status.csv path
-  --verify <file>         GAP_ANALYSIS file to verify claims
+  --verify <file>         GAP_ANALYSIS file to verify claims against .canary/evidence.json
   --strict                Enforce staleness on TESTED/BENCHED tokens (default 30 days; see --stale-days)
-  --update-stale          Rewrite UPDATED field for stale tokens
+  --update-stale          Report evidence currency for stale tokens (mutates nothing)
   --skip <regex>          Skip path regex (RE2)
   --project-only          Filter by project requirement ID pattern
   --stale-days <n>        Staleness window in days (0 = use .canary/project.yaml verification.staleness_days, else 30)
@@ -37,7 +37,7 @@ Examples:
   # Verify GAP_ANALYSIS.md claims
   canary scan --verify GAP_ANALYSIS.md
 
-  # Update stale tokens
+  # Report which stale claims still have current evidence
   canary scan --update-stale
 
   # Strict mode with staleness enforcement
@@ -85,9 +85,9 @@ func init() {
 	ScanCmd.Flags().String("root", ".", "root directory to scan")
 	ScanCmd.Flags().String("out", "status.json", "output status.json path")
 	ScanCmd.Flags().String("csv", "", "optional status.csv path")
-	ScanCmd.Flags().String("verify", "", "GAP_ANALYSIS file to verify claims")
+	ScanCmd.Flags().String("verify", "", "GAP_ANALYSIS file to verify claims against .canary/evidence.json")
 	ScanCmd.Flags().Bool("strict", false, "enforce staleness on TESTED/BENCHED tokens (default 30 days; see --stale-days)")
-	ScanCmd.Flags().Bool("update-stale", false, "rewrite UPDATED field for stale tokens")
+	ScanCmd.Flags().Bool("update-stale", false, "report evidence currency for stale tokens (mutates nothing)")
 	ScanCmd.Flags().String("skip", "", "skip path regex (RE2); default excludes .git, node_modules, vendor, bin, etc.")
 	ScanCmd.Flags().Bool("project-only", false, "filter by project requirement ID pattern")
 	ScanCmd.Flags().Int("stale-days", 0, "staleness window in days (0 = use .canary/project.yaml verification.staleness_days, else 30)")

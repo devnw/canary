@@ -59,6 +59,10 @@ type Feature struct {
 	Benches []string `json:"benches"`
 	Owner   string   `json:"owner,omitempty"`
 	Updated string   `json:"updated"`
+	// DependsOn carries the token's DEPENDS_ON requirement IDs verbatim, so
+	// verification can resolve external/peer dependency state without
+	// re-parsing the tree. Additive: absent from a token means absent here.
+	DependsOn []string `json:"depends_on,omitempty"`
 }
 
 // Summary holds aggregate counts.

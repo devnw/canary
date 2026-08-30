@@ -1,5 +1,5 @@
 ---
-description: Automatically update UPDATED field for stale CANARY tokens
+description: Report which stale CANARY tokens still have current passing evidence
 ---
 
 
@@ -11,127 +11,69 @@ $ARGUMENTS
 
 ## Outline
 
-Automatically update stale CANARY tokens (TESTED/BENCHED with UPDATED > 30 days old).
+Report the evidence currency of stale CANARY tokens (TESTED/BENCHED with
+UPDATED older than the configured staleness window, default 30 days).
+
+`--update-stale` does **not** rewrite `UPDATED=` dates. Rewriting a date made
+a stale claim look fresh without any new proof — exactly the failure that
+evidence-backed verification exists to prevent. It reports, and changes
+nothing on disk.
 
 1. **Read project configuration**:
    - Load `.canary/project.yaml` to determine the project key
 
-2. **Run staleness scan**:
-   ```bash
-   canary scan --root . --strict
-   ```
-
-   This identifies all TESTED and BENCHED tokens older than 30 days.
-
-3. **Parse stale tokens**:
-   - Extract requirement IDs from scanner output
-   - List affected files and line numbers
-   - Show age of each stale token
-
-4. **Confirm update** (if arguments don't include --force):
-   ```markdown
-   ## Stale Tokens Found: N
-
-   The following CANARY tokens need updating:
-
-   - <PROJECT_KEY>-<NNN>: FeatureName (N days old)
-     - File: src/api/auth.go:10
-     - Current: UPDATED=YYYY-MM-DD
-     - New: UPDATED=YYYY-MM-DD
-
-   Run `canary scan --update-stale` to update these tokens automatically.
-
-   Proceed with update? (y/n)
-   ```
-
-5. **Execute update**:
+2. **Run the staleness report**:
    ```bash
    canary scan --root . --update-stale
    ```
 
-   This automatically:
-   - Finds all stale TESTED/BENCHED tokens
-   - Updates UPDATED field to current date
-   - Preserves all other token fields
-   - Updates files in-place
+   For every stale requirement, one line on stderr:
 
-6. **Verify updates**:
-   - Re-run scan to confirm no more stale tokens
-   - Show before/after comparison
-   - List all updated files
+   ```text
+   CANARY_UPDATE_STALE req=<PROJECT_KEY>-<NNN> evidence=current
+   CANARY_UPDATE_STALE req=<PROJECT_KEY>-<NNN> evidence=missing
+   ```
 
-7. **Generate update report**:
+   - `evidence=current` — every feature/aspect the requirement declares has a
+     PASS record at the current commit in `.canary/evidence.json`. The date is
+     old; the proof is not. Re-run the tests and re-record evidence to refresh
+     the date honestly, or leave it.
+   - `evidence=missing` — the requirement has no current proof. This is real
+     staleness: the work must be re-verified, not re-dated.
+
+3. **Refresh the evidence** (this is what actually makes a claim current):
+   ```bash
+   go test -count=1 -json ./... > gotest.json
+   canary evidence from-go-test --project <PROJECT_KEY> --commit "$(git rev-parse HEAD)" < gotest.json > evidence.json
+   canary evidence ingest --in evidence.json --out .canary/evidence.json
+   ```
+
+4. **Re-verify**:
+   ```bash
+   canary verify --root . --claims GAP_ANALYSIS.md --format text
+   ```
+
+5. **Generate the report**:
    ```markdown
-   ## Stale Token Update Results
+   ## Stale Token Evidence Report
 
-   **Update Date:** YYYY-MM-DD
-   **Tokens Updated:** N
+   **Report Date:** YYYY-MM-DD
+   **Stale Requirements:** N
 
-   ### Updated Tokens
-   - <PROJECT_KEY>-<NNN>: src/api/auth.go (old-date -> new-date)
-   - <PROJECT_KEY>-<NNN>: internal/cache/cache.go (old-date -> new-date)
+   ### Current evidence (date is old, proof is not)
+   - <PROJECT_KEY>-<NNN>: src/api/auth.go
 
-   ### Files Modified
-   - src/api/auth.go
-   - internal/cache/cache.go
-
-   ### Verification
-   No stale tokens remaining. All TESTED/BENCHED requirements are current.
+   ### Missing evidence (must be re-verified)
+   - <PROJECT_KEY>-<NNN>: internal/cache/cache.go
 
    **Next Steps:**
-   - Commit updated tokens
-   - Run `canary scan --verify GAP_ANALYSIS.md --strict` to verify claims
+   - Re-run the tests for every requirement listed as `evidence=missing`
+   - Re-record evidence, then run `canary verify` to confirm the claims
    ```
-
-8. **Suggest git commit**:
-   ```bash
-   git add <modified files>
-   git commit -m "chore: update stale CANARY tokens
-
-   Updated UPDATED field for N stale tokens.
-   All TESTED/BENCHED requirements now current (within 30 days).
-   "
-   ```
-
-## Example Output
-
-```markdown
-## Stale Token Update Results
-
-**Update Date:** YYYY-MM-DD
-**Tokens Updated:** 2
-
-### Before Update
-```go
-// CANARY: REQ=<PROJECT_KEY>-<NNN>; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2024-01-01
-```
-
-### After Update
-```go
-// CANARY: REQ=<PROJECT_KEY>-<NNN>; FEATURE="UserAuth"; ASPECT=API; STATUS=TESTED; TEST=TestUserAuth; UPDATED=YYYY-MM-DD
-```
-
-### Files Modified
-- src/api/auth.go (1 token updated)
-- internal/cache/cache.go (1 token updated)
-
-### Verification
-No stale tokens remaining.
-All TESTED/BENCHED requirements current.
-Ready to commit changes.
-
-**Git Command:**
-```bash
-git add src/api/auth.go internal/cache/cache.go
-git commit -m "chore: update stale CANARY tokens"
-```
-```
 
 ## Guidelines
 
-- **Safety First**: Only update TESTED/BENCHED tokens (not STUB/IMPL)
-- **Preserve Fields**: Keep all token fields except UPDATED
-- **Batch Updates**: Update all stale tokens in one operation
-- **Verification**: Re-scan after update to confirm success
-- **Git Integration**: Provide ready-to-use commit command
-- **Transparency**: Show exactly what changed (before/after)
+- **Never re-date without re-proving**: an `UPDATED=` bump is not evidence
+- **Only TESTED/BENCHED tokens are stale-checked** (not STUB/IMPL)
+- **Nothing is mutated**: this command only reads and reports
+- **Evidence is commit-bound**: it must be re-recorded after every commit

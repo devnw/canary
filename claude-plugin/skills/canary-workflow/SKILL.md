@@ -127,7 +127,7 @@ Automatically selects the highest-priority unfinished requirement and generates 
 
 ## Maintenance
 
-- `/canary.update-stale` — Refresh UPDATED dates on stale tokens (>30 days)
+- `/canary.update-stale` — Report evidence currency for stale tokens (>30 days); rewrites nothing
 - `/canary.list --status IMPL` — Find implementations needing tests
 - `/canary.doc` with arguments `status --all` — Check documentation freshness (invokes `canary doc status --all`)
 - `/canary.drift --strict` — Check for code/token drift (exit 2 on any finding)

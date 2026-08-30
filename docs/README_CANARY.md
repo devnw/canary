@@ -149,7 +149,7 @@ func ParseDependencies(sourceReqID string, reader io.Reader) ([]Dependency, erro
 **Staleness:**
 
 - Tokens with STATUS=TESTED or BENCHED and UPDATED >30 days old trigger warnings
-- Use `canary scan --update-stale` to auto-update
+- Use `canary scan --update-stale` to report which stale tokens still have current passing evidence (it rewrites nothing: a date bump is not proof)
 
 ## Optional Fields
 
