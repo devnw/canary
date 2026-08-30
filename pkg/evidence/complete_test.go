@@ -97,6 +97,27 @@ func TestCompleteScopeMismatch(t *testing.T) {
 	}
 }
 
+// TestCompleteBothMismatched covers the case where a record exists for the
+// key but matches neither the required project nor the required commit. Per
+// the documented precedence in evaluateKey, a record that matches neither
+// dimension carries no probative value, so it must classify as
+// "no_evidence" -- not "wrong_commit" or "scope_mismatch".
+func TestCompleteBothMismatched(t *testing.T) {
+	commit := strings.Repeat("ab", 20)
+	other := strings.Repeat("cd", 20)
+	required := map[string][]FeatureKey{
+		"CBIN-001": {{Feature: "A", Aspect: "API"}},
+	}
+	recs := []Record{mkRecord("other-project", "CBIN-001", "A", "API", other)}
+	v := Complete(required, recs, "p", commit, false)
+	if v.OK || v.Code != "EVIDENCE_MISSING" {
+		t.Fatalf("verdict %+v", v)
+	}
+	if len(v.Missing) != 1 || v.Missing[0].Reason != "no_evidence" {
+		t.Fatalf("missing %+v, want reason=no_evidence", v.Missing)
+	}
+}
+
 func TestCompleteMissingIsSortedDeterministically(t *testing.T) {
 	commit := strings.Repeat("ab", 20)
 	required := map[string][]FeatureKey{

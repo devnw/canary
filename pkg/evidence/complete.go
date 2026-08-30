@@ -82,10 +82,18 @@ func Complete(required map[string][]FeatureKey, recs []Record, projectID, commit
 }
 
 // evaluateKey checks whether any record satisfies (reqID, key) at
-// projectID+commit, and when not, classifies why: "no_evidence" when no
-// record exists for the key at all; "wrong_commit" when a record exists for
-// the key at this project but a different commit; "scope_mismatch" when a
-// record exists for the key at this commit but a different project.
+// projectID+commit, and when not, classifies why, in this precedence order:
+//
+//   - "wrong_commit": at least one record matches the key and this project,
+//     but not this commit.
+//   - "scope_mismatch": at least one record matches the key and this commit,
+//     but not this project (only checked when "wrong_commit" does not
+//     apply).
+//   - "no_evidence": everything else -- either no record exists for the key
+//     at all, OR every record for the key matches neither this project nor
+//     this commit. A record that matches neither dimension carries no
+//     probative value for this project+commit, so it counts as no evidence
+//     rather than as a project/commit-specific mismatch.
 func evaluateKey(recs []Record, reqID string, key FeatureKey, projectID, commit string) (reason string, satisfied bool) {
 	var (
 		anyForKey       bool

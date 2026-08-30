@@ -13,10 +13,8 @@ package evidence
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"regexp"
 	"strings"
@@ -100,9 +98,6 @@ func Parse(r io.Reader) (*File, error) {
 func Load(path string) (*File, error) {
 	fh, err := os.Open(path)
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil, fmt.Errorf("evidence: load %s: %w", path, err)
-		}
 		return nil, fmt.Errorf("evidence: load %s: %w", path, err)
 	}
 	defer fh.Close()

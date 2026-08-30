@@ -140,6 +140,46 @@ func TestParseRejectsShortCommit(t *testing.T) {
 	}
 }
 
+// TestParseRejectsUppercaseCommit exercises the lowercase-only intent of
+// commitSHAPattern: a 40-hex commit_sha with a single uppercase character
+// must be rejected.
+func TestParseRejectsUppercaseCommit(t *testing.T) {
+	upperCommit := "A" + strings.Repeat("b", 39) // 40 hex chars, one uppercase
+	raw := `{"schema_version":1,"records":[{
+		"project_id":"p","requirement_id":"CBIN-001","feature":"A","aspect":"API",
+		"test_id":"T","command":"go test","result":"PASS",
+		"commit_sha":"` + upperCommit + `","observed_at":"2026-08-30T00:00:00Z",
+		"runner":"local","artifact_digest":"` + validDigest + `"
+	}]}`
+	_, err := Parse(strings.NewReader(raw))
+	if err == nil {
+		t.Fatal("want error for uppercase commit_sha")
+	}
+	if !strings.Contains(err.Error(), "commit_sha") {
+		t.Fatalf("error = %v, want mention of commit_sha", err)
+	}
+}
+
+// TestParseRejectsUppercaseDigest exercises the lowercase-only intent of
+// artifactDigestPattern: a "sha256:" + 64-hex digest with a single
+// uppercase character must be rejected.
+func TestParseRejectsUppercaseDigest(t *testing.T) {
+	upperDigest := "sha256:A" + strings.Repeat("0", 63) // 64 hex chars, one uppercase
+	raw := `{"schema_version":1,"records":[{
+		"project_id":"p","requirement_id":"CBIN-001","feature":"A","aspect":"API",
+		"test_id":"T","command":"go test","result":"PASS",
+		"commit_sha":"` + validCommit + `","observed_at":"2026-08-30T00:00:00Z",
+		"runner":"local","artifact_digest":"` + upperDigest + `"
+	}]}`
+	_, err := Parse(strings.NewReader(raw))
+	if err == nil {
+		t.Fatal("want error for uppercase artifact_digest")
+	}
+	if !strings.Contains(err.Error(), "artifact_digest") {
+		t.Fatalf("error = %v, want mention of artifact_digest", err)
+	}
+}
+
 func TestParseRejectsBadDigest(t *testing.T) {
 	// Missing "sha256:" prefix; 63 hex chars (one short too).
 	badDigest := strings.Repeat("0", 63)
