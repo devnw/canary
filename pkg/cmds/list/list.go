@@ -109,14 +109,20 @@ Use --include-hidden to show all requirements including hidden ones.`,
 			return utils.GuardContract(cmd, err)
 		}
 
+		// In JSON mode stdout carries the token array and nothing else: an empty
+		// result is the empty array, never a prose notice a caller parsing JSON
+		// would choke on.
+		if jsonOutput {
+			if tokens == nil {
+				tokens = []*storage.Token{}
+			}
+			enc := json.NewEncoder(os.Stdout)
+			return enc.Encode(tokens)
+		}
+
 		if len(tokens) == 0 {
 			fmt.Println("No tokens found")
 			return nil
-		}
-
-		if jsonOutput {
-			enc := json.NewEncoder(os.Stdout)
-			return enc.Encode(tokens)
 		}
 
 		// Display as table

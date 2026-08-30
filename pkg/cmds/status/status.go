@@ -79,7 +79,13 @@ Examples:
 		}
 
 		if len(tokens) == 0 {
-			fmt.Printf("No tokens found for %s\n", reqID)
+			// In JSON mode the diagnostic belongs on stderr, so stdout is not
+			// polluted for a caller parsing the (absent) JSON payload.
+			if jsonOutput {
+				fmt.Fprintf(os.Stderr, "No tokens found for %s\n", reqID)
+			} else {
+				fmt.Printf("No tokens found for %s\n", reqID)
+			}
 			return fmt.Errorf("requirement not found")
 		}
 

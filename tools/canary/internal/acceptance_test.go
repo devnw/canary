@@ -6,6 +6,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -205,22 +206,31 @@ func TestAcceptance_CSVOrder(t *testing.T) {
 		t.Fatalf("CSV output not deterministic:\nRun1:\n%s\n\nRun2:\n%s", csv1, csv2)
 	}
 
-	// Verify rows are sorted by REQ ID
-	lines := strings.Split(strings.TrimSpace(string(csv1)), "\n")
-	if len(lines) < 2 {
-		t.Fatalf("expected at least header + 1 row, got %d lines", len(lines))
+	// Decode with an independent standards-compliant reader: the output is
+	// encoding/csv now (one row per requirement/feature/file), so a hand-split
+	// on commas would misparse any quoted cell. The reader also proves the
+	// output is well formed.
+	records, err := csv.NewReader(strings.NewReader(string(csv1))).ReadAll()
+	if err != nil {
+		t.Fatalf("csv not standards-decodable: %v", err)
+	}
+	if len(records) < 2 {
+		t.Fatalf("expected at least header + 1 row, got %d records", len(records))
 	}
 
-	// Skip header
+	// Header is the one-row-per-file shape: tests and benches are single cells
+	// (each a "|"-joined list), not columns zipped against the file list.
+	wantHeader := "req,feature,aspect,status,file,tests,benches,owner,updated"
+	if got := strings.Join(records[0], ","); got != wantHeader {
+		t.Fatalf("header = %q, want %q", got, wantHeader)
+	}
+
+	// Rows are sorted by REQ ID (first column).
 	var prevReq string
-	for i, line := range lines[1:] {
-		fields := strings.Split(line, ",")
-		if len(fields) < 1 {
-			continue
-		}
-		req := fields[0]
+	for i, row := range records[1:] {
+		req := row[0]
 		if prevReq != "" && req < prevReq {
-			t.Errorf("CSV not sorted by REQ: line %d has %s after %s", i+2, req, prevReq)
+			t.Errorf("CSV not sorted by REQ: row %d has %s after %s", i+2, req, prevReq)
 		}
 		prevReq = req
 	}

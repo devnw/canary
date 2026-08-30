@@ -6,6 +6,7 @@
 package specs
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -100,53 +101,53 @@ Examples:
 			return specs[i].ReqID < specs[j].ReqID
 		})
 
+		// Output. In JSON mode stdout carries the array and nothing else: an
+		// empty specs directory is the empty array, not a prose notice a caller
+		// parsing JSON would choke on.
+		if jsonOutput {
+			if specs == nil {
+				specs = []SpecInfo{}
+			}
+			data, err := json.MarshalIndent(specs, "", "  ")
+			if err != nil {
+				return fmt.Errorf("marshal specs: %w", err)
+			}
+			fmt.Println(string(data))
+			return nil
+		}
+
 		if len(specs) == 0 {
 			fmt.Printf("No specification directories found in %s\n", specsPath)
 			return nil
 		}
 
-		// Output
-		if jsonOutput {
-			// JSON output
-			fmt.Println("[")
-			for i, spec := range specs {
-				comma := ","
-				if i == len(specs)-1 {
-					comma = ""
-				}
-				fmt.Printf("  {\"req_id\": \"%s\", \"feature_name\": \"%s\", \"directory\": \"%s\", \"has_spec\": %t, \"has_plan\": %t}%s\n",
-					spec.ReqID, spec.FeatureName, spec.Directory, spec.HasSpec, spec.HasPlan, comma)
+		// Human-readable output
+		fmt.Printf("Found %d specification directories:\n\n", len(specs))
+
+		for _, spec := range specs {
+			fmt.Printf("📁 %s", spec.ReqID)
+			if spec.FeatureName != "" {
+				fmt.Printf(" - %s", spec.FeatureName)
 			}
-			fmt.Println("]")
-		} else {
-			// Human-readable output
-			fmt.Printf("Found %d specification directories:\n\n", len(specs))
+			fmt.Println()
+			fmt.Printf("   %s\n", spec.Directory)
 
-			for _, spec := range specs {
-				fmt.Printf("📁 %s", spec.ReqID)
-				if spec.FeatureName != "" {
-					fmt.Printf(" - %s", spec.FeatureName)
-				}
-				fmt.Println()
-				fmt.Printf("   %s\n", spec.Directory)
-
-				files := []string{}
-				if spec.HasSpec {
-					files = append(files, "spec.md")
-				}
-				if spec.HasPlan {
-					files = append(files, "plan.md")
-				}
-				if len(files) > 0 {
-					fmt.Printf("   Files: %s\n", strings.Join(files, ", "))
-				} else {
-					fmt.Printf("   (no spec or plan files)\n")
-				}
-				fmt.Println()
+			files := []string{}
+			if spec.HasSpec {
+				files = append(files, "spec.md")
 			}
-
-			fmt.Printf("Total: %d specifications\n", len(specs))
+			if spec.HasPlan {
+				files = append(files, "plan.md")
+			}
+			if len(files) > 0 {
+				fmt.Printf("   Files: %s\n", strings.Join(files, ", "))
+			} else {
+				fmt.Printf("   (no spec or plan files)\n")
+			}
+			fmt.Println()
 		}
+
+		fmt.Printf("Total: %d specifications\n", len(specs))
 
 		return nil
 	},

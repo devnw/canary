@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -517,25 +518,46 @@ The report includes:
 			}
 		}
 
-		// Find undocumented requirements
+		// Find undocumented requirements. Iterating a map yields them in a
+		// nondeterministic order, so sort before emitting: the report is a diffed
+		// artifact and a machine contract, and neither tolerates run-to-run churn.
 		for reqID := range seenRequirements {
 			if !requirementsWithDocs[reqID] {
 				stats.UndocumentedRequirements = append(stats.UndocumentedRequirements, reqID)
 			}
 		}
+		sort.Strings(stats.UndocumentedRequirements)
 		stats.TokensWithoutDocs = len(stats.UndocumentedRequirements)
+
+		// Coverage is measured over unique requirements, not raw tokens, and text
+		// and JSON share this single computation so they can never disagree. With
+		// no requirements the ratio is 0/0; guard it to an explicit 0 rather than
+		// emitting NaN, which is not valid JSON and would make Encode fail.
+		coveragePercent := 0.0
+		if len(seenRequirements) > 0 {
+			coveragePercent = float64(len(requirementsWithDocs)) / float64(len(seenRequirements)) * 100
+		}
 
 		// Output report
 		if format == "json" {
+			// by_status always carries every documentation status with an explicit
+			// count, 0 included, so a consumer can rely on the key set instead of
+			// discovering which statuses happened to occur in this run.
+			byStatus := map[string]int{
+				"DOC_CURRENT":  stats.ByStatus["DOC_CURRENT"],
+				"DOC_STALE":    stats.ByStatus["DOC_STALE"],
+				"DOC_MISSING":  stats.ByStatus["DOC_MISSING"],
+				"DOC_UNHASHED": stats.ByStatus["DOC_UNHASHED"],
+			}
 			// JSON format output
 			report := map[string]interface{}{
-				"total_tokens":        stats.TotalTokens,
-				"tokens_with_docs":    stats.TokensWithDocs,
-				"tokens_without_docs": stats.TokensWithoutDocs,
-				"coverage_percent":    float64(stats.TokensWithDocs) / float64(stats.TotalTokens) * 100,
-				"by_type":             stats.ByType,
-				"by_status":           stats.ByStatus,
-				"undocumented_count":  len(stats.UndocumentedRequirements),
+				"total_tokens":              stats.TotalTokens,
+				"tokens_with_docs":          stats.TokensWithDocs,
+				"requirements_without_docs": stats.TokensWithoutDocs,
+				"coverage_percent":          coveragePercent,
+				"by_type":                   stats.ByType,
+				"by_status":                 byStatus,
+				"undocumented_count":        len(stats.UndocumentedRequirements),
 			}
 			if showUndocumented {
 				report["undocumented_requirements"] = stats.UndocumentedRequirements
@@ -550,10 +572,6 @@ The report includes:
 		fmt.Println()
 
 		// Coverage summary
-		coveragePercent := 0.0
-		if stats.TotalTokens > 0 {
-			coveragePercent = float64(len(requirementsWithDocs)) / float64(len(seenRequirements)) * 100
-		}
 		fmt.Printf("Coverage: %d/%d requirements (%.1f%%)\n",
 			len(requirementsWithDocs), len(seenRequirements), coveragePercent)
 		fmt.Printf("Total Tokens: %d (%d with docs, %d without)\n\n",
