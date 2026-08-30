@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	ignore "github.com/sabhiram/go-gitignore"
@@ -29,6 +30,9 @@ type aggregateVal struct {
 	status                string
 	files, tests, benches map[string]struct{}
 	deps                  map[string]struct{}
+	// priority is the most urgent (lowest) PRIORITY any token folded into
+	// this aggregate declared, and nil when none of them declared one.
+	priority *int
 }
 
 // LoadCanaryIgnore loads .canaryignore from root. Returns nil if file missing.
@@ -150,6 +154,7 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 					a.deps[normalizeREQWithRegistry(dep, reg)] = struct{}{}
 				}
 			}
+			a.priority = mergePriority(a.priority, declaredPriority(fields["PRIORITY"]))
 		}
 		return nil
 	})
@@ -164,7 +169,7 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 		// STATUS is a declaration: it passes through verbatim. TEST=/BENCH=
 		// are recorded as evidence references but never change it.
 		status := v.status
-		f := Feature{Feature: k.feature, Aspect: k.aspect, Status: status, Files: mapKeys(v.files), Tests: mapKeys(v.tests), Benches: mapKeys(v.benches), Owner: k.owner, Updated: k.updated, DependsOn: mapKeys(v.deps)}
+		f := Feature{Feature: k.feature, Aspect: k.aspect, Status: status, Files: mapKeys(v.files), Tests: mapKeys(v.tests), Benches: mapKeys(v.benches), Owner: k.owner, Updated: k.updated, DependsOn: mapKeys(v.deps), Priority: v.priority}
 		byReq[k.req] = append(byReq[k.req], f)
 		byStatus[status]++
 		byAspect[k.aspect]++
@@ -172,7 +177,15 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 	}
 	var reqs []Requirement
 	for id, feats := range byReq {
-		sort.Slice(feats, func(i, j int) bool { return feats[i].Feature+feats[i].Aspect < feats[j].Feature+feats[j].Aspect })
+		// (Feature, Aspect) is compared as a tuple, not as a concatenation:
+		// concatenating lets "AB"+"API" sort ahead of "A"+"Engine", which
+		// reorders features whose names share a prefix.
+		sort.Slice(feats, func(i, j int) bool {
+			if feats[i].Feature != feats[j].Feature {
+				return feats[i].Feature < feats[j].Feature
+			}
+			return feats[i].Aspect < feats[j].Aspect
+		})
 		reqs = append(reqs, Requirement{ID: id, Features: feats})
 	}
 	sort.Slice(reqs, func(i, j int) bool { return reqs[i].ID < reqs[j].ID })
@@ -221,6 +234,34 @@ func Scan(root string, skip *regexp.Regexp, projectFilter *regexp.Regexp, ignore
 		MigrationNotes: notes,
 		Issues:         normalizeIssues(issues),
 	}, nil
+}
+
+// declaredPriority reads a token's PRIORITY field. An absent or unparsable
+// value returns nil -- "the author declared no priority" -- rather than a
+// number nobody wrote. Leniency here matches `canary index`, which also
+// ignores a PRIORITY it cannot parse and falls back to its own default; a
+// scan issue would make the two disagree about the same token.
+func declaredPriority(raw string) *int {
+	p, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil {
+		return nil
+	}
+	return &p
+}
+
+// mergePriority folds a newly seen declaration into an aggregate's priority,
+// keeping the most urgent (lowest) one. Several tokens can fold into one
+// feature aggregate; if they disagree, the aggregate carries the soonest
+// anyone asked for the work.
+func mergePriority(have, seen *int) *int {
+	switch {
+	case seen == nil:
+		return have
+	case have == nil || *seen < *have:
+		return seen
+	default:
+		return have
+	}
 }
 
 // normalizeIssues sorts issues by path then reason and drops duplicates, so

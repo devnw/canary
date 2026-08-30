@@ -41,13 +41,14 @@ const (
 	SourceFilesystem = "filesystem"
 )
 
-// scanPriority is the priority a candidate selected from a filesystem scan
-// carries. The scan report aggregates features, not raw token fields, so a
-// PRIORITY declaration is not available there; 5 is the same neutral default
-// `canary index` gives a token that declares none.
-const scanPriority = 5
+// defaultScanPriority is the priority a filesystem-scanned candidate carries
+// when its token declared none. It is the same neutral default `canary index`
+// gives an undeclared token, so the two selection sources rank the same tree
+// the same way. A token that DOES declare a PRIORITY keeps it: the scan report
+// carries the declaration (canaryscan.Feature.Priority).
+const defaultScanPriority = 5
 
-// CANARY: REQ=CP-252; FEATURE="NextCmd"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; DOC=user:docs/user/next-priority-guide.md; DOC_HASH=17524f7a14d2c410; UPDATED=2026-08-30
+// CANARY: REQ=CP-252; FEATURE="NextCmd"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; DOC=user:docs/user/next-priority-guide.md; DOC_HASH=6a276e6735100236; UPDATED=2026-08-30
 var NextCmd = &cobra.Command{
 	Use:   "next [flags]",
 	Short: "Identify and implement next highest priority requirement",
@@ -68,7 +69,8 @@ This command automatically:
   - Token placement examples
 
 Priority determination factors:
-1. PRIORITY field (1=highest, 10=lowest)
+1. PRIORITY field (1=highest, 10=lowest); a token that declares none is
+   ranked -- and reported -- at the neutral default 5
 2. STATUS (STUB before IMPL)
 3. DEPENDS_ON (every dependency must be proven complete by evidence, or
    satisfied as an external/peer requirement)
@@ -153,16 +155,23 @@ directly. Completion is only ever claimed from a current index.`,
 	},
 }
 
-// resolveFormat resolves the output format from --format, with the
-// deprecated --json as an alias. An explicit --format always wins, so the two
-// can never disagree silently.
+// resolveFormat resolves the output format from --format, with the deprecated
+// --json as an alias. An explicit --format always wins, so the two can never
+// disagree silently.
+//
+// A --format the caller actually typed is validated as given: `--format ""`
+// is an invalid value and says so, rather than quietly meaning "text" and
+// switching the --json alias off along the way. Only an unset flag falls back
+// to text.
 func resolveFormat(cmd *cobra.Command) (string, error) {
 	format, _ := cmd.Flags().GetString("format")
-	if format == "" {
-		format = FormatText
-	}
-	if jsonFlag, _ := cmd.Flags().GetBool("json"); jsonFlag && !cmd.Flags().Changed("format") {
-		format = FormatJSON
+	if !cmd.Flags().Changed("format") {
+		if format == "" {
+			format = FormatText
+		}
+		if jsonFlag, _ := cmd.Flags().GetBool("json"); jsonFlag {
+			format = FormatJSON
+		}
 	}
 	if format != FormatJSON && format != FormatText {
 		return "", fmt.Errorf("unknown --format %q (want %q or %q)", format, FormatJSON, FormatText)
@@ -173,12 +182,19 @@ func resolveFormat(cmd *cobra.Command) (string, error) {
 // nextJSONOutput is the structure emitted for next --format json. Source is
 // always present; the requirement fields are absent when there was nothing to
 // select, in which case Message says why.
+//
+// Priority is emitted for every selected requirement, 0 included: 0 is a
+// priority a token can declare, and dropping it as "empty" would erase the
+// most urgent declaration in the tree. It is a pointer only so that it stays
+// absent alongside the other requirement fields when nothing was selected.
+// When the selected token declared no PRIORITY, the number reported is the
+// neutral default (5) -- the same one selection ranked it at.
 type nextJSONOutput struct {
 	ReqID    string `json:"req_id,omitempty"`
 	Feature  string `json:"feature,omitempty"`
 	Aspect   string `json:"aspect,omitempty"`
 	Status   string `json:"status,omitempty"`
-	Priority int    `json:"priority,omitempty"`
+	Priority *int   `json:"priority,omitempty"`
 	FilePath string `json:"file_path,omitempty"`
 	Updated  string `json:"updated,omitempty"`
 	Source   string `json:"source"`
@@ -196,7 +212,8 @@ func emitJSON(w io.Writer, sel result) error {
 		out.Feature = sel.Token.Feature
 		out.Aspect = sel.Token.Aspect
 		out.Status = sel.Token.Status
-		out.Priority = sel.Token.Priority
+		priority := sel.Token.Priority
+		out.Priority = &priority
 		out.FilePath = sel.Token.FilePath
 		out.Updated = sel.Token.UpdatedAt
 	}
@@ -226,9 +243,17 @@ func noWorkMessage(source string, blocked int) string {
 // printNoWork writes the human-facing form of noWorkMessage.
 func printNoWork(w io.Writer, source string, blocked int) {
 	if blocked > 0 {
+		// A dependency blocks for one of two reasons, and the hint has to name
+		// both: an external one whose state could not be resolved (those are
+		// noted on stderr), or a local one with no passing evidence at this
+		// commit -- a declaration of TESTED is not proof, so `canary verify`
+		// and the evidence store are where that one is answered.
 		fmt.Fprintf(w, "%s\n", noWorkMessage(source, blocked))
 		fmt.Fprintln(w, "\nEvery remaining candidate is waiting on a dependency:")
-		fmt.Fprintln(w, "  • Run: canary deps check <REQ-ID>   (see stderr above for unresolved external dependencies)")
+		fmt.Fprintln(w, "  • Run: canary deps check <REQ-ID>   (which dependency, and in what state)")
+		fmt.Fprintln(w, "  • A local dependency blocks until evidence at this commit proves it:")
+		fmt.Fprintln(w, "    run its tests, record the result, then: canary verify")
+		fmt.Fprintln(w, "  • Unresolved external/peer dependencies are noted on stderr above")
 		return
 	}
 	if source == SourceDatabase {
@@ -460,9 +485,10 @@ func selectFromScan(root string, filters map[string]string, idPattern string, re
 }
 
 // scanCandidates turns a scan report into the ordered candidate list: filtered
-// the same way the index query filters, then sorted by priority (ascending),
-// then STUB before IMPL, then requirement id -- a total order, so two runs
-// over an unchanged tree pick the same requirement.
+// the same way the index query filters, then sorted by declared priority
+// (ascending, defaultScanPriority when a token declares none), then STUB
+// before IMPL, then requirement id, feature and aspect -- a total order, so
+// two runs over an unchanged tree pick the same requirement.
 func scanCandidates(rep canaryscan.Report, filters map[string]string) []*storage.Token {
 	var candidates []*storage.Token
 	_, hasStatusFilter := filters["status"]
@@ -484,12 +510,16 @@ func scanCandidates(rep canaryscan.Report, filters map[string]string) []*storage
 			if includeHidden, ok := filters["include_hidden"]; (!ok || includeHidden != "true") && isHiddenPath(file) {
 				continue
 			}
+			priority := defaultScanPriority
+			if f.Priority != nil {
+				priority = *f.Priority
+			}
 			candidates = append(candidates, &storage.Token{
 				ReqID:     r.ID,
 				Feature:   f.Feature,
 				Aspect:    f.Aspect,
 				Status:    f.Status,
-				Priority:  scanPriority,
+				Priority:  priority,
 				FilePath:  file,
 				Owner:     f.Owner,
 				UpdatedAt: f.Updated,
@@ -508,7 +538,10 @@ func scanCandidates(rep canaryscan.Report, filters map[string]string) []*storage
 		if a.ReqID != b.ReqID {
 			return a.ReqID < b.ReqID
 		}
-		return a.Feature < b.Feature
+		if a.Feature != b.Feature {
+			return a.Feature < b.Feature
+		}
+		return a.Aspect < b.Aspect
 	})
 	return candidates
 }

@@ -113,7 +113,7 @@ Checks that `GAP_ANALYSIS.md` claims match actual token status. Catches overclai
 
 Rescans the repo and reports tokens whose file was committed after their `UPDATED` date (code-drift), tokens stale past the staleness window, and (with an indexed database) doc-drift. `--strict` exits 2 on any finding — good for CI.
 
-Dependencies on a ticket-source (JIRA, etc.) or `peers:`-owned requirement resolve via the cached remote status (`canary ticket status --refresh`) and never block `next`/`deps validate` by default when uncached — pass `--strict-external` to opt in.
+Dependencies on a ticket-source (JIRA, etc.) or `peers:`-owned requirement resolve via a peer's `status.json` or the cached remote status (`canary ticket status --refresh`). For `canary next`, only *satisfied* clears a dependency: unsatisfied blocks, and unresolvable (no cache entry, no peer answer) blocks too — run `canary ticket status --refresh`, or pass `canary next --allow-unknown-external` to accept the risk. `canary deps validate` reports unsatisfied/unknown externals on its `external:` summary line without failing, until `--strict-external`.
 
 ## Quick Priority Workflow
 

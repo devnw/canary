@@ -18,11 +18,12 @@ import (
 // Its shape is the CLI's contract: which requirement was chosen, and which
 // source that answer came from.
 type nextOut struct {
-	ReqID   string `json:"req_id"`
-	Feature string `json:"feature"`
-	Status  string `json:"status"`
-	Source  string `json:"source"`
-	Message string `json:"message"`
+	ReqID    string `json:"req_id"`
+	Feature  string `json:"feature"`
+	Status   string `json:"status"`
+	Priority int    `json:"priority"`
+	Source   string `json:"source"`
+	Message  string `json:"message"`
 }
 
 // runNextJSON runs `canary next` in root capturing stdout ONLY (stderr is
@@ -89,10 +90,59 @@ func TestAuditF13(t *testing.T) {
 		t.Errorf("--format=json --dry-run = %+v, want the JSON answer", dry)
 	}
 
-	// The old --json spelling still works as an alias.
+	// The old --json spelling still works as an alias, and warns -- on stderr,
+	// where a warning cannot corrupt the JSON a caller is parsing off stdout.
 	alias := runNextJSON(t, root, bin, "next", "--json")
 	if alias.ReqID != "CBIN-001" {
 		t.Errorf("--json alias = %+v, want CBIN-001", alias)
+	}
+	aliasCmd := exec.Command(bin, "next", "--json") //nolint:gosec // test-built binary
+	aliasCmd.Dir = root
+	home := t.TempDir()
+	aliasCmd.Env = append(os.Environ(), "HOME="+home, "USERPROFILE="+home)
+	var aliasOut, aliasErr strings.Builder
+	aliasCmd.Stdout = &aliasOut
+	aliasCmd.Stderr = &aliasErr
+	if err := aliasCmd.Run(); err != nil {
+		t.Fatalf("canary next --json: %v\nstdout: %s\nstderr: %s", err, aliasOut.String(), aliasErr.String())
+	}
+	if !strings.Contains(aliasErr.String(), "deprecated") {
+		t.Errorf("stderr = %q, want the --json deprecation warning", aliasErr.String())
+	}
+	if strings.Contains(aliasOut.String(), "deprecated") {
+		t.Errorf("stdout = %q, must carry JSON only -- the warning belongs on stderr", aliasOut.String())
+	}
+}
+
+// TestAuditF13_FilesystemHonorsDeclaredPriority proves the filesystem path
+// answers with the priority the tokens declare, not a fabricated one. The
+// scan report carried no priority at all, so every scanned candidate was
+// stamped 5: a PRIORITY=1 requirement lost to a PRIORITY=9 one on requirement
+// id, and the JSON asserted a priority nobody wrote.
+func TestAuditF13_FilesystemHonorsDeclaredPriority(t *testing.T) {
+	bin := buildCanary(t)
+	root := t.TempDir()
+	initGitRepo(t, root)
+	// The low-priority token sorts first by requirement id, so only the
+	// declared PRIORITY can put the urgent one ahead of it.
+	if err := os.WriteFile(filepath.Join(root, "a.go"), []byte(
+		"// CANARY: REQ=CBIN-001; FEATURE=\"Later\"; ASPECT=API; STATUS=STUB; PRIORITY=9; UPDATED=2026-01-01\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "b.go"), []byte(
+		"// CANARY: REQ=CBIN-002; FEATURE=\"Urgent\"; ASPECT=API; STATUS=STUB; PRIORITY=1; UPDATED=2026-01-01\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := runNextJSON(t, root, bin, "next", "--format", "json")
+	if got.ReqID != "CBIN-002" {
+		t.Errorf("ReqID = %q, want CBIN-002 (PRIORITY=1 outranks PRIORITY=9)", got.ReqID)
+	}
+	if got.Priority != 1 {
+		t.Errorf("Priority = %d, want the declared 1", got.Priority)
+	}
+	if got.Source != "filesystem" {
+		t.Errorf("Source = %q, want filesystem", got.Source)
 	}
 }
 

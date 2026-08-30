@@ -93,12 +93,16 @@ A requirement's `DEPENDS_ON=`/spec dependency can point at an ID owned by a conf
 
 **Local tokens always win**: an ID with at least one local CANARY token in the index is treated as a local requirement, never as external, even when its prefix also matches a configured ticket source's `key`.
 
-**Unknown never blocks by default**: `unsatisfied` external dependencies block `canary next`'s selection and `canary deps check`'s exit code the same as a local unmet dependency; `unknown` never blocks either by default — degradation is sacred, since a missing/stale cache must never stall an agent. `canary deps validate` is more permissive still: by default it fails on neither `unsatisfied` nor `unknown` external counts (they're informational on the `external:` summary line only). Two flags opt into stricter behavior:
+**Unknown blocks `canary next` by default**: `unsatisfied` external dependencies block `canary next`'s selection and `canary deps check`'s exit code the same as a local unmet dependency — and so does `unknown`. Only `satisfied` clears a dependency for selection. Handing an agent a requirement whose prerequisite may not exist is not a graceful degradation, it is a wrong answer, so a missing or stale cache fails closed; the fix is normally `canary ticket status --refresh` (or a peer scan), and `--allow-unknown-external` is there for when you want to start anyway.
+
+`canary deps check` still *reports* an `unknown` dependency without treating it as met, and `canary deps validate` is the permissive one: by default it fails on neither `unsatisfied` nor `unknown` external counts (they're informational on the `external:` summary line only). Two flags change the defaults:
 
 ```bash
-canary next --allow-unknown-external    # do not block on external deps of unknown state (they block by default)
+canary next --allow-unknown-external     # accept an external dep whose state cannot be resolved (it blocks otherwise)
 canary deps validate --strict-external   # fail (non-zero exit) when any external dep is unsatisfied or unknown
 ```
+
+There is no `--strict-external` on `canary next`: strictness is already the default there.
 
 `canary deps check <REQ-ID>` prints each external dependency's resolution on its own line:
 

@@ -58,7 +58,7 @@ Per Article IV of `.canary/memory/constitution.md`:
 
 **Each command file contains step-by-step workflows, examples, and validation criteria.**
 
-**Ticket sources** (JIRA, etc.) are configured in `.canary/project.yaml`'s `sources:` list; `canary ticket sync` stays plan-only without credentials, and `canary ticket status [--refresh]` reports/refreshes the cache on its own. External (ticket-sourced or `peers:`-owned) dependencies never block by default when uncached — `--strict-external` opts in.
+**Ticket sources** (JIRA, etc.) are configured in `.canary/project.yaml`'s `sources:` list; `canary ticket sync` stays plan-only without credentials, and `canary ticket status [--refresh]` reports/refreshes the cache on its own. An external (ticket-sourced or `peers:`-owned) dependency blocks `canary next` unless it resolves *satisfied* — an unresolvable one (no cache entry, no peer answer) blocks too, since handing an agent work whose prerequisite might not exist is a wrong answer, not a graceful degradation. `canary next --allow-unknown-external` accepts that risk explicitly. `canary deps validate` is the permissive one: unsatisfied and unknown externals are informational there until you pass `--strict-external`.
 
 ## Constitutional Principles
 

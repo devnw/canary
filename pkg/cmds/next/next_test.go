@@ -16,6 +16,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
+
 	"devnw.dev/canary/pkg/canaryscan"
 	"devnw.dev/canary/pkg/evidence"
 	"devnw.dev/canary/pkg/storage"
@@ -642,5 +644,152 @@ All implementation MUST follow Test-Driven Development.
 		if _, err := renderPrompt(token, "", true, ""); err != nil {
 			b.Fatalf("renderPrompt failed: %v", err)
 		}
+	}
+}
+
+// pri is a pointer to a declared PRIORITY, the shape a scan report carries so
+// "declared none" stays distinguishable from "declared 0".
+func pri(v int) *int { return &v }
+
+// TestCANARY_FIXWAVE1_ScanCandidatesHonorDeclaredPriority proves the
+// filesystem path orders candidates by the PRIORITY their tokens declare. It
+// used to stamp every scanned candidate with 5, so a PRIORITY=1 requirement
+// lost to a PRIORITY=9 one purely on requirement id.
+func TestCANARY_FIXWAVE1_ScanCandidatesHonorDeclaredPriority(t *testing.T) {
+	rep := canaryscan.Report{Requirements: []canaryscan.Requirement{
+		{ID: "CBIN-010", Features: []canaryscan.Feature{{Feature: "Later", Aspect: "API", Status: "STUB", Priority: pri(9), Files: []string{"a.go"}}}},
+		{ID: "CBIN-020", Features: []canaryscan.Feature{{Feature: "Urgent", Aspect: "API", Status: "STUB", Priority: pri(1), Files: []string{"b.go"}}}},
+		{ID: "CBIN-030", Features: []canaryscan.Feature{{Feature: "Silent", Aspect: "API", Status: "STUB", Files: []string{"c.go"}}}},
+	}}
+
+	got := scanCandidates(rep, map[string]string{})
+	var ids []string
+	for _, c := range got {
+		ids = append(ids, c.ReqID)
+	}
+	want := []string{"CBIN-020", "CBIN-030", "CBIN-010"}
+	if strings.Join(ids, ",") != strings.Join(want, ",") {
+		t.Errorf("candidate order = %v, want %v (declared PRIORITY, then the 5 default)", ids, want)
+	}
+	if got[0].Priority != 1 {
+		t.Errorf("selected Priority = %d, want the declared 1", got[0].Priority)
+	}
+	if got[1].Priority != defaultScanPriority {
+		t.Errorf("undeclared Priority = %d, want the %d default", got[1].Priority, defaultScanPriority)
+	}
+}
+
+// TestCANARY_FIXWAVE1_ScanCandidatesBreakTiesOnAspect proves the candidate
+// order is total: two features of one requirement sharing priority, status
+// and name are separated by aspect, so repeated runs cannot swap them.
+func TestCANARY_FIXWAVE1_ScanCandidatesBreakTiesOnAspect(t *testing.T) {
+	rep := canaryscan.Report{Requirements: []canaryscan.Requirement{
+		{ID: "CBIN-040", Features: []canaryscan.Feature{
+			{Feature: "Same", Aspect: "Engine", Status: "STUB", Files: []string{"e.go"}},
+			{Feature: "Same", Aspect: "API", Status: "STUB", Files: []string{"a.go"}},
+		}},
+	}}
+
+	got := scanCandidates(rep, map[string]string{})
+	if len(got) != 2 {
+		t.Fatalf("candidates = %+v, want two", got)
+	}
+	if got[0].Aspect != "API" || got[1].Aspect != "Engine" {
+		t.Errorf("aspect order = [%s, %s], want [API, Engine]", got[0].Aspect, got[1].Aspect)
+	}
+}
+
+// TestCANARY_FIXWAVE1_JSONAlwaysCarriesPriority proves priority 0 -- a legal
+// declaration -- survives into the JSON contract. With `omitempty` it
+// vanished, and a caller reading the absence as "no priority" would rank the
+// most urgent requirement in the tree as unranked.
+func TestCANARY_FIXWAVE1_JSONAlwaysCarriesPriority(t *testing.T) {
+	var buf strings.Builder
+	tok := &storage.Token{ReqID: "CBIN-1", Feature: "F", Aspect: "API", Status: "STUB", Priority: 0, FilePath: "a.go"}
+	if err := emitJSON(&buf, result{Token: tok, Source: SourceFilesystem}); err != nil {
+		t.Fatal(err)
+	}
+	var out map[string]any
+	if err := json.Unmarshal([]byte(buf.String()), &out); err != nil {
+		t.Fatalf("output is not JSON: %q", buf.String())
+	}
+	p, present := out["priority"]
+	if !present {
+		t.Fatalf("priority absent from %q; 0 is a declared value, not an empty one", buf.String())
+	}
+	if p != float64(0) {
+		t.Errorf("priority = %v, want 0", p)
+	}
+}
+
+// formatFlags builds a command carrying `next`'s format flags and parses args
+// against it, so resolveFormat can be exercised exactly as the CLI reaches it.
+func formatFlags(t *testing.T, args ...string) *cobra.Command {
+	t.Helper()
+	cmd := &cobra.Command{Use: "next"}
+	cmd.Flags().String("format", FormatText, "output format: json or text")
+	cmd.Flags().Bool("json", false, "deprecated alias for --format json")
+	if err := cmd.ParseFlags(args); err != nil {
+		t.Fatalf("parse %v: %v", args, err)
+	}
+	return cmd
+}
+
+// TestCANARY_FIXWAVE1_ResolveFormat pins the format contract: an explicit
+// --format always wins over the deprecated --json alias, and an explicitly
+// empty --format is an invalid value rather than a quiet way to turn the
+// alias off.
+func TestCANARY_FIXWAVE1_ResolveFormat(t *testing.T) {
+	cases := []struct {
+		name    string
+		args    []string
+		want    string
+		wantErr bool
+	}{
+		{name: "default", args: nil, want: FormatText},
+		{name: "explicit text", args: []string{"--format", "text"}, want: FormatText},
+		{name: "explicit json", args: []string{"--format", "json"}, want: FormatJSON},
+		{name: "alias", args: []string{"--json"}, want: FormatJSON},
+		{name: "explicit format wins over alias", args: []string{"--format", "text", "--json"}, want: FormatText},
+		{name: "alias agrees with format", args: []string{"--format", "json", "--json"}, want: FormatJSON},
+		{name: "empty format is invalid", args: []string{"--format", ""}, wantErr: true},
+		{name: "empty format with alias is still invalid", args: []string{"--format=", "--json"}, wantErr: true},
+		{name: "unknown format", args: []string{"--format", "xml"}, wantErr: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := resolveFormat(formatFlags(t, tc.args...))
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("resolveFormat(%v) = %q, want an error", tc.args, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("resolveFormat(%v): %v", tc.args, err)
+			}
+			if got != tc.want {
+				t.Errorf("resolveFormat(%v) = %q, want %q", tc.args, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestCANARY_FIXWAVE1_BlockedHintNamesEvidence proves the blocked no-work
+// message points at both ways a dependency can be unproven. Local dependencies
+// block on missing PASS evidence at this commit, which no amount of reading
+// stderr for external notes explains.
+func TestCANARY_FIXWAVE1_BlockedHintNamesEvidence(t *testing.T) {
+	var buf strings.Builder
+	printNoWork(&buf, SourceFilesystem, 2)
+	out := buf.String()
+	if !strings.Contains(out, "canary verify") {
+		t.Errorf("blocked hint = %q, want it to name `canary verify`", out)
+	}
+	if !strings.Contains(out, "evidence") {
+		t.Errorf("blocked hint = %q, want it to name evidence", out)
+	}
+	if !strings.Contains(out, "canary deps check") {
+		t.Errorf("blocked hint = %q, want it to keep the deps check hint", out)
 	}
 }

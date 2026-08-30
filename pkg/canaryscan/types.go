@@ -70,6 +70,15 @@ type Feature struct {
 	Benches []string `json:"benches"`
 	Owner   string   `json:"owner,omitempty"`
 	Updated string   `json:"updated"`
+	// Priority carries the token's declared PRIORITY (1 = highest). It is a
+	// pointer so "declared nothing" stays distinguishable from "declared 0":
+	// a consumer that needs a number applies its own default (5, the one
+	// `canary index` uses) only when this is nil, rather than inventing one
+	// for a token that did declare a value. An unparsable PRIORITY reads as
+	// absent, matching `canary index`'s leniency.
+	//
+	// Additive: absent from a token means absent here.
+	Priority *int `json:"priority,omitempty"`
 	// DependsOn carries the token's DEPENDS_ON requirement IDs verbatim, so
 	// verification can resolve external/peer dependency state without
 	// re-parsing the tree. Additive: absent from a token means absent here.

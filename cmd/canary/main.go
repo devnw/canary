@@ -100,6 +100,14 @@ func init() {
 	next.NextCmd.Flags().String("prompt-arg", "", "extra prompt file or embedded prompt name to expose to the prompt template")
 	next.NextCmd.Flags().String("format", next.FormatText, "output format: json or text")
 	next.NextCmd.Flags().Bool("json", false, "output in JSON format (deprecated: use --format json)")
+	// Registering the deprecation with cobra is what makes the alias actually
+	// warn when it is used. The warning goes to the command's error output,
+	// never to stdout, so `next --json` stays pipeable into a JSON parser.
+	// MarkDeprecated only fails when the flag does not exist, which the line
+	// above just guaranteed.
+	if err := next.NextCmd.Flags().MarkDeprecated("json", "use --format json"); err != nil {
+		panic(err)
+	}
 	next.NextCmd.Flags().Bool("dry-run", false, "show what would be selected without generating prompt")
 	next.NextCmd.Flags().String("status", "", "filter by status (STUB, IMPL, TESTED, BENCHED)")
 	next.NextCmd.Flags().String("aspect", "", "filter by aspect (API, CLI, Engine, Storage, etc.)")

@@ -365,10 +365,20 @@ func TestCANARY_ENG_3961_Resolve_PeerLegacyExportUnknown(t *testing.T) {
 // than the staleness window answers nothing: it describes a tree the peer has
 // almost certainly moved past.
 func TestCANARY_ENG_3961_Resolve_PeerStaleExportUnknown(t *testing.T) {
+	// The clock is pinned and the export's mtime set relative to that same
+	// instant, so the age under test is exactly 72h -- the injected clock is
+	// what decides the verdict, not the wall clock the file happened to get.
+	const nowRFC3339 = "2026-08-30T00:00:00Z"
+	t.Setenv("CANARY_TEST_TIMESTAMP", nowRFC3339)
+	now, err := time.Parse(time.RFC3339, nowRFC3339)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	root := peerTestRoot(t, "peers:\n  - name: upstream\n    root: \"peer\"\n")
 	peerDir := filepath.Join(root, "peer")
 	writePeerStatus(t, peerDir, map[string][]string{"UP-1": {"TESTED"}}, "UP-1")
-	old := time.Now().Add(-72 * time.Hour)
+	old := now.Add(-72 * time.Hour)
 	if err := os.Chtimes(filepath.Join(peerDir, "status.json"), old, old); err != nil {
 		t.Fatal(err)
 	}
@@ -383,5 +393,8 @@ func TestCANARY_ENG_3961_Resolve_PeerStaleExportUnknown(t *testing.T) {
 	}
 	if !contains(res.Detail, "stale export") {
 		t.Errorf("Detail = %q, want the staleness reason", res.Detail)
+	}
+	if !contains(res.Detail, "72h") {
+		t.Errorf("Detail = %q, want the age measured against the pinned clock (72h)", res.Detail)
 	}
 }

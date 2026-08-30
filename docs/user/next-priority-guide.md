@@ -1,211 +1,254 @@
 # Next Priority Command User Guide
 
-**Requirement:** CBIN-132
+**Requirement:** CP-252 (originally CBIN-132)
 **Status:** Complete
-**Last Updated:** 2025-10-17
+**Last Updated:** 2026-08-30
 
 ## Overview
 
-The `canary next` command is your automated workflow assistant that identifies the highest priority unimplemented requirement and generates comprehensive implementation guidance. It eliminates manual prioritization decisions by intelligently selecting work based on priority scores, dependencies, status, and age.
+`canary next` picks the highest-priority requirement that is actually ready to
+be worked on, and — with `--prompt` — generates the implementation guidance for
+it. It answers one question, "what should be started now?", and it names the
+evidence it answered from.
 
-**Key Benefits:**
-- **Automated Prioritization**: No manual decision-making - system selects optimal next task
-- **Comprehensive Guidance**: Generated prompts include spec, constitution, tests, and examples
-- **Dependency-Aware**: Automatically resolves DEPENDS_ON relationships
-- **Constitutional Adherence**: Every prompt includes relevant project principles
-- **Fast Selection**: <100ms query time even in large codebases
+**Key properties:**
+
+- **Automated prioritization**: declared `PRIORITY` first, then unstarted work
+  before work in progress.
+- **Evidence-gated dependencies**: a dependency is only complete when passing
+  evidence at the current commit says so. `STATUS=TESTED` is a claim, not proof.
+- **Honest about its source**: every answer says whether it came from the token
+  index (`database`) or from a direct scan of the tree (`filesystem`).
+- **Read-only**: `next` never creates or updates the index, the evidence store,
+  or your tokens.
 
 ## Getting Started
 
 ### Prerequisites
 
-- CANARY CLI installed
-- (Recommended) Database indexed with `canary index`
-- (Optional) `.canary/memory/constitution.md` for project principles
+- CANARY CLI installed.
+- A git repository: freshness and evidence are both bound to the current
+  commit, so a tree with no readable `HEAD` can prove nothing.
+- (Recommended) a current index: `canary index`.
+- (Optional) `.canary/memory/constitution.md` and `.canary/templates/next-prompt-template.md`
+  for `--prompt` output.
 
 ### Quick Start
 
-Get next priority task:
-
 ```bash
-canary next
+canary next            # what to work on
+canary next --prompt   # full implementation guidance for it
 ```
 
-Generate full implementation prompt:
+## Where the Answer Comes From
 
-```bash
-canary next --prompt
-```
+`next` uses the token index **only while that index still describes the tree in
+front of it**. The index is used when it exists, was built from this root, at
+this commit, by this binary's token grammar. Otherwise the tree is scanned
+directly with the same scanner, ignore rules, and token grammar `canary scan`
+uses, so the two can never disagree about what the repository contains.
+
+| `"source"` | Meaning |
+|------------|---------|
+| `database` | Answered from a current index. |
+| `filesystem` | The index was missing, unbuilt, stale, or built elsewhere, so the tree was scanned. |
+
+Two consequences worth knowing:
+
+- **"All requirements completed" is only ever claimed from a current index.** A
+  filesystem scan that finds no candidate says exactly that and no more — it
+  cannot see the whole project's history, so it never congratulates you.
+- **Nothing is written.** An absent index is not created to answer a read.
 
 ## Usage
 
-### Basic Usage: Summary Mode
-
-Display next priority requirement without full prompt:
+### Summary Mode
 
 ```bash
 canary next
 ```
 
 **Output:**
+
 ```
-📌 Next Priority: CBIN-138 - MultilineTokens
-
-Priority: 3 | Status: STUB | Aspect: Engine
-Specification: .canary/specs/CBIN-138-multiline-tokens/spec.md
-
-Dependencies:
-  ✅ CBIN-101 - ScannerCore (TESTED)
-
-Ready to implement! Run with --prompt flag for full guidance.
+Next: CBIN-101 - ScannerCore (Priority: 1, Status: STUB)
+Run with --prompt for full implementation guidance.
 ```
 
 ### Prompt Generation Mode
-
-Generate comprehensive implementation prompt:
 
 ```bash
 canary next --prompt
 ```
 
-**Output includes:**
-1. Requirement specification
-2. Implementation plan (if exists)
-3. Constitutional principles
-4. Test-first workflow guidance
-5. Token placement examples
-6. Success criteria checklist
-7. Dependency information
+Renders `.canary/templates/next-prompt-template.md` with the requirement's
+specification, the constitution, test-first guidance, token placement examples,
+success criteria, and dependency information. `--prompt-arg <file|name>` makes
+one extra prompt available to the template as `{{.PromptArg}}` /
+`{{.PromptContent}}`.
 
-### Filtering by Status
+The template is read only on this path: a `--format json` or `--dry-run` run
+never fails on a template it was not going to use.
 
-Select next STUB requirement only:
+### Filtering
 
 ```bash
-canary next --status STUB
-```
-
-Select next IMPL requirement needing tests:
-
-```bash
-canary next --status IMPL
-```
-
-### Filtering by Aspect
-
-Select next Engine work:
-
-```bash
-canary next --aspect Engine
-```
-
-Select next CLI work:
-
-```bash
+canary next --status STUB     # only unstarted work
+canary next --status IMPL     # only work that still needs tests
+canary next --aspect Engine   # only Engine work
 canary next --aspect CLI
 ```
 
 ### Dry Run Mode
 
-Preview what would be selected without generating prompt:
-
 ```bash
 canary next --dry-run
 ```
 
-### JSON Output
+**Output:**
 
-Get machine-readable output for automation:
+```
+Next priority (dry run): CBIN-101 - ScannerCore
+Priority: 1 | Status: STUB | Aspect: Engine
+Location: a.go
+Source: filesystem
+```
+
+### Machine-Readable Output
 
 ```bash
-canary next --json
+canary next --format json
 ```
+
+`--format` takes `json` or `text` (default `text`). In JSON mode stdout carries
+one JSON object and nothing else; notes and warnings go to stderr.
+
+```json
+{
+  "req_id": "CBIN-101",
+  "feature": "ScannerCore",
+  "aspect": "Engine",
+  "status": "STUB",
+  "priority": 1,
+  "file_path": "a.go",
+  "updated": "2026-08-30",
+  "source": "filesystem"
+}
+```
+
+`source` is always present. The requirement fields are absent when there was
+nothing to select, and `message` says why instead:
+
+```json
+{
+  "source": "filesystem",
+  "message": "no actionable requirements found"
+}
+```
+
+`priority` is the requirement's declared `PRIORITY`, or `5` when its token
+declared none — the same neutral default the index applies, and the same number
+selection ranked it at.
+
+JSON is a machine contract and outranks the human-facing modes: `--format json
+--dry-run` returns the JSON object, not prose.
+
+> **Deprecated:** `--json` is still accepted as an alias for `--format json`
+> and now prints a deprecation warning **on stderr** (stdout stays pure JSON).
+> An explicit `--format` always wins over the alias. Use `--format json`.
+
+### External and Peer Dependencies
+
+A dependency owned by a configured ticket source or `peers:` project resolves to
+`satisfied`, `unsatisfied`, or `unknown`. Only `satisfied` clears it: an
+unresolvable dependency blocks selection, because handing an agent a requirement
+whose prerequisite might not exist is a wrong answer rather than a graceful
+degradation. The block is explained on stderr:
+
+```
+note: external dependency ENG-9 blocks selection: no cached ticket status
+```
+
+Refresh the cache (`canary ticket status --refresh`) or, to start anyway:
+
+```bash
+canary next --allow-unknown-external
+```
+
+```
+note: external dependency ENG-9 is unresolved (allowed): no cached ticket status
+Next: CBIN-200 - Consumer (Priority: 5, Status: STUB)
+```
+
+A dependency that names nothing at all — an unconfigured prefix that no peer
+knows either — always blocks; there is no flag for that, because there is
+nothing to resolve.
 
 ## Common Workflows
 
 ### Workflow 1: Agent Autonomous Work
 
-**Scenario:** AI agent completing task after task automatically
-
 ```bash
-# 1. Agent completes current task
-# 2. Agent runs next command
+# 1. Agent completes the current task and records evidence for it
+# 2. Agent asks for the next one
 canary next --prompt
 
-# 3. Agent reads generated prompt
-# 4. Agent implements requirement following guidance
-# 5. Agent places CANARY tokens
-# 6. Agent updates status to TESTED
-# 7. Repeat from step 2
+# 3. Agent implements the requirement following the generated guidance
+# 4. Agent places/updates CANARY tokens
+# 5. Agent runs the tests and records evidence (canary evidence ...)
+# 6. Repeat from step 2
 ```
 
-This creates a continuous implementation loop where the agent always knows what to work on next.
+Recording evidence is part of the loop, not an afterthought: until a
+requirement has passing evidence at the current commit, everything that depends
+on it stays blocked.
 
 ### Workflow 2: Human Developer Daily Planning
 
-**Scenario:** Developer starting work day
-
 ```bash
-# 1. Check what's next
-canary next
-
-# 2. Review the requirement details
+canary index                 # make the index current for this commit
+canary next                  # what's next
 cat .canary/specs/CBIN-138-multiline-tokens/spec.md
-
-# 3. Decide to implement
 canary next --prompt > implementation-guidance.md
-
-# 4. Follow guidance in implementation-guidance.md
-# 5. Mark complete and get next task
-canary next
 ```
 
 ### Workflow 3: Filtered Sprint Planning
 
-**Scenario:** Sprint focused on API aspects
-
 ```bash
-# 1. See all API work available
 canary list --aspect API --status STUB
-
-# 2. Get next API priority
 canary next --aspect API --prompt
-
-# 3. Implement API feature
-# 4. Repeat for sprint duration
 ```
 
 ### Workflow 4: Dependency-Driven Development
-
-**Scenario:** System automatically resolves dependencies
 
 ```bash
 # Current state:
 #   CBIN-105 (PRIORITY=1, DEPENDS_ON=CBIN-104)
 #   CBIN-104 (PRIORITY=3, STATUS=STUB)
 
-# System selects CBIN-104 first (dependency)
 canary next
-# Output: CBIN-104 - Must be completed before CBIN-105
+# CBIN-104 — CBIN-105 is blocked until CBIN-104 is proven complete
 
-# After CBIN-104 is TESTED, system selects CBIN-105
+# Implement CBIN-104, run its tests, record the result, then:
+canary verify
 canary next
-# Output: CBIN-105 - Now unblocked!
+# CBIN-105 — now unblocked
 ```
+
+Marking CBIN-104 `STATUS=TESTED` is not what unblocks CBIN-105. A PASS evidence
+record for every feature/aspect CBIN-104 declares, at this commit, is.
 
 ## Examples
 
 ### Example 1: First Implementation
 
-**Scenario:** Starting fresh after `canary init`
-
 ```bash
 $ canary next --prompt
 ```
 
-**Output:**
+**Output (abridged):**
 
-```markdown
+````markdown
 # Implementation Guidance: CBIN-101 - ScannerCore
 
 ## Priority Information
@@ -225,240 +268,234 @@ From .canary/memory/constitution.md:
 **Article IV: Test-First Imperative**
 All features SHALL be implemented using test-first development...
 
-**Article V: Simplicity and Anti-Abstraction**
-Prefer simple, direct solutions over complex abstractions...
-
 ## Implementation Guidance
 
 ### Step 1: Write Tests (RED phase)
-Create test file at: internal/scanner/scanner_test.go
 
 ```go
-// CANARY: REQ=CBIN-101; FEATURE="ScannerCore"; ASPECT=Engine; STATUS=STUB; TEST=TestCANARY_CBIN_101_Engine_BasicScan; UPDATED=2025-10-17
+// CANARY: REQ=CBIN-101; FEATURE="ScannerCore"; ASPECT=Engine; STATUS=STUB; TEST=TestCANARY_CBIN_101_Engine_BasicScan; UPDATED=2026-08-30
 func TestCANARY_CBIN_101_Engine_BasicScan(t *testing.T) {
     // Test implementation...
 }
 ```
-
-[... continued with full implementation guidance ...]
-```
+````
 
 ### Example 2: No Work Available
 
-**Scenario:** All requirements completed
+**Scenario:** a current index, and every requirement complete.
 
 ```bash
 $ canary next
 ```
 
 **Output:**
+
 ```
 🎉 All requirements completed! No work available.
 
 Suggestions:
-  • Run: canary scan --verify GAP_ANALYSIS.md
+  • Run: canary verify
   • Review completed requirements
   • Consider creating new specifications
-
-Congratulations on completing the project roadmap!
 ```
 
-### Example 3: Dependency Blocking
+This wording is reachable **only** from a current index. Scanned directly, the
+same empty answer reads:
 
-**Scenario:** High priority requirement is blocked
+```
+no actionable requirements found (source=filesystem)
 
-```bash
-$ canary next --dry-run
+The tree was scanned directly because no current index was available.
+  • Run: canary index   (then re-run canary next)
 ```
 
-**Output:**
-```
-Next priority (dry run): CBIN-104 - TokenParser
-Priority: 3 | Status: STUB | Aspect: Engine
-Location: .canary/specs/CBIN-104-token-parser/spec.md
+### Example 3: Everything Left Is Blocked
 
-Note: CBIN-105 (PRIORITY=1) is blocked by this requirement.
-Completing CBIN-104 will unblock CBIN-105.
-```
-
-### Example 4: Database Fallback
-
-**Scenario:** Database not yet created
+Work that exists but is blocked is never completion, whatever the source:
 
 ```bash
 $ canary next
 ```
 
 **Output:**
+
 ```
-ℹ️  Database not found, scanning filesystem...
+no unblocked requirements (1 blocked by unmet dependencies)
 
-📌 Next Priority: CBIN-101 - ScannerCore
-
-[... rest of output ...]
-
-💡 Tip: Run 'canary index' to improve performance
+Every remaining candidate is waiting on a dependency:
+  • Run: canary deps check <REQ-ID>   (which dependency, and in what state)
+  • A local dependency blocks until evidence at this commit proves it:
+    run its tests, record the result, then: canary verify
+  • Unresolved external/peer dependencies are noted on stderr above
 ```
+
+### Example 4: No Index Yet
+
+```bash
+$ canary next --format json
+```
+
+**Output:**
+
+```json
+{
+  "req_id": "CBIN-101",
+  "feature": "ScannerCore",
+  "aspect": "Engine",
+  "status": "STUB",
+  "priority": 1,
+  "file_path": "a.go",
+  "updated": "2026-08-30",
+  "source": "filesystem"
+}
+```
+
+The answer is the same shape whichever source produced it; only `"source"`
+differs. Run `canary index` to make later runs answer from the index (and to
+let a genuinely finished project say so).
 
 ## Best Practices
 
 ### For AI Agents
 
-1. **Run after every completion** - Use `canary next` after marking each requirement TESTED
-2. **Always use --prompt** - Get full context for correct implementation
-3. **Follow test-first guidance** - Respect RED → GREEN → REFACTOR workflow
-4. **Update tokens immediately** - Change STATUS as you progress through phases
-5. **Verify dependencies** - Check that DEPENDS_ON requirements are TESTED
+1. **Record evidence, then ask again** — dependencies clear on evidence, not on
+   status edits.
+2. **Always use `--prompt`** for full context.
+3. **Follow test-first guidance** — RED → GREEN → REFACTOR.
+4. **Read `"source"`** before believing a completion claim.
+5. **Do not paper over a block** — `--allow-unknown-external` is a deliberate
+   risk, not a default.
 
 ### For Human Developers
 
-1. **Morning routine** - Start day with `canary next` to see priorities
-2. **Review before commit** - Use dry-run mode to preview next work
-3. **Filter by skill** - Use `--aspect` to match your expertise
-4. **Track progress** - Watch priority numbers decrease as work completes
-5. **Update priorities** - Use `canary prioritize` to adjust as needs change
+1. Start the day with `canary next`.
+2. Preview with `--dry-run` before generating a prompt.
+3. Filter by `--aspect` to match what you are working in.
+4. Re-run `canary index` after committing, so `next` can use the fast path.
+5. Adjust `PRIORITY` fields (or `canary prioritize`) when plans change.
 
 ### For CI/CD Systems
 
-1. **Use --json mode** - Machine-readable output for automation
-2. **Check exit codes** - 0 = success/no work, non-zero = error
-3. **Batch processing** - Implement multiple requirements in sequence
-4. **Checkpoint tracking** - Create checkpoints after each completion
-5. **Fail gracefully** - Handle "no work available" as success
+1. **Use `--format json`** — stdout is JSON only.
+2. **Check exit codes** — 0 = success (including "no work"), non-zero = error.
+3. **Branch on `"source"`** — treat a `filesystem` answer as "index not current".
+4. **Handle `"message"`** — the requirement fields are absent when nothing was
+   selected.
 
 ## Priority Determination
-
-The system uses a multi-factor algorithm to determine priority:
 
 ### Factor 1: Explicit PRIORITY Field
 
 ```
 PRIORITY=1  (Highest priority)
-PRIORITY=2
-PRIORITY=3
-PRIORITY=4
-PRIORITY=5  (Default)
+...
+PRIORITY=5  (The default applied to a token that declares none)
 ...
 PRIORITY=10 (Lowest priority)
 ```
 
-Lower numbers selected first.
+Lower numbers are selected first. Both sources honor the declaration: the index
+stores it, and a filesystem scan carries it out of the token. A token that
+declares no `PRIORITY` is ranked — and reported — at 5.
 
 ### Factor 2: STATUS Value
 
-Among requirements with same PRIORITY:
+Among candidates of equal priority:
 
-1. **STUB** - Not yet implemented (highest urgency)
-2. **IMPL** - Implemented but needs tests
-3. **TESTED** - Skip (already complete)
-4. **BENCHED** - Skip (already complete)
+1. **STUB** — not yet implemented (selected first)
+2. **IMPL** — implemented, still needs tests
+3. **TESTED** / **BENCHED** — not actionable, skipped unless `--status` asks for them
 
 ### Factor 3: Dependencies (DEPENDS_ON)
 
-Requirements with unmet dependencies are automatically skipped. The system selects blocking dependencies first.
+A candidate whose dependencies are not all complete is passed over, and the
+blocking dependency is normally selected instead. "Complete" means:
 
-Example:
-```
-CBIN-105: DEPENDS_ON=CBIN-104
-CBIN-104: STATUS=STUB
-```
+- **Local dependency**: every feature/aspect it declares has a PASS evidence
+  record for this project at the current commit.
+- **External/peer dependency**: it resolved `satisfied`. `unsatisfied` blocks;
+  `unknown` blocks unless `--allow-unknown-external` is passed.
 
-Result: CBIN-104 selected (must complete before CBIN-105)
+### Factor 4: Deterministic Tie-Breaks
 
-### Factor 4: Age (UPDATED Field)
-
-Among requirements with same PRIORITY and STATUS, older tokens (older UPDATED dates) get slight priority boost to prevent stale work from accumulating.
+Remaining ties are broken so that two runs over an unchanged tree pick the same
+requirement: the index orders by `priority ASC, updated_at DESC` (most recently
+touched first), and a filesystem scan orders by priority, then status, then
+requirement id, feature, and aspect.
 
 ## Troubleshooting
 
-### Problem: "No tokens found"
+### "no actionable requirements found (source=filesystem)"
 
-**Symptoms:**
+The tree was scanned and held nothing selectable. Check, in order:
+
+1. Tokens exist and parse: `canary scan --root . --out status.json`
+2. `.canaryignore` is not excluding them.
+3. You are in the project root.
+4. Hidden paths (tests, templates, agent directories) are excluded by design.
+
+### "All requirements completed" but work remains
+
+That claim comes from a current index, so the index and the tree have diverged
+in a way `next` could not detect, or the work is filtered out:
+
+1. `canary list --status STUB` — is it there at all?
+2. `canary list --include-hidden --status STUB` — is it in a hidden path?
+3. Commit your changes and re-run `canary index` — an index is current for the
+   commit it was built at.
+
+### Everything is blocked
+
+1. `canary deps check <REQ-ID>` — which dependency, in what state.
+2. For a local dependency: run its tests, record evidence, then `canary verify`.
+3. For an external/peer dependency: `canary ticket status --refresh`, or scan
+   the peer so its `status.json` carries a current verification export.
+
+### Prompt Generation Fails
+
 ```
-Error: no tokens found in database or filesystem
-```
-
-**Solutions:**
-1. Run `canary index` to build database
-2. Check that CANARY tokens exist: `grep -r "CANARY:" .`
-3. Verify `.canaryignore` isn't excluding all files
-4. Check you're in project root directory
-
-### Problem: "All requirements completed" but work remains
-
-**Symptoms:**
-```
-🎉 All requirements completed!
-```
-But you know there are STUB requirements.
-
-**Solutions:**
-1. Check if hidden requirements exist: `canary list --include-hidden --status STUB`
-2. Verify status filters: `canary list --status STUB` (see all STUB items)
-3. Check if requirements are in ignored directories (templates, tests, etc.)
-4. Rebuild database: `canary index`
-
-### Problem: Dependency Loop Detected
-
-**Symptoms:**
-```
-Error: circular dependency detected: CBIN-105 → CBIN-106 → CBIN-105
+Error: render prompt: read template: ...
 ```
 
-**Solutions:**
-1. Review DEPENDS_ON fields in both requirements
-2. Remove circular dependency (one requirement must not depend on the other)
-3. Update CANARY tokens to reflect correct dependency order
-4. Run `canary index` to refresh dependency graph
-
-### Problem: Prompt Generation Fails
-
-**Symptoms:**
-```
-Error: failed to generate prompt: template execution failed at line 42
-```
-
-**Solutions:**
-1. Check that specification file exists at referenced path
-2. Verify constitution.md exists at `.canary/memory/constitution.md`
-3. Ensure spec.md is valid markdown (no corrupted characters)
-4. Run without --prompt flag to test selection logic independently
+1. `.canary/templates/next-prompt-template.md` must exist.
+2. The specification path referenced by the requirement must exist.
+3. Run without `--prompt` to test selection independently.
 
 ## FAQ
 
-**Q: Can I manually override priority selection?**
+**Q: Can I override the selection?**
 
-A: Not directly. Use `canary prioritize <REQ-ID> <feature> <new-priority>` to adjust priorities, then run `canary next` again.
+A: Adjust `PRIORITY` in the tokens (or `canary prioritize <REQ-ID> <feature> <priority>`),
+narrow with `--status`/`--aspect`, or pick one explicitly with `canary implement <REQ-ID>`.
 
-**Q: Does the command modify any files?**
+**Q: Does the command modify anything?**
 
-A: No. `canary next` is read-only. It identifies and generates prompts but doesn't modify code or tokens.
+A: No. `canary next` is read-only — it does not even create an index it finds
+missing.
 
-**Q: How do I implement multiple requirements in parallel?**
+**Q: Does it work without an index?**
 
-A: Run `canary next --json` multiple times with different filters (e.g., by aspect) to get independent work items for parallel development.
+A: Yes. It scans the tree with the same scanner `canary scan` uses and reports
+`"source": "filesystem"`. The scan is slower on a large tree, and a filesystem
+answer never claims the project is finished.
 
-**Q: What if I disagree with the selected priority?**
+**Q: Why is a dependency still blocking after I marked it TESTED?**
 
-A: You can:
-1. Adjust PRIORITY fields in CANARY tokens
-2. Use `--status` or `--aspect` filters to narrow selection
-3. Use `canary implement <specific-req-id>` to manually select a requirement
-
-**Q: Does this work without a database?**
-
-A: Yes! The command falls back to filesystem scanning if `.canary/canary.db` doesn't exist. Performance is slightly slower but functionality is identical.
+A: Because a declaration is not proof. Run its tests, record the result in
+`.canary/evidence.json`, and confirm with `canary verify`.
 
 **Q: How does this integrate with slash commands?**
 
-A: The `/canary.next` slash command in AI agents automatically runs `canary next --prompt` and feeds the result directly to the agent as implementation guidance.
+A: `/canary.next` runs `canary next --prompt` and feeds the result to the agent
+as implementation guidance.
 
 ## Related Documentation
 
-- [canary list](./list-command-guide.md) - Viewing all requirements
-- [canary implement](./implement-command-guide.md) - Manual requirement selection
-- [canary prioritize](./prioritize-command-guide.md) - Adjusting priorities
-- [Constitutional Principles](../../.canary/memory/constitution.md) - Project governance
+- [canary list](./list-command-guide.md) — viewing all requirements
+- [canary implement](./implement-command-guide.md) — manual requirement selection
+- [canary prioritize](./prioritize-command-guide.md) — adjusting priorities
+- [Ticket sources & peers](./ticket-sources-guide.md) — external dependency resolution
+- [Constitutional Principles](../../.canary/memory/constitution.md) — project governance
 
 ## Integration Examples
 
@@ -475,44 +512,44 @@ jobs:
   auto-implement:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Install canary
         run: go install ./cmd/canary
       - name: Get next requirement
         id: next
         run: |
-          canary next --json > next.json
-          echo "req_id=$(jq -r '.ReqID' next.json)" >> $GITHUB_OUTPUT
+          canary index
+          canary next --format json > next.json
+          echo "req_id=$(jq -r '.req_id // empty' next.json)" >> $GITHUB_OUTPUT
+          echo "source=$(jq -r '.source' next.json)" >> $GITHUB_OUTPUT
       - name: Implement with AI agent
+        if: steps.next.outputs.req_id != ''
         run: |
-          # Call your AI agent API here
-          # Pass requirement from steps.next.outputs.req_id
+          # Call your AI agent here with steps.next.outputs.req_id
 ```
 
-### Integration 2: Pre-commit Hook
+### Integration 2: Post-commit Hook
 
 ```bash
 #!/bin/bash
-# .git/hooks/pre-commit
+# .git/hooks/post-commit
 
-# Show next priority after commit
 canary next --dry-run
 ```
 
 ### Integration 3: Claude Code Workflow
 
-In Claude Code IDE:
-
 ```
 User: /canary.next
 Claude: [Reads generated prompt]
 Claude: I'll implement CBIN-138 (MultilineTokens) following the specification...
-[Claude implements, tests, and updates tokens]
+[Claude implements, tests, records evidence, and updates tokens]
 User: continue
-Claude: [Automatically runs /canary.next again for next task]
+Claude: [Runs /canary.next again for the next task]
 ```
 
 ---
 
-*Last verified: 2025-10-17 with canary v0.1.0*
-*Implementation status: BENCHED (fully tested and benchmarked)*
+*Implementation status: BENCHED (tested and benchmarked)*
