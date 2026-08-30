@@ -200,15 +200,21 @@ func selectFromDatabase(db *storage.DB, filters map[string]string, strictExterna
 	}
 
 	// Load project config for ID pattern filtering
-	cfg, _ := config.Load(".")
+	cfg, err := config.Load(".")
+	if err != nil {
+		return nil, fmt.Errorf("load .canary/project.yaml: %w", err)
+	}
 	idPattern := ""
-	if cfg != nil && cfg.Requirements.IDPattern != "" {
+	if cfg.Requirements.IDPattern != "" {
 		idPattern = cfg.Requirements.IDPattern
 	}
 
 	// Source registry + per-run dedup for the "no cached status" stderr
 	// note, shared across every hasUnresolvedDependencies call this run.
-	reg := sources.LoadFromRoot(".")
+	reg, err := sources.FromProjectConfig(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("load .canary/project.yaml: %w", err)
+	}
 	warned := map[string]bool{}
 
 	// If no status filter, only select STUB or IMPL by default

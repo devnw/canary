@@ -464,7 +464,10 @@ func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParam
 
 	// Source registry + per-call dedup for the "no cached status" stderr
 	// note, shared across every hasUnresolvedDependencies call this request.
-	reg := sources.LoadFromRoot(".")
+	reg, err := sources.LoadFromRoot(".")
+	if err != nil {
+		return nil, nil, fmt.Errorf("load .canary/project.yaml: %w", err)
+	}
 	warned := map[string]bool{}
 
 	var token *storage.Token

@@ -25,28 +25,8 @@ requirements:
   # exclude_patterns:
   #   - "CBIN-0[0-9]{2}"  # Exclude CBIN-001 through CBIN-099 (examples)
 
-# Scanner behavior
-scanner:
-  # Paths to exclude from scanning (in addition to default skip patterns)
-  exclude_paths:
-    - "testdata/"
-    - "fixtures/"
-    - "examples/"
-
-  # File patterns to include (defaults to *.go, *.py, *.md, etc.)
-  # include_patterns:
-  #   - "*.go"
-  #   - "*.md"
-  #   - "*.py"
-
 # Verification settings
 verification:
-  # Require TEST= field for TESTED status
-  require_test_field: true
-
-  # Require BENCH= field for BENCHED status
-  require_bench_field: true
-
   # Staleness threshold in days (for --strict mode)
   staleness_days: 30
 

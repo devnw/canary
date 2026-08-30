@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"time"
 
+	"devnw.dev/canary/pkg/config"
 	"devnw.dev/canary/pkg/sources"
 )
 
@@ -24,19 +25,17 @@ func AnnotateSources(rep *Report, reg *sources.Registry) {
 }
 
 // DefaultStaleDays is the fallback staleness window (in days) when neither
-// Config.StaleDays nor .canary/project.yaml's verification.staleness_days is set.
-const DefaultStaleDays = 30
+// Config.StaleDays nor .canary/project.yaml's verification.staleness_days is
+// set. It is pkg/config's constant under canaryscan's historical name.
+const DefaultStaleDays = config.DefaultStaleDays
 
 // staleThreshold resolves the effective staleness window: Config.StaleDays if
-// set (>0), else project.yaml's verification.staleness_days if set (>0), else
-// DefaultStaleDays. Errors loading project.yaml (e.g. file missing) are
-// treated as "not configured" so the default still applies.
-func staleThreshold(cfg Config) time.Duration {
+// set (>0), else the project config's resolved staleness_days (which is
+// DefaultStaleDays when unconfigured). projCfg may be nil.
+func staleThreshold(cfg Config, projCfg *config.ProjectConfig) time.Duration {
 	days := cfg.StaleDays
 	if days <= 0 {
-		if projCfg, err := LoadProjectConfig(cfg.Root); err == nil && projCfg != nil && projCfg.Verification.StalenessDays > 0 {
-			days = projCfg.Verification.StalenessDays
-		}
+		days = projCfg.StalenessDays()
 	}
 	if days <= 0 {
 		days = DefaultStaleDays
@@ -73,15 +72,27 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 		cfg.Out = "status.json"
 	}
 
-	reg := sources.LoadFromRoot(cfg.Root)
+	// The project config is loaded once, strictly: a config that cannot be
+	// parsed or does not validate stops the scan rather than degrading it to
+	// defaults that silently answer a different question.
+	// CANARY: REQ=ENG-4317; FEATURE="StrictProjectConfig"; ASPECT=CLI; STATUS=TESTED; TEST=TestAuditF19_ScanFailsOnInvalidConfig,TestAuditF19_ScanWithoutConfigStillWorks; UPDATED=2026-08-30
+	projCfg, err := config.Load(cfg.Root)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "CANARY_CONFIG_ERROR err=%q\n", err)
+		return 3
+	}
+	reg, err := sources.FromProjectConfig(projCfg)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "CANARY_CONFIG_ERROR err=%q\n", err)
+		return 3
+	}
 
 	var projectFilter *regexp.Regexp
 	if cfg.ProjectOnly {
-		projCfg, err := LoadProjectConfig(cfg.Root)
-		if err != nil {
-			_, _ = fmt.Fprintf(stderr, "Warning: --project-only specified but failed to load .canary/project.yaml: %v\n", err)
+		if projCfg.Requirements.IDPattern == "" {
+			_, _ = fmt.Fprintf(stderr, "Warning: --project-only specified but .canary/project.yaml sets no requirements.id_pattern\n")
 			_, _ = fmt.Fprintf(stderr, "Scanning all requirements. Run 'canary init' to create project config.\n")
-		} else if projCfg != nil && projCfg.Requirements.IDPattern != "" {
+		} else {
 			projectFilter, err = regexp.Compile(projCfg.Requirements.IDPattern)
 			if err != nil {
 				_, _ = fmt.Fprintf(stderr, "CANARY_PARSE_ERROR err=%q\n", err)
@@ -91,9 +102,9 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 		}
 	}
 
-	ignorePatterns, err := LoadCanaryIgnore(cfg.Root)
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "Warning: failed to load .canaryignore: %v\n", err)
+	ignorePatterns, ignoreErr := LoadCanaryIgnore(cfg.Root)
+	if ignoreErr != nil {
+		_, _ = fmt.Fprintf(stderr, "Warning: failed to load .canaryignore: %v\n", ignoreErr)
 	}
 	if ignorePatterns != nil {
 		_, _ = fmt.Fprintf(stderr, "Loaded .canaryignore patterns\n")
@@ -110,7 +121,7 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 	if refTime.IsZero() {
 		refTime = time.Now().UTC()
 	}
-	threshold := staleThreshold(cfg)
+	threshold := staleThreshold(cfg, projCfg)
 	if cfg.UpdateStale {
 		staleDiags := Stale(rep, threshold, refTime)
 		if len(staleDiags) > 0 {

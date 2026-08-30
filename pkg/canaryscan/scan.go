@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	ignore "github.com/sabhiram/go-gitignore"
-	"gopkg.in/yaml.v3"
 
 	"devnw.dev/canary/pkg/sources"
 )
@@ -25,41 +24,10 @@ const (
 	scanBufBytes = 64 << 10
 )
 
-// ProjectConfig is the .canary/project.yaml shape.
-type ProjectConfig struct {
-	Project struct {
-		Name        string `yaml:"name"`
-		Description string `yaml:"description"`
-	} `yaml:"project"`
-	Requirements struct {
-		IDPattern string `yaml:"id_pattern"`
-	} `yaml:"requirements"`
-	Scanner struct {
-		ExcludePaths []string `yaml:"exclude_paths"`
-	} `yaml:"scanner"`
-	Verification struct {
-		StalenessDays int `yaml:"staleness_days"`
-	} `yaml:"verification"`
-}
-
 type aggregateKey struct{ req, feature, aspect, owner, updated string }
 type aggregateVal struct {
 	status                string
 	files, tests, benches map[string]struct{}
-}
-
-// LoadProjectConfig loads .canary/project.yaml from root. Returns nil if file missing.
-func LoadProjectConfig(root string) (*ProjectConfig, error) {
-	configPath := filepath.Join(root, ".canary", "project.yaml")
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, err
-	}
-	var cfg ProjectConfig
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("parse project.yaml: %w", err)
-	}
-	return &cfg, nil
 }
 
 // LoadCanaryIgnore loads .canaryignore from root. Returns nil if file missing.

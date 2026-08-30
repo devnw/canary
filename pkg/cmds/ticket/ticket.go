@@ -165,7 +165,10 @@ func runTicketStatus(cmd *cobra.Command, refresh bool, project string) error {
 		return reportCachedStatus(cmd, root)
 	}
 
-	reg := sources.LoadFromRoot(root)
+	reg, err := sources.LoadFromRoot(root)
+	if err != nil {
+		return fmt.Errorf("load .canary/project.yaml: %w", err)
+	}
 	creds := credsFromEnv(reg)
 	if !creds.present() {
 		fmt.Fprintln(cmd.OutOrStdout(), "CANARY_TICKET_STATUS cached=0 reason=no_credentials")
@@ -255,7 +258,10 @@ func credsFromEnv(reg *sources.Registry) jiraCreds {
 func runTicketSync(cmd *cobra.Command, dbPath, planPath, project, issueType string, apply bool, limit int) error {
 	cmd.SilenceUsage = true
 
-	reg := sources.LoadFromRoot(".")
+	reg, err := sources.LoadFromRoot(".")
+	if err != nil {
+		return fmt.Errorf("load .canary/project.yaml: %w", err)
+	}
 
 	db, err := storage.Open(dbPath)
 	if err != nil {
@@ -265,10 +271,11 @@ func runTicketSync(cmd *cobra.Command, dbPath, planPath, project, issueType stri
 
 	// Honor the project id_pattern (like list/next) so fixture/example
 	// tokens in the index never leak into ticket plans.
-	idPattern := ""
-	if cfg, cfgErr := config.Load("."); cfgErr == nil && cfg != nil {
-		idPattern = cfg.Requirements.IDPattern
+	cfg, err := config.Load(".")
+	if err != nil {
+		return fmt.Errorf("load .canary/project.yaml: %w", err)
 	}
+	idPattern := cfg.Requirements.IDPattern
 	tokens, err := db.ListTokens(nil, idPattern, "req_id ASC", 0)
 	if err != nil {
 		return fmt.Errorf("list tokens: %w", err)

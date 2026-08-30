@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"devnw.dev/canary/pkg/canaryscan"
+	"devnw.dev/canary/pkg/config"
 	"devnw.dev/canary/pkg/drift"
 	"devnw.dev/canary/pkg/sources"
 )
@@ -46,27 +47,37 @@ func scanAndDetect(root string, staleDays int) ([]drift.Finding, error) {
 	if err != nil {
 		return nil, fmt.Errorf("scan: %w", err)
 	}
-	canaryscan.AnnotateSources(&rep, sources.LoadFromRoot(root))
+	reg, err := sources.LoadFromRoot(root)
+	if err != nil {
+		return nil, fmt.Errorf("load .canary/project.yaml: %w", err)
+	}
+	canaryscan.AnnotateSources(&rep, reg)
 
 	refTime := canaryscan.RefTimeFromEnv()
 	if refTime.IsZero() {
 		refTime = time.Now().UTC()
 	}
 
-	return drift.Detect(root, rep, resolveStaleDays(root, staleDays), refTime)
+	staleWindow, err := resolveStaleDays(root, staleDays)
+	if err != nil {
+		return nil, err
+	}
+
+	return drift.Detect(root, rep, staleWindow, refTime)
 }
 
 // resolveStaleDays mirrors canary scan's staleness-window precedence:
 // the explicit flag, then .canary/project.yaml's verification.staleness_days,
 // then canaryscan.DefaultStaleDays.
-func resolveStaleDays(root string, flag int) int {
+func resolveStaleDays(root string, flag int) (int, error) {
 	if flag > 0 {
-		return flag
+		return flag, nil
 	}
-	if projCfg, err := canaryscan.LoadProjectConfig(root); err == nil && projCfg != nil && projCfg.Verification.StalenessDays > 0 {
-		return projCfg.Verification.StalenessDays
+	projCfg, err := config.Load(root)
+	if err != nil {
+		return 0, fmt.Errorf("load .canary/project.yaml: %w", err)
 	}
-	return canaryscan.DefaultStaleDays
+	return projCfg.StalenessDays(), nil
 }
 
 // summary holds the drift counts shown in the CANARY_DRIFT line and the JSON

@@ -90,7 +90,10 @@ Example:
 			// Check dependency status
 			checker := specs.NewStatusChecker(tokenProvider)
 			statuses := checker.CheckAllDependencies(deps)
-			reg := sources.LoadFromRoot(".")
+			reg, err := sources.LoadFromRoot(".")
+			if err != nil {
+				return fmt.Errorf("load .canary/project.yaml: %w", err)
+			}
 
 			// Display results
 			cmd.Println(fmt.Sprintf("Dependency status for %s:", reqID))
@@ -193,7 +196,10 @@ Example:
 			generator := specs.NewGraphGenerator(nil)
 
 			if format == "mermaid" {
-				reg := sources.LoadFromRoot(".")
+				reg, err := sources.LoadFromRoot(".")
+				if err != nil {
+					return fmt.Errorf("load .canary/project.yaml: %w", err)
+				}
 				tokenProvider, _ := createTokenProvider()
 				// Local tokens always win: a node with at least one local
 				// CANARY token in the index is never styled as external,
@@ -333,7 +339,10 @@ Example:
 				return fmt.Errorf("failed to build dependency graph: %w", err)
 			}
 
-			reg := sources.LoadFromRoot(".")
+			reg, err := sources.LoadFromRoot(".")
+			if err != nil {
+				return fmt.Errorf("load .canary/project.yaml: %w", err)
+			}
 
 			tokenProvider, err := createTokenProvider()
 			if err != nil {

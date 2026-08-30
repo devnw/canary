@@ -216,7 +216,10 @@ The database is stored at .canary/canary.db by default.`,
 		}
 
 		// Index diagram references (mermaid) so `canary view` can answer without grepping.
-		reg := sources.LoadFromRoot(rootPath)
+		reg, regErr := sources.LoadFromRoot(rootPath)
+		if regErr != nil {
+			return fmt.Errorf("load .canary/project.yaml: %w", regErr)
+		}
 		diagRefs, diagIssues, derr := canaryscan.ScanDiagramRefs(rootPath, nil, reg, ignorePatterns)
 		for _, is := range diagIssues {
 			fmt.Fprintf(os.Stderr, "CANARY_SCAN_ISSUE path=%s reason=%s\n", is.Path, is.Reason)

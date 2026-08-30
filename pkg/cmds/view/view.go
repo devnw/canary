@@ -68,7 +68,10 @@ func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
 	if limit <= 0 {
 		limit = DefaultViewLimit
 	}
-	reg := sources.LoadFromRoot(root)
+	reg, err := sources.LoadFromRoot(root)
+	if err != nil {
+		return nil, fmt.Errorf("load .canary/project.yaml: %w", err)
+	}
 	reqID = reg.Normalize(strings.TrimSpace(reqID))
 
 	db, err := storage.Open(dbPath)

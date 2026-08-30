@@ -42,8 +42,9 @@ type Source struct {
 	Destination bool
 }
 
-var validTypes = map[string]struct{}{"flatfile": {}, "jira": {}, "github": {}, "gitlab": {}}
-var keyRe = regexp.MustCompile(`^[A-Z][A-Z0-9]*$`)
+// keyRe is the requirement-ID prefix shape. It is pkg/config's pattern, not a
+// second copy: the config file and the registry must agree on what a key is.
+var keyRe = config.SourceKeyPattern
 
 // Registry answers ID-shaped questions for a set of sources.
 type Registry struct {
@@ -59,30 +60,20 @@ func NewRegistry(list []Source) (*Registry, error) {
 	if len(list) == 0 {
 		return nil, fmt.Errorf("sources: at least one source required")
 	}
+	// One rule set, defined in pkg/config, applied both when the config file
+	// is loaded and here when a registry is built from any source list.
+	specs := make([]config.SourceSpec, 0, len(list))
+	for _, s := range list {
+		specs = append(specs, config.SourceSpec{Name: s.Name, Type: s.Type, Key: s.Key, Destination: s.Destination})
+	}
+	if err := config.ValidateSources(specs); err != nil {
+		return nil, err
+	}
 	byKey := make(map[string]Source, len(list))
 	keys := make([]string, 0, len(list))
-	destinations := 0
 	for _, s := range list {
-		if _, ok := validTypes[s.Type]; !ok {
-			return nil, fmt.Errorf("sources: %q has unknown type %q", s.Name, s.Type)
-		}
-		if !keyRe.MatchString(s.Key) {
-			return nil, fmt.Errorf("sources: %q key %q must be uppercase alphanumeric starting with a letter", s.Name, s.Key)
-		}
-		if _, dup := byKey[s.Key]; dup {
-			return nil, fmt.Errorf("sources: duplicate key %q", s.Key)
-		}
-		if s.Destination {
-			destinations++
-			if s.Type == "flatfile" {
-				return nil, fmt.Errorf("sources: destination source %q must be a ticket source, not flatfile", s.Name)
-			}
-		}
 		byKey[s.Key] = s
 		keys = append(keys, regexp.QuoteMeta(s.Key))
-	}
-	if destinations > 1 {
-		return nil, fmt.Errorf("sources: at most one source may set destination: true, found %d", destinations)
 	}
 	alt := strings.Join(keys, "|")
 	return &Registry{
@@ -103,21 +94,28 @@ func Default() *Registry {
 
 // FromProjectConfig builds a registry from a parsed project config. When the
 // config declares no sources, a flatfile source is synthesized from
-// project.key; if the key is empty or invalid, falls back to Default() (CBIN).
-func FromProjectConfig(cfg *config.ProjectConfig) *Registry {
+// project.key; an unset key falls back to Default() (CBIN). A configured but
+// invalid key or source list is an error: a misconfigured registry silently
+// downgraded to CBIN-only makes every non-CBIN requirement invisible.
+// CANARY: REQ=ENG-4322; FEATURE="TicketSources"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_201_FromProjectConfigInvalidKeyError,TestCANARY_CBIN_201_FromProjectConfigMalformedSourceError; UPDATED=2026-08-30
+func FromProjectConfig(cfg *config.ProjectConfig) (*Registry, error) {
 	if cfg == nil {
-		return Default()
+		return Default(), nil
 	}
 	if len(cfg.Sources) == 0 {
 		key := strings.TrimSpace(cfg.Project.Key)
+		if key == "" {
+			return Default(), nil
+		}
 		if !keyRe.MatchString(key) {
-			return Default()
+			return nil, fmt.Errorf("sources: project.key %q must be uppercase alphanumeric starting with a letter", key)
 		}
 		r, err := NewRegistry([]Source{{Name: "default", Type: "flatfile", Key: key}})
 		if err != nil {
-			return Default()
+			return nil, err
 		}
-		return r
+		r.peers = cfg.Peers
+		return r, nil
 	}
 	list := make([]Source, 0, len(cfg.Sources))
 	for _, s := range cfg.Sources {
@@ -134,18 +132,21 @@ func FromProjectConfig(cfg *config.ProjectConfig) *Registry {
 	}
 	r, err := NewRegistry(list)
 	if err != nil {
-		return Default()
+		return nil, err
 	}
 	r.peers = cfg.Peers
-	return r
+	return r, nil
 }
 
-// LoadFromRoot reads .canary/project.yaml under root. Any error falls back to
-// Default() — sources config must never break a scan.
-func LoadFromRoot(root string) *Registry {
+// LoadFromRoot reads .canary/project.yaml under root and builds its registry.
+// A missing config is legal and yields Default(); a malformed or invalid one
+// is an error the caller must surface — degrading to Default() would silently
+// drop every configured source.
+// CANARY: REQ=ENG-4322; FEATURE="TicketSources"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_201_LoadFromRootNoCanaryDir,TestCANARY_CBIN_201_LoadFromRootInvalidConfigError; UPDATED=2026-08-30
+func LoadFromRoot(root string) (*Registry, error) {
 	cfg, err := config.Load(root)
 	if err != nil {
-		return Default()
+		return nil, err
 	}
 	return FromProjectConfig(cfg)
 }

@@ -112,7 +112,11 @@ func Run(o Options) ([]Change, error) {
 	}
 	reg := o.Registry
 	if reg == nil {
-		reg = sources.LoadFromRoot(root)
+		var err error
+		reg, err = sources.LoadFromRoot(root)
+		if err != nil {
+			return nil, fmt.Errorf("load .canary/project.yaml: %w", err)
+		}
 	}
 	today := resolveToday(o.Today)
 	enabled := ruleSet(o.Rules)

@@ -109,7 +109,10 @@ Examples:
 			if err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to load .canaryignore: %v\n", err)
 			}
-			reg := sources.LoadFromRoot(root)
+			reg, err := sources.LoadFromRoot(root)
+			if err != nil {
+				return fmt.Errorf("load .canary/project.yaml: %w", err)
+			}
 
 			changes, err := upgrade.Run(upgrade.Options{
 				Root:     root,

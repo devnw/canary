@@ -128,7 +128,10 @@ func TestCANARY_CBIN_201_NewRegistryValidation(t *testing.T) {
 
 func TestCANARY_CBIN_201_FromProjectConfigNil(t *testing.T) {
 	// FromProjectConfig(nil) → registry that matches CBIN-105 (Default fallback).
-	r := FromProjectConfig(nil)
+	r, err := FromProjectConfig(nil)
+	if err != nil {
+		t.Fatalf("FromProjectConfig(nil): %v", err)
+	}
 	if !r.Pattern().MatchString("CBIN-105") {
 		t.Error("nil config should fall back to Default registry matching CBIN-105")
 	}
@@ -140,7 +143,10 @@ func TestCANARY_CBIN_201_FromProjectConfigSynthesizedFlatfile(t *testing.T) {
 	cfg.Project.Key = "ACME"
 	cfg.Sources = []config.SourceConfig{}
 
-	r := FromProjectConfig(cfg)
+	r, err := FromProjectConfig(cfg)
+	if err != nil {
+		t.Fatalf("FromProjectConfig: %v", err)
+	}
 	if !r.Pattern().MatchString("ACME-7") {
 		t.Error("synthesized ACME source should match ACME-7")
 	}
@@ -149,35 +155,54 @@ func TestCANARY_CBIN_201_FromProjectConfigSynthesizedFlatfile(t *testing.T) {
 	}
 }
 
-func TestCANARY_CBIN_201_FromProjectConfigInvalidKeyFallback(t *testing.T) {
-	// Config with Sources empty and Project.Key = "bad-key" (invalid) → falls back to Default (matches CBIN-105, does NOT match BAD-1).
+func TestCANARY_CBIN_201_FromProjectConfigInvalidKeyError(t *testing.T) {
+	// Config with Sources empty and Project.Key = "bad-key" (invalid) → an
+	// error. Falling back to the CBIN default here would hide every one of
+	// this project's own requirements behind a registry it never configured.
 	cfg := &config.ProjectConfig{}
 	cfg.Project.Key = "bad-key"
 	cfg.Sources = []config.SourceConfig{}
 
-	r := FromProjectConfig(cfg)
-	if r.Pattern().MatchString("BAD-1") {
-		t.Error("invalid key should fall back to Default, should not match BAD-1")
+	r, err := FromProjectConfig(cfg)
+	if err == nil {
+		t.Fatalf("invalid project.key must be an error, got registry %+v", r)
 	}
-	if !r.Pattern().MatchString("CBIN-105") {
-		t.Error("invalid key should fall back to Default, should match CBIN-105")
+	if !strings.Contains(err.Error(), "bad-key") {
+		t.Errorf("error should name the invalid key, got %q", err.Error())
 	}
 }
 
-func TestCANARY_CBIN_201_FromProjectConfigMalformedSourceFallback(t *testing.T) {
-	// Config with a malformed source entry (e.g. Type: "svn") → falls back to Default.
+// TestCANARY_CBIN_201_FromProjectConfigEmptyKeyDefault proves an unset
+// project.key with no sources is still legal: unconfigured repos keep the
+// historical CBIN registry.
+func TestCANARY_CBIN_201_FromProjectConfigEmptyKeyDefault(t *testing.T) {
+	cfg := &config.ProjectConfig{}
+	cfg.Sources = []config.SourceConfig{}
+
+	r, err := FromProjectConfig(cfg)
+	if err != nil {
+		t.Fatalf("FromProjectConfig: %v", err)
+	}
+	if !r.Pattern().MatchString("CBIN-105") {
+		t.Error("empty key should fall back to Default, should match CBIN-105")
+	}
+}
+
+func TestCANARY_CBIN_201_FromProjectConfigMalformedSourceError(t *testing.T) {
+	// Config with a malformed source entry (e.g. Type: "svn") → an error, not
+	// a silent downgrade to the CBIN default registry.
 	cfg := &config.ProjectConfig{}
 	cfg.Project.Key = "TEST"
 	cfg.Sources = []config.SourceConfig{
 		{Name: "bad", Type: "svn", Key: "BAD"},
 	}
 
-	r := FromProjectConfig(cfg)
-	if !r.Pattern().MatchString("CBIN-105") {
-		t.Error("malformed source should fall back to Default, should match CBIN-105")
+	r, err := FromProjectConfig(cfg)
+	if err == nil {
+		t.Fatalf("malformed source must be an error, got registry %+v", r)
 	}
-	if r.Pattern().MatchString("BAD-1") {
-		t.Error("malformed source should fall back to Default, should not match BAD-1")
+	if !strings.Contains(err.Error(), "svn") {
+		t.Errorf("error should name the unknown type, got %q", err.Error())
 	}
 }
 
@@ -190,7 +215,10 @@ func TestCANARY_CBIN_201_FromProjectConfigValidSources(t *testing.T) {
 		{Name: "platform", Type: "jira", Key: "PLAT", URL: "https://company.atlassian.net/browse/{id}"},
 	}
 
-	r := FromProjectConfig(cfg)
+	r, err := FromProjectConfig(cfg)
+	if err != nil {
+		t.Fatalf("FromProjectConfig: %v", err)
+	}
 	src, ok := r.Resolve("PLAT-1")
 	if !ok || src.Type != "jira" || src.Key != "PLAT" {
 		t.Errorf("Resolve(PLAT-1) should return jira source, got %+v ok=%v", src, ok)
@@ -204,9 +232,32 @@ func TestCANARY_CBIN_201_LoadFromRootNoCanaryDir(t *testing.T) {
 	// LoadFromRoot(t.TempDir()) (no .canary dir) → Default fallback (matches CBIN-105).
 	tmpdir := t.TempDir()
 
-	r := LoadFromRoot(tmpdir)
+	r, err := LoadFromRoot(tmpdir)
+	if err != nil {
+		t.Fatalf("LoadFromRoot: %v", err)
+	}
 	if !r.Pattern().MatchString("CBIN-105") {
 		t.Error("no .canary dir should fall back to Default, should match CBIN-105")
+	}
+}
+
+// TestCANARY_CBIN_201_LoadFromRootInvalidConfigError proves a present but
+// invalid project.yaml is an error the caller must handle: silently using the
+// default registry would resolve every configured prefix as unknown.
+func TestCANARY_CBIN_201_LoadFromRootInvalidConfigError(t *testing.T) {
+	tmpdir := t.TempDir()
+	canaryDir := filepath.Join(tmpdir, ".canary")
+	if err := os.MkdirAll(canaryDir, 0o755); err != nil {
+		t.Fatalf("mkdir .canary: %v", err)
+	}
+	body := "project:\n  name: demo\nsources:\n  - name: bad\n    type: svn\n    key: BAD\n"
+	if err := os.WriteFile(filepath.Join(canaryDir, "project.yaml"), []byte(body), 0o644); err != nil {
+		t.Fatalf("write project.yaml: %v", err)
+	}
+
+	r, err := LoadFromRoot(tmpdir)
+	if err == nil {
+		t.Fatalf("invalid project.yaml must be an error, got registry %+v", r)
 	}
 }
 
@@ -226,7 +277,10 @@ func TestCANARY_CBIN_306_FromProjectConfig_TicketSyncFieldsPassThrough(t *testin
 		},
 	}
 
-	r := FromProjectConfig(cfg)
+	r, err := FromProjectConfig(cfg)
+	if err != nil {
+		t.Fatalf("FromProjectConfig: %v", err)
+	}
 	src, ok := r.Resolve("PLAT-1")
 	if !ok {
 		t.Fatal("Resolve(PLAT-1) failed")
@@ -315,7 +369,10 @@ func TestCANARY_ENG_3958_FromProjectConfig_ProjectDestinationPassThrough(t *test
 		{Name: "platform", Type: "jira", Key: "PLAT", Project: "PLATPROJ", Destination: true},
 	}
 
-	r := FromProjectConfig(cfg)
+	r, err := FromProjectConfig(cfg)
+	if err != nil {
+		t.Fatalf("FromProjectConfig: %v", err)
+	}
 	src, ok := r.DestinationSource()
 	if !ok || src.Name != "platform" || src.Project != "PLATPROJ" || !src.Destination {
 		t.Errorf("DestinationSource() = %+v, %v; want platform/PLATPROJ/true", src, ok)
@@ -345,7 +402,10 @@ sources:
 		t.Fatalf("write project.yaml: %v", err)
 	}
 
-	r := LoadFromRoot(tmpdir)
+	r, err := LoadFromRoot(tmpdir)
+	if err != nil {
+		t.Fatalf("LoadFromRoot: %v", err)
+	}
 	url := r.TicketURL("PLAT-42")
 	want := "https://company.atlassian.net/browse/PLAT-42"
 	if url != want {
