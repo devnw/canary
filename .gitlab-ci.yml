@@ -29,15 +29,22 @@ default:
     - linux
 
 include:
+  # Every ci-catalog component is pinned to the immutable commit that tag
+  # v1.43.0 points to, not to the mutable tag itself: a re-pointed tag would
+  # otherwise swap CI code under us. Resolved with
+  #   git ls-remote git@gitlab.com:devnw/ci-catalog.git 'refs/tags/v1.43.0*'
+  # v1.43.0 -> commit 7dafa6b7aa3b2254b109a31c6791437c14e7ce3c
+  # (the annotated tag object is cd3381b5...; the ^{} peeled commit is the
+  # pinned value). Bump both the SHA and this comment together on upgrade.
   # Build stage
-  - component: gitlab.com/devnw/ci-catalog/go-build@v1.43.0
+  - component: gitlab.com/devnw/ci-catalog/go-build@7dafa6b7aa3b2254b109a31c6791437c14e7ce3c
     inputs:
       stage: build
       go_version: $GO_VERSION
       build_flags: "-v"
 
   # Test stage
-  - component: gitlab.com/devnw/ci-catalog/go-test@v1.43.0
+  - component: gitlab.com/devnw/ci-catalog/go-test@7dafa6b7aa3b2254b109a31c6791437c14e7ce3c
     inputs:
       stage: test
       go_version: $GO_VERSION
@@ -45,7 +52,7 @@ include:
       coverage_report: true
 
   # Lint stage
-  - component: gitlab.com/devnw/ci-catalog/go-lint@v1.43.0
+  - component: gitlab.com/devnw/ci-catalog/go-lint@7dafa6b7aa3b2254b109a31c6791437c14e7ce3c
     inputs:
       stage: lint
       # v2.13+ is built with go1.27; older images refuse go 1.27 modules
@@ -55,19 +62,19 @@ include:
       allow_failure: false
 
   # Security scanning - gosec
-  - component: gitlab.com/devnw/ci-catalog/gosec@v1.43.0
+  - component: gitlab.com/devnw/ci-catalog/gosec@7dafa6b7aa3b2254b109a31c6791437c14e7ce3c
     inputs:
       stage: security
       allow_failure: false
 
   # Security scanning - govulncheck
-  - component: gitlab.com/devnw/ci-catalog/govulncheck@v1.43.0
+  - component: gitlab.com/devnw/ci-catalog/govulncheck@7dafa6b7aa3b2254b109a31c6791437c14e7ce3c
     inputs:
       stage: security
       allow_failure: false
 
   # Release stage - goreleaser
-  - component: gitlab.com/devnw/ci-catalog/goreleaser-release@v1.43.0
+  - component: gitlab.com/devnw/ci-catalog/goreleaser-release@7dafa6b7aa3b2254b109a31c6791437c14e7ce3c
     inputs:
       stage: release
       # v2.6.1 predates .goreleaser.yaml's dockers.retry and homebrew_casks
@@ -78,7 +85,7 @@ include:
       tag_only: true
 
   # APT repository publishing (apt.codepros.org)
-  - component: gitlab.com/devnw/ci-catalog/apt-publish@v1.43.0
+  - component: gitlab.com/devnw/ci-catalog/apt-publish@7dafa6b7aa3b2254b109a31c6791437c14e7ce3c
     inputs:
       stage: publish
       apt_domain: apt.codepros.org
@@ -98,7 +105,12 @@ include:
 # is hardcoded to this repo's .canary/project.yaml project.key.
 canary-verify:
   stage: test
-  image: golang:$GO_VERSION
+  # Pinned by digest, not by the mutable golang:1.27 tag, so this job always
+  # runs the exact image it was reviewed against. Digest of golang:1.27
+  # (the go.mod floor image) obtained with
+  #   docker buildx imagetools inspect golang:1.27
+  # Re-resolve and update this digest when GO_VERSION moves.
+  image: golang@sha256:4013ae0f9e7994f8535c58c811f8f863fbed38b72e0d51e6592156f758d66146
   script:
     - go build -o bin/canary ./cmd/canary
     - go test -count=1 -json ./... > gotest.json
@@ -119,9 +131,11 @@ canary-verify:
 
 # Override the govulncheck scanner image so the stdlib it analyzes tracks the
 # module's Go version rather than the (lagging) ci-catalog go image. Same
-# rationale as void's override.
+# rationale as void's override. Pinned by digest (golang:1.27, resolved with
+# `docker buildx imagetools inspect golang:1.27`) so a re-pushed tag cannot
+# silently change the toolchain govulncheck reasons about.
 govulncheck:
-  image: golang:1.27
+  image: golang@sha256:4013ae0f9e7994f8535c58c811f8f863fbed38b72e0d51e6592156f758d66146
 
 # Override goreleaser-release: run goreleaser DIRECTLY in the job container
 # instead of the catalog's nested `docker run goreleaser/goreleaser` pattern.
@@ -140,6 +154,11 @@ goreleaser-release:
     - linux
   # OVH Dedicated Runners bind-mount /var/run/docker.sock; no dind needed.
   services: []
+  # Pull no artifacts from earlier stages: this is the only job that holds
+  # release credentials (id_tokens/Vault/Docker Hub below), so it must not
+  # ingest build/test outputs that could smuggle attacker-controlled files
+  # into the credentialed container.
+  dependencies: []
   id_tokens:
     VAULT_ID_TOKEN:
       aud: https://pki.devnw.com
@@ -189,7 +208,9 @@ goreleaser-release:
           if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
             echo "WARNING: Docker Hub credentials not found at expected keys (username, token)"
           else
-            echo "Docker Hub credentials loaded for user: $DOCKERHUB_USERNAME"
+            # Credentials loaded. The username is intentionally not echoed:
+            # printing it leaks the account identity into CI logs.
+            echo "Docker Hub credentials loaded"
           fi
         fi
       fi
@@ -235,7 +256,8 @@ goreleaser-release:
       unset GITLAB_TOKEN
 
       # go: .goreleaser.yaml's `before:` hook runs `go mod tidy`; the
-      # docker:latest job image has no Go toolchain.
+      # goreleaser-release catalog image (docker CLI, no tag) has no Go
+      # toolchain.
       apk add --no-cache go
 
       # Download goreleaser, verify against the pinned SHA-256, then extract.
@@ -256,8 +278,11 @@ goreleaser-release:
       goreleaser --version
 
       # Register qemu emulators so the arm64 leg of the multi-arch build can
-      # run under emulation (idempotent).
-      docker run --rm --privileged tonistiigi/binfmt --install all
+      # run under emulation (idempotent). binfmt is pinned by digest (the
+      # rolling `latest` tag, resolved with
+      # `docker buildx imagetools inspect tonistiigi/binfmt`) so this
+      # privileged container is immutable.
+      docker run --rm --privileged tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0 --install all
 
       goreleaser release $RELEASE_ARGS
 
@@ -271,9 +296,11 @@ apt-publish-apt-codepros-org:
     - company
     - k8s
     - linux
-  image:
-    name: amazon/aws-cli:latest
-    entrypoint: [""]
+  # Pinned by digest (the rolling amazon/aws-cli `latest` tag, resolved with
+  # `docker buildx imagetools inspect amazon/aws-cli`); flow-mapping form keeps
+  # name+entrypoint on the image line so it stays immutable. entrypoint is
+  # cleared so GitLab runs the job script instead of the aws entrypoint.
+  image: { name: "amazon/aws-cli@sha256:cf1f5e5741c33f3fee383296ba8045b96b9eb93c3de017be6688fb00356352d7", entrypoint: [""] }
 
 apt-sign-apt-codepros-org:
   tags:
