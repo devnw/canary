@@ -42,7 +42,7 @@ const (
 	shutdownGrace = 5 * time.Second
 )
 
-// CANARY: REQ=CP-281; FEATURE="MCPServerCommand"; ASPECT=Wire; STATUS=TESTED; TEST=TestMCPCommandCreation,TestAuditF09,TestAuditF09PrintTools,TestHTTPServerLimits; UPDATED=2026-08-30
+// CANARY: REQ=CP-281; FEATURE="MCPServerCommand"; ASPECT=Wire; STATUS=TESTED; TEST=TestMCPCommandCreation,TestAuditF09,TestAuditF09PrintTools,TestHTTPServerLimits,TestTLSFlagPairIsBothOrNeither,TestRunServerRefusesHalfConfiguredTLS; UPDATED=2026-08-30
 
 // New returns the MCP subcommand for Canary.
 //
@@ -131,6 +131,10 @@ func runServer(cmd *cobra.Command, cfg serverConfig) error {
 		return fmt.Errorf("--root %s is not a directory", cfg.root)
 	}
 
+	if err := checkTLSFlags(cfg); err != nil {
+		return err
+	}
+
 	loopback := isLoopbackHost(cfg.host)
 	auth := authFromEnv(loopback)
 	if err := checkExposure(cfg, loopback, auth); err != nil {
@@ -151,8 +155,10 @@ func runServer(cmd *cobra.Command, cfg serverConfig) error {
 	httpServer := newHTTPServer(addr, handler)
 
 	// Only now, with a listener actually in hand, is it true that the server
-	// is reachable -- so only now is it printed.
-	printServerInfo(cmd, ln.Addr().String(), cfg.tlsCert != "", auth.configured())
+	// is reachable -- so only now is it printed. The banner asks the same
+	// question the serve call below does, so it cannot announce https over a
+	// plaintext listener.
+	printServerInfo(cmd, ln.Addr().String(), cfg.tlsEnabled(), auth.configured())
 	logger.Info("Starting Canary MCP Server", "addr", ln.Addr().String(), "root", absRoot)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -160,7 +166,7 @@ func runServer(cmd *cobra.Command, cfg serverConfig) error {
 
 	serveErr := make(chan error, 1)
 	go func() {
-		if cfg.tlsCert != "" && cfg.tlsKey != "" {
+		if cfg.tlsEnabled() {
 			serveErr <- httpServer.ServeTLS(ln, cfg.tlsCert, cfg.tlsKey)
 			return
 		}
@@ -184,6 +190,31 @@ func runServer(cmd *cobra.Command, cfg serverConfig) error {
 	}
 	logger.Info("Server stopped gracefully")
 	return nil
+}
+
+// tlsEnabled reports whether this run will actually serve TLS. Both halves of
+// the pair are required, because ServeTLS needs both: asking for only one is
+// answered by checkTLSFlags before anything binds.
+func (c serverConfig) tlsEnabled() bool {
+	return c.tlsCert != "" && c.tlsKey != ""
+}
+
+// checkTLSFlags refuses a half-configured TLS pair, on every host including
+// loopback.
+//
+// --tls-cert without --tls-key used to be accepted: the serve call fell back
+// to plaintext because it required both, while the banner printed "https"
+// because it looked at the certificate alone. An operator who typed one flag
+// got a cleartext server that told them it was encrypted. Both or neither.
+func checkTLSFlags(cfg serverConfig) error {
+	switch {
+	case cfg.tlsCert != "" && cfg.tlsKey == "":
+		return fmt.Errorf("--tls-cert was given without --tls-key: TLS needs both, and one alone would serve plaintext")
+	case cfg.tlsKey != "" && cfg.tlsCert == "":
+		return fmt.Errorf("--tls-key was given without --tls-cert: TLS needs both, and one alone would serve plaintext")
+	default:
+		return nil
+	}
 }
 
 // checkExposure refuses a configuration that would put the tool surface on

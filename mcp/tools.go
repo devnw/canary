@@ -467,11 +467,6 @@ type NextResult struct {
 	Blocked int `json:"blocked,omitempty"`
 }
 
-// NextResultSource names where a `next` answer came from: the token index
-// ("database") or a filesystem scan of the root ("filesystem"). It is
-// reported so an agent can tell "nothing to do" from "the index was stale and
-// the tree was scanned instead".
-
 // handleNext answers the next-requirement question by delegating to the CLI's
 // own selection.
 //

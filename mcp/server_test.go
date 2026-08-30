@@ -129,6 +129,61 @@ func TestCheckExposureRefusesUnprotectedRemoteBind(t *testing.T) {
 	}
 }
 
+// TestTLSFlagPairIsBothOrNeither pins the half-configured-TLS refusal. The
+// banner asked "is there a certificate?" while the serve call asked "is there
+// a certificate AND a key?", so `--tls-cert` alone printed https over a
+// plaintext listener. Neither question is asked of a half pair any more: it is
+// refused before anything binds, on loopback too.
+func TestTLSFlagPairIsBothOrNeither(t *testing.T) {
+	if err := checkTLSFlags(serverConfig{host: "127.0.0.1"}); err != nil {
+		t.Errorf("neither flag must be allowed: %v", err)
+	}
+	if err := checkTLSFlags(serverConfig{host: "127.0.0.1", tlsCert: "c", tlsKey: "k"}); err != nil {
+		t.Errorf("both flags must be allowed: %v", err)
+	}
+	for _, cfg := range []serverConfig{
+		{host: "127.0.0.1", tlsCert: "c"},
+		{host: "127.0.0.1", tlsKey: "k"},
+		{host: "0.0.0.0", tlsCert: "c"},
+		{host: "0.0.0.0", tlsKey: "k"},
+	} {
+		err := checkTLSFlags(cfg)
+		if err == nil {
+			t.Fatalf("half-configured TLS (%+v) must be refused", cfg)
+		}
+		if !strings.Contains(err.Error(), "--tls-cert") || !strings.Contains(err.Error(), "--tls-key") {
+			t.Errorf("refusal does not name both flags: %v", err)
+		}
+	}
+
+	// The banner reads the same predicate the serve call does.
+	if (serverConfig{tlsCert: "c"}).tlsEnabled() || (serverConfig{tlsKey: "k"}).tlsEnabled() {
+		t.Error("a half pair must not report TLS")
+	}
+	if !(serverConfig{tlsCert: "c", tlsKey: "k"}).tlsEnabled() {
+		t.Error("a full pair must report TLS")
+	}
+}
+
+// TestRunServerRefusesHalfConfiguredTLS proves the refusal happens on the
+// startup path, before a listener exists -- a server that binds first and
+// complains second has already accepted a connection.
+func TestRunServerRefusesHalfConfiguredTLS(t *testing.T) {
+	cmd := New("test")
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+
+	err := runServer(cmd, serverConfig{
+		version: "test", host: "127.0.0.1", port: 0, root: t.TempDir(), tlsCert: "cert.pem",
+	})
+	if err == nil {
+		t.Fatal("runServer accepted --tls-cert without --tls-key")
+	}
+	if !strings.Contains(err.Error(), "--tls-key") {
+		t.Errorf("refusal does not name the missing flag: %v", err)
+	}
+}
+
 // TestNewServerReportsVersion proves the implementation version comes from
 // the binary rather than a hardcoded "1.0.0".
 func TestNewServerReportsVersion(t *testing.T) {

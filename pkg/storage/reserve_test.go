@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 )
 
 func reserveTestDB(t *testing.T) *DB {
@@ -89,6 +90,36 @@ func TestReserveIDConcurrent(t *testing.T) {
 	}
 	if len(seen) != n {
 		t.Fatalf("got %d unique ids, want %d", len(seen), n)
+	}
+}
+
+// TestReserveBackoffIsBoundedAndDeterministic pins the contention pause: it
+// grows, it is capped, and it is the same every run. A retry loop with no
+// pause lets two writers trade the write lock without either committing; a
+// randomized one would make an exhausted loop irreproducible.
+func TestReserveBackoffIsBoundedAndDeterministic(t *testing.T) {
+	if got := reserveBackoff(0); got != reserveBackoffStep {
+		t.Errorf("reserveBackoff(0) = %v, want %v", got, reserveBackoffStep)
+	}
+	prev := time.Duration(0)
+	for attempt := 0; attempt < reserveAttempts; attempt++ {
+		got := reserveBackoff(attempt)
+		if got <= 0 || got > reserveBackoffMax {
+			t.Fatalf("reserveBackoff(%d) = %v, want (0, %v]", attempt, got, reserveBackoffMax)
+		}
+		if got < prev {
+			t.Fatalf("reserveBackoff(%d) = %v went backwards from %v", attempt, got, prev)
+		}
+		if again := reserveBackoff(attempt); again != got {
+			t.Fatalf("reserveBackoff(%d) is not deterministic: %v then %v", attempt, got, again)
+		}
+		prev = got
+	}
+
+	// The cap has to hold at the ceiling, or a pathological database spins for
+	// minutes instead of failing.
+	if got := reserveBackoff(reserveAttempts); got != reserveBackoffMax {
+		t.Errorf("reserveBackoff(%d) = %v, want the cap %v", reserveAttempts, got, reserveBackoffMax)
 	}
 }
 

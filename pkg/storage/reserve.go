@@ -25,14 +25,44 @@ var ErrReadOnlyReservation = errors.New("cannot reserve an id through a read-onl
 // the next attempt reads, so the loop terminates in practice long before this
 // ceiling. The ceiling exists so a pathological database (a corrupt
 // reservation row, a clock-stopped writer) fails loudly instead of spinning.
-const reserveAttempts = 100
+//
+// It is set well above any concurrency this ever sees. One writer can lose
+// once per other writer in flight, so the floor is "the number of concurrent
+// reservers"; the tests already drive 50 at once, and a busy lock can cost a
+// second loss to SQLITE_BUSY rather than to the primary key. 512 leaves an
+// order of magnitude over that, and the backoff below means exhausting it
+// takes long enough to be a real fault rather than a burst of contention.
+const reserveAttempts = 512
+
+// Backoff between attempts. Retrying instantly means the loser of a race
+// immediately takes the write lock again and the two writers can trade it
+// without either making progress; a short pause lets the winner commit.
+//
+// The delay grows linearly with the attempt count and is capped, and it is
+// fixed rather than randomized: two processes that collide are separated by
+// the transaction they are each waiting on, not by jitter, and a deterministic
+// delay keeps a failure reproducible.
+const (
+	reserveBackoffStep = 250 * time.Microsecond
+	reserveBackoffMax  = 5 * time.Millisecond
+)
+
+// reserveBackoff is how long to wait after losing race number attempt
+// (0-based).
+func reserveBackoff(attempt int) time.Duration {
+	d := time.Duration(attempt+1) * reserveBackoffStep
+	if d > reserveBackoffMax {
+		return reserveBackoffMax
+	}
+	return d
+}
 
 // idNumberWidth is the zero-padded width of a reserved number: BUG-API-007,
 // not BUG-API-7. It matches the format `canary bug create` has always
 // printed, so ids minted before and after this table are the same shape.
 const idNumberWidth = 3
 
-// CANARY: REQ=ENG-4392; FEATURE="TransactionalIDs"; ASPECT=Storage; STATUS=TESTED; TEST=TestAuditF18,TestAuditF18SeedsPastExistingTokens,TestAuditF18RefusesUnscopedReservation,TestReserveIDConcurrent; UPDATED=2026-08-30
+// CANARY: REQ=ENG-4392; FEATURE="TransactionalIDs"; ASPECT=Storage; STATUS=TESTED; TEST=TestAuditF18,TestAuditF18SeedsPastExistingTokens,TestAuditF18RefusesUnscopedReservation,TestReserveIDConcurrent,TestReserveBackoffIsBoundedAndDeterministic; UPDATED=2026-08-30
 
 // ReserveID allocates the next identifier in a series and records the
 // allocation, returning e.g. "BUG-API-007".
@@ -75,6 +105,7 @@ func (db *DB) ReserveID(projectID, prefix string) (string, error) {
 			return "", err
 		}
 		lastErr = err
+		time.Sleep(reserveBackoff(attempt))
 	}
 	return "", fmt.Errorf("reserve %s id after %d attempts: %w", prefix, reserveAttempts, lastErr)
 }

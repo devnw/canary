@@ -16,7 +16,7 @@ import (
 	"strings"
 )
 
-// CANARY: REQ=ENG-4393; FEATURE="MCPAuth"; ASPECT=Security; STATUS=TESTED; TEST=TestAuthLoopbackNoTokensAllows,TestAuthNonLoopbackWithoutTokensDenies,TestAuthRequiresBearerWhenConfigured,TestAuthReadTokenRefusedOnMutatingTool,TestAuthNeverEchoesTokens,TestScopesFor,TestIsLoopbackHost; UPDATED=2026-08-30
+// CANARY: REQ=ENG-4393; FEATURE="MCPAuth"; ASPECT=Security; STATUS=TESTED; TEST=TestAuthLoopbackNoTokensAllows,TestAuthNonLoopbackWithoutTokensDenies,TestAuthRequiresBearerWhenConfigured,TestAuthReadTokenRefusedOnMutatingTool,TestAuthReadTokenRefusedOnBatchedMutatingTool,TestAuthWriteTokenMayBatchMutatingTool,TestAuthReadTokenMayBatchReadOnlyCalls,TestAuthUnparseableBatchFailsClosed,TestAuthNeverEchoesTokens,TestScopesFor,TestIsLoopbackHost; UPDATED=2026-08-30
 
 // Environment variables that configure MCP authentication. Their VALUES are
 // never logged, echoed in an error, or written to a response body: an error
@@ -132,7 +132,8 @@ const maxAuthBodyPeek = 1 << 20
 // A read-scoped credential is refused (403) on a mutating tool. That check
 // has to look at the request body: the tool name lives in the JSON-RPC
 // envelope, not in the URL, so scoping by path alone would let a read token
-// call `prioritize`.
+// call `prioritize` -- and it has to look at every element of a batch, not
+// just at a single envelope (see forbiddenTool).
 func authMiddleware(cfg authConfig, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		scopes, ok := cfg.scopesFor(r.Header.Get("Authorization"))
@@ -143,13 +144,24 @@ func authMiddleware(cfg authConfig, next http.Handler) http.Handler {
 		}
 
 		if !scopes.Mutate && r.Method == http.MethodPost {
-			name, body, err := peekToolName(r)
+			buf, body, err := peekBody(r)
 			if err != nil {
 				writeAuthError(w, http.StatusBadRequest, "malformed request body")
 				return
 			}
 			r.Body = body
-			if name != "" && cfg.mutating[name] {
+
+			name, inspected := cfg.forbiddenTool(buf)
+			if !inspected {
+				// A batch this check could not decode may still be a batch the
+				// SDK can decode, so it is refused rather than forwarded. The
+				// alternative -- assume an undecodable payload is harmless --
+				// is exactly the hole this branch closes.
+				writeAuthError(w, http.StatusForbidden,
+					"forbidden: a batched request that cannot be inspected requires the read+write token")
+				return
+			}
+			if name != "" {
 				writeAuthError(w, http.StatusForbidden,
 					"forbidden: tool "+name+" requires the read+write token")
 				return
@@ -160,37 +172,87 @@ func authMiddleware(cfg authConfig, next http.Handler) http.Handler {
 	})
 }
 
-// peekToolName reads the JSON-RPC envelope far enough to learn which tool is
-// being called, and returns a body the downstream handler can still read.
+// jsonrpcEnvelope is the part of a JSON-RPC request the scope check reads.
+type jsonrpcEnvelope struct {
+	Method string `json:"method"`
+	Params struct {
+		Name string `json:"name"`
+	} `json:"params"`
+}
+
+// forbiddenTool reports the mutating tool a read-scoped caller may not invoke
+// in this body, and whether the body was understood well enough to say.
 //
-// A body that is not a tools/call -- initialization, a list, a batch, an
-// unparseable blob -- yields an empty name and is passed through untouched.
-// Rejecting it here would make this middleware a second, worse JSON-RPC
-// implementation; the SDK is the one that decides what a valid request is.
-func peekToolName(r *http.Request) (string, io.ReadCloser, error) {
+// A top-level array is a JSON-RPC batch. The SDK accepts one whenever the
+// negotiated protocol version is below 2025-06-18, and it negotiates
+// 2025-03-26 when the client sends no version header -- so a batch is not an
+// exotic payload to be waved through, it is a second way to call every tool.
+// Every element is inspected, not just the first: a read-scoped caller keeps
+// the batching the protocol allows, and one mutating element anywhere forbids
+// the whole payload.
+//
+// The second return is the fail-closed switch. A batch that will not decode
+// yields false -- refused -- because an undecodable batch here may still be a
+// decodable batch in the SDK. A single object that will not decode
+// keeps the older behavior: it is not a tools/call this check can name, the
+// SDK decides whether it is a valid request at all, and it cannot smuggle a
+// second call the way an array can.
+//
+// A name is only ever returned when it is in the mutating set, so the 403
+// message never echoes an arbitrary caller-supplied string.
+func (c authConfig) forbiddenTool(buf []byte) (string, bool) {
+	if firstJSONByte(buf) == '[' {
+		var batch []jsonrpcEnvelope
+		if err := json.Unmarshal(buf, &batch); err != nil {
+			return "", false
+		}
+		for _, envelope := range batch {
+			if name := c.mutatingCall(envelope); name != "" {
+				return name, true
+			}
+		}
+		return "", true
+	}
+
+	var envelope jsonrpcEnvelope
+	if err := json.Unmarshal(buf, &envelope); err != nil {
+		return "", true
+	}
+	return c.mutatingCall(envelope), true
+}
+
+// mutatingCall names the tool this envelope calls if a read-scoped caller may
+// not call it, and "" otherwise.
+func (c authConfig) mutatingCall(envelope jsonrpcEnvelope) string {
+	if envelope.Method != "tools/call" || !c.mutating[envelope.Params.Name] {
+		return ""
+	}
+	return envelope.Params.Name
+}
+
+// firstJSONByte returns the first byte of buf that JSON does not treat as
+// whitespace, or 0 for an all-whitespace or empty body.
+func firstJSONByte(buf []byte) byte {
+	trimmed := bytes.TrimLeft(buf, " \t\r\n")
+	if len(trimmed) == 0 {
+		return 0
+	}
+	return trimmed[0]
+}
+
+// peekBody reads the request body far enough for the scope check to inspect
+// it, and returns a replacement body the downstream handler can still read.
+func peekBody(r *http.Request) ([]byte, io.ReadCloser, error) {
 	if r.Body == nil {
-		return "", http.NoBody, nil
+		return nil, http.NoBody, nil
 	}
 	buf, err := io.ReadAll(io.LimitReader(r.Body, maxAuthBodyPeek))
 	_ = r.Body.Close()
-	if err != nil {
-		return "", io.NopCloser(bytes.NewReader(buf)), err
-	}
 	replay := io.NopCloser(bytes.NewReader(buf))
-
-	var envelope struct {
-		Method string `json:"method"`
-		Params struct {
-			Name string `json:"name"`
-		} `json:"params"`
+	if err != nil {
+		return buf, replay, err
 	}
-	if err := json.Unmarshal(buf, &envelope); err != nil {
-		return "", replay, nil
-	}
-	if envelope.Method != "tools/call" {
-		return "", replay, nil
-	}
-	return envelope.Params.Name, replay, nil
+	return buf, replay, nil
 }
 
 // writeAuthError emits a JSON refusal. The message says what is required,
