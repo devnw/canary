@@ -358,8 +358,8 @@ func TestCANARY_CBIN_302_ValidRule(t *testing.T) {
 // TestCANARY_CBIN_302_AtomicWrite proves Run's write path never truncates
 // the original file: a successful rewrite lands fully-correct content, and
 // the original file's mode (0600, distinct from writeFile's default 0640)
-// survives the temp-file-then-rename sequence. Also confirms no temp file
-// is left behind.
+// survives the stage-then-rename sequence. Also confirms no staging file is
+// left behind.
 // CANARY: REQ=CBIN-302; FEATURE="TokenUpgrade"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_302_AtomicWrite; UPDATED=2026-08-29
 func TestCANARY_CBIN_302_AtomicWrite(t *testing.T) {
 	dir := t.TempDir()
@@ -388,8 +388,8 @@ func TestCANARY_CBIN_302_AtomicWrite(t *testing.T) {
 		t.Fatalf("readdir: %v", err)
 	}
 	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), ".canary-upgrade-") {
-			t.Errorf("leftover temp file after successful write: %s", e.Name())
+		if strings.HasPrefix(e.Name(), ".canary-stage-") {
+			t.Errorf("leftover staging file after successful write: %s", e.Name())
 		}
 	}
 

@@ -35,6 +35,7 @@ import (
 	ignore "github.com/sabhiram/go-gitignore"
 
 	"devnw.dev/canary/pkg/canaryscan"
+	"devnw.dev/canary/pkg/safewrite"
 	"devnw.dev/canary/pkg/sources"
 )
 
@@ -181,7 +182,17 @@ func Run(o Options) ([]Change, error) {
 		}
 		all = append(all, changes...)
 		if o.Write && newContent != content {
-			if werr := atomicWriteFile(path, []byte(newContent), info.Mode()); werr != nil {
+			// A rule is a regex rewrite over other people's source: the one
+			// thing it must never do is make a requirement disappear. Prove
+			// every pre-existing token survives before anything is written.
+			if gerr := checkTokensPreserved(content, newContent, enabled); gerr != nil {
+				return all, fmt.Errorf("%s: %w (file left unchanged)", rel, gerr)
+			}
+			if _, werr := safewrite.Write(path, []byte(newContent), info.Mode(), safewrite.Options{
+				Root:   root,
+				Force:  true, // --write is an explicit instruction to rewrite these files
+				Backup: true,
+			}); werr != nil {
 				return all, fmt.Errorf("write %s: %w", path, werr)
 			}
 		}
@@ -189,38 +200,176 @@ func Run(o Options) ([]Change, error) {
 	return all, nil
 }
 
-// atomicWriteFile replaces path's content without ever leaving it truncated:
-// it writes to a temp file in the same directory (so the final rename is
-// same-filesystem and atomic on POSIX), chmods the temp file to mode, closes
-// it, then renames it over path. On any error the temp file is removed and
-// the original at path is left untouched.
-func atomicWriteFile(path string, data []byte, mode fs.FileMode) (err error) {
-	dir := filepath.Dir(path)
-	tmp, cerr := os.CreateTemp(dir, ".canary-upgrade-*")
-	if cerr != nil {
-		return cerr
-	}
-	tmpPath := tmp.Name()
-	defer func() {
-		if err != nil {
-			_ = tmp.Close()
-			_ = os.Remove(tmpPath)
-		}
-	}()
+// ---- token-preservation guard -----------------------------------------------------
 
-	if _, werr := tmp.Write(data); werr != nil {
-		return fmt.Errorf("write temp file: %w", werr)
-	}
-	if cherr := tmp.Chmod(mode); cherr != nil {
-		return fmt.Errorf("chmod temp file: %w", cherr)
-	}
-	if cerr := tmp.Close(); cerr != nil {
-		return fmt.Errorf("close temp file: %w", cerr)
-	}
-	if rerr := os.Rename(tmpPath, path); rerr != nil {
-		return fmt.Errorf("rename temp file: %w", rerr)
+// ruleTouches lists, per rule, the token field keys that rule is allowed to
+// change. The guard normalizes exactly these keys away before comparing a
+// file's tokens before and after a rewrite, so a rule's intended edit is never
+// mistaken for a lost token — and an edit to any *other* field, or the loss of
+// a whole token, still is.
+var ruleTouches = map[string][]string{
+	"join-multiline": nil, // folds continuation lines; changes no field's value
+	"md-heading":     nil, // changes the comment syntax, not the token
+	"unicode-hyphen": {"REQ", "BUG", "TASK", "PARENT"},
+	"bare-id":        {"REQ"},
+	"bug-alias":      {"FEATURE"},
+	"status-fixed":   {"STATUS"},
+	"pad-flatfile":   {"REQ", "BUG"},
+	"add-updated":    {"UPDATED"},
+	"remap":          {"REQ", "BUG"},
+}
+
+// htmlTokenRe matches an HTML-comment CANARY line. The scanner's grammar does
+// not accept that comment style, but the md-heading rule produces it, so the
+// guard normalizes it back into a parseable line: md-heading changes a token's
+// comment syntax, and the guard must not read that as the token vanishing.
+var htmlTokenRe = regexp.MustCompile(`^\s*<!--\s*(CANARY:.*?)\s*-->\s*$`)
+
+// checkTokensPreserved reports an error when any CANARY token present in pre
+// has no counterpart in post, once the enabled rules' own field edits are
+// normalized away. Tokens are compared as a multiset, so dropping one of
+// several identical tokens is caught too.
+//
+// A post-token counts as a counterpart when it still carries every field the
+// pre-token had. Growing a token is allowed -- join-multiline folds a token's
+// own continuation lines into it, and bug-alias adds an aliased field -- but
+// losing a field, or losing a whole token, is not.
+func checkTokensPreserved(pre, post string, enabled map[string]bool) error {
+	touched := touchedKeys(enabled)
+	before := tokenShapes(pre, touched)
+	after := tokenShapes(post, touched)
+	used := make([]bool, len(after))
+	for _, want := range before {
+		if !claimCounterpart(want, after, used) {
+			return fmt.Errorf("token preservation: %s has no counterpart after the rewrite", want.display)
+		}
 	}
 	return nil
+}
+
+// touchedKeys is the union of the field keys the enabled rules may change,
+// upper-cased for case-insensitive comparison against token field keys.
+func touchedKeys(enabled map[string]bool) map[string]bool {
+	out := map[string]bool{}
+	for rule, keys := range ruleTouches {
+		if !enabled[rule] {
+			continue
+		}
+		for _, k := range keys {
+			out[strings.ToUpper(k)] = true
+		}
+	}
+	return out
+}
+
+// tokenShape is one token reduced to the parts a rewrite must not lose.
+type tokenShape struct {
+	display string         // canonical rendering, for the error message
+	exact   string         // the fields joined, for cheap equality
+	fields  map[string]int // canonical "KEY=value" -> occurrences
+}
+
+// claimCounterpart marks the first unused post-token that still carries every
+// field of want. An exact match is preferred over a superset so a token is
+// never consumed by a larger one that a different pre-token needs.
+func claimCounterpart(want tokenShape, after []tokenShape, used []bool) bool {
+	for _, exactOnly := range []bool{true, false} {
+		for i, got := range after {
+			if used[i] {
+				continue
+			}
+			if exactOnly && got.exact != want.exact {
+				continue
+			}
+			if !exactOnly && !containsFields(got.fields, want.fields) {
+				continue
+			}
+			used[i] = true
+			return true
+		}
+	}
+	return false
+}
+
+// containsFields reports whether got holds at least as many of every field as
+// want does.
+func containsFields(got, want map[string]int) bool {
+	for f, n := range want {
+		if got[f] < n {
+			return false
+		}
+	}
+	return true
+}
+
+// tokenShapes reduces every CANARY token in content to its comparable shape.
+func tokenShapes(content string, touched map[string]bool) []tokenShape {
+	var out []tokenShape
+	for _, line := range strings.Split(content, "\n") {
+		shape, ok := tokenShapeOf(line, touched)
+		if !ok {
+			continue
+		}
+		out = append(out, shape)
+	}
+	return out
+}
+
+// tokenShapeOf reduces one line's token to the fields no enabled rule is
+// allowed to change. A line that holds no token reports ok=false. A malformed
+// token cannot be normalized, so its raw text stands in as its identity --
+// that keeps the guard conservative rather than blind: a malformed token that
+// disappears is still reported.
+func tokenShapeOf(line string, touched map[string]bool) (tokenShape, bool) {
+	if m := htmlTokenRe.FindStringSubmatch(line); m != nil {
+		line = "// " + m[1]
+	}
+	fields, ok, err := canaryscan.ParseTokenLine(line)
+	if !ok {
+		return tokenShape{}, false
+	}
+	if err != nil {
+		raw := "malformed:" + strings.TrimSpace(line)
+		return tokenShape{display: raw, exact: raw, fields: map[string]int{raw: 1}}, true
+	}
+
+	kept := make([]canaryscan.Field, 0, len(fields))
+	counts := make(map[string]int, len(fields))
+	var parts []string
+	for _, f := range fields {
+		if touched[strings.ToUpper(f.Key)] {
+			continue
+		}
+		f.Value = canonicalValue(f.Value)
+		kept = append(kept, f)
+		canon := strings.ToUpper(f.Key) + "=" + f.Value
+		counts[canon]++
+		parts = append(parts, canon)
+	}
+	sort.Strings(parts)
+
+	display, serr := canaryscan.SerializeToken(kept)
+	if serr != nil {
+		// SerializeToken refuses values the scanner would also refuse
+		// (unknown enum members, malformed ids). Such a token still has to
+		// be tracked, so the sorted field list stands in for its rendering.
+		display = "token[" + strings.Join(parts, " ") + "]"
+	}
+	return tokenShape{display: display, exact: strings.Join(parts, ";"), fields: counts}, true
+}
+
+// canonicalValue strips a block-comment terminator the token grammar leaves
+// glued to the last field's value ("STATUS=IMPL */"). The terminator belongs
+// to the comment, not the value, and a rule that relocates it -- add-updated
+// appends its field before the terminator -- must not read as a changed field.
+func canonicalValue(v string) string {
+	v = strings.TrimSpace(v)
+	for _, suffix := range []string{"*/", "-->"} {
+		if strings.HasSuffix(v, suffix) {
+			return strings.TrimSpace(strings.TrimSuffix(v, suffix))
+		}
+	}
+	return v
 }
 
 // resolveToday implements Options.Today's documented fallback chain.

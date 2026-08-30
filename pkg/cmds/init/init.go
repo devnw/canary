@@ -4,7 +4,6 @@ import (
 	"embed"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -43,8 +42,14 @@ The agent files support template variables that can be customized:
 Examples:
   canary init                  # Global install (default)
   canary init --local           # Local install in current project
-  canary init myproject --local # Local install in new project`,
+  canary init myproject --local # Local install in new project
+  canary init --force           # Overwrite files you have customized (keeps a .bak)
+
+Re-running init never overwrites a file you have edited: differing files are
+kept and reported. Pass --force to replace them; the previous content is saved
+alongside as <file>.bak.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		force, _ := cmd.Flags().GetBool("force")
 		projectName := "."
 		if len(args) > 0 {
 			projectName = args[0]
@@ -117,7 +122,7 @@ Examples:
 		canaryignoreContent, err := utils.ReadEmbeddedFile("base/.canaryignore")
 		if err == nil {
 			canaryignorePath := filepath.Join(projectName, ".canaryignore")
-			if err := os.WriteFile(canaryignorePath, canaryignoreContent, 0640); err != nil {
+			if err := writeManagedFile(projectName, canaryignorePath, canaryignoreContent, 0640, force); err != nil {
 				return fmt.Errorf("write .canaryignore: %w", err)
 			}
 		}
@@ -151,18 +156,18 @@ Examples:
 		}
 
 		// Copy and process agent files to .canary/agents/ with template substitution
-		if err := copyAndProcessAgentFiles(projectName, agentPrefix, agentModel, agentColor); err != nil {
+		if err := copyAndProcessAgentFiles(projectName, agentPrefix, agentModel, agentColor, force); err != nil {
 			return fmt.Errorf("copy agent files: %w", err)
 		}
 
 		// Install/update slash commands to agent directories
-		slashCommandNotes, err := installSlashCommands(projectName, agentsList, allAgents, localInstall)
+		slashCommandNotes, err := installSlashCommands(projectName, agentsList, allAgents, localInstall, force)
 		if err != nil {
 			return fmt.Errorf("install slash commands: %w", err)
 		}
 
 		// Install agent files to each agent system's directory
-		if err := installAgentFilesToSystems(projectName, agentsList, allAgents, agentPrefix, agentModel, agentColor, localInstall); err != nil {
+		if err := installAgentFilesToSystems(projectName, agentsList, allAgents, agentPrefix, agentModel, agentColor, localInstall, force); err != nil {
 			return fmt.Errorf("install agent files to systems: %w", err)
 		}
 
@@ -170,20 +175,6 @@ Examples:
 		// Create GitHub Copilot instruction files
 		if err := createCopilotInstructions(projectName, projectKey); err != nil {
 			return fmt.Errorf("create Copilot instructions: %w", err)
-		}
-
-		// Rebuild canary binary if we're updating
-		if isUpdate {
-			fmt.Println("🔧 Rebuilding canary binary...")
-			buildCmd := exec.Command("go", "build", "-ldflags=-s -w", "-o", "./bin/canary", "./cmd/canary")
-			buildCmd.Stdout = os.Stdout
-			buildCmd.Stderr = os.Stderr
-			if err := buildCmd.Run(); err != nil {
-				fmt.Printf("⚠️  Warning: Failed to rebuild canary binary: %v\n", err)
-				fmt.Println("   Run 'make canary-build' or 'go build -o ./bin/canary ./cmd/canary/main.go' to rebuild manually")
-			} else {
-				fmt.Println("✅ Canary binary updated")
-			}
 		}
 
 		// Create README.md
@@ -229,7 +220,7 @@ Examples:
 			"canary scan --root . --update-stale\n" +
 			"```\n"
 		readmePath := filepath.Join(projectName, "README_CANARY.md")
-		if err := os.WriteFile(readmePath, []byte(readme), 0640); err != nil {
+		if err := writeManagedFile(projectName, readmePath, []byte(readme), 0640, force); err != nil {
 			return fmt.Errorf("write README: %w", err)
 		}
 
@@ -252,12 +243,12 @@ Examples:
 			"- ✅ Verify claimed requirements are TESTED or BENCHED\n" +
 			"- ❌ Fail with exit code 2 if claims are overclaimed\n"
 		gapPath := filepath.Join(projectName, "GAP_ANALYSIS.md")
-		if err := os.WriteFile(gapPath, []byte(gap), 0640); err != nil {
+		if err := writeManagedFile(projectName, gapPath, []byte(gap), 0640, force); err != nil {
 			return fmt.Errorf("write GAP_ANALYSIS.md: %w", err)
 		}
 
 		// Update agent context files for AI agent integration (preserves existing content)
-		if err := updateAgentContextFiles(projectName); err != nil {
+		if err := updateAgentContextFiles(projectName, force); err != nil {
 			return fmt.Errorf("update agent context files: %w", err)
 		}
 

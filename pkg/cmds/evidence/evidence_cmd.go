@@ -37,6 +37,7 @@ import (
 	"devnw.dev/canary/pkg/canaryscan"
 	"devnw.dev/canary/pkg/config"
 	ev "devnw.dev/canary/pkg/evidence"
+	"devnw.dev/canary/pkg/safewrite"
 	"devnw.dev/canary/pkg/sources"
 )
 
@@ -201,10 +202,11 @@ func Merge(current, incoming []ev.Record) []ev.Record {
 	return out
 }
 
-// WriteStore writes records to path atomically (temp file in the same
-// directory, then rename), creating the directory when needed. A crash
+// WriteStore writes records to path atomically (staged in the same directory,
+// fsynced, then renamed), creating the directory when needed. A crash
 // mid-write therefore leaves the previous store intact rather than a
-// truncated one.
+// truncated one. The store is this command's own output, so replacing it is
+// intended; only a partial write would be a defect.
 func WriteStore(path string, records []ev.Record) error {
 	if records == nil {
 		records = []ev.Record{}
@@ -214,27 +216,14 @@ func WriteStore(path string, records []ev.Record) error {
 		return err
 	}
 	data = append(data, '\n')
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o750); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(dir, ".evidence-*.json")
-	if err != nil {
-		return err
-	}
-	tmpName := tmp.Name()
-	defer func() { _ = os.Remove(tmpName) }()
-	if _, err := tmp.Write(data); err != nil {
-		_ = tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	if err := os.Chmod(tmpName, 0o600); err != nil {
-		return err
-	}
-	return os.Rename(tmpName, path)
+	_, err = safewrite.Write(path, data, 0o600, safewrite.Options{
+		Root:  filepath.Dir(path),
+		Force: true,
+	})
+	return err
 }
 
 // FromGoTestOptions are the resolved inputs of one from-go-test run.

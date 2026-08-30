@@ -27,15 +27,25 @@ var (
 	EndMarker   = gate.EndMarker("", markdownOptions...)
 )
 
-// updateMarkdownSection updates or inserts a gated section in a markdown file
+// canaryGuideKey names the section every agent-context file carries. Sections
+// are keyed rather than unnamed so a file can hold this one alongside anyone
+// else's, and so a second run updates it in place instead of appending a
+// duplicate.
+const canaryGuideKey = "canary-guide"
+
+// updateMarkdownSection updates or inserts the CANARY guide section in a
+// markdown file.
 //
-// The section is marked with HTML comments: <!-- CANARY:START --> ... <!-- CANARY:END -->
-// If the file doesn't exist, it creates it with the content
-// If the section exists, it replaces the content between the markers
-// If the markers don't exist, it appends the section to the end
-// CANARY: REQ=ENG-4320; FEATURE="MarkdownSectionUpdater"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
+// The section is marked with HTML comments:
+// <!-- CANARY:canary-guide:START --> ... <!-- CANARY:canary-guide:END -->
+// If the file doesn't exist, it creates it with the content.
+// If the section exists, it replaces the content between the markers.
+// A legacy unnamed <!-- CANARY:START --> section is adopted in place.
+// If the file's markers are malformed, it reports the error and writes
+// nothing.
+// CANARY: REQ=ENG-4320; FEATURE="MarkdownSectionUpdater"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2026-08-30
 func updateMarkdownSection(filePath, sectionContent string) error {
-	return gate.UpdateSingle(filePath, sectionContent,
+	return gate.UpdateSection(filePath, canaryGuideKey, sectionContent,
 		append(markdownOptions, gate.WithBlankLineBefore())...,
 	)
 }

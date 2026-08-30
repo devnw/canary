@@ -1,14 +1,70 @@
 package init
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"devnw.dev/canary/pkg/cmds/internal/utils"
+	"devnw.dev/canary/pkg/safewrite"
 )
+
+// writeManagedFile writes one file this command authors, staged and confined
+// to root.
+//
+// An existing file whose bytes differ is replaced only when force is set;
+// otherwise it is kept and the skip is reported on stderr. A bootstrap command
+// runs repeatedly over a repository people are editing, so overwriting by
+// default is how customized files get destroyed -- keeping them, and saying
+// so, is the safe default. With --force the prior bytes are preserved in a
+// .bak beside the file.
+// CANARY: REQ=ENG-4331; FEATURE="InitForce"; ASPECT=CLI; STATUS=TESTED; TEST=TestAuditF03,TestAuditF03Force; UPDATED=2026-08-30
+func writeManagedFile(root, path string, data []byte, mode fs.FileMode, force bool) error {
+	res, err := safewrite.Write(path, data, mode, safewrite.Options{
+		Root:   root,
+		Force:  force,
+		Backup: force,
+	})
+	if errors.Is(err, safewrite.ErrWouldReplace) {
+		fmt.Fprintf(os.Stderr, "notice: kept existing %s (use --force to overwrite)\n", path)
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if res.Replaced {
+		fmt.Fprintf(os.Stderr, "notice: replaced %s (previous content saved to %s)\n", path, res.BackupPath)
+		printDiff(os.Stderr, res.Diff)
+	}
+	return nil
+}
+
+// maxDiffLines bounds how much of a replaced file's diff is echoed, so
+// overwriting a large file reports what changed without burying the rest of
+// the command's output.
+const maxDiffLines = 20
+
+// printDiff writes a bounded rendering of a safewrite diff.
+func printDiff(w io.Writer, diff string) {
+	if diff == "" {
+		return
+	}
+	lines := strings.Split(diff, "\n")
+	shown := lines
+	if len(shown) > maxDiffLines {
+		shown = shown[:maxDiffLines]
+	}
+	for _, l := range shown {
+		fmt.Fprintf(w, "  %s\n", l)
+	}
+	if len(lines) > len(shown) {
+		fmt.Fprintf(w, "  ... and %d more changed line(s)\n", len(lines)-len(shown))
+	}
+}
 
 // CANARY: REQ=ENG-4300; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
 // copyCanaryStructure copies the embedded base/ directory structure to the target .canary/ project directory
@@ -114,8 +170,9 @@ func codexPromptsDir() (string, error) {
 // agentsList: specific agents to install for (e.g., ["claude", "cursor"])
 // allAgentsFlag: if true, install for all supported agents
 // localInstall: if true, install in project directory; if false, install globally in home directory
+// force: allow replacing an already-installed command file whose content differs
 // If both are empty/false, auto-detect existing agent directories
-func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag bool, localInstall bool) ([]string, error) {
+func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag bool, localInstall, force bool) ([]string, error) {
 	sourceDir := filepath.Join(targetDir, ".canary", "templates", "commands")
 	notes := []string{}
 
@@ -241,7 +298,7 @@ func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag b
 			}
 
 			// Write to target with prefix
-			if err := os.WriteFile(targetPath, content, 0640); err != nil {
+			if err := writeManagedFile(config.Dir, targetPath, content, 0640, force); err != nil {
 				return nil, fmt.Errorf("write command file %s for %s: %w", targetName, agentName, err)
 			}
 		}
@@ -253,7 +310,7 @@ func installSlashCommands(targetDir string, agentsList []string, allAgentsFlag b
 // CANARY: REQ=ENG-4300; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17
 // copyAndProcessAgentFiles copies agent files from embedded/.canary/agents/ to .canary/agents/
 // and performs template variable substitution for {{ .AgentPrefix }}, {{ .AgentModel }}, {{ .AgentColor }}
-func copyAndProcessAgentFiles(targetDir, agentPrefix, agentModel, agentColor string) error {
+func copyAndProcessAgentFiles(targetDir, agentPrefix, agentModel, agentColor string, force bool) error {
 	// Agent files are in base/agents/
 	sourceAgentsDir := "base/agents"
 	targetAgentsDir := filepath.Join(targetDir, ".canary", "agents")
@@ -294,7 +351,7 @@ func copyAndProcessAgentFiles(targetDir, agentPrefix, agentModel, agentColor str
 		processedContent = string(utils.FilterCanaryTokens([]byte(processedContent)))
 
 		// Write processed content to target
-		if err := os.WriteFile(targetPath, []byte(processedContent), 0640); err != nil {
+		if err := writeManagedFile(targetDir, targetPath, []byte(processedContent), 0640, force); err != nil {
 			return fmt.Errorf("write agent file %s: %w", entry.Name(), err)
 		}
 	}
@@ -305,7 +362,7 @@ func copyAndProcessAgentFiles(targetDir, agentPrefix, agentModel, agentColor str
 // CANARY: REQ=ENG-4300; FEATURE="InitWorkflow"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-17
 // installAgentFilesToSystems copies agent files from embedded/.canary/agents/ to each agent system's agents directory
 // This ensures agent definitions are available in each AI agent system (Claude, Cursor, etc.)
-func installAgentFilesToSystems(targetDir string, agentsList []string, allAgentsFlag bool, agentPrefix, agentModel, agentColor string, localInstall bool) error {
+func installAgentFilesToSystems(targetDir string, agentsList []string, allAgentsFlag bool, agentPrefix, agentModel, agentColor string, localInstall, force bool) error {
 	// Agent files are in base/agents/
 	sourceAgentsDir := "base/agents"
 	entries, err := embedded.ReadDir(sourceAgentsDir)
@@ -419,7 +476,7 @@ func installAgentFilesToSystems(targetDir string, agentsList []string, allAgents
 			processedContent = string(utils.FilterCanaryTokens([]byte(processedContent)))
 
 			// Write to target
-			if err := os.WriteFile(targetPath, []byte(processedContent), 0640); err != nil {
+			if err := writeManagedFile(agentDir, targetPath, []byte(processedContent), 0640, force); err != nil {
 				return fmt.Errorf("write agent file %s for %s: %w", entry.Name(), agentName, err)
 			}
 		}
@@ -428,65 +485,61 @@ func installAgentFilesToSystems(targetDir string, agentsList []string, allAgents
 	return nil
 }
 
-// CANARY: REQ=ENG-4320; FEATURE="AgentContextUpdate"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-11-01
-// updateAgentContextFiles updates all agent context files with gated CANARY sections
-func updateAgentContextFiles(projectName string) error {
-	// Get CANARY content for each file
-	claudeContent := createClaudeMD()
-	cursorContent := createCursorMD()
-	codexContent := createCodexAGENTSMD()
+// CANARY: REQ=ENG-4320; FEATURE="AgentContextUpdate"; ASPECT=CLI; STATUS=TESTED; TEST=TestAuditF11,TestAuditF11NoDuplicateSection,TestUpdateAgentContextFilesCreatesAGENTS; OWNER=canary; UPDATED=2026-08-30
+// updateAgentContextFiles updates all agent context files with gated CANARY
+// sections. Each file is attempted independently and every failure is
+// reported together: one file with malformed markers must not stop the other
+// agent systems from being configured, and it must not be silently skipped
+// either.
+func updateAgentContextFiles(projectName string, force bool) error {
 	agentContextContent, err := utils.ReadEmbeddedFile("base/AGENT_CONTEXT.md")
 	if err != nil {
 		return fmt.Errorf("read AGENT_CONTEXT.md: %w", err)
 	}
 
-	// Update CLAUDE.md
-	claudePath := filepath.Join(projectName, "CLAUDE.md")
-	if err := updateMarkdownSection(claudePath, claudeContent); err != nil {
-		return fmt.Errorf("update CLAUDE.md: %w", err)
+	gated := []struct {
+		path    string
+		content string
+	}{
+		{filepath.Join(projectName, "CLAUDE.md"), createClaudeMD()},
+		{filepath.Join(projectName, "CURSOR.md"), createCursorMD()},
+		{filepath.Join(projectName, "AGENTS.md"), createCodexAGENTSMD()},
 	}
 
-	// Update CURSOR.md
-	cursorPath := filepath.Join(projectName, "CURSOR.md")
-	if err := updateMarkdownSection(cursorPath, cursorContent); err != nil {
-		return fmt.Errorf("update CURSOR.md: %w", err)
+	// Update .github/copilot-instructions.md only when .github exists.
+	githubDir := filepath.Join(projectName, ".github")
+	if _, serr := os.Stat(githubDir); serr == nil {
+		gated = append(gated, struct {
+			path    string
+			content string
+		}{filepath.Join(githubDir, "copilot-instructions.md"), createCopilotInstructionsMD()})
 	}
 
-	// Update AGENTS.md for Codex / repository-scoped instructions
-	agentsPath := filepath.Join(projectName, "AGENTS.md")
-	if err := updateMarkdownSection(agentsPath, codexContent); err != nil {
-		return fmt.Errorf("update AGENTS.md: %w", err)
+	var errs []error
+	for _, g := range gated {
+		if uerr := updateMarkdownSection(g.path, g.content); uerr != nil {
+			errs = append(errs, uerr)
+		}
 	}
 
 	// Update .canary/AGENT_CONTEXT.md (embedded file is already correct)
 	agentContextPath := filepath.Join(projectName, ".canary", "AGENT_CONTEXT.md")
-	// Filter out internal CANARY tokens
 	filteredContent := utils.FilterCanaryTokens(agentContextContent)
-	if err := os.WriteFile(agentContextPath, filteredContent, 0640); err != nil {
-		return fmt.Errorf("write AGENT_CONTEXT.md: %w", err)
-	}
-
-	// Update .github/copilot-instructions.md if .github exists
-	githubDir := filepath.Join(projectName, ".github")
-	if _, err := os.Stat(githubDir); err == nil {
-		copilotPath := filepath.Join(githubDir, "copilot-instructions.md")
-		copilotContent := createCopilotInstructionsMD()
-		if err := updateMarkdownSection(copilotPath, copilotContent); err != nil {
-			return fmt.Errorf("update copilot-instructions.md: %w", err)
-		}
+	if werr := writeManagedFile(projectName, agentContextPath, filteredContent, 0640, force); werr != nil {
+		errs = append(errs, fmt.Errorf("write AGENT_CONTEXT.md: %w", werr))
 	}
 
 	// Create Cursor-specific files (rules + optional MCP) so Cursor IDE and plugins work well
-	if err := createCursorRuleAndMCP(projectName); err != nil {
-		return fmt.Errorf("create Cursor rule/MCP: %w", err)
+	if cerr := createCursorRuleAndMCP(projectName, force); cerr != nil {
+		errs = append(errs, fmt.Errorf("create Cursor rule/MCP: %w", cerr))
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 // createCursorRuleAndMCP creates .cursor/rules/canary-requirements.mdc and .cursor/mcp.json (if missing)
 // so Cursor IDE and Cursor plugins get CANARY guidance and optional MCP tool access.
-func createCursorRuleAndMCP(projectName string) error {
+func createCursorRuleAndMCP(projectName string, force bool) error {
 	cursorDir := filepath.Join(projectName, ".cursor")
 	rulesDir := filepath.Join(cursorDir, "rules")
 	if err := os.MkdirAll(rulesDir, 0750); err != nil {
@@ -501,7 +554,7 @@ func createCursorRuleAndMCP(projectName string) error {
 		"- **Scan:** Use the one-line stdout from `canary scan` (CANARY_SCAN tokens=...) for metrics; do not read status.json unless needed.\n" +
 		"- **Verify:** Use stdout CANARY_VERIFY_OK or stderr CANARY_VERIFY_FAIL lines; open GAP_ANALYSIS.md only when fixing claims.\n" +
 		"- **Token format:** `// CANARY: REQ=ID; FEATURE=\"Name\"; ASPECT=API; STATUS=IMPL; UPDATED=YYYY-MM-DD` — status STUB→IMPL→TESTED→BENCHED.\n"
-	if err := os.WriteFile(rulePath, []byte(ruleContent), 0640); err != nil {
+	if err := writeManagedFile(projectName, rulePath, []byte(ruleContent), 0640, force); err != nil {
 		return err
 	}
 
@@ -519,7 +572,9 @@ func createCursorRuleAndMCP(projectName string) error {
 }
 `
 	// Cursor may expect streamable HTTP; url alone is often enough. User must run `canary mcp` first.
-	if err := os.WriteFile(mcpPath, []byte(mcpContent), 0640); err != nil {
+	// The existence check above already guarantees this is a create, never a
+	// replacement, so the user's other MCP servers are never touched.
+	if err := writeManagedFile(projectName, mcpPath, []byte(mcpContent), 0640, force); err != nil {
 		return err
 	}
 	return nil

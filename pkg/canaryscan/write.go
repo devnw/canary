@@ -1,12 +1,26 @@
 package canaryscan
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
+	"path/filepath"
 	"sort"
 	"strings"
+
+	"devnw.dev/canary/pkg/safewrite"
 )
+
+// writeOut replaces path atomically. These are output files the user asked
+// for by name (--out, --csv), so replacing one is the point; what must never
+// happen is a truncated report left behind by a failure mid-write.
+func writeOut(path string, data []byte) error {
+	_, err := safewrite.Write(path, data, 0o640, safewrite.Options{
+		Root:  filepath.Dir(path),
+		Force: true,
+	})
+	return err
+}
 
 func max3(a, b, c int) int {
 	if a < b {
@@ -18,25 +32,20 @@ func max3(a, b, c int) int {
 	return a
 }
 
-// WriteJSON writes rep to path as JSON.
+// WriteJSON writes rep to path as JSON, atomically.
 func WriteJSON(path string, rep Report) error {
-	f, err := os.Create(path)
-	if err != nil {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(rep); err != nil {
 		return err
 	}
-	defer func() { _ = f.Close() }()
-	enc := json.NewEncoder(f)
-	enc.SetEscapeHTML(false)
-	return enc.Encode(rep)
+	return writeOut(path, buf.Bytes())
 }
 
-// WriteCSV writes rep to path as CSV.
+// WriteCSV writes rep to path as CSV, atomically.
 func WriteCSV(path string, rep Report) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = f.Close() }()
+	f := &bytes.Buffer{}
 	_, _ = fmt.Fprintln(f, "req,feature,aspect,status,file,test,bench,owner,updated")
 	for _, r := range rep.Requirements {
 		for _, ft := range r.Features {
@@ -60,7 +69,7 @@ func WriteCSV(path string, rep Report) error {
 			}
 		}
 	}
-	return nil
+	return writeOut(path, f.Bytes())
 }
 
 // MarshalSortedMap ensures deterministic JSON object key order for map[string]int.

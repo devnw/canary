@@ -6,12 +6,17 @@
 package audit
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+
+	"devnw.dev/canary/pkg/canaryscan"
+	"devnw.dev/canary/pkg/sources"
 )
 
 // buildCanary builds ./cmd/canary exactly once per test binary run and
@@ -73,6 +78,73 @@ func repoRoot() string {
 		}
 		dir = parent
 	}
+}
+
+// runCLI runs the canary binary with root as its working directory and
+// returns its combined output. HOME is redirected at a throwaway directory:
+// `canary init` installs agent files into the user's home by default, and a
+// test must never reach the developer's real ~/.claude or ~/.codex.
+func runCLI(t *testing.T, root, bin string, args ...string) (string, error) {
+	t.Helper()
+	cmd := exec.Command(bin, args...)
+	cmd.Dir = root
+	home := t.TempDir()
+	cmd.Env = append(os.Environ(), "HOME="+home, "USERPROFILE="+home)
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
+// run executes the canary binary in root and fails the test if it exits
+// non-zero.
+func run(t *testing.T, root, bin string, args ...string) string {
+	t.Helper()
+	out, err := runCLI(t, root, bin, args...)
+	if err != nil {
+		t.Fatalf("canary %s: %v\n%s", strings.Join(args, " "), err, out)
+	}
+	return out
+}
+
+// runExpectFail executes the canary binary in root and fails the test if it
+// exits zero.
+func runExpectFail(t *testing.T, root, bin string, args ...string) string {
+	t.Helper()
+	out, err := runCLI(t, root, bin, args...)
+	if err == nil {
+		t.Fatalf("canary %s: expected failure, got success\n%s", strings.Join(args, " "), out)
+	}
+	return out
+}
+
+// sha256File returns path's content digest, so a test can assert a file was
+// left byte-for-byte alone without holding its bytes.
+func sha256File(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path) //nolint:gosec // test-controlled path
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
+}
+
+// scanDir runs a full canaryscan over root with that root's own registry and
+// ignore rules -- the same inputs the CLI uses.
+func scanDir(t *testing.T, root string) canaryscan.Report {
+	t.Helper()
+	reg, err := sources.LoadFromRoot(root)
+	if err != nil {
+		t.Fatalf("load sources: %v", err)
+	}
+	ignorePatterns, err := canaryscan.LoadCanaryIgnore(root)
+	if err != nil {
+		t.Fatalf("load .canaryignore: %v", err)
+	}
+	rep, err := canaryscan.Scan(root, canaryscan.DefaultSkipRegex(), nil, ignorePatterns, reg)
+	if err != nil {
+		t.Fatalf("scan %s: %v", root, err)
+	}
+	return rep
 }
 
 // git runs one git command in root, failing the test on error. Config that

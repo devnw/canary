@@ -22,7 +22,11 @@ var (
 	legacyBareReqRe = regexp.MustCompile(`^((?:REQ|TASK|BUG)(?:-[A-Z]+)?-?\d{1,4})$`)
 )
 
-const defaultSkipPattern = `(^|/)(.git|node_modules|vendor|bin|dist|build|zig-out|.zig-cache|canary-new)(/|$)`
+// defaultSkipPattern excludes directories that never hold requirement
+// sources, plus `.bak` files: a `.bak` is the pre-rewrite copy `canary
+// upgrade` leaves beside a file it changed, and scanning it would report
+// every token in that file twice.
+const defaultSkipPattern = `(^|/)(.git|node_modules|vendor|bin|dist|build|zig-out|.zig-cache|canary-new)(/|$)|\.bak$`
 
 // stateSkipPattern is defaultSkipPattern plus `.canary`, canary's own state
 // directory. That directory holds the sqlite index, the remote-status cache
@@ -30,7 +34,7 @@ const defaultSkipPattern = `(^|/)(.git|node_modules|vendor|bin|dist|build|zig-ou
 // requirements. Commands that must produce a clean verdict over a project
 // (verify, evidence) use it so a project that has ever run any canary command
 // does not report its own database as a binary scan issue.
-const stateSkipPattern = `(^|/)(\.git|\.canary|node_modules|vendor|bin|dist|build|zig-out|\.zig-cache|canary-new)(/|$)`
+const stateSkipPattern = `(^|/)(\.git|\.canary|node_modules|vendor|bin|dist|build|zig-out|\.zig-cache|canary-new)(/|$)|\.bak$`
 
 var (
 	aspects   = map[string]struct{}{"API": {}, "CLI": {}, "Engine": {}, "Planner": {}, "Storage": {}, "Wire": {}, "Security": {}, "Docs": {}, "Decode": {}, "Encode": {}, "RoundTrip": {}, "Bench": {}, "FrontEnd": {}, "Dist": {}}

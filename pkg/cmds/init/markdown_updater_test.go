@@ -7,6 +7,14 @@ import (
 	"testing"
 )
 
+// keyedStartMarker/keyedEndMarker are the markers updateMarkdownSection now
+// writes. Sections are keyed so a file can carry this one beside anyone
+// else's, and so a re-run updates it rather than appending a duplicate.
+const (
+	keyedStartMarker = "<!-- CANARY:canary-guide:START -->"
+	keyedEndMarker   = "<!-- CANARY:canary-guide:END -->"
+)
+
 func TestUpdateMarkdownSection(t *testing.T) {
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.md")
@@ -25,11 +33,11 @@ func TestUpdateMarkdownSection(t *testing.T) {
 		}
 
 		resultStr := string(result)
-		if !strings.Contains(resultStr, "<!-- CANARY:START -->") {
-			t.Error("Missing start marker")
+		if !strings.Contains(resultStr, keyedStartMarker) {
+			t.Errorf("Missing start marker in:\n%s", resultStr)
 		}
-		if !strings.Contains(resultStr, "<!-- CANARY:END -->") {
-			t.Error("Missing end marker")
+		if !strings.Contains(resultStr, keyedEndMarker) {
+			t.Errorf("Missing end marker in:\n%s", resultStr)
 		}
 		if !strings.Contains(resultStr, "This is the CANARY content") {
 			t.Error("Missing content")
@@ -122,8 +130,8 @@ More content.
 		if !strings.Contains(resultStr, "CANARY tracking enabled") {
 			t.Error("CANARY section was not added")
 		}
-		if !strings.Contains(resultStr, "<!-- CANARY:START -->") {
-			t.Error("CANARY markers were not added")
+		if !strings.Contains(resultStr, keyedStartMarker) {
+			t.Errorf("CANARY markers were not added:\n%s", resultStr)
 		}
 	})
 
@@ -144,11 +152,34 @@ More content.
 		}
 
 		// Count markers - should only have one pair
-		markerCount := strings.Count(string(result2), "<!-- CANARY:START -->")
+		markerCount := strings.Count(string(result2), keyedStartMarker)
 		if markerCount != 1 {
-			t.Errorf("Expected 1 start marker, got %d", markerCount)
+			t.Errorf("Expected 1 start marker, got %d in:\n%s", markerCount, result2)
 		}
 	})
+}
+
+// TestUpdateMarkdownSectionRejectsMalformedMarkers proves a file whose
+// markers do not pair up is reported rather than "repaired" by appending a
+// second section, and is left byte-identical.
+func TestUpdateMarkdownSectionRejectsMalformedMarkers(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "broken.md")
+	bad := "<!-- CANARY:canary-guide:START -->\nno end marker\n"
+	if err := os.WriteFile(path, []byte(bad), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	if err := updateMarkdownSection(path, "new content"); err == nil {
+		t.Fatal("expected an error for unpaired markers")
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read file failed: %v", err)
+	}
+	if string(got) != bad {
+		t.Fatalf("file was mutated:\n%s", got)
+	}
 }
 
 func TestUpdateMultipleMarkdownSections(t *testing.T) {

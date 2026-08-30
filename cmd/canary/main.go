@@ -77,6 +77,7 @@ func init() {
 	canaryinit.InitCmd.Flags().String("agent-prefix", "", "agent name prefix for CANARY agents (default: project key)")
 	canaryinit.InitCmd.Flags().String("agent-model", "sonnet", "AI model for CANARY agents")
 	canaryinit.InitCmd.Flags().String("agent-color", "blue", "color for CANARY agents")
+	canaryinit.InitCmd.Flags().Bool("force", false, "overwrite files whose content differs (previous content is saved to <file>.bak)")
 
 	// migrateCmd flags
 	db.MigrateCmd.Flags().String("db", ".canary/canary.db", "path to database file")

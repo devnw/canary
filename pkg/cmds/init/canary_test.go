@@ -16,7 +16,7 @@ func TestInstallSlashCommandsCodexUsesPromptsDir(t *testing.T) {
 		t.Fatalf("copyCanaryStructure failed: %v", err)
 	}
 
-	notes, err := installSlashCommands(projectDir, []string{"codex"}, false, false)
+	notes, err := installSlashCommands(projectDir, []string{"codex"}, false, false, false)
 	if err != nil {
 		t.Fatalf("installSlashCommands failed: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestInstallSlashCommandsCodexLocalModeFallsBackToGlobalPrompts(t *testing.T
 		t.Fatalf("copyCanaryStructure failed: %v", err)
 	}
 
-	notes, err := installSlashCommands(projectDir, []string{"codex"}, false, true)
+	notes, err := installSlashCommands(projectDir, []string{"codex"}, false, true, false)
 	if err != nil {
 		t.Fatalf("installSlashCommands failed: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestUpdateAgentContextFilesCreatesAGENTS(t *testing.T) {
 		t.Fatalf("copyCanaryStructure failed: %v", err)
 	}
 
-	if err := updateAgentContextFiles(projectDir); err != nil {
+	if err := updateAgentContextFiles(projectDir, false); err != nil {
 		t.Fatalf("updateAgentContextFiles failed: %v", err)
 	}
 
