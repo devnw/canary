@@ -26,7 +26,7 @@ func TestCANARY_CBIN_CLI_001_CLI_ShowCmd(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestCANARY_CBIN_CLI_001_CLI_ShowCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Query tokens
-			tokens, err := db.GetTokensByReqID(tt.reqID)
+			tokens, err := db.GetTokensByReqID("", tt.reqID)
 			if err != nil {
 				t.Fatalf("GetTokensByReqID failed: %v", err)
 			}
@@ -129,7 +129,7 @@ func TestCANARY_CBIN_CLI_001_CLI_ShowCmd_JSONOutput(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestCANARY_CBIN_CLI_001_CLI_ShowCmd_JSONOutput(t *testing.T) {
 	}
 
 	// Test JSON output
-	tokens, err := db.GetTokensByReqID("CBIN-TEST-JSON")
+	tokens, err := db.GetTokensByReqID("", "CBIN-TEST-JSON")
 	if err != nil {
 		t.Fatalf("GetTokensByReqID failed: %v", err)
 	}

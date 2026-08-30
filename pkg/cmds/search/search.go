@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"devnw.dev/canary/pkg/cmds/internal/utils"
-	"devnw.dev/canary/pkg/storage"
 )
 
 // CANARY: REQ=ENG-4309; FEATURE="SearchCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
@@ -39,16 +38,23 @@ Keywords are matched case-insensitively using LIKE queries.`,
 		}
 		keywords := strings.Join(args, " ")
 
-		db, err := storage.Open(dbPath)
+		projectID, err := utils.ReadProjectID(cmd, ".")
 		if err != nil {
-			return fmt.Errorf("open database: %w", err)
+			return err
+		}
+
+		// Read-only: a repository with no index is told to build one, never
+		// silently given an empty database.
+		db, err := utils.OpenIndexRO(cmd, dbPath)
+		if err != nil {
+			return err
 		}
 
 		defer func() { _ = db.Close() }()
 
-		tokens, err := db.SearchTokens(keywords, effLimit)
+		tokens, err := db.SearchTokens(projectID, keywords, effLimit)
 		if err != nil {
-			return fmt.Errorf("search tokens: %w", err)
+			return utils.GuardContract(err)
 		}
 
 		if len(tokens) == 0 {
@@ -89,5 +95,6 @@ func init() {
 	SearchCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	SearchCmd.Flags().String("db", ".canary/canary.db", "path to database file")
 	SearchCmd.Flags().Bool("json", false, "output as JSON")
+	utils.AddProjectFlag(SearchCmd)
 	SearchCmd.Flags().Int("limit", defaultSearchLimit, "maximum number of results (default 20 to protect agent context; -1 = unlimited)")
 }

@@ -15,8 +15,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"devnw.dev/canary/pkg/cmds/internal/utils"
 	"devnw.dev/canary/pkg/migrate"
-	"devnw.dev/canary/pkg/storage"
 )
 
 // CANARY: REQ=ENG-4318; FEATURE="MigrateParentCommand"; ASPECT=CLI; STATUS=IMPL; UPDATED=2025-10-17
@@ -63,16 +63,21 @@ excluded.`,
 		rootDir, _ := cmd.Flags().GetString("root")
 		showFeatures, _ := cmd.Flags().GetBool("show-features")
 
-		// Open database
-		db, err := storage.Open(dbPath)
+		projectID, err := utils.ReadProjectID(cmd, rootDir)
 		if err != nil {
-			return fmt.Errorf("failed to open database: %w", err)
+			return err
+		}
+
+		// Read-only: orphan detection consumes the index.
+		db, err := utils.OpenIndexRO(cmd, dbPath)
+		if err != nil {
+			return err
 		}
 		defer db.Close()
 
 		// Detect orphans with path filtering
 		excludePaths := []string{"/docs/", "/.claude/", "/.cursor/", "/.canary/specs/"}
-		orphans, err := migrate.DetectOrphans(db, rootDir, excludePaths)
+		orphans, err := migrate.DetectOrphans(db, projectID, rootDir, excludePaths)
 		if err != nil {
 			return fmt.Errorf("failed to detect orphans: %w", err)
 		}
@@ -151,16 +156,21 @@ Use --dry-run to preview changes without creating files.`,
 			return fmt.Errorf("cannot specify REQ-ID with --all flag")
 		}
 
-		// Open database
-		db, err := storage.Open(dbPath)
+		projectID, err := utils.ReadProjectID(cmd, rootDir)
 		if err != nil {
-			return fmt.Errorf("failed to open database: %w", err)
+			return err
+		}
+
+		// Read-only: this command writes spec files, never the index.
+		db, err := utils.OpenIndexRO(cmd, dbPath)
+		if err != nil {
+			return err
 		}
 		defer db.Close()
 
 		// Detect orphans
 		excludePaths := []string{"/docs/", "/.claude/", "/.cursor/", "/.canary/specs/"}
-		orphans, err := migrate.DetectOrphans(db, rootDir, excludePaths)
+		orphans, err := migrate.DetectOrphans(db, projectID, rootDir, excludePaths)
 		if err != nil {
 			return fmt.Errorf("failed to detect orphans: %w", err)
 		}
@@ -312,10 +322,12 @@ func init() {
 
 	// Global flags
 	migrateDetectCmd.Flags().String("db", ".canary/canary.db", "Path to database file")
+	utils.AddProjectFlag(migrateDetectCmd)
 	migrateDetectCmd.Flags().String("root", ".", "Root directory for project")
 	migrateDetectCmd.Flags().Bool("show-features", false, "Show feature details for each orphan")
 
 	migrateRunCmd.Flags().String("db", ".canary/canary.db", "Path to database file")
+	utils.AddProjectFlag(migrateRunCmd)
 	migrateRunCmd.Flags().String("root", ".", "Root directory for project")
 	migrateRunCmd.Flags().Bool("all", false, "Migrate all orphaned requirements")
 	migrateRunCmd.Flags().Bool("dry-run", false, "Preview migration without creating files")

@@ -51,7 +51,7 @@ func seedGitDB(t *testing.T, committedFile, commitDate, tokenUpdated string) (db
 		t.Fatalf("MigrateDB: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func seedGitDB(t *testing.T, committedFile, commitDate, tokenUpdated string) (db
 
 func TestCANARY_CBIN_305_BuildView_Drifted(t *testing.T) {
 	dbPath, root := seedGitDB(t, "foo.go", "2026-08-20T12:00:00+00:00", "2026-08-01")
-	v, err := BuildView(dbPath, root, "CBIN-950", 10)
+	v, err := BuildView(dbPath, root, "", "CBIN-950", 10)
 	if err != nil {
 		t.Fatalf("BuildView: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestCANARY_CBIN_305_BuildView_Drifted(t *testing.T) {
 
 func TestCANARY_CBIN_305_BuildView_NotDrifted(t *testing.T) {
 	dbPath, root := seedGitDB(t, "foo.go", "2026-08-01T12:00:00+00:00", "2026-08-20")
-	v, err := BuildView(dbPath, root, "CBIN-950", 10)
+	v, err := BuildView(dbPath, root, "", "CBIN-950", 10)
 	if err != nil {
 		t.Fatalf("BuildView: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestCANARY_CBIN_305_BuildView_NotDrifted(t *testing.T) {
 
 func TestCANARY_CBIN_305_BuildView_NonGitRootSoftSkip(t *testing.T) {
 	dbPath, root := seedDB(t) // no git init
-	v, err := BuildView(dbPath, root, "CBIN-105", 10)
+	v, err := BuildView(dbPath, root, "", "CBIN-105", 10)
 	if err != nil {
 		t.Fatalf("BuildView: %v", err)
 	}
@@ -121,7 +121,7 @@ func seedDB(t *testing.T) (dbPath, root string) {
 		t.Fatalf("MigrateDB: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func seedDB(t *testing.T) (dbPath, root string) {
 
 func TestCANARY_CBIN_204_BuildView(t *testing.T) {
 	dbPath, root := seedDB(t)
-	v, err := BuildView(dbPath, root, "CBIN-105", 10)
+	v, err := BuildView(dbPath, root, "", "CBIN-105", 10)
 	if err != nil {
 		t.Fatalf("BuildView: %v", err)
 	}
@@ -180,7 +180,7 @@ func TestCANARY_CBIN_204_BuildView(t *testing.T) {
 
 func TestCANARY_CBIN_204_BuildView_FileCap(t *testing.T) {
 	dbPath, root := seedDB(t)
-	v, err := BuildView(dbPath, root, "CBIN-105", 1)
+	v, err := BuildView(dbPath, root, "", "CBIN-105", 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +193,7 @@ func TestCANARY_CBIN_204_BuildView_DiagramCap(t *testing.T) {
 	dbPath, root := seedDB(t)
 
 	// Add extra diagram refs to test the cap
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func TestCANARY_CBIN_204_BuildView_DiagramCap(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	v, err := BuildView(dbPath, root, "CBIN-105", 1)
+	v, err := BuildView(dbPath, root, "", "CBIN-105", 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +218,7 @@ func TestCANARY_CBIN_204_BuildView_DiagramCap(t *testing.T) {
 
 func TestCANARY_CBIN_204_BuildView_NotFound(t *testing.T) {
 	dbPath, root := seedDB(t)
-	if _, err := BuildView(dbPath, root, "CBIN-999", 10); err == nil {
+	if _, err := BuildView(dbPath, root, "", "CBIN-999", 10); err == nil {
 		t.Error("unknown requirement must return an error")
 	}
 }
@@ -227,7 +227,7 @@ func TestCANARY_CBIN_204_BuildView_NotFound(t *testing.T) {
 func TestCANARY_CBIN_301_BuildView_MigrateNotes(t *testing.T) {
 	dbPath, root := seedDB(t)
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,7 +239,7 @@ func TestCANARY_CBIN_301_BuildView_MigrateNotes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	v, err := BuildView(dbPath, root, "CBIN-105", 10)
+	v, err := BuildView(dbPath, root, "", "CBIN-105", 10)
 	if err != nil {
 		t.Fatalf("BuildView: %v", err)
 	}
@@ -262,7 +262,7 @@ func TestCANARY_CBIN_301_BuildView_MigrateNotes(t *testing.T) {
 func TestCANARY_CBIN_301_BuildView_MigrateNotesCap(t *testing.T) {
 	dbPath, root := seedDB(t)
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,7 +276,7 @@ func TestCANARY_CBIN_301_BuildView_MigrateNotesCap(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	v, err := BuildView(dbPath, root, "CBIN-105", 1)
+	v, err := BuildView(dbPath, root, "", "CBIN-105", 1)
 	if err != nil {
 		t.Fatal(err)
 	}

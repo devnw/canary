@@ -73,7 +73,7 @@ sources:
 	if err := storage.MigrateDB(dbPath, "all"); err != nil {
 		t.Fatalf("MigrateDB: %v", err)
 	}
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +280,7 @@ sources:
 	if err := storage.MigrateDB(dbPath, "all"); err != nil {
 		t.Fatalf("MigrateDB: %v", err)
 	}
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -558,7 +558,7 @@ sources:
 	if err := storage.MigrateDB(dbPath, "all"); err != nil {
 		t.Fatalf("MigrateDB: %v", err)
 	}
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -752,7 +752,7 @@ sources:
 	if err := storage.MigrateDB(dbPath, "all"); err != nil {
 		t.Fatalf("MigrateDB: %v", err)
 	}
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}

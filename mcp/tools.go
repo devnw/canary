@@ -60,15 +60,17 @@ type ListResult struct {
 
 // handleList implements the list tool handler
 func handleList(ctx context.Context, req *mcp.CallToolRequest, params *ListParams) (*mcp.CallToolResult, *ListResult, error) {
+	projectID := mcpProjectID()
+
 	dbPath := ".canary/canary.db"
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
 	defer db.Close()
 
-	filters := make(map[string]string)
+	filters := make(map[string]any)
 	if params.Status != "" {
 		filters["status"] = params.Status
 	}
@@ -82,7 +84,7 @@ func handleList(ctx context.Context, req *mcp.CallToolRequest, params *ListParam
 	// Overfetch by one past maxToolLimit so Total reflects the true match
 	// count (or a lower bound past the ceiling) before capping, matching
 	// handleSearch's cap/Total pattern.
-	all, err := db.ListTokens(filters, "", "", maxToolLimit+1)
+	all, err := db.ListTokens(projectID, filters, "", "", maxToolLimit+1)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list tokens: %w", err)
 	}
@@ -158,14 +160,16 @@ func handleShow(ctx context.Context, req *mcp.CallToolRequest, params *ShowParam
 		return nil, nil, fmt.Errorf("reqId is required")
 	}
 
+	projectID := mcpProjectID()
+
 	dbPath := ".canary/canary.db"
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
 	defer db.Close()
 
-	tokens, err := db.GetTokensByReqID(params.ReqID)
+	tokens, err := db.GetTokensByReqID(projectID, params.ReqID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get tokens: %w", err)
 	}
@@ -304,14 +308,16 @@ func handleStatus(ctx context.Context, req *mcp.CallToolRequest, params *StatusP
 		return nil, nil, fmt.Errorf("reqId is required")
 	}
 
+	projectID := mcpProjectID()
+
 	dbPath := ".canary/canary.db"
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
 	defer db.Close()
 
-	tokens, err := db.GetTokensByReqID(params.ReqID)
+	tokens, err := db.GetTokensByReqID(projectID, params.ReqID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get tokens: %w", err)
 	}
@@ -390,14 +396,16 @@ func handleSearch(ctx context.Context, req *mcp.CallToolRequest, params *SearchP
 		return nil, nil, fmt.Errorf("keywords is required")
 	}
 
+	projectID := mcpProjectID()
+
 	dbPath := ".canary/canary.db"
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
 	defer db.Close()
 
-	all, err := db.SearchTokens(params.Keywords, maxToolLimit+1)
+	all, err := db.SearchTokens(projectID, params.Keywords, maxToolLimit+1)
 	if err != nil {
 		return nil, nil, fmt.Errorf("search tokens: %w", err)
 	}
@@ -455,8 +463,10 @@ const nextCandidateFetchLimit = 50
 
 // handleNext implements the next tool handler
 func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParams) (*mcp.CallToolResult, *NextResult, error) {
+	projectID := mcpProjectID()
+
 	dbPath := ".canary/canary.db"
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
@@ -472,34 +482,34 @@ func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParam
 
 	var token *storage.Token
 	if params.Status != "" {
-		filters := make(map[string]string)
+		filters := make(map[string]any)
 		filters["status"] = params.Status
 		if params.Aspect != "" {
 			filters["aspect"] = params.Aspect
 		}
 
-		candidates, err := db.ListTokens(filters, "", "priority ASC, updated_at DESC", nextCandidateFetchLimit)
+		candidates, err := db.ListTokens(projectID, filters, "", "", nextCandidateFetchLimit)
 		if err != nil {
 			return nil, nil, fmt.Errorf("query tokens: %w", err)
 		}
-		token = firstUnblocked(db, candidates, reg, warned)
+		token = firstUnblocked(db, projectID, candidates, reg, warned)
 	} else {
 		// No status filter: query STUB first, then IMPL if none found,
 		// mirroring the CLI's next command (internal/cmds/next/next.go).
 		// A single filters["status"] = "STUB,IMPL" never matches anything
 		// since ListTokens does an exact equality comparison.
 		for _, status := range []string{"STUB", "IMPL"} {
-			filters := make(map[string]string)
+			filters := make(map[string]any)
 			filters["status"] = status
 			if params.Aspect != "" {
 				filters["aspect"] = params.Aspect
 			}
 
-			candidates, err := db.ListTokens(filters, "", "priority ASC, updated_at DESC", nextCandidateFetchLimit)
+			candidates, err := db.ListTokens(projectID, filters, "", "", nextCandidateFetchLimit)
 			if err != nil {
 				return nil, nil, fmt.Errorf("query tokens: %w", err)
 			}
-			token = firstUnblocked(db, candidates, reg, warned)
+			token = firstUnblocked(db, projectID, candidates, reg, warned)
 			if token != nil {
 				break
 			}
@@ -540,9 +550,9 @@ func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParam
 
 // firstUnblocked returns the first candidate (already priority-ordered) whose
 // dependencies are all resolved, or nil if every candidate is blocked.
-func firstUnblocked(db *storage.DB, candidates []*storage.Token, reg *sources.Registry, warned map[string]bool) *storage.Token {
+func firstUnblocked(db *storage.DB, projectID string, candidates []*storage.Token, reg *sources.Registry, warned map[string]bool) *storage.Token {
 	for _, tok := range candidates {
-		if !hasUnresolvedDependencies(db, tok, reg, warned) {
+		if !hasUnresolvedDependencies(db, projectID, tok, reg, warned) {
 			return tok
 		}
 	}
@@ -558,7 +568,7 @@ func firstUnblocked(db *storage.DB, candidates []*storage.Token, reg *sources.Re
 // non-strict default (satisfied -> not blocking, unsatisfied -> blocking,
 // unknown/no-cached-status -> not blocking, degradation is sacred).
 // CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_ENG_3960_MCP_Next_ExternalSatisfied_NotBlocking,TestCANARY_ENG_3960_MCP_Next_ExternalUnsatisfied_Blocking,TestCANARY_ENG_3960_MCP_Next_ExternalUnknown_NotBlocking,TestCANARY_ENG_3960_MCP_Next_LocalMissingDep_StillBlocking; UPDATED=2026-08-29
-func hasUnresolvedDependencies(db *storage.DB, tok *storage.Token, reg *sources.Registry, warned map[string]bool) bool {
+func hasUnresolvedDependencies(db *storage.DB, projectID string, tok *storage.Token, reg *sources.Registry, warned map[string]bool) bool {
 	if tok.DependsOn == "" {
 		return false
 	}
@@ -570,7 +580,7 @@ func hasUnresolvedDependencies(db *storage.DB, tok *storage.Token, reg *sources.
 			continue
 		}
 
-		depTokens, err := db.GetTokensByReqID(dep)
+		depTokens, err := db.GetTokensByReqID(projectID, dep)
 		if err != nil || len(depTokens) == 0 {
 			res := external.Resolve(dep, reg, ".")
 			if !res.IsExternal() {

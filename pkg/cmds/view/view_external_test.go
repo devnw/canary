@@ -46,7 +46,7 @@ sources:
 		t.Fatalf("MigrateDB: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestCANARY_ENG_3960_View_DependsOn_ExternalAnnotated(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	v, err := BuildView(dbPath, root, "CBIN-105", 10)
+	v, err := BuildView(dbPath, root, "", "CBIN-105", 10)
 	if err != nil {
 		t.Fatalf("BuildView: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestCANARY_ENG_3960_View_DependsOn_ExternalAnnotated(t *testing.T) {
 func TestCANARY_ENG_3960_View_DependsOn_LocalUnchanged(t *testing.T) {
 	dbPath, root := seedDBWithSources(t) // no cache written -> ENG-12 unknown
 
-	v, err := BuildView(dbPath, root, "CBIN-105", 10)
+	v, err := BuildView(dbPath, root, "", "CBIN-105", 10)
 	if err != nil {
 		t.Fatalf("BuildView: %v", err)
 	}
@@ -136,7 +136,7 @@ peers:
 		t.Fatal(err)
 	}
 
-	v, err := BuildView(dbPath, root, "CBIN-105", 10)
+	v, err := BuildView(dbPath, root, "", "CBIN-105", 10)
 	if err != nil {
 		t.Fatalf("BuildView: %v", err)
 	}
@@ -162,7 +162,7 @@ func TestCANARY_ENG_3960_View_DependsOn_LocalTokensWinOverExternalCache(t *testi
 	dbPath, root := seedDBWithSources(t)
 
 	// ENG-12 matches the "eng" jira source AND has a local IMPL token.
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestCANARY_ENG_3960_View_DependsOn_LocalTokensWinOverExternalCache(t *testi
 		t.Fatal(err)
 	}
 
-	v, err := BuildView(dbPath, root, "CBIN-105", 10)
+	v, err := BuildView(dbPath, root, "", "CBIN-105", 10)
 	if err != nil {
 		t.Fatalf("BuildView: %v", err)
 	}

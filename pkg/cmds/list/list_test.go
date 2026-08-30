@@ -6,6 +6,7 @@
 package list
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -39,7 +40,7 @@ func TestCANARY_CBIN_135_CLI_ListCommand(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -125,8 +126,8 @@ func TestCANARY_CBIN_135_CLI_ListCommand(t *testing.T) {
 
 	t.Run("list all with default filters", func(t *testing.T) {
 		// Default filters should exclude hidden paths
-		filters := make(map[string]string)
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC, updated_at DESC", 0)
+		filters := make(map[string]any)
+		tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}
@@ -143,8 +144,8 @@ func TestCANARY_CBIN_135_CLI_ListCommand(t *testing.T) {
 	})
 
 	t.Run("filter by status", func(t *testing.T) {
-		filters := map[string]string{"status": "STUB"}
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+		filters := map[string]any{"status": "STUB"}
+		tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}
@@ -160,8 +161,8 @@ func TestCANARY_CBIN_135_CLI_ListCommand(t *testing.T) {
 	})
 
 	t.Run("filter by aspect", func(t *testing.T) {
-		filters := map[string]string{"aspect": "CLI"}
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+		filters := map[string]any{"aspect": "CLI"}
+		tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}
@@ -177,8 +178,8 @@ func TestCANARY_CBIN_135_CLI_ListCommand(t *testing.T) {
 	})
 
 	t.Run("filter by owner", func(t *testing.T) {
-		filters := map[string]string{"owner": "alice"}
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+		filters := map[string]any{"owner": "alice"}
+		tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}
@@ -196,8 +197,8 @@ func TestCANARY_CBIN_135_CLI_ListCommand(t *testing.T) {
 	})
 
 	t.Run("limit results", func(t *testing.T) {
-		filters := make(map[string]string)
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 2)
+		filters := make(map[string]any)
+		tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 2)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}
@@ -209,8 +210,8 @@ func TestCANARY_CBIN_135_CLI_ListCommand(t *testing.T) {
 	})
 
 	t.Run("sort by priority", func(t *testing.T) {
-		filters := make(map[string]string)
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+		filters := make(map[string]any)
+		tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}
@@ -224,8 +225,8 @@ func TestCANARY_CBIN_135_CLI_ListCommand(t *testing.T) {
 	})
 
 	t.Run("include hidden paths", func(t *testing.T) {
-		filters := map[string]string{"include_hidden": "true"}
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+		filters := map[string]any{"include_hidden": "true"}
+		tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}
@@ -237,11 +238,11 @@ func TestCANARY_CBIN_135_CLI_ListCommand(t *testing.T) {
 	})
 
 	t.Run("priority range filtering", func(t *testing.T) {
-		filters := map[string]string{
+		filters := map[string]any{
 			"priority_min": "1",
 			"priority_max": "2",
 		}
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+		tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}
@@ -259,11 +260,11 @@ func TestCANARY_CBIN_135_CLI_ListCommand(t *testing.T) {
 	})
 
 	t.Run("combined filters", func(t *testing.T) {
-		filters := map[string]string{
+		filters := map[string]any{
 			"status": "IMPL",
 			"aspect": "API",
 		}
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+		tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}
@@ -281,8 +282,8 @@ func TestCANARY_CBIN_135_CLI_ListCommand(t *testing.T) {
 	})
 
 	t.Run("empty results", func(t *testing.T) {
-		filters := map[string]string{"status": "REMOVED"}
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+		filters := map[string]any{"status": "REMOVED"}
+		tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}
@@ -304,7 +305,7 @@ func TestCANARY_CBIN_135_CLI_ListCommand_Sorting(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -324,43 +325,43 @@ func TestCANARY_CBIN_135_CLI_ListCommand_Sorting(t *testing.T) {
 		}
 	}
 
+	// Ordering is chosen from a fixed allowlist of keys. It used to be an
+	// arbitrary SQL fragment pasted into the ORDER BY clause, so this table
+	// once enumerated things like "status ASC" and "updated_at DESC" -- the
+	// same channel `--order-by "updated_at; DROP TABLE tokens"` travelled
+	// down. The cases below cover every key that survives, and the loop after
+	// them proves the ones that don't are refused rather than reinterpreted.
 	tests := []struct {
-		name            string
-		orderBy         string
-		wantFirstReqID  string
-		wantFirstStatus string
+		name           string
+		orderKey       string
+		wantFirstReqID string
 	}{
 		{
-			name:           "sort by priority ascending",
-			orderBy:        "priority ASC",
-			wantFirstReqID: "CBIN-201", // priority 1
+			name:           "default ordering is priority then most recently updated",
+			orderKey:       "",
+			wantFirstReqID: "CBIN-201", // priority 1, updated 2025-10-16
 		},
 		{
-			name:           "sort by priority descending",
-			orderBy:        "priority DESC",
+			name:           "priority_desc puts the lowest priority first",
+			orderKey:       "priority_desc",
 			wantFirstReqID: "CBIN-202", // priority 3
 		},
 		{
-			name:            "sort by status ascending",
-			orderBy:         "status ASC",
-			wantFirstStatus: "BENCHED",
-		},
-		{
-			name:           "sort by updated_at descending (newest first)",
-			orderBy:        "updated_at DESC",
+			name:           "updated_desc puts the newest first",
+			orderKey:       "updated_desc",
 			wantFirstReqID: "CBIN-202", // 2025-10-17
 		},
 		{
-			name:           "sort by updated_at ascending (oldest first)",
-			orderBy:        "updated_at ASC",
-			wantFirstReqID: "CBIN-203", // 2025-10-14
+			name:           "req_asc orders by requirement id",
+			orderKey:       "req_asc",
+			wantFirstReqID: "CBIN-200",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filters := make(map[string]string)
-			tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", tt.orderBy, 0)
+			filters := make(map[string]any)
+			tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", tt.orderKey, 0)
 			if err != nil {
 				t.Fatalf("ListTokens failed: %v", err)
 			}
@@ -369,14 +370,18 @@ func TestCANARY_CBIN_135_CLI_ListCommand_Sorting(t *testing.T) {
 				t.Fatal("got 0 tokens, want at least 1")
 			}
 
-			if tt.wantFirstReqID != "" && tokens[0].ReqID != tt.wantFirstReqID {
+			if tokens[0].ReqID != tt.wantFirstReqID {
 				t.Errorf("first token ReqID: got %s, want %s", tokens[0].ReqID, tt.wantFirstReqID)
 			}
-
-			if tt.wantFirstStatus != "" && tokens[0].Status != tt.wantFirstStatus {
-				t.Errorf("first token Status: got %s, want %s", tokens[0].Status, tt.wantFirstStatus)
-			}
 		})
+	}
+
+	// Raw SQL fragments -- including the ones this table used to pass -- are
+	// no longer an ordering, they are a refusal.
+	for _, raw := range []string{"status ASC", "updated_at DESC", "priority ASC", "updated_at; DROP TABLE tokens"} {
+		if _, err := db.ListTokens("", nil, "", raw, 0); !errors.Is(err, storage.ErrInvalidOrderBy) {
+			t.Errorf("order key %q: got %v, want ErrInvalidOrderBy", raw, err)
+		}
 	}
 }
 
@@ -390,7 +395,7 @@ func TestCANARY_CBIN_135_CLI_ListCommand_Performance(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -414,8 +419,8 @@ func TestCANARY_CBIN_135_CLI_ListCommand_Performance(t *testing.T) {
 	}
 
 	// Test that query with 100 tokens completes quickly
-	filters := make(map[string]string)
-	tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 10)
+	filters := make(map[string]any)
+	tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 10)
 	if err != nil {
 		t.Fatalf("ListTokens failed: %v", err)
 	}
@@ -442,15 +447,15 @@ func TestCANARY_CBIN_135_CLI_ListCommand_EdgeCases(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
 	defer db.Close()
 
 	t.Run("empty database", func(t *testing.T) {
-		filters := make(map[string]string)
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+		filters := make(map[string]any)
+		tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}
@@ -476,8 +481,8 @@ func TestCANARY_CBIN_135_CLI_ListCommand_EdgeCases(t *testing.T) {
 	}
 
 	t.Run("limit zero (unlimited)", func(t *testing.T) {
-		filters := make(map[string]string)
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+		filters := make(map[string]any)
+		tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}
@@ -489,8 +494,8 @@ func TestCANARY_CBIN_135_CLI_ListCommand_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("limit exceeds available", func(t *testing.T) {
-		filters := make(map[string]string)
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 100)
+		filters := make(map[string]any)
+		tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 100)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}
@@ -502,8 +507,8 @@ func TestCANARY_CBIN_135_CLI_ListCommand_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("non-matching filter", func(t *testing.T) {
-		filters := map[string]string{"status": "NONEXISTENT"}
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+		filters := map[string]any{"status": "NONEXISTENT"}
+		tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}
@@ -515,8 +520,8 @@ func TestCANARY_CBIN_135_CLI_ListCommand_EdgeCases(t *testing.T) {
 
 	t.Run("priority boundary values", func(t *testing.T) {
 		// Test priority filter with min=0 (should include all)
-		filters := map[string]string{"priority_min": "0"}
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+		filters := map[string]any{"priority_min": "0"}
+		tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}

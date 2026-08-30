@@ -19,7 +19,7 @@ func TestCANARY_CBIN_206_RefsRoundTrip(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestCANARY_CBIN_301_MigrateRefsRoundTrip(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestCANARY_CBIN_301_GetRefsByKindLimit(t *testing.T) {
 	if err := MigrateDB(dbPath, "all"); err != nil {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestCANARY_CP_285_IndexRebuildPrunes(t *testing.T) {
 	if err := MigrateDB(dbPath, "all"); err != nil {
 		t.Fatal(err)
 	}
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,14 +179,14 @@ func TestCANARY_CP_285_IndexRebuildPrunes(t *testing.T) {
 	if err := db.UpsertToken(old); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.DeleteAllTokens(); err != nil {
+	if err := db.DeleteAllTokens("default"); err != nil {
 		t.Fatalf("DeleteAllTokens: %v", err)
 	}
 	fresh := &Token{ReqID: "CP-235", Feature: "New", Aspect: "API", Status: "TESTED", FilePath: "a.go", LineNumber: 1}
 	if err := db.UpsertToken(fresh); err != nil {
 		t.Fatal(err)
 	}
-	got, lerr := db.ListTokens(nil, "", "", 0)
+	got, lerr := db.ListTokens("", nil, "", "", 0)
 	if lerr != nil {
 		t.Fatal(lerr)
 	}

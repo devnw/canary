@@ -292,12 +292,12 @@ func TestProjectContextSwitchingWithTokens(t *testing.T) {
 	assert.Len(t, tokensB, 3)
 
 	// Verify project-scoped query by req_id
-	tokensAByReq, err := db.GetTokensByReqIDAndProject("CBIN-300", projectA.ID)
+	tokensAByReq, err := db.GetTokensByReqID(projectA.ID, "CBIN-300")
 	require.NoError(t, err)
 	assert.Len(t, tokensAByReq, 5)
 	assert.Equal(t, "API", tokensAByReq[0].Aspect)
 
-	tokensBByReq, err := db.GetTokensByReqIDAndProject("CBIN-300", projectB.ID)
+	tokensBByReq, err := db.GetTokensByReqID(projectB.ID, "CBIN-300")
 	require.NoError(t, err)
 	assert.Len(t, tokensBByReq, 3)
 	assert.Equal(t, "Storage", tokensBByReq[0].Aspect)

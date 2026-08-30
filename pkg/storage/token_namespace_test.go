@@ -206,12 +206,12 @@ func TestGetTokensByReqIDAndProject(t *testing.T) {
 	require.NoError(t, err)
 
 	// Get tokens by req_id for specific project
-	tokens1, err := db.GetTokensByReqIDAndProject("CBIN-200", project1.ID)
+	tokens1, err := db.GetTokensByReqID(project1.ID, "CBIN-200")
 	require.NoError(t, err)
 	assert.Len(t, tokens1, 1)
 	assert.Equal(t, "IMPL", tokens1[0].Status)
 
-	tokens2, err := db.GetTokensByReqIDAndProject("CBIN-200", project2.ID)
+	tokens2, err := db.GetTokensByReqID(project2.ID, "CBIN-200")
 	require.NoError(t, err)
 	assert.Len(t, tokens2, 1)
 	assert.Equal(t, "TESTED", tokens2[0].Status)

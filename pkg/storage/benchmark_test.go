@@ -302,7 +302,7 @@ func BenchmarkGetTokensByReqIDAndProject(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		projectIndex := i % 5
-		_, err := db.GetTokensByReqIDAndProject("CBIN-5000", projects[projectIndex].ID)
+		_, err := db.GetTokensByReqID(projects[projectIndex].ID, "CBIN-5000")
 		if err != nil {
 			b.Fatal(err)
 		}

@@ -33,7 +33,7 @@ func mcpTestDB(t *testing.T, dependsOn string) (*storage.DB, *storage.Token) {
 	if err := storage.AutoMigrate(dbPath); err != nil {
 		t.Fatalf("AutoMigrate: %v", err)
 	}
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
 	}
@@ -50,7 +50,7 @@ func mcpTestDB(t *testing.T, dependsOn string) (*storage.DB, *storage.Token) {
 	}); err != nil {
 		t.Fatalf("UpsertToken: %v", err)
 	}
-	tokens, err := db.GetTokensByReqID("CBIN-500")
+	tokens, err := db.GetTokensByReqID("", "CBIN-500")
 	if err != nil || len(tokens) == 0 {
 		t.Fatalf("GetTokensByReqID: %v (n=%d)", err, len(tokens))
 	}
@@ -68,7 +68,7 @@ func TestCANARY_ENG_3960_MCP_Next_ExternalSatisfied_NotBlocking(t *testing.T) {
 	db, tok := mcpTestDB(t, "ENG-1")
 	reg := mcpEngRegistry(t)
 
-	if hasUnresolvedDependencies(db, tok, reg, map[string]bool{}) {
+	if hasUnresolvedDependencies(db, "", tok, reg, map[string]bool{}) {
 		t.Error("satisfied external dependency must not block")
 	}
 }
@@ -83,7 +83,7 @@ func TestCANARY_ENG_3960_MCP_Next_ExternalUnsatisfied_Blocking(t *testing.T) {
 	db, tok := mcpTestDB(t, "ENG-1")
 	reg := mcpEngRegistry(t)
 
-	if !hasUnresolvedDependencies(db, tok, reg, map[string]bool{}) {
+	if !hasUnresolvedDependencies(db, "", tok, reg, map[string]bool{}) {
 		t.Error("unsatisfied external dependency must block")
 	}
 }
@@ -96,7 +96,7 @@ func TestCANARY_ENG_3960_MCP_Next_ExternalUnknown_NotBlocking(t *testing.T) {
 	db, tok := mcpTestDB(t, "ENG-1")
 	reg := mcpEngRegistry(t)
 
-	if hasUnresolvedDependencies(db, tok, reg, map[string]bool{}) {
+	if hasUnresolvedDependencies(db, "", tok, reg, map[string]bool{}) {
 		t.Error("unknown external dependency must not block (degradation is sacred)")
 	}
 }
@@ -109,7 +109,7 @@ func TestCANARY_ENG_3960_MCP_Next_LocalMissingDep_StillBlocking(t *testing.T) {
 	db, tok := mcpTestDB(t, "CBIN-999")
 	reg := mcpEngRegistry(t)
 
-	if !hasUnresolvedDependencies(db, tok, reg, map[string]bool{}) {
+	if !hasUnresolvedDependencies(db, "", tok, reg, map[string]bool{}) {
 		t.Error("missing local (flatfile) dependency must still block")
 	}
 }
@@ -132,7 +132,7 @@ func TestCANARY_ENG_3960_MCP_Next_LocalTokensWinOverExternalCache_IMPLBlocks(t *
 	}
 	reg := mcpEngRegistry(t)
 
-	if !hasUnresolvedDependencies(db, tok, reg, map[string]bool{}) {
+	if !hasUnresolvedDependencies(db, "", tok, reg, map[string]bool{}) {
 		t.Error("local IMPL token must block even though cached remote status is Done")
 	}
 }
@@ -154,7 +154,7 @@ func TestCANARY_ENG_3960_MCP_Next_LocalTokensWinOverExternalCache_TESTEDPasses(t
 	}
 	reg := mcpEngRegistry(t)
 
-	if hasUnresolvedDependencies(db, tok, reg, map[string]bool{}) {
+	if hasUnresolvedDependencies(db, "", tok, reg, map[string]bool{}) {
 		t.Error("local TESTED token must satisfy the dependency even though cached remote status is In Progress")
 	}
 }

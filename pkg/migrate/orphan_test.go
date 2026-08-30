@@ -154,7 +154,7 @@ func TestCANARY_CBIN_145_Engine_MinimumFeatureThreshold(t *testing.T) {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -180,7 +180,7 @@ func TestCANARY_CBIN_145_Engine_MinimumFeatureThreshold(t *testing.T) {
 	}
 
 	// Verify token was inserted (include_hidden so path exclusions don't hide pkg/ file)
-	allTokens, err := db.ListTokens(map[string]string{"include_hidden": "true"}, "", "req_id ASC", 0)
+	allTokens, err := db.ListTokens("", map[string]any{"include_hidden": "true"}, "", "", 0)
 	if err != nil {
 		t.Fatalf("failed to list tokens: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestCANARY_CBIN_145_Engine_MinimumFeatureThreshold(t *testing.T) {
 	}
 
 	// Detect orphans - default minimum is 1, so should be detected
-	orphans, err := DetectOrphans(db, tmpDir, []string{"/docs/"})
+	orphans, err := DetectOrphans(db, "", tmpDir, []string{"/docs/"})
 	if err != nil {
 		t.Fatalf("DetectOrphans failed: %v", err)
 	}

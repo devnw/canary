@@ -46,17 +46,22 @@ Examples:
 			return fmt.Errorf("invalid bug ID format: %s (expected BUG-ASPECT-XXX)", bugID)
 		}
 
-		// Open database
-		db, err := storage.Open(dbPath)
+		projectID, err := utils.ReadProjectID(cmd, ".")
+		if err != nil {
+			return err
+		}
+
+		// Mutating command: OpenRW may create and migrate.
+		db, err := storage.OpenRW(dbPath)
 		if err != nil {
 			return fmt.Errorf("open database: %w", err)
 		}
 		defer db.Close()
 
 		// Get existing token
-		tokens, err := db.GetTokensByReqID(bugID)
+		tokens, err := db.GetTokensByReqID(projectID, bugID)
 		if err != nil {
-			return fmt.Errorf("find bug: %w", err)
+			return utils.GuardContract(err)
 		}
 		if len(tokens) == 0 {
 			return fmt.Errorf("bug not found: %s", bugID)
@@ -138,4 +143,5 @@ func init() {
 	bugUpdateCmd.Flags().String("priority", "", "New priority (P0, P1, P2, P3)")
 	bugUpdateCmd.Flags().String("owner", "", "New owner/assignee")
 	bugUpdateCmd.Flags().String("db", ".canary/canary.db", "Path to database file")
+	utils.AddProjectFlag(bugUpdateCmd)
 }

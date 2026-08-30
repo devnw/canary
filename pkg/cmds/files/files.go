@@ -49,20 +49,23 @@ Examples:
 		dbPath, _ := cmd.Flags().GetString("db")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 
-		// Open database
-		db, err := storage.Open(dbPath)
+		projectID, err := utils.ReadProjectID(cmd, ".")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "⚠️  Database not found\n")
-			fmt.Fprintf(os.Stderr, "   Suggestion: Run 'canary index' to build database\n\n")
-			return fmt.Errorf("open database: %w", err)
+			return err
+		}
+
+		// Read-only: never creates the database it could not find.
+		db, err := utils.OpenIndexRO(cmd, dbPath)
+		if err != nil {
+			return err
 		}
 		defer db.Close()
 
 		// Query file groups
 		excludeSpecs := !includeAll
-		fileGroups, err := db.GetFilesByReqID(reqID, excludeSpecs)
+		fileGroups, err := db.GetFilesByReqID(projectID, reqID, excludeSpecs)
 		if err != nil {
-			return fmt.Errorf("query files: %w", err)
+			return utils.GuardContract(err)
 		}
 
 		if len(fileGroups) == 0 {
@@ -110,5 +113,6 @@ func init() {
 	FilesCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	FilesCmd.Flags().Bool("all", false, "Include spec and template files")
 	FilesCmd.Flags().String("db", ".canary/canary.db", "Path to database file")
+	utils.AddProjectFlag(FilesCmd)
 	FilesCmd.Flags().Bool("json", false, "output as compact JSON")
 }

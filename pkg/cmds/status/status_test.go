@@ -23,7 +23,7 @@ func TestCANARY_CBIN_CLI_001_CLI_StatusCmd(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestCANARY_CBIN_CLI_001_CLI_StatusCmd(t *testing.T) {
 	}
 
 	// Query and calculate stats
-	tokens, err := db.GetTokensByReqID("CBIN-TEST-003")
+	tokens, err := db.GetTokensByReqID("", "CBIN-TEST-003")
 	if err != nil {
 		t.Fatalf("GetTokensByReqID failed: %v", err)
 	}

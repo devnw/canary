@@ -65,7 +65,9 @@ func FindSpecBySearch(query string, limit int) ([]matcher.Match, error) {
 
 // FindSpecInDB queries database for fast spec lookup (optional fallback)
 // If database is unavailable, returns error and caller should use FindSpecByID
-func FindSpecInDB(db *storage.DB, reqID string) (string, error) {
+// projectID scopes the lookup; "" spans every project (and reports
+// storage.ErrProjectRequired when that is ambiguous).
+func FindSpecInDB(db *storage.DB, projectID, reqID string) (string, error) {
 	if db == nil {
 		return "", fmt.Errorf("database not available")
 	}
@@ -76,7 +78,7 @@ func FindSpecInDB(db *storage.DB, reqID string) (string, error) {
 
 	// Query database for tokens matching the requirement ID
 	// Note: This depends on CBIN-123 TokenStorage implementation
-	tokens, err := db.GetTokensByReqID(reqID)
+	tokens, err := db.GetTokensByReqID(projectID, reqID)
 	if err != nil {
 		return "", fmt.Errorf("database query failed: %w", err)
 	}

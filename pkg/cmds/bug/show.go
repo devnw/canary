@@ -14,7 +14,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"devnw.dev/canary/pkg/cmds/internal/utils"
-	"devnw.dev/canary/pkg/storage"
 )
 
 var bugShowCmd = &cobra.Command{
@@ -42,17 +41,22 @@ Examples:
 			return fmt.Errorf("invalid bug ID format: %s (expected BUG-ASPECT-XXX)", bugID)
 		}
 
-		// Open database
-		db, err := storage.Open(dbPath)
+		projectID, err := utils.ReadProjectID(cmd, ".")
 		if err != nil {
-			return fmt.Errorf("open database: %w", err)
+			return err
+		}
+
+		// Read-only: never creates the database it could not find.
+		db, err := utils.OpenIndexRO(cmd, dbPath)
+		if err != nil {
+			return err
 		}
 		defer db.Close()
 
 		// Get bug token
-		tokens, err := db.GetTokensByReqID(bugID)
+		tokens, err := db.GetTokensByReqID(projectID, bugID)
 		if err != nil {
-			return fmt.Errorf("query bug: %w", err)
+			return utils.GuardContract(err)
 		}
 		if len(tokens) == 0 {
 			return fmt.Errorf("bug not found: %s", bugID)
@@ -91,4 +95,5 @@ func init() {
 	bugShowCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	bugShowCmd.Flags().Bool("json", false, "Output in JSON format")
 	bugShowCmd.Flags().String("db", ".canary/canary.db", "Path to database file")
+	utils.AddProjectFlag(bugShowCmd)
 }

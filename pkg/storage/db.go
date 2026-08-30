@@ -10,7 +10,9 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -31,7 +33,7 @@ const (
 	DBSourceName    = "iofs"
 	DBURLProtocol   = "sqlite://"
 	MigrateAll      = "all"
-	LatestVersion   = 6 // Update this when adding new migrations
+	LatestVersion   = 7 // Update this when adding new migrations
 )
 
 var ErrDatabaseNotPopulated = errors.New("database not migrated")
@@ -236,7 +238,12 @@ func NeedsMigration(dbPath string) (bool, int, error) {
 	return false, currentVersion, nil
 }
 
-// AutoMigrate automatically migrates the database if needed
+// AutoMigrate automatically migrates the database if needed.
+//
+// Progress banners go to stderr, never stdout: several commands emit a
+// machine-readable line on stdout, and a schema notice interleaved with it
+// would corrupt output the caller is parsing. AutoMigrate creates the
+// database when it is missing, so only a writer may call it.
 func AutoMigrate(dbPath string) error {
 	// Check if database file exists
 	_, err := os.Stat(dbPath)
@@ -254,10 +261,10 @@ func AutoMigrate(dbPath string) error {
 		}
 
 		slog.Info("Database migration needed", "currentVersion", currentVersion, "targetVersion", LatestVersion)
-		fmt.Printf("🔄 Migrating database from version %d to %d...\n", currentVersion, LatestVersion)
+		fmt.Fprintf(os.Stderr, "🔄 Migrating database from version %d to %d...\n", currentVersion, LatestVersion)
 	} else {
 		slog.Info("Database does not exist, will create with migrations", "path", dbPath)
-		fmt.Printf("🔄 Creating database with schema version %d...\n", LatestVersion)
+		fmt.Fprintf(os.Stderr, "🔄 Creating database with schema version %d...\n", LatestVersion)
 	}
 
 	if err := MigrateDB(dbPath, MigrateAll); err != nil {
@@ -265,9 +272,92 @@ func AutoMigrate(dbPath string) error {
 	}
 
 	if dbExists {
-		fmt.Printf("✅ Database migrated to version %d\n", LatestVersion)
+		fmt.Fprintf(os.Stderr, "✅ Database migrated to version %d\n", LatestVersion)
 	} else {
-		fmt.Printf("✅ Database created at version %d\n", LatestVersion)
+		fmt.Fprintf(os.Stderr, "✅ Database created at version %d\n", LatestVersion)
 	}
 	return nil
+}
+
+// dsn builds a driver DSN for dbPath with the given query parameters. The
+// path is carried as a file: URI so a path containing '?' or '#' cannot be
+// mistaken for the start of the parameter list.
+func dsn(dbPath string, params url.Values) (string, error) {
+	abs, err := filepath.Abs(dbPath)
+	if err != nil {
+		return "", fmt.Errorf("resolve database path %s: %w", dbPath, err)
+	}
+	u := url.URL{Scheme: "file", Path: filepath.ToSlash(abs), RawQuery: params.Encode()}
+	return u.String(), nil
+}
+
+// OpenRW opens dbPath for reading and writing, creating and migrating it when
+// necessary. Only a command that may legitimately modify the index calls
+// this: it is the one entry point allowed to bring a database into existence.
+//
+// The connection is configured with a busy timeout (so a concurrent writer
+// yields a wait rather than an immediate SQLITE_BUSY), WAL journalling (so a
+// reader is never blocked by the indexer), and immediate transactions (so
+// `canary index` takes its write lock at BEGIN instead of discovering a
+// conflict halfway through the rebuild).
+func OpenRW(dbPath string) (*DB, error) {
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o750); err != nil {
+		return nil, fmt.Errorf("create database directory: %w", err)
+	}
+	if err := AutoMigrate(dbPath); err != nil {
+		return nil, err
+	}
+
+	name, err := dsn(dbPath, url.Values{
+		"_pragma": {"busy_timeout(5000)", "journal_mode(WAL)", "foreign_keys(ON)"},
+		"_txlock": {"immediate"},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := sqlx.Open(DBDriver, name)
+	if err != nil {
+		return nil, fmt.Errorf("open database at %s: %w", dbPath, err)
+	}
+	if err := conn.Ping(); err != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("open database at %s: %w", dbPath, err)
+	}
+	return &DB{conn: conn, path: dbPath}, nil
+}
+
+// OpenRO opens dbPath read-only. A missing database is reported as
+// fs.ErrNotExist and NOTHING is created -- not the file, not its parent
+// directory. Read commands use this so running `canary list` in a repository
+// that was never indexed leaves the repository exactly as it found it.
+//
+// The connection is opened with SQLite's own mode=ro and query_only, so a
+// write attempted through it fails at the engine rather than relying on every
+// caller to behave.
+func OpenRO(dbPath string) (*DB, error) {
+	if _, err := os.Stat(dbPath); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, fmt.Errorf("no index at %s: %w", dbPath, fs.ErrNotExist)
+		}
+		return nil, fmt.Errorf("stat database at %s: %w", dbPath, err)
+	}
+
+	name, err := dsn(dbPath, url.Values{
+		"mode":    {"ro"},
+		"_pragma": {"busy_timeout(5000)", "query_only(ON)"},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := sqlx.Open(DBDriver, name)
+	if err != nil {
+		return nil, fmt.Errorf("open database at %s: %w", dbPath, err)
+	}
+	if err := conn.Ping(); err != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("open database at %s: %w", dbPath, err)
+	}
+	return &DB{conn: conn, path: dbPath, readOnly: true}, nil
 }

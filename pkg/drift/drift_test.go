@@ -306,7 +306,7 @@ func TestCANARY_CBIN_305_Detect_DocDrift(t *testing.T) {
 	if err := storage.MigrateDB(dbPath, "all"); err != nil {
 		t.Fatalf("MigrateDB: %v", err)
 	}
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}

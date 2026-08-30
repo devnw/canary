@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"devnw.dev/canary/pkg/cmds/internal/utils"
 	"devnw.dev/canary/pkg/external"
 	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/specs"
@@ -82,7 +83,11 @@ Example:
 			}
 
 			// Load token provider
-			tokenProvider, err := createTokenProvider()
+			projectID, err := utils.ReadProjectID(cmd, ".")
+			if err != nil {
+				return err
+			}
+			tokenProvider, err := createTokenProvider(projectID)
 			if err != nil {
 				return fmt.Errorf("failed to create token provider: %w", err)
 			}
@@ -150,6 +155,7 @@ Example:
 	}
 
 	cmd.Flags().BoolVar(&showSatisfied, "show-satisfied", false, "Show satisfied dependencies")
+	utils.AddProjectFlag(cmd)
 
 	return cmd
 }
@@ -200,7 +206,11 @@ Example:
 				if err != nil {
 					return fmt.Errorf("load .canary/project.yaml: %w", err)
 				}
-				tokenProvider, _ := createTokenProvider()
+				projectID, perr := utils.ReadProjectID(cmd, ".")
+				if perr != nil {
+					return perr
+				}
+				tokenProvider, _ := createTokenProvider(projectID)
 				// Local tokens always win: a node with at least one local
 				// CANARY token in the index is never styled as external,
 				// even when its id also matches a configured external
@@ -219,7 +229,11 @@ Example:
 
 			// Add status checker if requested
 			if showStatus {
-				tokenProvider, err := createTokenProvider()
+				projectID, perr := utils.ReadProjectID(cmd, ".")
+				if perr != nil {
+					return perr
+				}
+				tokenProvider, err := createTokenProvider(projectID)
 				if err == nil {
 					statusChecker := &dependencyStatusAdapter{
 						checker: specs.NewStatusChecker(tokenProvider),
@@ -243,6 +257,7 @@ Example:
 
 	cmd.Flags().BoolVar(&showStatus, "status", false, "Show dependency satisfaction status")
 	cmd.Flags().StringVar(&format, "format", "ascii", "Output format: ascii or mermaid")
+	utils.AddProjectFlag(cmd)
 
 	return cmd
 }
@@ -344,7 +359,11 @@ Example:
 				return fmt.Errorf("load .canary/project.yaml: %w", err)
 			}
 
-			tokenProvider, err := createTokenProvider()
+			projectID, err := utils.ReadProjectID(cmd, ".")
+			if err != nil {
+				return err
+			}
+			tokenProvider, err := createTokenProvider(projectID)
 			if err != nil {
 				return fmt.Errorf("failed to create token provider: %w", err)
 			}
@@ -405,6 +424,7 @@ Example:
 	}
 
 	cmd.Flags().BoolVar(&strictExternal, "strict-external", false, "fail validation when external dependencies are unsatisfied or have unknown (uncached) status")
+	utils.AddProjectFlag(cmd)
 
 	return cmd
 }
@@ -478,17 +498,18 @@ func BuildGraph() (*specs.DependencyGraph, error) {
 	return graph, nil
 }
 
-// createTokenProvider creates a token provider from the database
-func createTokenProvider() (specs.TokenProvider, error) {
+// createTokenProvider creates a token provider from the database.
+// Read-only: dependency resolution consults the index, it never builds one.
+func createTokenProvider(projectID string) (specs.TokenProvider, error) {
 	// Try to open database
 	dbPath := getDatabasePath()
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		// Return empty provider if no database
 		return &emptyTokenProvider{}, nil
 	}
 
-	return &dbTokenProvider{db: db}, nil
+	return &dbTokenProvider{db: db, projectID: projectID}, nil
 }
 
 // getDatabasePath returns the path to the canary database
@@ -620,12 +641,13 @@ func (e *emptyTokenProvider) GetTokensByReqID(reqID string) []specs.TokenInfo {
 
 // dbTokenProvider fetches tokens from the database
 type dbTokenProvider struct {
-	db *storage.DB
+	db        *storage.DB
+	projectID string
 }
 
 func (d *dbTokenProvider) GetTokensByReqID(reqID string) []specs.TokenInfo {
 	// Use DB method to get tokens
-	dbTokens, err := d.db.GetTokensByReqID(reqID)
+	dbTokens, err := d.db.GetTokensByReqID(d.projectID, reqID)
 	if err != nil {
 		return []specs.TokenInfo{}
 	}

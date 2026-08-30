@@ -26,7 +26,7 @@ func TestCANARY_CBIN_145_CLI_EndToEnd(t *testing.T) {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestCANARY_CBIN_145_CLI_EndToEnd(t *testing.T) {
 
 	// Step 1: Detect orphans
 	excludePaths := []string{"/docs/", "/.claude/", "/.cursor/"}
-	orphans, err := migrate.DetectOrphans(db, tmpDir, excludePaths)
+	orphans, err := migrate.DetectOrphans(db, "", tmpDir, excludePaths)
 	if err != nil {
 		t.Fatalf("DetectOrphans failed: %v", err)
 	}
@@ -175,7 +175,7 @@ func TestCANARY_CBIN_145_CLI_EndToEnd(t *testing.T) {
 	}
 
 	// Step 6: Verify orphan is no longer detected
-	orphansAfter, err := migrate.DetectOrphans(db, tmpDir, excludePaths)
+	orphansAfter, err := migrate.DetectOrphans(db, "", tmpDir, excludePaths)
 	if err != nil {
 		t.Fatalf("second DetectOrphans failed: %v", err)
 	}
@@ -211,7 +211,7 @@ func TestCANARY_CBIN_145_CLI_BatchMigration(t *testing.T) {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -247,7 +247,7 @@ func TestCANARY_CBIN_145_CLI_BatchMigration(t *testing.T) {
 
 	// Execute: Detect all orphans
 	excludePaths := []string{"/docs/"}
-	orphans, err := migrate.DetectOrphans(db, tmpDir, excludePaths)
+	orphans, err := migrate.DetectOrphans(db, "", tmpDir, excludePaths)
 	if err != nil {
 		t.Fatalf("DetectOrphans failed: %v", err)
 	}
@@ -303,7 +303,7 @@ func TestCANARY_CBIN_145_CLI_BatchMigration(t *testing.T) {
 	}
 
 	// Verify all orphans now have specs
-	orphansAfter, err := migrate.DetectOrphans(db, tmpDir, excludePaths)
+	orphansAfter, err := migrate.DetectOrphans(db, "", tmpDir, excludePaths)
 	if err != nil {
 		t.Fatalf("second DetectOrphans failed: %v", err)
 	}
@@ -332,7 +332,7 @@ func TestCANARY_CBIN_145_CLI_IdempotentMigration(t *testing.T) {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -357,7 +357,7 @@ func TestCANARY_CBIN_145_CLI_IdempotentMigration(t *testing.T) {
 	excludePaths := []string{"/docs/"}
 
 	// First migration
-	orphans1, err := migrate.DetectOrphans(db, tmpDir, excludePaths)
+	orphans1, err := migrate.DetectOrphans(db, "", tmpDir, excludePaths)
 	if err != nil {
 		t.Fatalf("first DetectOrphans failed: %v", err)
 	}
@@ -380,7 +380,7 @@ func TestCANARY_CBIN_145_CLI_IdempotentMigration(t *testing.T) {
 	os.WriteFile(planPath, []byte(planContent), 0644)
 
 	// Second migration (should be idempotent)
-	orphans2, err := migrate.DetectOrphans(db, tmpDir, excludePaths)
+	orphans2, err := migrate.DetectOrphans(db, "", tmpDir, excludePaths)
 	if err != nil {
 		t.Fatalf("second DetectOrphans failed: %v", err)
 	}
@@ -390,7 +390,7 @@ func TestCANARY_CBIN_145_CLI_IdempotentMigration(t *testing.T) {
 	}
 
 	// Third migration (verify still idempotent)
-	orphans3, err := migrate.DetectOrphans(db, tmpDir, excludePaths)
+	orphans3, err := migrate.DetectOrphans(db, "", tmpDir, excludePaths)
 	if err != nil {
 		t.Fatalf("third DetectOrphans failed: %v", err)
 	}
@@ -419,7 +419,7 @@ func TestCANARY_CBIN_145_CLI_LowConfidenceWarning(t *testing.T) {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -438,7 +438,7 @@ func TestCANARY_CBIN_145_CLI_LowConfidenceWarning(t *testing.T) {
 
 	// Detect orphans
 	excludePaths := []string{"/docs/"}
-	orphans, err := migrate.DetectOrphans(db, tmpDir, excludePaths)
+	orphans, err := migrate.DetectOrphans(db, "", tmpDir, excludePaths)
 	if err != nil {
 		t.Fatalf("DetectOrphans failed: %v", err)
 	}

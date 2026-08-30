@@ -28,7 +28,7 @@ func TestCANARY_CBIN_136_CLI_DocWorkflow(t *testing.T) {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -224,7 +224,7 @@ func TestCANARY_CBIN_136_CLI_BatchUpdate(t *testing.T) {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -295,7 +295,7 @@ func TestCANARY_CBIN_136_CLI_BatchUpdate(t *testing.T) {
 	}
 
 	// Get all tokens and check staleness
-	tokens, _ := db.ListTokens(map[string]string{}, "", "req_id ASC", 0)
+	tokens, _ := db.ListTokens("", map[string]any{}, "", "", 0)
 
 	staleCount := 0
 	currentCount := 0
@@ -368,7 +368,7 @@ func TestCANARY_CBIN_136_CLI_BatchUpdate(t *testing.T) {
 	}
 
 	// Verify all docs are now current
-	tokens, _ = db.ListTokens(map[string]string{}, "", "req_id ASC", 0)
+	tokens, _ = db.ListTokens("", map[string]any{}, "", "", 0)
 
 	allCurrent := true
 	for _, token := range tokens {
@@ -402,7 +402,7 @@ func TestCANARY_CBIN_136_CLI_DocReport(t *testing.T) {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -509,7 +509,7 @@ func TestCANARY_CBIN_136_CLI_DocReport(t *testing.T) {
 	db.UpsertToken(token6)
 
 	// Get all tokens to verify reporting logic
-	tokens, err := db.ListTokens(map[string]string{}, "", "req_id ASC", 0)
+	tokens, err := db.ListTokens("", map[string]any{}, "", "", 0)
 	if err != nil {
 		t.Fatalf("failed to list tokens: %v", err)
 	}

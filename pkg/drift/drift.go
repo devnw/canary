@@ -188,7 +188,7 @@ func detectDocDrift(root string) ([]Finding, error) {
 		return nil, nil
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("open index db: %w", err)
 	}

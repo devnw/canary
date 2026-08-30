@@ -22,7 +22,7 @@ func TestGapRepository_CreateEntry(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestGapRepository_GetEntriesByReqID(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestGapRepository_UpdateHelpfulness(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -198,7 +198,7 @@ func TestGapRepository_QueryWithFilters(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -304,7 +304,7 @@ func TestGapRepository_GetTopGaps(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -389,7 +389,7 @@ func TestGapRepository_GetCategories(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -440,7 +440,7 @@ func TestGapRepository_GetConfig(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -474,7 +474,7 @@ func TestGapRepository_UpdateConfig(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -524,7 +524,7 @@ func TestGapRepository_PerformanceWith1000Entries(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}

@@ -17,9 +17,10 @@ import (
 )
 
 // DetectOrphans finds all requirements with tokens but no specification
-func DetectOrphans(db *storage.DB, rootDir string, excludePaths []string) ([]*OrphanedRequirement, error) {
+// projectID scopes the sweep; "" spans every project in the database.
+func DetectOrphans(db *storage.DB, projectID, rootDir string, excludePaths []string) ([]*OrphanedRequirement, error) {
 	// Get all tokens from database
-	tokens, err := db.ListTokens(map[string]string{}, "", "req_id ASC", 0)
+	tokens, err := db.ListTokens(projectID, nil, "", "req_asc", 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tokens: %w", err)
 	}
@@ -48,8 +49,8 @@ func DetectOrphans(db *storage.DB, rootDir string, excludePaths []string) ([]*Or
 }
 
 // DryRun simulates migration without creating files
-func DryRun(db *storage.DB, rootDir string, excludePaths []string) (*OrphanPlan, error) {
-	orphans, err := DetectOrphans(db, rootDir, excludePaths)
+func DryRun(db *storage.DB, projectID, rootDir string, excludePaths []string) (*OrphanPlan, error) {
+	orphans, err := DetectOrphans(db, projectID, rootDir, excludePaths)
 	if err != nil {
 		return nil, err
 	}

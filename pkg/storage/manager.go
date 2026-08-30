@@ -80,6 +80,14 @@ func (dm *DatabaseManager) Initialize(mode DatabaseMode) error {
 		return fmt.Errorf("create database directory: %w", err)
 	}
 
+	// Bring the schema up to date before opening. Migrations are the only
+	// definition of this database's shape: the project and token tables used
+	// to be created imperatively on first use, which meant two descriptions
+	// of the same schema that could -- and did -- drift apart.
+	if err := AutoMigrate(dbPath); err != nil {
+		return fmt.Errorf("initialize database: %w", err)
+	}
+
 	// Open database connection
 	conn, err := InitDB(dbPath)
 	if err != nil {
@@ -131,6 +139,10 @@ func (dm *DatabaseManager) Discover() error {
 
 // open opens an existing database at the specified path
 func (dm *DatabaseManager) open(dbPath string, mode DatabaseMode) error {
+	if err := AutoMigrate(dbPath); err != nil {
+		return fmt.Errorf("open database: %w", err)
+	}
+
 	conn, err := InitDB(dbPath)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)

@@ -18,7 +18,6 @@ import (
 	canaryinit "devnw.dev/canary/pkg/cmds/init"
 	"devnw.dev/canary/pkg/cmds/legacy"
 	"devnw.dev/canary/pkg/cmds/next"
-	"devnw.dev/canary/pkg/storage"
 )
 
 var (
@@ -31,21 +30,18 @@ var (
 Inspired by spec-kit's specification-driven development, canary provides
 commands for scanning, creating, and managing requirement tokens.`,
 		Version: version,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 
-			// Check if database commands have --db flag
-			dbPath := ".canary/canary.db" // default
-			if cmd.Flags().Lookup("db") != nil {
-				dbPath, _ = cmd.Flags().GetString("db")
-			}
+		// main() prints the error itself; without this cobra prints it too,
+		// so every failure arrived twice.
+		SilenceErrors: true,
 
-			// Auto-migrate if needed
-			if err := storage.AutoMigrate(dbPath); err != nil {
-				return fmt.Errorf("auto-migration failed: %w", err)
-			}
-
-			return nil
-		},
+		// There is deliberately no PersistentPreRunE here. The root command
+		// used to run storage.AutoMigrate before *every* subcommand, so a
+		// pure read -- `canary list` on a repository with no index, `canary
+		// scan`, even `canary --help` -- created .canary/canary.db and
+		// printed a creation banner on stdout. Each command now opens the
+		// database itself: storage.OpenRO to read (never creates anything),
+		// storage.OpenRW to write (creates and migrates, banners on stderr).
 	}
 )
 
@@ -97,4 +93,5 @@ func init() {
 	next.NextCmd.Flags().String("status", "", "filter by status (STUB, IMPL, TESTED, BENCHED)")
 	next.NextCmd.Flags().String("aspect", "", "filter by aspect (API, CLI, Engine, Storage, etc.)")
 	next.NextCmd.Flags().Bool("strict-external", false, "block on external (ticket-source) dependencies with unknown/uncached status, not just unsatisfied ones")
+	next.NextCmd.Flags().String("project", "", "scope the query to one project id (default: unscoped -- required only when the index holds more than one project)")
 }

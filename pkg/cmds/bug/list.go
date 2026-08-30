@@ -45,8 +45,14 @@ Examples:
 		effLimit := utils.EffectiveLimit(limit, defaultBugListLimit)
 		dbPath, _ := cmd.Flags().GetString("db")
 
-		// Open database
-		db, err := storage.Open(dbPath)
+		projectID, err := utils.ReadProjectID(cmd, ".")
+		if err != nil {
+			return err
+		}
+
+		// Read-only: an unindexed repository falls back to the filesystem
+		// rather than creating a database to find nothing in.
+		db, err := storage.OpenRO(dbPath)
 		if err != nil {
 			// Fallback to filesystem search if no database
 			return listBugsFromFilesystem(aspect, status, severity, priority, jsonOutput, noColor, effLimit)
@@ -54,7 +60,7 @@ Examples:
 		defer db.Close()
 
 		// Build filters for BUG tokens
-		filters := make(map[string]string)
+		filters := make(map[string]any)
 		if aspect != "" {
 			filters["aspect"] = aspect
 		}
@@ -63,9 +69,9 @@ Examples:
 		}
 
 		// Query database for all tokens (ListTokens is hardcoded for CBIN patterns)
-		allTokens, err := db.ListTokens(filters, "", "priority ASC, updated_at DESC", 0)
+		allTokens, err := db.ListTokens(projectID, filters, "", "", 0)
 		if err != nil {
-			return fmt.Errorf("query bugs: %w", err)
+			return utils.GuardContract(err)
 		}
 
 		// Filter for BUG tokens only
@@ -121,4 +127,5 @@ func init() {
 	bugListCmd.Flags().Bool("no-color", false, "Disable colored output")
 	bugListCmd.Flags().Int("limit", defaultBugListLimit, "Limit number of results (default 20 to protect agent context; -1 = unlimited)")
 	bugListCmd.Flags().String("db", ".canary/canary.db", "Path to database file")
+	utils.AddProjectFlag(bugListCmd)
 }

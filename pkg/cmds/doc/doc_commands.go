@@ -17,6 +17,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"devnw.dev/canary/pkg/cmds/internal/utils"
 	"devnw.dev/canary/pkg/docs"
 	"devnw.dev/canary/pkg/storage"
 )
@@ -178,8 +179,13 @@ Batch Operations:
 			return fmt.Errorf("cannot specify REQ-ID with --all flag")
 		}
 
-		// Open database
-		db, err := storage.Open(dbPath)
+		projectID, err := utils.WriteProjectID(cmd, ".")
+		if err != nil {
+			return err
+		}
+
+		// Mutating command: OpenRW may create and migrate.
+		db, err := storage.OpenRW(dbPath)
 		if err != nil {
 			return fmt.Errorf("failed to open database: %w", err)
 		}
@@ -189,16 +195,16 @@ Batch Operations:
 
 		if updateAll {
 			// Get all tokens with documentation
-			tokens, err = db.ListTokens(map[string]string{}, "", "req_id ASC", 0)
+			tokens, err = db.ListTokens(projectID, nil, "", "req_asc", 0)
 			if err != nil {
-				return fmt.Errorf("failed to query tokens: %w", err)
+				return utils.GuardContract(err)
 			}
 		} else {
 			// Get tokens for specific requirement
 			reqID := strings.ToUpper(args[0])
-			tokens, err = db.GetTokensByReqID(reqID)
+			tokens, err = db.GetTokensByReqID(projectID, reqID)
 			if err != nil {
-				return fmt.Errorf("failed to query tokens: %w", err)
+				return utils.GuardContract(err)
 			}
 			if len(tokens) == 0 {
 				return fmt.Errorf("no tokens found for requirement: %s", reqID)
@@ -323,10 +329,15 @@ Status values:
 		showAll, _ := cmd.Flags().GetBool("all")
 		staleOnly, _ := cmd.Flags().GetBool("stale-only")
 
-		// Open database
-		db, err := storage.Open(dbPath)
+		projectID, err := utils.ReadProjectID(cmd, ".")
 		if err != nil {
-			return fmt.Errorf("failed to open database: %w", err)
+			return err
+		}
+
+		// Read-only: never creates the database it could not find.
+		db, err := utils.OpenIndexRO(cmd, dbPath)
+		if err != nil {
+			return err
 		}
 		defer func() { _ = db.Close() }()
 
@@ -335,15 +346,15 @@ Status values:
 		if len(args) == 1 {
 			// Check specific requirement
 			reqID := strings.ToUpper(args[0])
-			tokens, err = db.GetTokensByReqID(reqID)
+			tokens, err = db.GetTokensByReqID(projectID, reqID)
 			if err != nil {
-				return fmt.Errorf("failed to query tokens: %w", err)
+				return utils.GuardContract(err)
 			}
 		} else if showAll {
 			// Check all requirements with documentation
-			tokens, err = db.ListTokens(map[string]string{}, "", "req_id ASC", 0)
+			tokens, err = db.ListTokens(projectID, nil, "", "req_asc", 0)
 			if err != nil {
-				return fmt.Errorf("failed to query tokens: %w", err)
+				return utils.GuardContract(err)
 			}
 		} else {
 			return fmt.Errorf("provide REQ-ID or use --all flag")
@@ -445,17 +456,22 @@ The report includes:
 		format, _ := cmd.Flags().GetString("format")
 		showUndocumented, _ := cmd.Flags().GetBool("show-undocumented")
 
-		// Open database
-		db, err := storage.Open(dbPath)
+		projectID, err := utils.ReadProjectID(cmd, ".")
 		if err != nil {
-			return fmt.Errorf("failed to open database: %w", err)
+			return err
+		}
+
+		// Read-only: never creates the database it could not find.
+		db, err := utils.OpenIndexRO(cmd, dbPath)
+		if err != nil {
+			return err
 		}
 		defer func() { _ = db.Close() }()
 
 		// Get all tokens
-		tokens, err := db.ListTokens(map[string]string{}, "", "req_id ASC", 0)
+		tokens, err := db.ListTokens(projectID, nil, "", "req_asc", 0)
 		if err != nil {
-			return fmt.Errorf("failed to query tokens: %w", err)
+			return utils.GuardContract(err)
 		}
 
 		// Statistics
@@ -622,16 +638,19 @@ func init() {
 
 	// docUpdateCmd flags
 	docUpdateCmd.Flags().String("db", ".canary/canary.db", "path to database file")
+	utils.AddProjectFlag(docUpdateCmd)
 	docUpdateCmd.Flags().Bool("all", false, "Update all documentation in database")
 	docUpdateCmd.Flags().Bool("stale-only", false, "Only update stale documentation (requires --all)")
 
 	// docStatusCmd flags
 	docStatusCmd.Flags().String("db", ".canary/canary.db", "path to database file")
+	utils.AddProjectFlag(docStatusCmd)
 	docStatusCmd.Flags().Bool("all", false, "Check all requirements")
 	docStatusCmd.Flags().Bool("stale-only", false, "Show only stale documentation")
 
 	// docReportCmd flags
 	docReportCmd.Flags().String("db", ".canary/canary.db", "path to database file")
+	utils.AddProjectFlag(docReportCmd)
 	docReportCmd.Flags().String("format", "text", "Output format (text or json)")
 	docReportCmd.Flags().Bool("show-undocumented", false, "Show list of undocumented requirements")
 }

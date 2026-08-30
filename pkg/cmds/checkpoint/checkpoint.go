@@ -39,19 +39,27 @@ Useful for tracking progress over time.`,
 			description = strings.Join(args[1:], " ")
 		}
 
-		db, err := storage.Open(dbPath)
+		projectID, err := utils.WriteProjectID(cmd, ".")
+		if err != nil {
+			return err
+		}
+
+		// Mutating command: OpenRW may create and migrate.
+		db, err := storage.OpenRW(dbPath)
 		if err != nil {
 			return fmt.Errorf("open database: %w", err)
 		}
 
 		defer func() { _ = db.Close() }()
 
-		// Get current commit hash
+		// Get current commit hash. cmd.Dir is set explicitly so the SHA
+		// describes the tree being checkpointed, not whatever repository the
+		// process happens to be standing in.
 		commitHash := ""
-		if gitCmd := exec.Command("git", "rev-parse", "HEAD"); gitCmd.Dir == "" {
-			if output, err := gitCmd.Output(); err == nil {
-				commitHash = strings.TrimSpace(string(output))
-			}
+		gitCmd := exec.Command("git", "rev-parse", "HEAD")
+		gitCmd.Dir = "."
+		if output, gerr := gitCmd.Output(); gerr == nil {
+			commitHash = strings.TrimSpace(string(output))
 		}
 
 		// Load project config for ID pattern filtering
@@ -62,7 +70,7 @@ Useful for tracking progress over time.`,
 		}
 
 		// Get all tokens for snapshot
-		tokens, err := db.ListTokens(nil, idPattern, "", 0)
+		tokens, err := db.ListTokens(projectID, nil, idPattern, "", 0)
 		if err != nil {
 			return fmt.Errorf("get tokens: %w", err)
 		}
@@ -72,7 +80,7 @@ Useful for tracking progress over time.`,
 			return fmt.Errorf("marshal snapshot: %w", err)
 		}
 
-		if err := db.CreateCheckpoint(name, description, commitHash, string(snapshotJSON)); err != nil {
+		if err := db.CreateCheckpoint(projectID, name, description, commitHash, string(snapshotJSON)); err != nil {
 			return fmt.Errorf("create checkpoint: %w", err)
 		}
 
@@ -89,4 +97,5 @@ Useful for tracking progress over time.`,
 func init() {
 	CheckpointCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	CheckpointCmd.Flags().String("db", ".canary/canary.db", "path to database file")
+	utils.AddProjectFlag(CheckpointCmd)
 }

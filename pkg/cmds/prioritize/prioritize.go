@@ -37,14 +37,20 @@ Priority affects ordering in list and search results.`,
 			return fmt.Errorf("priority must be between 1 (highest) and 10 (lowest)")
 		}
 
-		db, err := storage.Open(dbPath)
+		projectID, err := utils.WriteProjectID(cmd, ".")
+		if err != nil {
+			return err
+		}
+
+		// Mutating command: OpenRW may create and migrate.
+		db, err := storage.OpenRW(dbPath)
 		if err != nil {
 			return fmt.Errorf("open database: %w", err)
 		}
 
 		defer func() { _ = db.Close() }()
 
-		if err := db.UpdatePriority(reqID, feature, priority); err != nil {
+		if err := db.UpdatePriority(projectID, reqID, feature, priority); err != nil {
 			return fmt.Errorf("update priority: %w", err)
 		}
 
@@ -56,4 +62,5 @@ Priority affects ordering in list and search results.`,
 func init() {
 	PrioritizeCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	PrioritizeCmd.Flags().String("db", ".canary/canary.db", "path to database file")
+	utils.AddProjectFlag(PrioritizeCmd)
 }

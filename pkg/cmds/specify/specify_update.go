@@ -13,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"devnw.dev/canary/pkg/cmds/internal/utils"
 	"devnw.dev/canary/pkg/specs"
 	"devnw.dev/canary/pkg/storage"
 )
@@ -70,9 +71,13 @@ Examples:
 			if err != nil {
 				// Try database fallback
 				dbPath := ".canary/canary.db"
-				if db, dbErr := storage.Open(dbPath); dbErr == nil {
+				if db, dbErr := storage.OpenRO(dbPath); dbErr == nil {
 					defer db.Close()
-					specPath, err = specs.FindSpecInDB(db, query)
+					projectID, pErr := utils.ReadProjectID(cmd, ".")
+					if pErr != nil {
+						return pErr
+					}
+					specPath, err = specs.FindSpecInDB(db, projectID, query)
 				}
 			}
 

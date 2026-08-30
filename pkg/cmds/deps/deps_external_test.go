@@ -243,7 +243,7 @@ func seedLocalToken(t *testing.T, reqID, status string) {
 	t.Helper()
 	dbPath := filepath.Join(".canary", "canary.db")
 	require.NoError(t, storage.MigrateDB(dbPath, "all"))
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	require.NoError(t, err)
 	defer func() { _ = db.Close() }()
 	require.NoError(t, db.UpsertToken(&storage.Token{

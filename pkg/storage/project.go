@@ -64,9 +64,6 @@ func (pr *ProjectRegistry) Register(project *Project) error {
 	project.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 
 	// Ensure projects table exists
-	if err := pr.ensureProjectsTable(); err != nil {
-		return fmt.Errorf("ensure projects table: %w", err)
-	}
 
 	// Insert project
 	query := `
@@ -96,9 +93,6 @@ func (pr *ProjectRegistry) Register(project *Project) error {
 
 // List returns all registered projects
 func (pr *ProjectRegistry) List() ([]*Project, error) {
-	if err := pr.ensureProjectsTable(); err != nil {
-		return nil, fmt.Errorf("ensure projects table: %w", err)
-	}
 
 	query := `
 		SELECT id, name, path, active, created_at, COALESCE(metadata, '') as metadata
@@ -131,9 +125,6 @@ func (pr *ProjectRegistry) List() ([]*Project, error) {
 
 // Remove deletes a project from the registry
 func (pr *ProjectRegistry) Remove(id string) error {
-	if err := pr.ensureProjectsTable(); err != nil {
-		return fmt.Errorf("ensure projects table: %w", err)
-	}
 
 	query := `DELETE FROM projects WHERE id = ?`
 
@@ -156,9 +147,6 @@ func (pr *ProjectRegistry) Remove(id string) error {
 
 // GetByID retrieves a project by its ID
 func (pr *ProjectRegistry) GetByID(id string) (*Project, error) {
-	if err := pr.ensureProjectsTable(); err != nil {
-		return nil, fmt.Errorf("ensure projects table: %w", err)
-	}
 
 	query := `
 		SELECT id, name, path, active, created_at, COALESCE(metadata, '') as metadata
@@ -184,9 +172,6 @@ func (pr *ProjectRegistry) GetByID(id string) (*Project, error) {
 
 // GetByPath retrieves a project by its path
 func (pr *ProjectRegistry) GetByPath(path string) (*Project, error) {
-	if err := pr.ensureProjectsTable(); err != nil {
-		return nil, fmt.Errorf("ensure projects table: %w", err)
-	}
 
 	query := `
 		SELECT id, name, path, active, created_at, COALESCE(metadata, '') as metadata
@@ -262,9 +247,6 @@ func (pr *ProjectRegistry) generateUniqueSlug(baseSlug string) (string, error) {
 
 // slugExists checks if a slug is already in use
 func (pr *ProjectRegistry) slugExists(slug string) (bool, error) {
-	if err := pr.ensureProjectsTable(); err != nil {
-		return false, err
-	}
 
 	query := `SELECT COUNT(*) FROM projects WHERE id = ?`
 
@@ -275,32 +257,4 @@ func (pr *ProjectRegistry) slugExists(slug string) (bool, error) {
 	}
 
 	return count > 0, nil
-}
-
-// ensureProjectsTable creates the projects table if it doesn't exist
-func (pr *ProjectRegistry) ensureProjectsTable() error {
-	query := `
-		CREATE TABLE IF NOT EXISTS projects (
-			id TEXT PRIMARY KEY,
-			name TEXT NOT NULL,
-			path TEXT NOT NULL UNIQUE,
-			active BOOLEAN DEFAULT FALSE,
-			created_at TEXT NOT NULL,
-			metadata TEXT
-		)
-	`
-
-	_, err := pr.manager.conn.Exec(query)
-	if err != nil {
-		return fmt.Errorf("create projects table: %w", err)
-	}
-
-	// Create index on path
-	indexQuery := `CREATE INDEX IF NOT EXISTS idx_projects_path ON projects(path)`
-	_, err = pr.manager.conn.Exec(indexQuery)
-	if err != nil {
-		return fmt.Errorf("create path index: %w", err)
-	}
-
-	return nil
 }

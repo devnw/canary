@@ -24,7 +24,7 @@ func TestCANARY_CBIN_CLI_001_CLI_FilesCmd(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestCANARY_CBIN_CLI_001_CLI_FilesCmd(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fileGroups, err := db.GetFilesByReqID(tt.reqID, tt.excludeSpecs)
+			fileGroups, err := db.GetFilesByReqID("", tt.reqID, tt.excludeSpecs)
 			if err != nil {
 				t.Fatalf("GetFilesByReqID failed: %v", err)
 			}

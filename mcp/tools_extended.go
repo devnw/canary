@@ -174,15 +174,17 @@ func handleImplement(ctx context.Context, req *mcp.CallToolRequest, params *Impl
 		return nil, nil, fmt.Errorf("reqId is required")
 	}
 
+	projectID := mcpProjectID()
+
 	dbPath := ".canary/canary.db"
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
 	defer db.Close()
 
 	// Get tokens for this requirement
-	tokens, err := db.GetTokensByReqID(params.ReqID)
+	tokens, err := db.GetTokensByReqID(projectID, params.ReqID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get tokens: %w", err)
 	}
@@ -255,14 +257,16 @@ func handleFiles(ctx context.Context, req *mcp.CallToolRequest, params *FilesPar
 		return nil, nil, fmt.Errorf("reqId is required")
 	}
 
+	projectID := mcpProjectID()
+
 	dbPath := ".canary/canary.db"
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
 	defer db.Close()
 
-	tokens, err := db.GetTokensByReqID(params.ReqID)
+	tokens, err := db.GetTokensByReqID(projectID, params.ReqID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get tokens: %w", err)
 	}
@@ -317,15 +321,18 @@ func handlePrioritize(ctx context.Context, req *mcp.CallToolRequest, params *Pri
 		return nil, nil, fmt.Errorf("reqId is required")
 	}
 
+	projectID := mcpProjectID()
+
 	dbPath := ".canary/canary.db"
-	db, err := storage.Open(dbPath)
+	// The one mutating tool: OpenRW may create and migrate.
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
 	defer db.Close()
 
 	// Get tokens first to update each one
-	tokens, err := db.GetTokensByReqID(params.ReqID)
+	tokens, err := db.GetTokensByReqID(projectID, params.ReqID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get tokens: %w", err)
 	}
@@ -333,7 +340,7 @@ func handlePrioritize(ctx context.Context, req *mcp.CallToolRequest, params *Pri
 	// Update priority for each token (storage API requires feature parameter)
 	updated := 0
 	for _, token := range tokens {
-		err = db.UpdatePriority(params.ReqID, token.Feature, params.Priority)
+		err = db.UpdatePriority(projectID, params.ReqID, token.Feature, params.Priority)
 		if err == nil {
 			updated++
 		}
@@ -406,8 +413,10 @@ func handleGrep(ctx context.Context, req *mcp.CallToolRequest, params *GrepParam
 		field = "all"
 	}
 
+	projectID := mcpProjectID()
+
 	dbPath := ".canary/canary.db"
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
@@ -415,7 +424,7 @@ func handleGrep(ctx context.Context, req *mcp.CallToolRequest, params *GrepParam
 
 	var all []*storage.Token
 	if field == "all" {
-		all, err = db.SearchTokens(params.Pattern, maxToolLimit+1)
+		all, err = db.SearchTokens(projectID, params.Pattern, maxToolLimit+1)
 		if err != nil {
 			return nil, nil, fmt.Errorf("search tokens: %w", err)
 		}
@@ -423,7 +432,7 @@ func handleGrep(ctx context.Context, req *mcp.CallToolRequest, params *GrepParam
 		// SearchTokens only matches keywords/feature/req_id/file_path/test/
 		// bench, so it can't be reused for owner/aspect scoping. Fetch the
 		// candidate set and filter in Go on the exact named field instead.
-		candidates, err := db.ListTokens(nil, "", "", 0)
+		candidates, err := db.ListTokens(projectID, nil, "", "", 0)
 		if err != nil {
 			return nil, nil, fmt.Errorf("list tokens: %w", err)
 		}
@@ -485,14 +494,16 @@ type BugListResult struct {
 
 // handleBugList implements the bug list tool handler
 func handleBugList(ctx context.Context, req *mcp.CallToolRequest, params *BugListParams) (*mcp.CallToolResult, *BugListResult, error) {
+	projectID := mcpProjectID()
+
 	dbPath := ".canary/canary.db"
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
 	defer db.Close()
 
-	filters := make(map[string]string)
+	filters := make(map[string]any)
 	if params.Status != "" {
 		filters["status"] = params.Status
 	}
@@ -501,7 +512,7 @@ func handleBugList(ctx context.Context, req *mcp.CallToolRequest, params *BugLis
 	// simply ignored, which previously made this return ALL tokens instead
 	// of just bugs. Fetch the candidate set and filter for the BUG- prefix
 	// in Go instead.
-	tokens, err := db.ListTokens(filters, "", "updated_at DESC", 0)
+	tokens, err := db.ListTokens(projectID, filters, "", "updated_desc", 0)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list bugs: %w", err)
 	}
@@ -608,7 +619,7 @@ func handleView(ctx context.Context, req *mcp.CallToolRequest, params *ViewParam
 	if limit > maxToolLimit {
 		limit = maxToolLimit
 	}
-	v, err := view.BuildView(".canary/canary.db", ".", params.ReqID, limit)
+	v, err := view.BuildView(".canary/canary.db", ".", mcpProjectID(), params.ReqID, limit)
 	if err != nil {
 		return nil, nil, err
 	}

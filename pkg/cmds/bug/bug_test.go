@@ -21,7 +21,7 @@ func TestGenerateBugID(t *testing.T) {
 	dbPath := filepath.Join(tmpDir, "test.db")
 
 	// Test with no database (should start from 001)
-	bugID, err := generateBugID("API", dbPath)
+	bugID, err := generateBugID("API", "default", dbPath)
 	if err != nil {
 		t.Fatalf("Failed to generate bug ID: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestGenerateBugID(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestGenerateBugID(t *testing.T) {
 	}
 
 	// Check what tokens are in the database
-	allTokens, err := db.ListTokens(nil, "", "req_id ASC", 0)
+	allTokens, err := db.ListTokens("", nil, "", "", 0)
 	if err != nil {
 		t.Logf("Error listing tokens: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestGenerateBugID(t *testing.T) {
 	}
 
 	// Generate next ID (should be 006)
-	bugID, err = generateBugIDWithDB("API", db)
+	bugID, err = generateBugIDWithDB("API", "", db)
 	if err != nil {
 		t.Fatalf("Failed to generate bug ID: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestGenerateBugID(t *testing.T) {
 	}
 
 	// Test with different aspect
-	bugID, err = generateBugIDWithDB("CLI", db)
+	bugID, err = generateBugIDWithDB("CLI", "", db)
 	if err != nil {
 		t.Fatalf("Failed to generate bug ID: %v", err)
 	}
@@ -271,7 +271,7 @@ func TestBugCommandIntegration(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -313,7 +313,7 @@ func TestBugCommandIntegration(t *testing.T) {
 
 	t.Run("list bug tokens", func(t *testing.T) {
 		// List all tokens (empty pattern) and filter BUG tokens manually
-		allTokens, err := db.ListTokens(nil, "", "priority ASC", 0)
+		allTokens, err := db.ListTokens("", nil, "", "", 0)
 		if err != nil {
 			t.Fatalf("Failed to list bugs: %v", err)
 		}
@@ -338,8 +338,8 @@ func TestBugCommandIntegration(t *testing.T) {
 	})
 
 	t.Run("filter by status", func(t *testing.T) {
-		filters := map[string]string{"status": "OPEN"}
-		allTokens, err := db.ListTokens(filters, "", "priority ASC", 0)
+		filters := map[string]any{"status": "OPEN"}
+		allTokens, err := db.ListTokens("", filters, "", "", 0)
 		if err != nil {
 			t.Fatalf("Failed to filter bugs: %v", err)
 		}
@@ -366,7 +366,7 @@ func TestBugCommandIntegration(t *testing.T) {
 
 	t.Run("update bug status", func(t *testing.T) {
 		// Get a bug to update
-		tokens, err := db.GetTokensByReqID("BUG-API-001")
+		tokens, err := db.GetTokensByReqID("", "BUG-API-001")
 		if err != nil || len(tokens) == 0 {
 			t.Fatalf("Failed to find bug to update")
 		}
@@ -380,7 +380,7 @@ func TestBugCommandIntegration(t *testing.T) {
 		}
 
 		// Verify update
-		updated, err := db.GetTokensByReqID("BUG-API-001")
+		updated, err := db.GetTokensByReqID("", "BUG-API-001")
 		if err != nil || len(updated) == 0 {
 			t.Fatalf("Failed to verify bug update")
 		}

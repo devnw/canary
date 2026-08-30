@@ -32,7 +32,7 @@ func TestCANARY_CBIN_145_CLI_OrphanDetection(t *testing.T) {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestCANARY_CBIN_145_CLI_OrphanDetection(t *testing.T) {
 
 	// Execute: Detect orphans with path filtering
 	excludePaths := []string{"/docs/", "/.claude/", "/.cursor/"}
-	orphans, err := migrate.DetectOrphans(db, tmpDir, excludePaths)
+	orphans, err := migrate.DetectOrphans(db, "", tmpDir, excludePaths)
 	if err != nil {
 		t.Fatalf("DetectOrphans failed: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestCANARY_CBIN_145_CLI_PathFiltering(t *testing.T) {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestCANARY_CBIN_145_CLI_PathFiltering(t *testing.T) {
 
 	// Execute with path filtering
 	excludePaths := []string{"/docs/", "/.claude/", "/.canary/specs/"}
-	orphans, err := migrate.DetectOrphans(db, tmpDir, excludePaths)
+	orphans, err := migrate.DetectOrphans(db, "", tmpDir, excludePaths)
 	if err != nil {
 		t.Fatalf("DetectOrphans failed: %v", err)
 	}
@@ -284,7 +284,7 @@ func TestCANARY_CBIN_145_CLI_DryRun(t *testing.T) {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -303,7 +303,7 @@ func TestCANARY_CBIN_145_CLI_DryRun(t *testing.T) {
 
 	// Execute dry-run
 	excludePaths := []string{"/docs/"}
-	plan, err := migrate.DryRun(db, tmpDir, excludePaths)
+	plan, err := migrate.DryRun(db, "", tmpDir, excludePaths)
 	if err != nil {
 		t.Fatalf("DryRun failed: %v", err)
 	}

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -18,35 +17,18 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// CANARY: REQ=CP-285; FEATURE="IndexIgnoreFilter"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CP_285_IndexRespectsCanaryIgnore,TestCANARY_CP_285_IsGrepMatchIgnored; UPDATED=2026-08-29
-// isGrepMatchIgnored reports whether file (as reported by grep -r rooted at
-// rootPath, e.g. "<rootPath>/pkg/docs/x.go" or a relative variant) falls
-// under a .canaryignore pattern. `canary index` used to shell out to grep
-// over the entire tree with no .canaryignore filtering, so ignored
-// directories (docs/, specs/, etc.) were silently indexed even though
-// `canary scan` correctly excluded them -- causing the index and the scan
-// report to diverge. ignorePatterns may be nil, in which case nothing is
-// ignored.
-func isGrepMatchIgnored(rootPath, file string, ignorePatterns *ignore.GitIgnore) bool {
-	if ignorePatterns == nil {
-		return false
-	}
-	rel, err := filepath.Rel(rootPath, file)
-	if err != nil || strings.HasPrefix(rel, "..") {
-		rel = file
-	}
-	rel = filepath.ToSlash(rel)
-	return ignorePatterns.MatchesPath(rel)
-}
-
-// CANARY: REQ=ENG-4307; FEATURE="IndexCmd"; ASPECT=CLI; STATUS=IMPL; OWNER=canary; UPDATED=2025-10-16
+// CANARY: REQ=ENG-4307; FEATURE="IndexCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestAuditF12,TestAuditF12CleanRunCommits,TestCANARY_CP_285_IndexRespectsCanaryIgnore; UPDATED=2026-08-30
 var IndexCmd = &cobra.Command{
 	Use:   "index [flags]",
 	Short: "Build or rebuild the CANARY token database",
 	Long: `Scan the codebase for CANARY tokens and store metadata in SQLite database.
 
 This enables advanced features like priority ordering, keyword search, and checkpoints.
-The database is stored at .canary/canary.db by default.`,
+The database is stored at .canary/canary.db by default.
+
+The rebuild is one transaction: either the new index fully replaces the old
+one, or the old one is left exactly as it was. A token the scanner cannot
+parse fails the run rather than being skipped with a warning.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		prompt, _ := cmd.Flags().GetString("prompt")
 		if prompt != "" {
@@ -57,235 +39,237 @@ The database is stored at .canary/canary.db by default.`,
 		dbPath, _ := cmd.Flags().GetString("db")
 		rootPath, _ := cmd.Flags().GetString("root")
 
-		fmt.Printf("Indexing CANARY tokens from: %s\n", rootPath)
+		projectID, err := utils.WriteProjectID(cmd, rootPath)
+		if err != nil {
+			return err
+		}
 
-		// Open or create database
-		db, err := storage.Open(dbPath)
+		out := cmd.OutOrStdout()
+		fmt.Fprintf(out, "Indexing CANARY tokens from: %s\n", rootPath)
+
+		reg, err := sources.LoadFromRoot(rootPath)
+		if err != nil {
+			return fmt.Errorf("load .canary/project.yaml: %w", err)
+		}
+
+		ignorePatterns, err := canaryscan.LoadCanaryIgnore(rootPath)
+		if err != nil {
+			return fmt.Errorf("load .canaryignore: %w", err)
+		}
+
+		// One canonical scan. The command used to shell out to grep with a
+		// hardcoded extension list and its own field extraction, so the index
+		// and `canary scan` could disagree about what the tree contains.
+		records, files, issues, err := canaryscan.ScanTokenRecords(rootPath, nil, nil, ignorePatterns, reg)
+		if err != nil {
+			return fmt.Errorf("scan %s: %w", rootPath, err)
+		}
+		if err := reportIssues("token", issues); err != nil {
+			return err
+		}
+
+		commitHash, branch := gitMetadata(rootPath)
+
+		indexedAt := time.Now().UTC().Format(time.RFC3339)
+		tokens := make([]*storage.Token, 0, len(records))
+		for _, rec := range records {
+			tokens = append(tokens, toToken(rec, projectID, commitHash, branch, indexedAt))
+		}
+
+		refs, err := collectRefs(rootPath, reg, ignorePatterns)
+		if err != nil {
+			return err
+		}
+
+		db, err := storage.OpenRW(dbPath)
 		if err != nil {
 			return fmt.Errorf("open database: %w", err)
 		}
-
 		defer func() { _ = db.Close() }()
 
-		// Get git info if in a repo
-		var commitHash, branch string
-		if gitCmd := exec.Command("git", "rev-parse", "HEAD"); gitCmd.Dir == "" {
-			if output, err := gitCmd.Output(); err == nil {
-				commitHash = strings.TrimSpace(string(output))
-			}
-		}
-		if gitCmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD"); gitCmd.Dir == "" {
-			if output, err := gitCmd.Output(); err == nil {
-				branch = strings.TrimSpace(string(output))
-			}
+		meta := storage.IndexMeta{
+			Root:         rootPath,
+			ProjectID:    projectID,
+			CommitSHA:    commitHash,
+			ParserSchema: canaryscan.ParserSchemaVersion,
+			ScanDigest:   canaryscan.ScanDigest(files),
+			IndexedAt:    indexedAt,
 		}
 
-		// The index is derived state: rebuild it from scratch so rows for
-		// tokens that no longer exist on disk (remapped REQ IDs, deleted
-		// files) never survive a re-index (CP-285).
-		if err := db.DeleteAllTokens(); err != nil {
-			return fmt.Errorf("clear token index: %w", err)
+		if err := db.ReplaceIndex(projectID, tokens, refs, meta); err != nil {
+			return fmt.Errorf("rebuild index: %w", err)
 		}
 
-		// Load .canaryignore up front (CP-285) so grep matches under ignored
-		// directories (docs/, specs/, etc.) never reach the index -- keeping
-		// `canary index` consistent with what `canary scan` reports.
-		ignorePatterns, ierr := canaryscan.LoadCanaryIgnore(rootPath)
-		if ierr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to load .canaryignore: %v\n", ierr)
-		}
-
-		// Scan for all CANARY tokens
-		grepCmd := exec.Command("grep",
-			"-rn",
-			"--include=*.go", "--include=*.md", "--include=*.py",
-			"--include=*.js", "--include=*.ts", "--include=*.java",
-			"--include=*.rb", "--include=*.rs", "--include=*.c",
-			"--include=*.cpp", "--include=*.h", "--include=*.sql",
-			"CANARY:",
-			rootPath,
-		)
-
-		output, err := grepCmd.CombinedOutput()
-		if err != nil && len(output) == 0 {
-			fmt.Println("No CANARY tokens found")
-			return nil
-		}
-
-		// Parse and store tokens
-		indexed := 0
-		lines := strings.Split(string(output), "\n")
-		for _, line := range lines {
-			if line == "" {
-				continue
-			}
-
-			// Parse grep output: file:line:content
-			parts := strings.SplitN(line, ":", 3)
-			if len(parts) < 3 {
-				continue
-			}
-
-			file := parts[0]
-			if isGrepMatchIgnored(rootPath, file, ignorePatterns) {
-				continue
-			}
-			lineNum := 0
-			//nolint:errcheck // Best-effort parse, default to 0 on failure
-			fmt.Sscanf(parts[1], "%d", &lineNum)
-			content := parts[2]
-
-			// Extract all CANARY fields
-			reqID := utils.ExtractField(content, "REQ")
-			feature := utils.ExtractField(content, "FEATURE")
-			aspect := utils.ExtractField(content, "ASPECT")
-			status := utils.ExtractField(content, "STATUS")
-
-			if reqID == "" || feature == "" {
-				continue // Skip malformed tokens
-			}
-
-			// Build token struct
-			docPath := utils.ExtractField(content, "DOC")
-			docType := utils.ExtractField(content, "DOC_TYPE")
-
-			// Auto-infer DOC_TYPE from type prefix if not explicitly set
-			if docPath != "" && docType == "" {
-				// Extract type from first doc path (e.g., "user:docs/file.md" -> "user")
-				firstPath := strings.Split(docPath, ",")[0]
-				if strings.Contains(firstPath, ":") {
-					docType = strings.Split(firstPath, ":")[0]
-				}
-			}
-
-			token := &storage.Token{
-				ReqID:       reqID,
-				Feature:     feature,
-				Aspect:      aspect,
-				Status:      status,
-				FilePath:    file,
-				LineNumber:  lineNum,
-				Test:        utils.ExtractField(content, "TEST"),
-				Bench:       utils.ExtractField(content, "BENCH"),
-				Owner:       utils.ExtractField(content, "OWNER"),
-				Phase:       utils.ExtractField(content, "PHASE"),
-				Keywords:    utils.ExtractField(content, "KEYWORDS"),
-				SpecStatus:  utils.ExtractField(content, "SPEC_STATUS"),
-				UpdatedAt:   utils.ExtractField(content, "UPDATED"),
-				CreatedAt:   utils.ExtractField(content, "CREATED"),
-				StartedAt:   utils.ExtractField(content, "STARTED"),
-				CompletedAt: utils.ExtractField(content, "COMPLETED"),
-				CommitHash:  commitHash,
-				Branch:      branch,
-				DependsOn:   utils.ExtractField(content, "DEPENDS_ON"),
-				Blocks:      utils.ExtractField(content, "BLOCKS"),
-				RelatedTo:   utils.ExtractField(content, "RELATED_TO"),
-				DocPath:     docPath,
-				DocHash:     utils.ExtractField(content, "DOC_HASH"),
-				DocType:     docType,
-				RawToken:    content,
-				IndexedAt:   time.Now().UTC().Format(time.RFC3339),
-			}
-
-			// Parse priority
-			if priorityStr := utils.ExtractField(content, "PRIORITY"); priorityStr != "" {
-				if p, err := strconv.Atoi(priorityStr); err == nil {
-					token.Priority = p
-				} else {
-					token.Priority = 5 // default
-				}
-			} else {
-				token.Priority = 5 // default
-			}
-
-			// Set defaults
-			if token.UpdatedAt == "" {
-				token.UpdatedAt = time.Now().UTC().Format("2006-01-02")
-			}
-			if token.SpecStatus == "" {
-				token.SpecStatus = "draft"
-			}
-
-			// Store in database
-			if err := db.UpsertToken(token); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to store token %s/%s: %v\n", reqID, feature, err)
-				continue
-			}
-
-			indexed++
-		}
-
-		// Index diagram references (mermaid) so `canary view` can answer without grepping.
-		reg, regErr := sources.LoadFromRoot(rootPath)
-		if regErr != nil {
-			return fmt.Errorf("load .canary/project.yaml: %w", regErr)
-		}
-		diagRefs, diagIssues, derr := canaryscan.ScanDiagramRefs(rootPath, nil, reg, ignorePatterns)
-		for _, is := range diagIssues {
-			fmt.Fprintf(os.Stderr, "CANARY_SCAN_ISSUE path=%s reason=%s\n", is.Path, is.Reason)
-		}
-		if derr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: diagram ref scan failed: %v\n", derr)
-		}
-		if derr == nil {
-			refs := make([]storage.Ref, 0, len(diagRefs))
-			for _, r := range diagRefs {
-				refs = append(refs, storage.Ref{ReqID: r.ReqID, Kind: "diagram", FilePath: r.File, LineNumber: r.Line})
-			}
-			if err := db.ReplaceRefs("diagram", refs); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to index diagram refs: %v\n", err)
-			} else if len(refs) > 0 {
-				fmt.Printf("Indexed %d diagram reference(s)\n", len(refs))
-			}
-		}
-
-		// CANARY: REQ=ENG-4325; FEATURE="MigrateNotesIndex"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-29
-		// Index CANARY:MIGRATE guidance notes so `canary view` can surface
-		// migration guidance without grepping. One ref row per (note,
-		// associated ReqID); a note that matched no requirement still gets
-		// one row with req_id='' so it isn't silently dropped.
-		migrateNotes, noteIssues, merr := canaryscan.ScanMigrateNotes(rootPath, nil, ignorePatterns, reg)
-		for _, is := range noteIssues {
-			fmt.Fprintf(os.Stderr, "CANARY_SCAN_ISSUE path=%s reason=%s\n", is.Path, is.Reason)
-		}
-		if merr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: migrate note scan failed: %v\n", merr)
-		}
-		if merr == nil {
-			migRefs := make([]storage.Ref, 0, len(migrateNotes))
-			for _, n := range migrateNotes {
-				// n.ReqIDs is already normalized by ExtractMigrateNotes.
-				if len(n.ReqIDs) == 0 {
-					migRefs = append(migRefs, storage.Ref{ReqID: "", Kind: "migrate", FilePath: n.File, LineNumber: n.Line, Context: n.Text})
-					continue
-				}
-				for _, id := range n.ReqIDs {
-					migRefs = append(migRefs, storage.Ref{ReqID: id, Kind: "migrate", FilePath: n.File, LineNumber: n.Line, Context: n.Text})
-				}
-			}
-			if err := db.ReplaceRefs("migrate", migRefs); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to index migration notes: %v\n", err)
-			} else if len(migrateNotes) > 0 {
-				fmt.Printf("Indexed %d migration note(s)\n", len(migrateNotes))
-			}
-		}
-
-		fmt.Printf("\n✅ Indexed %d CANARY tokens\n", indexed)
-		fmt.Printf("Database: %s\n", dbPath)
-
+		fmt.Fprintf(out, "Indexed %d diagram reference(s)\n", len(refs["diagram"]))
+		fmt.Fprintf(out, "Indexed %d migration note(s)\n", len(refs["migrate"]))
+		fmt.Fprintf(out, "\n✅ Indexed %d CANARY tokens\n", len(tokens))
+		fmt.Fprintf(out, "Database: %s\n", dbPath)
+		fmt.Fprintf(out, "Project: %s\n", projectID)
 		if commitHash != "" {
-			fmt.Printf("Commit: %s\n", commitHash[:8])
+			fmt.Fprintf(out, "Commit: %s\n", commitHash[:8])
 		}
 		if branch != "" {
-			fmt.Printf("Branch: %s\n", branch)
+			fmt.Fprintf(out, "Branch: %s\n", branch)
 		}
 
 		return nil
 	},
 }
 
+// gitMetadata resolves the commit and branch of the tree at rootPath. Every
+// invocation sets cmd.Dir: the old code built the command and then tested
+// `gitCmd.Dir == ""`, which was always true, so it read whatever repository
+// the process happened to be standing in -- or nothing at all. A tree that is
+// not a git repository yields empty strings, never a fabricated SHA.
+func gitMetadata(rootPath string) (commit, branch string) {
+	run := func(args ...string) string {
+		gitCmd := exec.Command("git", args...) //nolint:gosec // fixed argv
+		gitCmd.Dir = rootPath
+		out, err := gitCmd.Output()
+		if err != nil {
+			return ""
+		}
+		return strings.TrimSpace(string(out))
+	}
+	return run("rev-parse", "HEAD"), run("rev-parse", "--abbrev-ref", "HEAD")
+}
+
+// toToken maps one scanned record onto a storage row.
+//
+// Absent fields stay absent. UPDATED in particular is stored verbatim -- the
+// old code substituted today's date for a token that never declared one,
+// which turned "we do not know when this was last touched" into a freshness
+// claim the author never made. ScanTokenRecords already rejects a token with
+// no UPDATED, so an empty value here can only mean a field this index does
+// not require.
+func toToken(rec canaryscan.TokenRecord, projectID, commitHash, branch, indexedAt string) *storage.Token {
+	docPath := rec.Field("DOC")
+	docType := rec.Field("DOC_TYPE")
+	if docPath != "" && docType == "" {
+		// Infer the type from the first path's "type:path" prefix.
+		firstPath := strings.Split(docPath, ",")[0]
+		if strings.Contains(firstPath, ":") {
+			docType = strings.Split(firstPath, ":")[0]
+		}
+	}
+
+	priority := defaultPriority
+	if p, err := strconv.Atoi(rec.Field("PRIORITY")); err == nil {
+		priority = p
+	}
+
+	specStatus := rec.Field("SPEC_STATUS")
+	if specStatus == "" {
+		specStatus = "draft"
+	}
+
+	return &storage.Token{
+		ReqID:       rec.ReqID,
+		Feature:     rec.Field("FEATURE"),
+		Aspect:      rec.Field("ASPECT"),
+		Status:      rec.Field("STATUS"),
+		FilePath:    rec.File,
+		LineNumber:  rec.Line,
+		Test:        rec.Field("TEST"),
+		Bench:       rec.Field("BENCH"),
+		Owner:       rec.Field("OWNER"),
+		Priority:    priority,
+		Phase:       rec.Field("PHASE"),
+		Keywords:    rec.Field("KEYWORDS"),
+		SpecStatus:  specStatus,
+		CreatedAt:   rec.Field("CREATED"),
+		UpdatedAt:   rec.Field("UPDATED"),
+		StartedAt:   rec.Field("STARTED"),
+		CompletedAt: rec.Field("COMPLETED"),
+		CommitHash:  commitHash,
+		Branch:      branch,
+		DependsOn:   rec.Field("DEPENDS_ON"),
+		Blocks:      rec.Field("BLOCKS"),
+		RelatedTo:   rec.Field("RELATED_TO"),
+		RawToken:    rec.Raw,
+		IndexedAt:   indexedAt,
+		DocPath:     docPath,
+		DocHash:     rec.Field("DOC_HASH"),
+		DocType:     docType,
+		ProjectID:   projectID,
+		ContentHash: rec.ContentHash,
+	}
+}
+
+// defaultPriority is the priority a token that declares none is indexed with.
+const defaultPriority = 5
+
+// collectRefs gathers the non-token requirement references (mermaid diagrams,
+// CANARY:MIGRATE guidance notes) that `canary view` answers from, keyed by
+// kind so they can be replaced inside the same transaction as the tokens.
+func collectRefs(rootPath string, reg *sources.Registry, ignorePatterns *ignore.GitIgnore) (map[string][]storage.Ref, error) {
+	refs := map[string][]storage.Ref{}
+
+	diagRefs, diagIssues, err := canaryscan.ScanDiagramRefs(rootPath, nil, reg, ignorePatterns)
+	if err != nil {
+		return nil, fmt.Errorf("scan diagram references: %w", err)
+	}
+	if err := reportIssues("diagram", diagIssues); err != nil {
+		return nil, err
+	}
+	diagrams := make([]storage.Ref, 0, len(diagRefs))
+	for _, r := range diagRefs {
+		diagrams = append(diagrams, storage.Ref{ReqID: r.ReqID, Kind: "diagram", FilePath: r.File, LineNumber: r.Line})
+	}
+	refs["diagram"] = diagrams
+
+	// CANARY: REQ=ENG-4325; FEATURE="MigrateNotesIndex"; ASPECT=CLI; STATUS=IMPL; UPDATED=2026-08-30
+	// One ref row per (note, associated ReqID); a note that matched no
+	// requirement still gets one row with req_id='' so it isn't dropped.
+	notes, noteIssues, err := canaryscan.ScanMigrateNotes(rootPath, nil, ignorePatterns, reg)
+	if err != nil {
+		return nil, fmt.Errorf("scan migration notes: %w", err)
+	}
+	if err := reportIssues("migrate", noteIssues); err != nil {
+		return nil, err
+	}
+	migrate := make([]storage.Ref, 0, len(notes))
+	for _, n := range notes {
+		if len(n.ReqIDs) == 0 {
+			migrate = append(migrate, storage.Ref{ReqID: "", Kind: "migrate", FilePath: n.File, LineNumber: n.Line, Context: n.Text})
+			continue
+		}
+		for _, id := range n.ReqIDs {
+			migrate = append(migrate, storage.Ref{ReqID: id, Kind: "migrate", FilePath: n.File, LineNumber: n.Line, Context: n.Text})
+		}
+	}
+	refs["migrate"] = migrate
+
+	return refs, nil
+}
+
+// reportIssues prints every scan issue on stderr and fails the run if any of
+// them is a parse error.
+//
+// The distinction is what "strict" means here. A parse error says a CANARY
+// token exists and the parser rejects it -- indexing the rest would publish
+// an index that silently disagrees with the source, which is exactly the
+// warn-and-continue behaviour this replaced. Every other reason (binary,
+// oversized, unreadable) says a *file* was skipped, and a file with no
+// readable tokens contributes nothing to lose: an image or a database in the
+// tree must not be able to block the index.
+func reportIssues(kind string, issues []canaryscan.ScanIssue) error {
+	parseErrors := 0
+	for _, is := range issues {
+		fmt.Fprintf(os.Stderr, "CANARY_SCAN_ISSUE kind=%s path=%s reason=%s detail=%s\n", kind, is.Path, is.Reason, is.Detail)
+		if is.Reason == canaryscan.IssueParseError {
+			parseErrors++
+		}
+	}
+	if parseErrors > 0 {
+		return fmt.Errorf("refusing to index: %d unparseable CANARY token(s) in the %s scan", parseErrors, kind)
+	}
+	return nil
+}
+
 func init() {
 	IndexCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	IndexCmd.Flags().String("db", ".canary/canary.db", "path to database file")
 	IndexCmd.Flags().String("root", ".", "root directory to scan")
+	utils.AddProjectFlag(IndexCmd)
 }

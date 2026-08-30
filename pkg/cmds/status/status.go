@@ -63,19 +63,22 @@ Examples:
 			color.NoColor = true
 		}
 
-		// Open database
-		db, err := storage.Open(dbPath)
+		projectID, err := utils.ReadProjectID(cmd, ".")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "⚠️  Database not found\n")
-			fmt.Fprintf(os.Stderr, "   Suggestion: Run 'canary index' to build database\n\n")
-			return fmt.Errorf("open database: %w", err)
+			return err
+		}
+
+		// Read-only: never creates the database it could not find.
+		db, err := utils.OpenIndexRO(cmd, dbPath)
+		if err != nil {
+			return err
 		}
 		defer func() { _ = db.Close() }()
 
 		// Query tokens
-		tokens, err := db.GetTokensByReqID(reqID)
+		tokens, err := db.GetTokensByReqID(projectID, reqID)
 		if err != nil {
-			return fmt.Errorf("query tokens: %w", err)
+			return utils.GuardContract(err)
 		}
 
 		if len(tokens) == 0 {
@@ -244,5 +247,6 @@ func init() {
 	StatusCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	StatusCmd.Flags().Bool("no-color", false, "Disable colored output")
 	StatusCmd.Flags().String("db", ".canary/canary.db", "Path to database file")
+	utils.AddProjectFlag(StatusCmd)
 	StatusCmd.Flags().Bool("json", false, "output as compact JSON")
 }

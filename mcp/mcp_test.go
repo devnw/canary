@@ -21,6 +21,12 @@ import (
 func TestMCPToolHandlers(t *testing.T) {
 	ctx := context.Background()
 
+	// Every handler resolves its database as ".canary/canary.db" relative to
+	// the working directory. Run from a throwaway directory so the handlers
+	// touch a scratch database rather than the one checked in beside this
+	// test -- `canary index` writes that file, and a test run must not.
+	chdirTemp(t)
+
 	tests := []struct {
 		name    string
 		handler string
@@ -246,7 +252,7 @@ func setupMCPTestDB(t *testing.T) *storage.DB {
 	}
 
 	dbPath := ".canary/canary.db"
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -990,4 +996,25 @@ func TestCANARY_CBIN_204_MCPDepsInvalidDirection(t *testing.T) {
 	if result != nil {
 		t.Errorf("expected nil CallToolResult on error, got %+v", result)
 	}
+}
+
+// chdirTemp moves the process into a fresh temp directory with a .canary
+// subdirectory for the duration of the test, restoring the original working
+// directory afterwards.
+func chdirTemp(t *testing.T) string {
+	t.Helper()
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(originalDir) })
+
+	tmpDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".canary"), 0o750); err != nil {
+		t.Fatalf("failed to create .canary dir: %v", err)
+	}
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to chdir into temp dir: %v", err)
+	}
+	return tmpDir
 }

@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"devnw.dev/canary/pkg/cmds/internal/utils"
 	"devnw.dev/canary/pkg/config"
 	"devnw.dev/canary/pkg/external"
 	"devnw.dev/canary/pkg/sources"
@@ -263,9 +264,10 @@ func runTicketSync(cmd *cobra.Command, dbPath, planPath, project, issueType stri
 		return fmt.Errorf("load .canary/project.yaml: %w", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	// Read-only: ticket sync consumes the index, it never builds one.
+	db, err := utils.OpenIndexRO(cmd, dbPath)
 	if err != nil {
-		return fmt.Errorf("open index db (run 'canary index' first): %w", err)
+		return err
 	}
 	defer func() { _ = db.Close() }()
 
@@ -276,9 +278,14 @@ func runTicketSync(cmd *cobra.Command, dbPath, planPath, project, issueType stri
 		return fmt.Errorf("load .canary/project.yaml: %w", err)
 	}
 	idPattern := cfg.Requirements.IDPattern
-	tokens, err := db.ListTokens(nil, idPattern, "req_id ASC", 0)
+	// Deliberately unscoped: `ticket sync --project` already means the JIRA
+	// project key, so there is no room here for canary's own project scope.
+	// An index holding more than one canary project makes this ambiguous,
+	// and ListTokens is the wrong place to notice -- ticket sync gains its
+	// own scope selector when the MCP/ticket surface is reworked.
+	tokens, err := db.ListTokens("", nil, idPattern, "req_asc", 0)
 	if err != nil {
-		return fmt.Errorf("list tokens: %w", err)
+		return utils.GuardContract(err)
 	}
 
 	creds := credsFromEnv(reg)

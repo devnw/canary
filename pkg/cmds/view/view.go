@@ -23,6 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"devnw.dev/canary/pkg/cmds/internal/utils"
 	"devnw.dev/canary/pkg/external"
 	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/storage"
@@ -61,10 +62,10 @@ type View struct {
 const DefaultViewLimit = 10
 
 // BuildView assembles the view from the index DB plus filesystem conventions.
-// It assumes dbPath is already migrated (the CLI's PersistentPreRunE handles
-// this before any command runs); callers such as tests that open a fresh
-// database must migrate it themselves first.
-func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
+// The database is opened read-only: viewing a requirement never creates or
+// migrates an index. projectID scopes the lookup; "" spans every project and
+// reports storage.ErrProjectRequired when that would be ambiguous.
+func BuildView(dbPath, root, projectID, reqID string, limit int) (*View, error) {
 	if limit <= 0 {
 		limit = DefaultViewLimit
 	}
@@ -74,13 +75,13 @@ func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
 	}
 	reqID = reg.Normalize(strings.TrimSpace(reqID))
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("open index db (run 'canary index' first): %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
-	tokens, err := db.GetTokensByReqID(reqID)
+	tokens, err := db.GetTokensByReqID(projectID, reqID)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +138,7 @@ func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
 	v.Files = allFiles
 	v.Tests = sortedSet(testSet)
 	v.Benches = sortedSet(benchSet)
-	v.DependsOn = annotateExternal(sortedSet(depSet), reg, root, db)
+	v.DependsOn = annotateExternal(sortedSet(depSet), reg, root, projectID, db)
 	v.Blocks = sortedSet(blockSet)
 	v.RelatedTo = sortedSet(relSet)
 
@@ -195,11 +196,11 @@ func BuildView(dbPath, root, reqID string, limit int) (*View, error) {
 // unrelated cache entry.
 // CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3960_View_DependsOn_ExternalAnnotated,TestCANARY_ENG_3960_View_DependsOn_LocalUnchanged,TestCANARY_ENG_3960_View_DependsOn_LocalTokensWinOverExternalCache; UPDATED=2026-08-29
 // CANARY: REQ=ENG-3961; FEATURE="PeerProjects"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3961_View_DependsOn_PeerAnnotated; UPDATED=2026-08-29
-func annotateExternal(depsOn []string, reg *sources.Registry, root string, db *storage.DB) []string {
+func annotateExternal(depsOn []string, reg *sources.Registry, root, projectID string, db *storage.DB) []string {
 	out := make([]string, len(depsOn))
 	for i, id := range depsOn {
 		if db != nil {
-			if tokens, err := db.GetTokensByReqID(id); err == nil && len(tokens) > 0 {
+			if tokens, err := db.GetTokensByReqID(projectID, id); err == nil && len(tokens) > 0 {
 				out[i] = id
 				continue
 			}
@@ -277,9 +278,13 @@ func CreateViewCommand() *cobra.Command {
 		Short: "Full picture of one requirement: tokens, files, tests, deps, spec, diagrams, ticket",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			v, err := BuildView(".canary/canary.db", ".", args[0], limit)
+			projectID, err := utils.ReadProjectID(cmd, ".")
 			if err != nil {
 				return err
+			}
+			v, err := BuildView(".canary/canary.db", ".", projectID, args[0], limit)
+			if err != nil {
+				return utils.GuardContract(err)
 			}
 			if jsonOut {
 				enc := json.NewEncoder(cmd.OutOrStdout())
@@ -290,6 +295,7 @@ func CreateViewCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "compact JSON output")
+	utils.AddProjectFlag(cmd)
 	cmd.Flags().IntVar(&limit, "limit", DefaultViewLimit, "max entries per list section (raise when you need more)")
 	return cmd
 }

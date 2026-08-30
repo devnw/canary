@@ -90,7 +90,7 @@ Examples:
 		}
 
 		// Open database
-		db, err := storage.Open(dbPath)
+		db, err := storage.OpenRW(dbPath)
 		if err != nil {
 			return fmt.Errorf("open database: %w", err)
 		}
@@ -149,9 +149,9 @@ Examples:
 		effLimit := utils.EffectiveLimit(limit, defaultGapQueryLimit)
 
 		// Open database
-		db, err := storage.Open(dbPath)
+		db, err := utils.OpenIndexRO(cmd, dbPath)
 		if err != nil {
-			return fmt.Errorf("open database: %w", err)
+			return err
 		}
 		defer db.Close()
 
@@ -215,9 +215,9 @@ Example:
 		reqID := args[0]
 
 		// Open database
-		db, err := storage.Open(dbPath)
+		db, err := utils.OpenIndexRO(cmd, dbPath)
 		if err != nil {
-			return fmt.Errorf("open database: %w", err)
+			return err
 		}
 		defer db.Close()
 
@@ -252,7 +252,7 @@ Example:
 		gapID := args[0]
 
 		// Open database
-		db, err := storage.Open(dbPath)
+		db, err := storage.OpenRW(dbPath)
 		if err != nil {
 			return fmt.Errorf("open database: %w", err)
 		}
@@ -289,7 +289,7 @@ Example:
 		gapID := args[0]
 
 		// Open database
-		db, err := storage.Open(dbPath)
+		db, err := storage.OpenRW(dbPath)
 		if err != nil {
 			return fmt.Errorf("open database: %w", err)
 		}
@@ -333,7 +333,7 @@ Examples:
 		ranking, _ := cmd.Flags().GetString("ranking")
 
 		// Open database
-		db, err := storage.Open(dbPath)
+		db, err := storage.OpenRW(dbPath)
 		if err != nil {
 			return fmt.Errorf("open database: %w", err)
 		}
@@ -403,9 +403,9 @@ Categories help classify the type of implementation mistake.`,
 		dbPath, _ := cmd.Flags().GetString("db")
 
 		// Open database
-		db, err := storage.Open(dbPath)
+		db, err := utils.OpenIndexRO(cmd, dbPath)
 		if err != nil {
-			return fmt.Errorf("open database: %w", err)
+			return err
 		}
 		defer db.Close()
 

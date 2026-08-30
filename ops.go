@@ -25,15 +25,16 @@ import (
 // NOTE: SearchTokens' SQL already matches keywords, feature, req_id, file_path,
 // test, and bench columns (bounded by LIMIT), so a single bounded call covers
 // every column this function's contract advertises. Previously this loaded the
-// entire token table via db.ListTokens(nil, "", "", 0) to catch file/test/bench
+// entire token table via db.ListTokens to catch file/test/bench
 // matches that the old (narrower) SearchTokens couldn't produce; that full-table
 // union is no longer needed now that SearchTokens covers those columns itself.
-func GrepTokens(db *storage.DB, pattern string, limit int) ([]*storage.Token, error) {
+// projectID scopes the search; "" spans every project in the database.
+func GrepTokens(db *storage.DB, projectID, pattern string, limit int) ([]*storage.Token, error) {
 	if pattern == "" {
 		return []*storage.Token{}, nil
 	}
 
-	tokens, err := db.SearchTokens(pattern, limit)
+	tokens, err := db.SearchTokens(projectID, pattern, limit)
 	if err != nil {
 		return nil, err
 	}

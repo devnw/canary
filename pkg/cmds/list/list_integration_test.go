@@ -24,7 +24,7 @@ func TestCANARY_CBIN_135_Integration_EndToEnd(t *testing.T) {
 		t.Fatalf("Database migration failed: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -75,11 +75,11 @@ func TestCANARY_CBIN_135_Integration_EndToEnd(t *testing.T) {
 	}
 
 	// Step 3: Test high-priority STUB work (typical development workflow)
-	filters := map[string]string{
+	filters := map[string]any{
 		"status":       "STUB",
 		"priority_max": "1",
 	}
-	stubTokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 10)
+	stubTokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 10)
 	if err != nil {
 		t.Fatalf("Query for STUB work failed: %v", err)
 	}
@@ -93,11 +93,11 @@ func TestCANARY_CBIN_135_Integration_EndToEnd(t *testing.T) {
 	}
 
 	// Step 4: Test security team work (team-based filtering)
-	secFilters := map[string]string{
+	secFilters := map[string]any{
 		"owner":  "security-team",
 		"aspect": "Security",
 	}
-	secTokens, err := db.ListTokens(secFilters, "CBIN-[1-9][0-9]{2,}", "status ASC", 0)
+	secTokens, err := db.ListTokens("", secFilters, "CBIN-[1-9][0-9]{2,}", "req_asc", 0)
 	if err != nil {
 		t.Fatalf("Query for security team work failed: %v", err)
 	}
@@ -107,8 +107,8 @@ func TestCANARY_CBIN_135_Integration_EndToEnd(t *testing.T) {
 	}
 
 	// Step 5: Test work needing tests (IMPL status)
-	implFilters := map[string]string{"status": "IMPL"}
-	implTokens, err := db.ListTokens(implFilters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+	implFilters := map[string]any{"status": "IMPL"}
+	implTokens, err := db.ListTokens("", implFilters, "CBIN-[1-9][0-9]{2,}", "", 0)
 	if err != nil {
 		t.Fatalf("Query for IMPL tokens failed: %v", err)
 	}
@@ -118,8 +118,8 @@ func TestCANARY_CBIN_135_Integration_EndToEnd(t *testing.T) {
 	}
 
 	// Step 6: Test completed work (TESTED status)
-	testedFilters := map[string]string{"status": "TESTED"}
-	testedTokens, err := db.ListTokens(testedFilters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+	testedFilters := map[string]any{"status": "TESTED"}
+	testedTokens, err := db.ListTokens("", testedFilters, "CBIN-[1-9][0-9]{2,}", "", 0)
 	if err != nil {
 		t.Fatalf("Query for TESTED tokens failed: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestCANARY_CBIN_135_Integration_JSONOutput(t *testing.T) {
 		t.Fatalf("Database migration failed: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -166,8 +166,8 @@ func TestCANARY_CBIN_135_Integration_JSONOutput(t *testing.T) {
 	}
 
 	// Query tokens
-	filters := make(map[string]string)
-	tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+	filters := make(map[string]any)
+	tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 	if err != nil {
 		t.Fatalf("Query failed: %v", err)
 	}
@@ -208,7 +208,7 @@ func TestCANARY_CBIN_135_Integration_AgentWorkflow(t *testing.T) {
 		t.Fatalf("Database migration failed: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -232,8 +232,8 @@ func TestCANARY_CBIN_135_Integration_AgentWorkflow(t *testing.T) {
 	}
 
 	// Agent query: top 3 priorities for context-constrained environment
-	filters := map[string]string{"status": "STUB"}
-	tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 3)
+	filters := map[string]any{"status": "STUB"}
+	tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 3)
 	if err != nil {
 		t.Fatalf("Agent query failed: %v", err)
 	}
@@ -269,7 +269,7 @@ func TestCANARY_CBIN_135_Integration_MultipleFilters(t *testing.T) {
 		t.Fatalf("Database migration failed: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -309,11 +309,11 @@ func TestCANARY_CBIN_135_Integration_MultipleFilters(t *testing.T) {
 	}
 
 	// Test 1: alice's CLI work
-	filters := map[string]string{
+	filters := map[string]any{
 		"owner":  "alice",
 		"aspect": "CLI",
 	}
-	tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+	tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 	if err != nil {
 		t.Fatalf("Query failed: %v", err)
 	}
@@ -322,11 +322,11 @@ func TestCANARY_CBIN_135_Integration_MultipleFilters(t *testing.T) {
 	}
 
 	// Test 2: High-priority STUB work (priority 1, status STUB)
-	filters = map[string]string{
+	filters = map[string]any{
 		"status":       "STUB",
 		"priority_max": "1",
 	}
-	tokens, err = db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+	tokens, err = db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 	if err != nil {
 		t.Fatalf("Query failed: %v", err)
 	}
@@ -335,11 +335,11 @@ func TestCANARY_CBIN_135_Integration_MultipleFilters(t *testing.T) {
 	}
 
 	// Test 3: bob's completed work
-	filters = map[string]string{
+	filters = map[string]any{
 		"owner":  "bob",
 		"status": "TESTED",
 	}
-	tokens, err = db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", 0)
+	tokens, err = db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}", "", 0)
 	if err != nil {
 		t.Fatalf("Query failed: %v", err)
 	}
@@ -358,7 +358,7 @@ func TestCANARY_CBIN_135_Integration_Performance(t *testing.T) {
 		t.Fatalf("Database migration failed: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -385,29 +385,29 @@ func TestCANARY_CBIN_135_Integration_Performance(t *testing.T) {
 	// Test query performance with filters
 	tests := []struct {
 		name    string
-		filters map[string]string
+		filters map[string]any
 		limit   int
 	}{
 		{
 			name:    "top 10 priorities",
-			filters: make(map[string]string),
+			filters: make(map[string]any),
 			limit:   10,
 		},
 		{
 			name:    "STUB work for alice",
-			filters: map[string]string{"status": "STUB", "owner": "alice"},
+			filters: map[string]any{"status": "STUB", "owner": "alice"},
 			limit:   20,
 		},
 		{
 			name:    "high-priority CLI work",
-			filters: map[string]string{"aspect": "CLI", "priority_max": "2"},
+			filters: map[string]any{"aspect": "CLI", "priority_max": "2"},
 			limit:   15,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tokens, err := db.ListTokens(tt.filters, "CBIN-[1-9][0-9]{2,}", "priority ASC", tt.limit)
+			tokens, err := db.ListTokens("", tt.filters, "CBIN-[1-9][0-9]{2,}", "", tt.limit)
 			if err != nil {
 				t.Fatalf("Query failed: %v", err)
 			}

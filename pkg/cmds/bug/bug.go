@@ -46,27 +46,31 @@ func buildBugToken(bugID, title, feature, aspect, status, severity, priority, up
 		bugID, title, feature, aspect, status, severity, priority, updated)
 }
 
-func generateBugID(aspect string, dbPath string) (string, error) {
+func generateBugID(aspect, projectID, dbPath string) (string, error) {
 	// Normalize aspect to uppercase
 	aspect = strings.ToUpper(aspect)
 
-	// Open database to check existing IDs
-	db, err := storage.Open(dbPath)
+	// Read the existing IDs. Read-only: allocating the next bug number must
+	// not be what brings a database into existence.
+	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		// If no database, start from 001
 		return fmt.Sprintf("BUG-%s-001", aspect), nil
 	}
 	defer db.Close()
 
-	return generateBugIDWithDB(aspect, db)
+	return generateBugIDWithDB(aspect, projectID, db)
 }
 
-func generateBugIDWithDB(aspect string, db *storage.DB) (string, error) {
+func generateBugIDWithDB(aspect, projectID string, db *storage.DB) (string, error) {
 	// Normalize aspect to uppercase
 	aspect = strings.ToUpper(aspect)
 
-	// Query ALL tokens (no pattern filter since ListTokens is hardcoded for CBIN)
-	tokens, err := db.ListTokens(nil, "", "req_id DESC", 0) // Get all tokens
+	// Every token, in any order: the next number is the maximum over the
+	// whole set, so ordering is irrelevant to the answer. (Before the
+	// order-key allowlist this asked for "req_id DESC", which the loop below
+	// never depended on.)
+	tokens, err := db.ListTokens(projectID, nil, "", "", 0)
 	if err != nil {
 		// If database doesn't have tokens table yet, start from 001
 		return fmt.Sprintf("BUG-%s-001", aspect), nil

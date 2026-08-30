@@ -24,6 +24,8 @@ import (
 	"devnw.dev/canary/pkg/external"
 	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/storage"
+	"errors"
+	"io/fs"
 )
 
 // CANARY: REQ=CP-252; FEATURE="NextCmd"; ASPECT=CLI; STATUS=BENCHED; TEST=TestCANARY_CBIN_132_CLI_NextPrioritySelection; BENCH=BenchmarkCANARY_CBIN_132_CLI_PriorityQuery; OWNER=canary; DOC=user:docs/user/next-priority-guide.md; DOC_HASH=17524f7a14d2c410; UPDATED=2026-08-29
@@ -74,7 +76,12 @@ Priority determination factors:
 		}
 
 		// Select next priority
-		token, err := selectNextPriorityStrict(dbPath, filters, strictExternal)
+		projectID, err := utils.ReadProjectID(cmd, ".")
+		if err != nil {
+			return err
+		}
+
+		token, err := selectNextPriorityStrict(dbPath, projectID, filters, strictExternal)
 		if err != nil {
 			return fmt.Errorf("select next priority: %w", err)
 		}
@@ -96,7 +103,7 @@ Priority determination factors:
 		}
 
 		// Render prompt
-		output, err := renderPrompt(token, promptFlag)
+		output, err := renderPrompt(token, projectID, promptFlag)
 		if err != nil {
 			return fmt.Errorf("render prompt: %w", err)
 		}
@@ -167,33 +174,32 @@ type RelatedSpec struct {
 // Uses database if available, falls back to filesystem scan. External
 // dependencies with unknown (uncached) status are treated as non-blocking
 // (the safe default); use selectNextPriorityStrict for --strict-external.
-func selectNextPriority(dbPath string, filters map[string]string) (*storage.Token, error) {
-	return selectNextPriorityStrict(dbPath, filters, false)
+func selectNextPriority(dbPath, projectID string, filters map[string]string) (*storage.Token, error) {
+	return selectNextPriorityStrict(dbPath, projectID, filters, false)
 }
 
 // selectNextPriorityStrict is selectNextPriority with control over whether
 // external dependencies of unknown (uncached) status block selection.
 // CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3960_Next_ExternalSatisfied_NotBlocking,TestCANARY_ENG_3960_Next_ExternalUnsatisfied_Blocking,TestCANARY_ENG_3960_Next_ExternalUnknown_NotBlockingByDefault,TestCANARY_ENG_3960_Next_ExternalUnknown_StrictBlocks,TestCANARY_ENG_3960_Next_LocalMissingDep_StillBlocking; UPDATED=2026-08-29
-func selectNextPriorityStrict(dbPath string, filters map[string]string, strictExternal bool) (*storage.Token, error) {
-	// Check if database file exists
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		// Fall back to filesystem scan if database doesn't exist
-		return selectFromFilesystem(filters)
-	}
-
-	// Try database first
-	db, err := storage.Open(dbPath)
+func selectNextPriorityStrict(dbPath, projectID string, filters map[string]string, strictExternal bool) (*storage.Token, error) {
+	// Read-only: a repository with no index falls back to a filesystem scan
+	// rather than creating an empty database and reporting nothing to do.
+	db, err := storage.OpenRO(dbPath)
 	if err != nil {
-		// Fall back to filesystem scan if database unavailable
+		if errors.Is(err, fs.ErrNotExist) {
+			return selectFromFilesystem(filters)
+		}
+		// An index that exists but cannot be opened is still not a reason to
+		// invent an answer from an empty database.
 		return selectFromFilesystem(filters)
 	}
 
 	defer func() { _ = db.Close() }()
-	return selectFromDatabase(db, filters, strictExternal)
+	return selectFromDatabase(db, projectID, filters, strictExternal)
 }
 
 // selectFromDatabase queries the database for next priority
-func selectFromDatabase(db *storage.DB, filters map[string]string, strictExternal bool) (*storage.Token, error) {
+func selectFromDatabase(db *storage.DB, projectID string, filters map[string]string, strictExternal bool) (*storage.Token, error) {
 	// Build filters for incomplete requirements
 	if filters == nil {
 		filters = make(map[string]string)
@@ -227,14 +233,14 @@ func selectFromDatabase(db *storage.DB, filters map[string]string, strictExterna
 		stubFilters["status"] = "STUB"
 
 		// Try STUB first
-		tokens, err := db.ListTokens(stubFilters, idPattern, "priority ASC, updated_at DESC", 50)
+		tokens, err := db.ListTokens(projectID, anyFilters(stubFilters), idPattern, "", 50)
 		if err != nil {
 			return nil, fmt.Errorf("query STUB tokens: %w", err)
 		}
 
 		// Filter out blocked tokens
 		for _, token := range tokens {
-			if !hasUnresolvedDependencies(db, token, reg, ".", strictExternal, warned) {
+			if !hasUnresolvedDependencies(db, projectID, token, reg, ".", strictExternal, warned) {
 				return token, nil
 			}
 		}
@@ -246,13 +252,13 @@ func selectFromDatabase(db *storage.DB, filters map[string]string, strictExterna
 		}
 		implFilters["status"] = "IMPL"
 
-		tokens, err = db.ListTokens(implFilters, idPattern, "priority ASC, updated_at DESC", 50)
+		tokens, err = db.ListTokens(projectID, anyFilters(implFilters), idPattern, "", 50)
 		if err != nil {
 			return nil, fmt.Errorf("query IMPL tokens: %w", err)
 		}
 
 		for _, token := range tokens {
-			if !hasUnresolvedDependencies(db, token, reg, ".", strictExternal, warned) {
+			if !hasUnresolvedDependencies(db, projectID, token, reg, ".", strictExternal, warned) {
 				return token, nil
 			}
 		}
@@ -261,14 +267,14 @@ func selectFromDatabase(db *storage.DB, filters map[string]string, strictExterna
 	}
 
 	// Use provided filters
-	tokens, err := db.ListTokens(filters, idPattern, "priority ASC, updated_at DESC", 50)
+	tokens, err := db.ListTokens(projectID, anyFilters(filters), idPattern, "", 50)
 	if err != nil {
 		return nil, fmt.Errorf("query tokens: %w", err)
 	}
 
 	// Find first unblocked token
 	for _, token := range tokens {
-		if !hasUnresolvedDependencies(db, token, reg, ".", strictExternal, warned) {
+		if !hasUnresolvedDependencies(db, projectID, token, reg, ".", strictExternal, warned) {
 			return token, nil
 		}
 	}
@@ -291,7 +297,7 @@ func selectFromDatabase(db *storage.DB, filters map[string]string, strictExterna
 //     (degradation is sacred) — a one-line stderr note is printed the
 //     first time a given dep is seen this run (warned dedups by id).
 //     strictExternal flips unknown to blocking.
-func hasUnresolvedDependencies(db *storage.DB, token *storage.Token, reg *sources.Registry, root string, strictExternal bool, warned map[string]bool) bool {
+func hasUnresolvedDependencies(db *storage.DB, projectID string, token *storage.Token, reg *sources.Registry, root string, strictExternal bool, warned map[string]bool) bool {
 	if token.DependsOn == "" {
 		return false
 	}
@@ -305,7 +311,7 @@ func hasUnresolvedDependencies(db *storage.DB, token *storage.Token, reg *source
 		}
 
 		// Query dependency status
-		depTokens, err := db.GetTokensByReqID(dep)
+		depTokens, err := db.GetTokensByReqID(projectID, dep)
 		if err != nil || len(depTokens) == 0 {
 			res := external.Resolve(dep, reg, root)
 			if !res.IsExternal() {
@@ -485,7 +491,7 @@ func selectFromFilesystem(filters map[string]string) (*storage.Token, error) {
 }
 
 // renderPrompt generates implementation prompt from template
-func renderPrompt(token *storage.Token, promptFlag bool) (string, error) {
+func renderPrompt(token *storage.Token, projectID string, promptFlag bool) (string, error) {
 	if !promptFlag {
 		// Simple summary output
 		return fmt.Sprintf("Next: %s - %s (Priority: %d, Status: %s)\n"+
@@ -506,7 +512,7 @@ func renderPrompt(token *storage.Token, promptFlag bool) (string, error) {
 	}
 
 	// Load prompt data
-	data, err := loadPromptData(token)
+	data, err := loadPromptData(token, projectID)
 	if err != nil {
 		return "", fmt.Errorf("load prompt data: %w", err)
 	}
@@ -521,7 +527,8 @@ func renderPrompt(token *storage.Token, promptFlag bool) (string, error) {
 }
 
 // loadPromptData loads all data needed for template rendering
-func loadPromptData(token *storage.Token) (*PromptData, error) {
+// projectID scopes the dependency lookups; "" spans every project.
+func loadPromptData(token *storage.Token, projectID string) (*PromptData, error) {
 	data := &PromptData{
 		ReqID:    token.ReqID,
 		Feature:  token.Feature,
@@ -567,7 +574,7 @@ func loadPromptData(token *storage.Token) (*PromptData, error) {
 
 	// Load dependencies if in database
 	dbPath := ".canary/canary.db"
-	if db, err := storage.Open(dbPath); err == nil {
+	if db, err := storage.OpenRO(dbPath); err == nil {
 		defer func() { _ = db.Close() }()
 		if token.DependsOn != "" {
 			deps := strings.Split(token.DependsOn, ",")
@@ -576,7 +583,7 @@ func loadPromptData(token *storage.Token) (*PromptData, error) {
 				if dep == "" {
 					continue
 				}
-				depTokens, err := db.GetTokensByReqID(dep)
+				depTokens, err := db.GetTokensByReqID(projectID, dep)
 				if err == nil && len(depTokens) > 0 {
 					data.Dependencies = append(data.Dependencies, depTokens[0])
 				}
@@ -705,4 +712,18 @@ func extractFieldInternal(token, field string) string {
 	}
 
 	return ""
+}
+
+// anyFilters widens a string filter map to the map[string]any shape
+// storage.ListTokens takes. Filter values are bound as query parameters, so
+// only their type changes here, never their meaning.
+func anyFilters(in map[string]string) map[string]any {
+	if in == nil {
+		return nil
+	}
+	out := make(map[string]any, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
 }

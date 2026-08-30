@@ -61,7 +61,12 @@ Examples:
 		}
 
 		// Generate bug ID
-		bugID, err := generateBugID(aspect, dbPath)
+		projectID, err := utils.WriteProjectID(cmd, ".")
+		if err != nil {
+			return err
+		}
+
+		bugID, err := generateBugID(aspect, projectID, dbPath)
 		if err != nil {
 			return fmt.Errorf("generate bug ID: %w", err)
 		}
@@ -95,8 +100,10 @@ Examples:
 			Keywords:   fmt.Sprintf("SEVERITY=%s;PRIORITY=%s", severity, priority),
 		}
 
-		// Save to database
-		db, err := storage.Open(dbPath)
+		token.ProjectID = projectID
+
+		// Save to database. Mutating command: OpenRW may create and migrate.
+		db, err := storage.OpenRW(dbPath)
 		if err != nil {
 			// Create CANARY comment in file if no database
 			return createBugCanaryComment(token, severity, priority)
@@ -131,4 +138,5 @@ func init() {
 	bugCreateCmd.Flags().String("file", "", "File and line number (e.g., src/api/handler.go:42)")
 	bugCreateCmd.Flags().String("owner", "", "Bug owner/assignee")
 	bugCreateCmd.Flags().String("db", ".canary/canary.db", "Path to database file")
+	utils.AddProjectFlag(bugCreateCmd)
 }

@@ -5,6 +5,8 @@
 
 package storage
 
+import "errors"
+
 // CANARY: REQ=CP-272; FEATURE="DiagramRefsIndex"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CBIN_206_RefsRoundTrip; UPDATED=2026-08-28
 
 // Ref is a requirement reference found outside CANARY tokens (diagrams, docs).
@@ -86,12 +88,20 @@ func (db *DB) GetRefsByKind(kind string, limit int) ([]*Ref, error) {
 	return out, rows.Err()
 }
 
-// DeleteAllTokens clears the tokens table. `canary index` treats the token
-// index as fully derived state: each run rebuilds it from a whole-tree scan,
-// so rows for tokens that no longer exist on disk (renamed or remapped REQ
-// IDs, deleted files) must not survive a re-index.
-// CANARY: REQ=CP-285; FEATURE="IndexRebuild"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CP_285_IndexRebuildPrunes; UPDATED=2026-08-29
-func (db *DB) DeleteAllTokens() error {
-	_, err := db.conn.Exec(`DELETE FROM tokens`)
+// DeleteAllTokens clears one project's token rows. `canary index` treats the
+// token index as fully derived state: each run rebuilds it from a whole-tree
+// scan, so rows for tokens that no longer exist on disk (renamed or remapped
+// REQ IDs, deleted files) must not survive a re-index. The projectID scope
+// keeps one project's rebuild from wiping a sibling project's rows out of a
+// shared database.
+//
+// `canary index` does not call this directly -- it uses ReplaceIndex, which
+// performs the same delete inside the rebuild transaction.
+// CANARY: REQ=CP-285; FEATURE="IndexRebuild"; ASPECT=Storage; STATUS=TESTED; TEST=TestCANARY_CP_285_IndexRebuildPrunes; UPDATED=2026-08-30
+func (db *DB) DeleteAllTokens(projectID string) error {
+	if projectID == "" {
+		return errors.New("delete tokens: project id is required")
+	}
+	_, err := db.conn.Exec(`DELETE FROM tokens WHERE COALESCE(project_id, '') = ?`, projectID)
 	return err
 }

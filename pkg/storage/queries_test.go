@@ -22,7 +22,7 @@ func TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fileGroups, err := db.GetFilesByReqID(tt.reqID, tt.excludeSpecs)
+			fileGroups, err := db.GetFilesByReqID("", tt.reqID, tt.excludeSpecs)
 			if err != nil {
 				t.Fatalf("GetFilesByReqID failed: %v", err)
 			}
@@ -130,7 +130,7 @@ func TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID_TokenGrouping(t *testing.T)
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -149,7 +149,7 @@ func TestCANARY_CBIN_CLI_001_Storage_GetFilesByReqID_TokenGrouping(t *testing.T)
 		}
 	}
 
-	fileGroups, err := db.GetFilesByReqID("TEST", false)
+	fileGroups, err := db.GetFilesByReqID("", "TEST", false)
 	if err != nil {
 		t.Fatalf("GetFilesByReqID failed: %v", err)
 	}
@@ -224,7 +224,7 @@ func TestCANARY_CBIN_CLI_001_Storage_GetTokensByReqID(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -267,7 +267,7 @@ func TestCANARY_CBIN_CLI_001_Storage_GetTokensByReqID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tokens, err := db.GetTokensByReqID(tt.reqID)
+			tokens, err := db.GetTokensByReqID("", tt.reqID)
 			if err != nil {
 				t.Fatalf("GetTokensByReqID failed: %v", err)
 			}
@@ -295,7 +295,7 @@ func TestCANARY_CBIN_201_ListTokensHonorsIDPattern(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -314,7 +314,7 @@ func TestCANARY_CBIN_201_ListTokensHonorsIDPattern(t *testing.T) {
 	}
 
 	// Pattern matching two prefixes
-	got, err := db.ListTokens(nil, `^(CBIN|PLAT)-\d+$`, "", 0)
+	got, err := db.ListTokens("", nil, `^(CBIN|PLAT)-\d+$`, "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -327,7 +327,7 @@ func TestCANARY_CBIN_201_ListTokensHonorsIDPattern(t *testing.T) {
 	}
 
 	// Empty pattern: everything except placeholders
-	got, err = db.ListTokens(nil, "", "", 0)
+	got, err = db.ListTokens("", nil, "", "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -352,7 +352,7 @@ func TestCANARY_CBIN_205_SearchTokensLimit(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := Open(dbPath)
+	db, err := OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -365,14 +365,14 @@ func TestCANARY_CBIN_205_SearchTokensLimit(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	got, err := db.SearchTokens("needle", 10)
+	got, err := db.SearchTokens("", "needle", 10)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) != 10 {
 		t.Errorf("len = %d, want 10", len(got))
 	}
-	got, err = db.SearchTokens("needle", 0)
+	got, err = db.SearchTokens("", "needle", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -20,7 +20,7 @@ func TestOpsExtraction_GrepAndGrouping(t *testing.T) {
 	if err := storage.MigrateDB(dbPath, "all"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -37,7 +37,7 @@ func TestOpsExtraction_GrepAndGrouping(t *testing.T) {
 		}
 	}
 
-	res, err := GrepTokens(db, "Alpha", 0)
+	res, err := GrepTokens(db, "", "Alpha", 0)
 	if err != nil {
 		t.Fatalf("grep: %v", err)
 	}

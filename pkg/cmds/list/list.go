@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -49,9 +49,23 @@ Use --include-hidden to show all requirements including hidden ones.`,
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 		includeHidden, _ := cmd.Flags().GetBool("include-hidden")
 
-		db, err := storage.Open(dbPath)
+		// The order key is validated before anything else happens: an
+		// unrecognised value must produce the INVALID_ORDER_BY contract and
+		// nothing else on stdout -- not a database open, not a warning, not
+		// a partial table.
+		if !isKnownOrderKey(orderBy) {
+			utils.FailInvalidOrderBy()
+		}
+
+		projectID, err := utils.ReadProjectID(cmd, ".")
 		if err != nil {
-			return fmt.Errorf("open database: %w", err)
+			return err
+		}
+
+		// Read-only: never creates the database it could not find.
+		db, err := utils.OpenIndexRO(cmd, dbPath)
+		if err != nil {
+			return err
 		}
 
 		defer db.Close()
@@ -67,7 +81,7 @@ Use --include-hidden to show all requirements including hidden ones.`,
 		}
 
 		// Build filters
-		filters := make(map[string]string)
+		filters := make(map[string]any)
 		if filterStatus != "" {
 			filters["status"] = filterStatus
 		}
@@ -84,18 +98,18 @@ Use --include-hidden to show all requirements including hidden ones.`,
 			filters["spec_status"] = filterSpecStatus
 		}
 		if priorityMin > 0 {
-			filters["priority_min"] = strconv.Itoa(priorityMin)
+			filters["priority_min"] = priorityMin
 		}
 		if priorityMax > 0 {
-			filters["priority_max"] = strconv.Itoa(priorityMax)
+			filters["priority_max"] = priorityMax
 		}
 		if includeHidden {
 			filters["include_hidden"] = "true"
 		}
 
-		tokens, err := db.ListTokens(filters, idPattern, orderBy, effLimit)
+		tokens, err := db.ListTokens(projectID, filters, idPattern, orderBy, effLimit)
 		if err != nil {
-			return fmt.Errorf("list tokens: %w", err)
+			return utils.GuardContract(err)
 		}
 
 		if len(tokens) == 0 {
@@ -138,6 +152,20 @@ Use --include-hidden to show all requirements including hidden ones.`,
 	},
 }
 
+// isKnownOrderKey reports whether key names one of the allowed orderings.
+// The empty string is the documented default and is always allowed.
+func isKnownOrderKey(key string) bool {
+	if key == "" {
+		return true
+	}
+	for _, k := range storage.OrderKeys() {
+		if k == key {
+			return true
+		}
+	}
+	return false
+}
+
 // CANARY: REQ=ENG-4323; FEATURE="ContextCaps"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_205_ListDefaultLimitIsSmall; UPDATED=2026-08-28
 // defaultListLimit caps list output to protect agent context. Deliberately
 // small; pass --limit -1 to explicitly request everything.
@@ -153,7 +181,8 @@ func init() {
 	ListCmd.Flags().String("spec-status", "", "filter by spec status (draft, approved, in-progress, completed, archived)")
 	ListCmd.Flags().Int("priority-min", 0, "filter by minimum priority (0 = no minimum)")
 	ListCmd.Flags().Int("priority-max", 0, "filter by maximum priority (0 = no maximum)")
-	ListCmd.Flags().String("order-by", "", "custom ORDER BY clause (default: priority ASC, updated_at DESC)")
+	ListCmd.Flags().String("order-by", "", "ordering: one of "+strings.Join(storage.OrderKeys(), ", ")+" (default: priority then most recently updated)")
+	utils.AddProjectFlag(ListCmd)
 	ListCmd.Flags().Int("limit", defaultListLimit, "maximum number of results (default 20 to protect agent context; -1 = unlimited)")
 	ListCmd.Flags().Bool("json", false, "output as JSON")
 	ListCmd.Flags().Bool("include-hidden", false, "include hidden requirements (test files, templates, examples)")

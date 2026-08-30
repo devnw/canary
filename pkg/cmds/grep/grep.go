@@ -8,13 +8,11 @@ package grep
 import (
 	"fmt"
 	"math"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"devnw.dev/canary"
 	"devnw.dev/canary/pkg/cmds/internal/utils"
-	"devnw.dev/canary/pkg/storage"
 )
 
 // CANARY: REQ=CBIN-CLI-001; FEATURE="GrepCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_CLI_001_CLI_GrepCmd; UPDATED=2026-08-29
@@ -56,19 +54,22 @@ Examples:
 			effLimit = utils.EffectiveLimit(limit, defaultGrepLimit)
 		}
 
-		// Open database
-		db, err := storage.Open(dbPath)
+		projectID, err := utils.ReadProjectID(cmd, ".")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "⚠️  Database not found\n")
-			fmt.Fprintf(os.Stderr, "   Suggestion: Run 'canary index' to build database\n\n")
-			return fmt.Errorf("open database: %w", err)
+			return err
+		}
+
+		// Read-only: never creates the database it could not find.
+		db, err := utils.OpenIndexRO(cmd, dbPath)
+		if err != nil {
+			return err
 		}
 		defer db.Close()
 
 		// Search for matching tokens
-		tokens, err := canary.GrepTokens(db, pattern, effLimit)
+		tokens, err := canary.GrepTokens(db, projectID, pattern, effLimit)
 		if err != nil {
-			return fmt.Errorf("search tokens: %w", err)
+			return utils.GuardContract(err)
 		}
 
 		if len(tokens) == 0 {
@@ -102,6 +103,7 @@ const defaultGrepLimit = 20
 func init() {
 	GrepCmd.Flags().String("prompt", "", "Custom prompt file or embedded prompt name (future use)")
 	GrepCmd.Flags().String("db", ".canary/canary.db", "Path to database file")
+	utils.AddProjectFlag(GrepCmd)
 	GrepCmd.Flags().String("group-by", "none", "Group results (none, requirement)")
 	GrepCmd.Flags().Int("limit", defaultGrepLimit, "maximum number of results (default 20 to protect agent context; -1 = unlimited)")
 }

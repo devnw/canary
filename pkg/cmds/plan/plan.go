@@ -131,7 +131,7 @@ tech stack decisions, and CANARY token placement instructions.`,
 		// Inject gap analysis if available
 		dbPath := ".canary/canary.db"
 		if _, err := os.Stat(dbPath); err == nil {
-			db, err := storage.Open(dbPath)
+			db, err := storage.OpenRO(dbPath)
 			if err == nil {
 				defer db.Close()
 				repo := storage.NewGapRepository(db)

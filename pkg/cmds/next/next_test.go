@@ -20,7 +20,7 @@ func TestCANARY_CBIN_132_CLI_NextPrioritySelection(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestCANARY_CBIN_132_CLI_NextPrioritySelection(t *testing.T) {
 	}
 
 	// Execute: Select next priority with no filters
-	selected, err := selectNextPriority(dbPath, nil)
+	selected, err := selectNextPriority(dbPath, "", nil)
 	if err != nil {
 		t.Fatalf("selectNextPriority failed: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestCANARY_CBIN_132_CLI_DependencyBlocking(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestCANARY_CBIN_132_CLI_DependencyBlocking(t *testing.T) {
 	}
 
 	// Execute: Select next priority
-	selected, err := selectNextPriority(dbPath, nil)
+	selected, err := selectNextPriority(dbPath, "", nil)
 	if err != nil {
 		t.Fatalf("selectNextPriority failed: %v", err)
 	}
@@ -242,7 +242,7 @@ Tests must be written before implementation.
 	}
 
 	// Execute: Render prompt with --prompt flag
-	prompt, err := renderPrompt(token, true)
+	prompt, err := renderPrompt(token, "", true)
 	if err != nil {
 		t.Fatalf("renderPrompt failed: %v", err)
 	}
@@ -273,7 +273,7 @@ func TestCANARY_CBIN_132_CLI_NoWorkAvailable(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -311,7 +311,7 @@ func TestCANARY_CBIN_132_CLI_NoWorkAvailable(t *testing.T) {
 	}
 
 	// Execute: Select next priority
-	selected, err := selectNextPriority(dbPath, nil)
+	selected, err := selectNextPriority(dbPath, "", nil)
 
 	// Verify: Returns nil (no work available) without error
 	if err != nil {
@@ -350,7 +350,7 @@ func FilesystemFallbackTest() {
 	}
 
 	// Execute: Select next priority (should fall back to filesystem)
-	selected, err := selectNextPriority(dbPath, nil)
+	selected, err := selectNextPriority(dbPath, "", nil)
 
 	// Verify: Falls back to filesystem scan and finds token
 	if err != nil {
@@ -370,7 +370,7 @@ func TestCANARY_CBIN_132_CLI_StatusFiltering(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -408,7 +408,7 @@ func TestCANARY_CBIN_132_CLI_StatusFiltering(t *testing.T) {
 
 	// Execute: Select with IMPL filter
 	filters := map[string]string{"status": "IMPL"}
-	selected, err := selectNextPriority(dbPath, filters)
+	selected, err := selectNextPriority(dbPath, "", filters)
 	if err != nil {
 		t.Fatalf("selectNextPriority with filter failed: %v", err)
 	}
@@ -450,7 +450,7 @@ func BenchmarkCANARY_CBIN_132_CLI_PriorityQuery(b *testing.B) {
 	tmpDir := b.TempDir()
 	dbPath := filepath.Join(tmpDir, "bench.db")
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		b.Fatalf("failed to open database: %v", err)
 	}
@@ -481,7 +481,7 @@ func BenchmarkCANARY_CBIN_132_CLI_PriorityQuery(b *testing.B) {
 
 	// Benchmark: selectNextPriority
 	for i := 0; i < b.N; i++ {
-		_, err := selectNextPriority(dbPath, nil)
+		_, err := selectNextPriority(dbPath, "", nil)
 		if err != nil {
 			b.Fatalf("selectNextPriority failed: %v", err)
 		}
@@ -521,7 +521,7 @@ func FilesystemTest() {
 	// Execute: Use filesystem scan with TESTED filter to find the token
 	dbPath := filepath.Join(tmpDir, "nonexistent.db") // Force filesystem fallback
 	filters := map[string]string{"status": "TESTED"}
-	selected, err := selectNextPriority(dbPath, filters)
+	selected, err := selectNextPriority(dbPath, "", filters)
 
 	// Verify: The FilesystemTest token is found with correct attributes
 	if err != nil {
@@ -649,7 +649,7 @@ Features SHOULD use the simplest approach that meets requirements.
 
 	// Benchmark: renderPrompt with full prompt generation
 	for i := 0; i < b.N; i++ {
-		_, err := renderPrompt(token, true)
+		_, err := renderPrompt(token, "", true)
 		if err != nil {
 			b.Fatalf("renderPrompt failed: %v", err)
 		}

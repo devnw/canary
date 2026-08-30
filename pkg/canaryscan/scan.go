@@ -256,6 +256,25 @@ func normalizeIssues(issues []ScanIssue) []ScanIssue {
 // body it finds. A non-nil issue means the file was skipped (wholly or from
 // the offending line on); it is never fatal to the surrounding walk.
 func readTokenCaptures(path string, d os.DirEntry) ([]string, *ScanIssue) {
+	located, issue := readTokenCapturesLocated(path, d)
+	bodies := make([]string, 0, len(located))
+	for _, c := range located {
+		bodies = append(bodies, c.Body)
+	}
+	return bodies, issue
+}
+
+// locatedCapture is one CANARY token body together with the 1-based line it
+// was found on. The aggregate Report has no room for line numbers, but the
+// token index does: a row must point at the exact line so `canary show` can
+// send a reader straight to it.
+type locatedCapture struct {
+	Line int
+	Body string
+}
+
+// readTokenCapturesLocated is readTokenCaptures with line numbers.
+func readTokenCapturesLocated(path string, d os.DirEntry) ([]locatedCapture, *ScanIssue) {
 	info, ierr := d.Info()
 	if ierr != nil {
 		return nil, &ScanIssue{Path: path, Reason: IssueReadError, Detail: ierr.Error()}
@@ -279,8 +298,9 @@ func readTokenCaptures(path string, d os.DirEntry) ([]string, *ScanIssue) {
 		return nil, &ScanIssue{Path: path, Reason: IssueBinary, Detail: "NUL byte in first 8 KiB"}
 	}
 
-	var captures []string
+	var captures []locatedCapture
 	var line []byte
+	lineNo := 1
 	for {
 		chunk, rerr := r.ReadSlice('\n')
 		if len(line)+len(chunk) > MaxLineBytes {
@@ -296,12 +316,13 @@ func readTokenCaptures(path string, d os.DirEntry) ([]string, *ScanIssue) {
 		}
 		if len(line) > 0 {
 			if m := tokenLineRe.FindSubmatch(bytes.TrimRight(line, "\r\n")); m != nil {
-				captures = append(captures, string(m[1]))
+				captures = append(captures, locatedCapture{Line: lineNo, Body: string(m[1])})
 			}
 		}
 		if rerr == io.EOF {
 			return captures, nil
 		}
 		line = line[:0]
+		lineNo++
 	}
 }

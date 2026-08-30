@@ -25,7 +25,7 @@ func TestBugTokenIntegration(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestBugTokenIntegration(t *testing.T) {
 		// (Go-side, post-query) instead of a hardcoded SQL GLOB that matched
 		// both CBIN-NNN and BUG-ASPECT-NNN regardless of the pattern text.
 		// Use an alternation to explicitly request both prefixes.
-		tokens, err := db.ListTokens(nil, "CBIN-[1-9][0-9]{2,}|BUG-", "", 0)
+		tokens, err := db.ListTokens("", nil, "CBIN-[1-9][0-9]{2,}|BUG-", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens failed: %v", err)
 		}
@@ -132,7 +132,7 @@ func TestBugTokenIntegration(t *testing.T) {
 
 	t.Run("SearchTokens finds BUG tokens", func(t *testing.T) {
 		// Search for a BUG feature
-		tokens, err := db.SearchTokens("freezes", 0)
+		tokens, err := db.SearchTokens("", "freezes", 0)
 		if err != nil {
 			t.Fatalf("SearchTokens failed: %v", err)
 		}
@@ -146,7 +146,7 @@ func TestBugTokenIntegration(t *testing.T) {
 		}
 
 		// Search by BUG ID
-		tokens, err = db.SearchTokens("BUG-API", 0)
+		tokens, err = db.SearchTokens("", "BUG-API", 0)
 		if err != nil {
 			t.Fatalf("SearchTokens failed: %v", err)
 		}
@@ -157,7 +157,7 @@ func TestBugTokenIntegration(t *testing.T) {
 	})
 
 	t.Run("GetTokensByReqID works with BUG IDs", func(t *testing.T) {
-		tokens, err := db.GetTokensByReqID("BUG-Storage-003")
+		tokens, err := db.GetTokensByReqID("", "BUG-Storage-003")
 		if err != nil {
 			t.Fatalf("GetTokensByReqID failed: %v", err)
 		}
@@ -177,7 +177,7 @@ func TestBugTokenIntegration(t *testing.T) {
 	})
 
 	t.Run("GetFilesByReqID works with BUG IDs", func(t *testing.T) {
-		fileGroups, err := db.GetFilesByReqID("BUG-API-001", false)
+		fileGroups, err := db.GetFilesByReqID("", "BUG-API-001", false)
 		if err != nil {
 			t.Fatalf("GetFilesByReqID failed: %v", err)
 		}
@@ -195,8 +195,8 @@ func TestBugTokenIntegration(t *testing.T) {
 		// Filter BUG tokens with FIXED status. Use an alternation pattern that
 		// matches both CBIN and BUG prefixes (see comment above: idPattern is
 		// now a literal Go regexp, not an implicit CBIN+BUG SQL GLOB).
-		filters := map[string]string{"status": "FIXED"}
-		tokens, err := db.ListTokens(filters, "CBIN-[1-9][0-9]{2,}|BUG-", "", 0)
+		filters := map[string]any{"status": "FIXED"}
+		tokens, err := db.ListTokens("", filters, "CBIN-[1-9][0-9]{2,}|BUG-", "", 0)
 		if err != nil {
 			t.Fatalf("ListTokens with filter failed: %v", err)
 		}
@@ -229,7 +229,7 @@ func TestBugListCommand(t *testing.T) {
 	os.Setenv("CANARY_DB", dbPath)
 	defer os.Unsetenv("CANARY_DB")
 
-	db, err := storage.Open(dbPath)
+	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
