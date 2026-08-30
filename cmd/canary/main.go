@@ -72,7 +72,7 @@ func init() {
 	// Add all commands using the centralized Commands() function
 	// This automatically includes all subcommands which are registered
 	// in their respective package init() functions
-	rootCmd.AddCommand(cli.Commands()...)
+	rootCmd.AddCommand(cli.Commands(version)...)
 
 	// initCmd flags
 	canaryinit.InitCmd.Flags().Bool("local", false, "install commands locally in project directory (default: global in home directory)")

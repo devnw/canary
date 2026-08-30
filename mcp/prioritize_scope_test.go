@@ -49,7 +49,7 @@ func TestPrioritizeWritesOneProject(t *testing.T) {
 		t.Fatalf("close: %v", cerr)
 	}
 
-	_, res, err := handlePrioritize(context.Background(), &mcp.CallToolRequest{},
+	_, res, err := testDeps.handlePrioritize(context.Background(), &mcp.CallToolRequest{},
 		&PrioritizeParams{ReqID: "TEST-001", Priority: 1})
 	if err != nil {
 		t.Fatalf("handlePrioritize: %v", err)
@@ -79,7 +79,7 @@ func TestPrioritizeWritesOneProject(t *testing.T) {
 func TestMCPWriteProjectIDIsNeverEmpty(t *testing.T) {
 	chdirTemp(t)
 
-	if got := mcpWriteProjectID(); got != "default" {
+	if got := testDeps.writeProjectID(); got != "default" {
 		t.Fatalf("unconfigured repository resolved to %q, want \"default\"", got)
 	}
 }

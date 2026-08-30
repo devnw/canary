@@ -60,15 +60,32 @@ Examples:
 			priority = "P2"
 		}
 
-		// Generate bug ID
 		projectID, err := utils.WriteProjectID(cmd, ".")
 		if err != nil {
 			return err
 		}
 
-		bugID, err := generateBugID(aspect, projectID, dbPath)
-		if err != nil {
-			return fmt.Errorf("generate bug ID: %w", err)
+		// The id and the row are allocated through the same handle, so the
+		// number the caller is told about is the number that was written.
+		// Mutating command: OpenRW may create and migrate.
+		db, err := storage.OpenRW(dbPath)
+		var bugID string
+		if err == nil {
+			defer db.Close()
+			// ReserveID is one immediate transaction whose primary key
+			// rejects a duplicate. The read-max-then-increment generator it
+			// replaces had a gap between the read and the write, so two `bug
+			// create` runs at the same moment computed the same id and the
+			// second silently overwrote the first's row.
+			bugID, err = db.ReserveID(projectID, "BUG-"+strings.ToUpper(aspect))
+			if err != nil {
+				return fmt.Errorf("reserve bug ID: %w", err)
+			}
+		} else {
+			// No index to reserve from. The bug still gets a first-in-series
+			// id so the CANARY comment below is complete; the next `canary
+			// index` reads the comment and mints the row.
+			bugID = fmt.Sprintf("BUG-%s-001", strings.ToUpper(aspect))
 		}
 
 		// Parse file location if provided
@@ -102,13 +119,12 @@ Examples:
 
 		token.ProjectID = projectID
 
-		// Save to database. Mutating command: OpenRW may create and migrate.
-		db, err := storage.OpenRW(dbPath)
-		if err != nil {
-			// Create CANARY comment in file if no database
+		if db == nil {
+			// No database to reserve from or write to: emit the CANARY
+			// comment so the bug still exists in source, and let the next
+			// `canary index` mint the row.
 			return createBugCanaryComment(token, severity, priority)
 		}
-		defer db.Close()
 
 		if err := db.UpsertToken(token); err != nil {
 			return fmt.Errorf("save bug token: %w", err)

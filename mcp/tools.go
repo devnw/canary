@@ -7,15 +7,18 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
-	"strings"
+	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"devnw.dev/canary/pkg/canaryscan"
-	"devnw.dev/canary/pkg/external"
+	"devnw.dev/canary/pkg/cmds/next"
+	"devnw.dev/canary/pkg/config"
 	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/storage"
 )
@@ -59,10 +62,10 @@ type ListResult struct {
 }
 
 // handleList implements the list tool handler
-func handleList(ctx context.Context, req *mcp.CallToolRequest, params *ListParams) (*mcp.CallToolResult, *ListResult, error) {
-	projectID := mcpProjectID()
+func (d Deps) handleList(ctx context.Context, req *mcp.CallToolRequest, params *ListParams) (*mcp.CallToolResult, *ListResult, error) {
+	projectID := d.projectID()
 
-	dbPath := ".canary/canary.db"
+	dbPath := d.db()
 
 	db, err := storage.OpenRO(dbPath)
 	if err != nil {
@@ -86,7 +89,7 @@ func handleList(ctx context.Context, req *mcp.CallToolRequest, params *ListParam
 	// handleSearch's cap/Total pattern.
 	all, err := db.ListTokens(projectID, filters, "", "", maxToolLimit+1)
 	if err != nil {
-		return nil, nil, fmt.Errorf("list tokens: %w", err)
+		return nil, nil, toolErr("list tokens", err)
 	}
 
 	total := len(all)
@@ -155,14 +158,14 @@ type ShowResult struct {
 }
 
 // handleShow implements the show tool handler
-func handleShow(ctx context.Context, req *mcp.CallToolRequest, params *ShowParams) (*mcp.CallToolResult, *ShowResult, error) {
+func (d Deps) handleShow(ctx context.Context, req *mcp.CallToolRequest, params *ShowParams) (*mcp.CallToolResult, *ShowResult, error) {
 	if params.ReqID == "" {
 		return nil, nil, fmt.Errorf("reqId is required")
 	}
 
-	projectID := mcpProjectID()
+	projectID := d.projectID()
 
-	dbPath := ".canary/canary.db"
+	dbPath := d.db()
 	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
@@ -171,7 +174,7 @@ func handleShow(ctx context.Context, req *mcp.CallToolRequest, params *ShowParam
 
 	tokens, err := db.GetTokensByReqID(projectID, params.ReqID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get tokens: %w", err)
+		return nil, nil, toolErr("get tokens", err)
 	}
 
 	total := len(tokens)
@@ -233,7 +236,7 @@ type CreateResult struct {
 }
 
 // handleCreate implements the create tool handler
-func handleCreate(ctx context.Context, req *mcp.CallToolRequest, params *CreateParams) (*mcp.CallToolResult, *CreateResult, error) {
+func (d Deps) handleCreate(ctx context.Context, req *mcp.CallToolRequest, params *CreateParams) (*mcp.CallToolResult, *CreateResult, error) {
 	if params.ReqID == "" {
 		return nil, nil, fmt.Errorf("reqId is required")
 	}
@@ -303,14 +306,14 @@ type StatusStats struct {
 }
 
 // handleStatus implements the status tool handler
-func handleStatus(ctx context.Context, req *mcp.CallToolRequest, params *StatusParams) (*mcp.CallToolResult, *StatusResult, error) {
+func (d Deps) handleStatus(ctx context.Context, req *mcp.CallToolRequest, params *StatusParams) (*mcp.CallToolResult, *StatusResult, error) {
 	if params.ReqID == "" {
 		return nil, nil, fmt.Errorf("reqId is required")
 	}
 
-	projectID := mcpProjectID()
+	projectID := d.projectID()
 
-	dbPath := ".canary/canary.db"
+	dbPath := d.db()
 	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
@@ -319,7 +322,7 @@ func handleStatus(ctx context.Context, req *mcp.CallToolRequest, params *StatusP
 
 	tokens, err := db.GetTokensByReqID(projectID, params.ReqID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get tokens: %w", err)
+		return nil, nil, toolErr("get tokens", err)
 	}
 
 	stats := StatusStats{
@@ -391,14 +394,14 @@ type SearchResult struct {
 }
 
 // handleSearch implements the search tool handler
-func handleSearch(ctx context.Context, req *mcp.CallToolRequest, params *SearchParams) (*mcp.CallToolResult, *SearchResult, error) {
+func (d Deps) handleSearch(ctx context.Context, req *mcp.CallToolRequest, params *SearchParams) (*mcp.CallToolResult, *SearchResult, error) {
 	if params.Keywords == "" {
 		return nil, nil, fmt.Errorf("keywords is required")
 	}
 
-	projectID := mcpProjectID()
+	projectID := d.projectID()
 
-	dbPath := ".canary/canary.db"
+	dbPath := d.db()
 	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
@@ -407,7 +410,7 @@ func handleSearch(ctx context.Context, req *mcp.CallToolRequest, params *SearchP
 
 	all, err := db.SearchTokens(projectID, params.Keywords, maxToolLimit+1)
 	if err != nil {
-		return nil, nil, fmt.Errorf("search tokens: %w", err)
+		return nil, nil, toolErr("search tokens", err)
 	}
 
 	total := len(all)
@@ -453,80 +456,60 @@ type NextResult struct {
 	Status   string         `json:"status,omitempty"`
 	Priority int            `json:"priority,omitempty"`
 	Message  string         `json:"message,omitempty"`
+	// Source names where the answer came from: "database" (a fresh token
+	// index) or "filesystem" (the index was missing or stale, so the tree was
+	// scanned). An agent that gets no work back can tell an empty tree from
+	// an unbuilt index.
+	Source string `json:"source,omitempty"`
+	// Blocked counts candidates passed over because a dependency was not
+	// complete -- what separates "nothing left to do" from "everything left
+	// is waiting on something".
+	Blocked int `json:"blocked,omitempty"`
 }
 
-// nextCandidateFetchLimit mirrors the CLI's next command
-// (selectFromDatabase in internal/cmds/next/next.go), which fetches up to 50
-// priority-ordered candidates per status so it can skip blocked tokens
-// without missing unblocked work further down the list.
-const nextCandidateFetchLimit = 50
+// NextResultSource names where a `next` answer came from: the token index
+// ("database") or a filesystem scan of the root ("filesystem"). It is
+// reported so an agent can tell "nothing to do" from "the index was stale and
+// the tree was scanned instead".
 
-// handleNext implements the next tool handler
-func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParams) (*mcp.CallToolResult, *NextResult, error) {
-	projectID := mcpProjectID()
-
-	dbPath := ".canary/canary.db"
-	db, err := storage.OpenRO(dbPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("open database: %w", err)
-	}
-	defer db.Close()
-
-	// Source registry + per-call dedup for the "no cached status" stderr
-	// note, shared across every hasUnresolvedDependencies call this request.
-	reg, err := sources.LoadFromRoot(".")
-	if err != nil {
-		return nil, nil, fmt.Errorf("load .canary/project.yaml: %w", err)
-	}
-	warned := map[string]bool{}
-
-	var token *storage.Token
+// handleNext answers the next-requirement question by delegating to the CLI's
+// own selection.
+//
+// This tool used to carry a hand-maintained replica of the dependency rule,
+// and the replica drifted: it accepted a declared STATUS=TESTED as proof of
+// completion and let an external dependency with no cached status pass, long
+// after `canary next` required evidence for the first and blocked on the
+// second. Two implementations of "may this work start?" is one too many, so
+// the replica is gone and next.SelectNext -- the same code path the CLI runs,
+// including its stale-index fallback to a filesystem scan -- answers here.
+//
+// CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_ENG_3960_MCP_Next_ExternalSatisfied_NotBlocking,TestCANARY_ENG_3960_MCP_Next_ExternalUnsatisfied_Blocking,TestCANARY_ENG_3960_MCP_Next_ExternalUnknown_Blocking,TestCANARY_ENG_3960_MCP_Next_LocalMissingDep_StillBlocking; UPDATED=2026-08-30
+func (d Deps) handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParams) (*mcp.CallToolResult, *NextResult, error) {
+	filters := map[string]string{}
 	if params.Status != "" {
-		filters := make(map[string]any)
 		filters["status"] = params.Status
-		if params.Aspect != "" {
-			filters["aspect"] = params.Aspect
-		}
+	}
+	if params.Aspect != "" {
+		filters["aspect"] = params.Aspect
+	}
 
-		candidates, err := db.ListTokens(projectID, filters, "", "", nextCandidateFetchLimit)
-		if err != nil {
-			return nil, nil, fmt.Errorf("query tokens: %w", err)
-		}
-		token = firstUnblocked(db, projectID, candidates, reg, warned)
-	} else {
-		// No status filter: query STUB first, then IMPL if none found,
-		// mirroring the CLI's next command (internal/cmds/next/next.go).
-		// A single filters["status"] = "STUB,IMPL" never matches anything
-		// since ListTokens does an exact equality comparison.
-		for _, status := range []string{"STUB", "IMPL"} {
-			filters := make(map[string]any)
-			filters["status"] = status
-			if params.Aspect != "" {
-				filters["aspect"] = params.Aspect
-			}
-
-			candidates, err := db.ListTokens(projectID, filters, "", "", nextCandidateFetchLimit)
-			if err != nil {
-				return nil, nil, fmt.Errorf("query tokens: %w", err)
-			}
-			token = firstUnblocked(db, projectID, candidates, reg, warned)
-			if token != nil {
-				break
-			}
-		}
+	// The notes about unresolvable dependencies go to the server's stderr,
+	// not into the tool result: they are operator diagnostics, and folding
+	// them into an agent-visible payload would make every answer noisier
+	// without making any of them more actionable.
+	token, source, blocked, err := next.SelectNext(d.db(), d.root(), d.projectID(), filters, false, os.Stderr)
+	if err != nil {
+		return nil, nil, toolErr("select next requirement", err)
 	}
 
 	if token == nil {
-		result := &NextResult{
-			Message: "No unimplemented requirements found",
+		msg := "No actionable requirements found"
+		if blocked > 0 {
+			msg = fmt.Sprintf("No actionable requirements: %d candidate(s) are blocked on incomplete dependencies", blocked)
 		}
 		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{
-					Text: "All requirements completed!",
-				},
-			},
-		}, result, nil
+			Content: []mcp.Content{&mcp.TextContent{Text: msg}},
+		}, &NextResult{Message: msg, Source: source, Blocked: blocked}, nil
 	}
 
 	result := &NextResult{
@@ -536,84 +519,18 @@ func handleNext(ctx context.Context, req *mcp.CallToolRequest, params *NextParam
 		Aspect:   token.Aspect,
 		Status:   token.Status,
 		Priority: token.Priority,
+		Source:   source,
+		Blocked:  blocked,
 	}
 
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{
-				Text: fmt.Sprintf("Next priority: %s - %s (Priority: %d, Status: %s)",
-					token.ReqID, token.Feature, token.Priority, token.Status),
+				Text: fmt.Sprintf("Next priority: %s - %s (Priority: %d, Status: %s, source: %s)",
+					token.ReqID, token.Feature, token.Priority, token.Status, source),
 			},
 		},
 	}, result, nil
-}
-
-// firstUnblocked returns the first candidate (already priority-ordered) whose
-// dependencies are all resolved, or nil if every candidate is blocked.
-func firstUnblocked(db *storage.DB, projectID string, candidates []*storage.Token, reg *sources.Registry, warned map[string]bool) *storage.Token {
-	for _, tok := range candidates {
-		if !hasUnresolvedDependencies(db, projectID, tok, reg, warned) {
-			return tok
-		}
-	}
-	return nil
-}
-
-// hasUnresolvedDependencies reports whether tok names a DEPENDS_ON
-// requirement that blocks selection. This is a minimal replica of the CLI's
-// unexported helper of the same name in pkg/cmds/next/next.go
-// (hasUnresolvedDependencies) -- kept in sync manually since it can't be
-// imported directly. It has NOT yet been brought in line with the CLI's
-// evidence-backed rule (a declared TESTED/BENCHED still satisfies a
-// dependency here, and an unknown external state still passes, where the CLI
-// now requires passing evidence and blocks on unknown). Tracked as follow-up
-// work; MCP callers get the older, more permissive answer until then.
-// CANARY: REQ=ENG-3960; FEATURE="ExternalDeps"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_ENG_3960_MCP_Next_ExternalSatisfied_NotBlocking,TestCANARY_ENG_3960_MCP_Next_ExternalUnsatisfied_Blocking,TestCANARY_ENG_3960_MCP_Next_ExternalUnknown_NotBlocking,TestCANARY_ENG_3960_MCP_Next_LocalMissingDep_StillBlocking; UPDATED=2026-08-29
-func hasUnresolvedDependencies(db *storage.DB, projectID string, tok *storage.Token, reg *sources.Registry, warned map[string]bool) bool {
-	if tok.DependsOn == "" {
-		return false
-	}
-
-	deps := strings.Split(tok.DependsOn, ",")
-	for _, dep := range deps {
-		dep = strings.TrimSpace(dep)
-		if dep == "" {
-			continue
-		}
-
-		depTokens, err := db.GetTokensByReqID(projectID, dep)
-		if err != nil || len(depTokens) == 0 {
-			res := external.Resolve(dep, reg, ".")
-			if !res.IsExternal() {
-				return true // Local dependency not found = blocking
-			}
-			switch res.State {
-			case external.StateSatisfied:
-				continue
-			case external.StateUnsatisfied:
-				return true
-			default: // unknown: not blocking by default (degradation is sacred)
-				if warned != nil && !warned[dep] {
-					warned[dep] = true
-					fmt.Fprintf(os.Stderr, "note: external dependency %s has no cached status (canary ticket status --refresh)\n", dep)
-				}
-				continue
-			}
-		}
-
-		allComplete := true
-		for _, depToken := range depTokens {
-			if depToken.Status != "TESTED" && depToken.Status != "BENCHED" {
-				allComplete = false
-				break
-			}
-		}
-		if !allComplete {
-			return true // Dependency incomplete = blocking
-		}
-	}
-
-	return false
 }
 
 // ScanParams defines parameters for the scan tool
@@ -627,30 +544,97 @@ type ScanResult struct {
 	Message string `json:"message"`
 	Root    string `json:"root"`
 	Tokens  int    `json:"total_tokens"`
+	// Requirements is the unique requirement count, which the message has
+	// always reported but the structured result did not.
+	Requirements int `json:"unique_requirements"`
 }
 
-// handleScan implements the scan tool handler by calling the canary scanner.
-func handleScan(ctx context.Context, req *mcp.CallToolRequest, params *ScanParams) (*mcp.CallToolResult, *ScanResult, error) {
-	root := params.Root
-	if root == "" {
-		root = "."
+// handleScan scans a directory under the server root for CANARY tokens.
+//
+// It is the tool with a path parameter, so it is the tool that could be
+// pointed anywhere: the previous version passed params.Root straight to the
+// scanner, which walked whatever tree the server process could reach. Now the
+// path is resolved against the server root and refused if it lands outside.
+//
+// It also runs the same inputs `canary scan` does -- the configured ticket
+// sources and the tree's .canaryignore -- instead of nil for both, which is
+// what made the tool report a different token count than the CLI on the same
+// tree.
+func (d Deps) handleScan(ctx context.Context, req *mcp.CallToolRequest, params *ScanParams) (*mcp.CallToolResult, *ScanResult, error) {
+	root, err := d.confine(params.Root)
+	if err != nil {
+		return nil, nil, err
 	}
-	skipRegex := canaryscan.DefaultSkipRegex()
-	rep, err := canaryscan.Scan(root, skipRegex, nil, nil, nil)
+
+	cfg, err := config.Load(d.root())
+	if err != nil {
+		return nil, nil, fmt.Errorf("load .canary/project.yaml: %w", err)
+	}
+	reg, err := sources.FromProjectConfig(cfg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("load .canary/project.yaml: %w", err)
+	}
+
+	// projectOnly restricts the report to this project's own requirement ids.
+	// The parameter was declared and then never read, so asking for it
+	// silently returned every requirement in the tree.
+	var projectFilter *regexp.Regexp
+	if params.ProjectOnly {
+		if cfg.Requirements.IDPattern == "" {
+			return nil, nil, fmt.Errorf("projectOnly requires requirements.id_pattern in .canary/project.yaml")
+		}
+		projectFilter, err = regexp.Compile(cfg.Requirements.IDPattern)
+		if err != nil {
+			return nil, nil, fmt.Errorf("compile requirements.id_pattern %q: %w", cfg.Requirements.IDPattern, err)
+		}
+	}
+
+	ignorePatterns, err := canaryscan.LoadCanaryIgnore(d.root())
+	if err != nil {
+		return nil, nil, fmt.Errorf("load .canaryignore: %w", err)
+	}
+
+	rep, err := canaryscan.Scan(root, canaryscan.DefaultSkipRegex(), projectFilter, ignorePatterns, reg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("scan %s: %w", root, err)
 	}
-	tokens := rep.Summary.TotalTokens
-	unique := rep.Summary.UniqueRequirements
-	msg := fmt.Sprintf("Scanned %s: %d tokens, %d unique requirements", root, tokens, unique)
+
+	rel := relativeToRoot(d.root(), root)
+	msg := fmt.Sprintf("Scanned %s: %d tokens, %d unique requirements",
+		rel, rep.Summary.TotalTokens, rep.Summary.UniqueRequirements)
 	result := &ScanResult{
-		Message: msg,
-		Root:    root,
-		Tokens:  rep.Summary.TotalTokens,
+		Message:      msg,
+		Root:         rel,
+		Tokens:       rep.Summary.TotalTokens,
+		Requirements: rep.Summary.UniqueRequirements,
 	}
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{Text: msg},
 		},
 	}, result, nil
+}
+
+// relativeToRoot reports path as the caller asked about it -- relative to the
+// server root -- so a result never discloses where on the filesystem the
+// server happens to be rooted.
+func relativeToRoot(root, path string) string {
+	rel, err := filepath.Rel(root, path)
+	if err != nil || rel == "" {
+		return "."
+	}
+	return rel
+}
+
+// toolErr wraps a storage failure into a tool error an agent can act on.
+//
+// storage.ErrProjectRequired is the one refusal with a remedy the caller can
+// apply, and its bare message ("PROJECT_REQUIRED") does not say what to do,
+// so the remedy is spelled out here. Everything else is passed through
+// unchanged.
+func toolErr(op string, err error) error {
+	if errors.Is(err, storage.ErrProjectRequired) {
+		return fmt.Errorf("%s: PROJECT_REQUIRED: this index holds more than one project, so an unscoped answer would mix them; run 'canary index' for a single project or query the CLI with --project", op)
+	}
+	return fmt.Errorf("%s: %w", op, err)
 }

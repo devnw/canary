@@ -3,10 +3,11 @@
 // For more details, see the LICENSE file in the root directory of this
 // source code repository or contact Developer Network at info@devnw.com.
 
-// This file defines extended MCP tools. The following handlers are
-// currently stubs returning placeholder responses: specify, plan, index,
-// BUG create (ID generation), and gap mark. Tracked in docs/GAP_ANALYSIS.md
-// (GAP-0005). The scan tool is implemented in tools.go (internal/canaryscan).
+// This file defines the extended MCP tools. Every handler here has a
+// postcondition a caller can check: the placeholder handlers that used to
+// live alongside them (specify, plan, index, gap-mark, and a bug-create that
+// always answered "BUG-001") are gone, not merely undocumented. The scan tool
+// is implemented in tools.go.
 
 package mcp
 
@@ -15,138 +16,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"devnw.dev/canary/pkg/cmds/deps"
 	"devnw.dev/canary/pkg/cmds/view"
+	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/specs"
 	"devnw.dev/canary/pkg/storage"
 )
-
-// ========== SPECIFY TOOL ==========
-
-// SpecifyParams defines parameters for the specify tool
-type SpecifyParams struct {
-	Description string `json:"description" jsonschema:"description:Feature description to create specification for,required"`
-	Aspect      string `json:"aspect,omitempty" jsonschema:"description:Aspect (API CLI Engine Storage etc.)"`
-}
-
-// SpecifyResult defines the output for the specify tool
-type SpecifyResult struct {
-	Message     string `json:"message"`
-	Description string `json:"description"`
-	Aspect      string `json:"aspect"`
-	SpecPath    string `json:"specPath,omitempty"`
-}
-
-// handleSpecify implements the specify tool handler
-func handleSpecify(ctx context.Context, req *mcp.CallToolRequest, params *SpecifyParams) (*mcp.CallToolResult, *SpecifyResult, error) {
-	if params.Description == "" {
-		return nil, nil, fmt.Errorf("description is required")
-	}
-
-	aspect := params.Aspect
-	if aspect == "" {
-		aspect = "Engine"
-	}
-
-	// TODO: Implement actual specification generation
-	// This would typically create a spec file in .canary/specs/
-	result := &SpecifyResult{
-		Message:     "Specification template created (full implementation pending)",
-		Description: params.Description,
-		Aspect:      aspect,
-		SpecPath:    ".canary/specs/pending-spec.md",
-	}
-
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{
-				Text: fmt.Sprintf("Created specification template for: %s", params.Description),
-			},
-		},
-	}, result, nil
-}
-
-// ========== PLAN TOOL ==========
-
-// PlanParams defines parameters for the plan tool
-type PlanParams struct {
-	ReqID     string `json:"reqId" jsonschema:"description:Requirement ID (e.g. CBIN-123),required"`
-	TechStack string `json:"techStack,omitempty" jsonschema:"description:Technology stack description"`
-}
-
-// PlanResult defines the output for the plan tool
-type PlanResult struct {
-	Message   string `json:"message"`
-	ReqID     string `json:"reqId"`
-	TechStack string `json:"techStack,omitempty"`
-	PlanPath  string `json:"planPath,omitempty"`
-}
-
-// handlePlan implements the plan tool handler
-func handlePlan(ctx context.Context, req *mcp.CallToolRequest, params *PlanParams) (*mcp.CallToolResult, *PlanResult, error) {
-	if params.ReqID == "" {
-		return nil, nil, fmt.Errorf("reqId is required")
-	}
-
-	// TODO: Implement actual plan generation
-	result := &PlanResult{
-		Message:   "Implementation plan template created (full implementation pending)",
-		ReqID:     params.ReqID,
-		TechStack: params.TechStack,
-		PlanPath:  fmt.Sprintf(".canary/specs/%s/plan.md", params.ReqID),
-	}
-
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{
-				Text: fmt.Sprintf("Created implementation plan for %s", params.ReqID),
-			},
-		},
-	}, result, nil
-}
-
-// ========== INDEX TOOL ==========
-
-// IndexParams defines parameters for the index tool
-type IndexParams struct {
-	Root    string `json:"root,omitempty" jsonschema:"description:Root directory to index (default: current directory)"`
-	Rebuild bool   `json:"rebuild,omitempty" jsonschema:"description:Force rebuild of index"`
-}
-
-// IndexResult defines the output for the index tool
-type IndexResult struct {
-	Message       string `json:"message"`
-	TokensIndexed int    `json:"tokensIndexed"`
-	FilesScanned  int    `json:"filesScanned"`
-}
-
-// handleIndex implements the index tool handler
-func handleIndex(ctx context.Context, req *mcp.CallToolRequest, params *IndexParams) (*mcp.CallToolResult, *IndexResult, error) {
-	root := params.Root
-	if root == "" {
-		root = "."
-	}
-
-	// TODO: Implement actual indexing
-	// This would scan the codebase and populate the database
-	result := &IndexResult{
-		Message:       "Indexing functionality pending full implementation",
-		TokensIndexed: 0,
-		FilesScanned:  0,
-	}
-
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{
-				Text: fmt.Sprintf("Would index directory: %s", root),
-			},
-		},
-	}, result, nil
-}
 
 // ========== IMPLEMENT TOOL ==========
 
@@ -168,15 +50,53 @@ type ImplementResult struct {
 	CurrentPhase string `json:"currentPhase,omitempty"`
 }
 
-// handleImplement implements the implement tool handler
-func handleImplement(ctx context.Context, req *mcp.CallToolRequest, params *ImplementParams) (*mcp.CallToolResult, *ImplementResult, error) {
-	if params.ReqID == "" {
-		return nil, nil, fmt.Errorf("reqId is required")
+// bugIDPattern is the shape of a bug id: BUG-<ASPECT>-NNN. Bug ids are not
+// members of any configured ticket source, so the registry's pattern does not
+// recognize them and they are matched separately.
+var bugIDPattern = regexp.MustCompile(`^BUG-[A-Za-z0-9]+-\d+$`)
+
+// validateReqID rejects anything that is not a requirement id this project
+// could have.
+//
+// It exists because a requirement id is used to build filesystem paths. An id
+// like "../../../etc" is not a requirement that happens to be missing, it is a
+// traversal attempt, and it has to be refused before it reaches
+// filepath.Join -- confinement afterwards is the second line of defence, not
+// the first.
+func (d Deps) validateReqID(reqID string) error {
+	if strings.TrimSpace(reqID) == "" {
+		return fmt.Errorf("reqId is required")
+	}
+	reg, err := sources.LoadFromRoot(d.root())
+	if err != nil {
+		return fmt.Errorf("load .canary/project.yaml: %w", err)
+	}
+	if p := reg.Pattern(); p != nil && p.FindString(reqID) == reqID {
+		return nil
+	}
+	if bugIDPattern.MatchString(reqID) {
+		return nil
+	}
+	keys := make([]string, 0, len(reg.Sources()))
+	for _, s := range reg.Sources() {
+		keys = append(keys, s.Key+"-<number>")
+	}
+	return fmt.Errorf("invalid requirement id %q: expected one of %s or BUG-<ASPECT>-<number>",
+		reqID, strings.Join(keys, ", "))
+}
+
+// handleImplement reports what has been done for a requirement so far:
+// how many tokens carry it, which phase those tokens put it in, and whether
+// its spec and plan exist.
+func (d Deps) handleImplement(ctx context.Context, req *mcp.CallToolRequest, params *ImplementParams) (*mcp.CallToolResult, *ImplementResult, error) {
+	// Shape first: params.ReqID becomes a path two statements from here.
+	if err := d.validateReqID(params.ReqID); err != nil {
+		return nil, nil, err
 	}
 
-	projectID := mcpProjectID()
+	projectID := d.projectID()
 
-	dbPath := ".canary/canary.db"
+	dbPath := d.db()
 	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
@@ -186,12 +106,19 @@ func handleImplement(ctx context.Context, req *mcp.CallToolRequest, params *Impl
 	// Get tokens for this requirement
 	tokens, err := db.GetTokensByReqID(projectID, params.ReqID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get tokens: %w", err)
+		return nil, nil, toolErr("get tokens", err)
 	}
 
-	// Check for spec and plan files
-	specPath := filepath.Join(".canary", "specs", params.ReqID, "spec.md")
-	planPath := filepath.Join(".canary", "specs", params.ReqID, "plan.md")
+	// Spec and plan live under the server root, and are confined to it: a
+	// validated id cannot escape, and this proves it rather than assuming it.
+	specPath, err := d.confine(filepath.Join(".canary", "specs", params.ReqID, "spec.md"))
+	if err != nil {
+		return nil, nil, err
+	}
+	planPath, err := d.confine(filepath.Join(".canary", "specs", params.ReqID, "plan.md"))
+	if err != nil {
+		return nil, nil, err
+	}
 
 	_, hasSpecErr := os.Stat(specPath)
 	_, hasPlanErr := os.Stat(planPath)
@@ -220,8 +147,8 @@ func handleImplement(ctx context.Context, req *mcp.CallToolRequest, params *Impl
 		Message:      "Implementation guidance ready",
 		ReqID:        params.ReqID,
 		Guidance:     fmt.Sprintf("Found %d tokens for %s. Current phase: %s", len(tokens), params.ReqID, phase),
-		SpecPath:     specPath,
-		PlanPath:     planPath,
+		SpecPath:     relativeToRoot(d.root(), specPath),
+		PlanPath:     relativeToRoot(d.root(), planPath),
 		HasSpec:      hasSpecErr == nil,
 		HasPlan:      hasPlanErr == nil,
 		TokenCount:   len(tokens),
@@ -252,14 +179,14 @@ type FilesResult struct {
 }
 
 // handleFiles implements the files tool handler
-func handleFiles(ctx context.Context, req *mcp.CallToolRequest, params *FilesParams) (*mcp.CallToolResult, *FilesResult, error) {
+func (d Deps) handleFiles(ctx context.Context, req *mcp.CallToolRequest, params *FilesParams) (*mcp.CallToolResult, *FilesResult, error) {
 	if params.ReqID == "" {
 		return nil, nil, fmt.Errorf("reqId is required")
 	}
 
-	projectID := mcpProjectID()
+	projectID := d.projectID()
 
-	dbPath := ".canary/canary.db"
+	dbPath := d.db()
 	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
@@ -268,7 +195,7 @@ func handleFiles(ctx context.Context, req *mcp.CallToolRequest, params *FilesPar
 
 	tokens, err := db.GetTokensByReqID(projectID, params.ReqID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get tokens: %w", err)
+		return nil, nil, toolErr("get tokens", err)
 	}
 
 	// Collect unique file paths
@@ -316,19 +243,18 @@ type PrioritizeResult struct {
 }
 
 // handlePrioritize implements the prioritize tool handler
-func handlePrioritize(ctx context.Context, req *mcp.CallToolRequest, params *PrioritizeParams) (*mcp.CallToolResult, *PrioritizeResult, error) {
+func (d Deps) handlePrioritize(ctx context.Context, req *mcp.CallToolRequest, params *PrioritizeParams) (*mcp.CallToolResult, *PrioritizeResult, error) {
 	if params.ReqID == "" {
 		return nil, nil, fmt.Errorf("reqId is required")
 	}
 
-	// The one mutating tool resolves a real project id rather than the
-	// read-side "": an unscoped UPDATE would rewrite every project sharing
-	// the database, and storage refuses it outright.
-	projectID := mcpWriteProjectID()
+	// A mutating tool resolves a real project id rather than the read-side
+	// "": an unscoped UPDATE would rewrite every project sharing the
+	// database, and storage refuses it outright.
+	projectID := d.writeProjectID()
 
-	dbPath := ".canary/canary.db"
-	// The one mutating tool: OpenRW may create and migrate.
-	db, err := storage.OpenRW(dbPath)
+	// A mutating tool: OpenRW may create and migrate.
+	db, err := storage.OpenRW(d.db())
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
@@ -337,16 +263,19 @@ func handlePrioritize(ctx context.Context, req *mcp.CallToolRequest, params *Pri
 	// Get tokens first to update each one
 	tokens, err := db.GetTokensByReqID(projectID, params.ReqID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get tokens: %w", err)
+		return nil, nil, toolErr("get tokens", err)
 	}
 
-	// Update priority for each token (storage API requires feature parameter)
+	// Update priority for each token (storage API requires feature parameter).
+	// A failure is reported rather than counted as a no-op: a tool that says
+	// "updated 0 tokens" when the write itself failed is indistinguishable
+	// from one that found nothing to update.
 	updated := 0
 	for _, token := range tokens {
-		err = db.UpdatePriority(projectID, params.ReqID, token.Feature, params.Priority)
-		if err == nil {
-			updated++
+		if err := db.UpdatePriority(projectID, params.ReqID, token.Feature, params.Priority); err != nil {
+			return nil, nil, toolErr("update priority for "+params.ReqID+" ("+token.Feature+")", err)
 		}
+		updated++
 	}
 
 	result := &PrioritizeResult{
@@ -406,7 +335,7 @@ func grepFieldValue(tok *storage.Token, field string) string {
 }
 
 // handleGrep implements the grep tool handler
-func handleGrep(ctx context.Context, req *mcp.CallToolRequest, params *GrepParams) (*mcp.CallToolResult, *GrepResult, error) {
+func (d Deps) handleGrep(ctx context.Context, req *mcp.CallToolRequest, params *GrepParams) (*mcp.CallToolResult, *GrepResult, error) {
 	if params.Pattern == "" {
 		return nil, nil, fmt.Errorf("pattern is required")
 	}
@@ -416,9 +345,9 @@ func handleGrep(ctx context.Context, req *mcp.CallToolRequest, params *GrepParam
 		field = "all"
 	}
 
-	projectID := mcpProjectID()
+	projectID := d.projectID()
 
-	dbPath := ".canary/canary.db"
+	dbPath := d.db()
 	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
@@ -429,7 +358,7 @@ func handleGrep(ctx context.Context, req *mcp.CallToolRequest, params *GrepParam
 	if field == "all" {
 		all, err = db.SearchTokens(projectID, params.Pattern, maxToolLimit+1)
 		if err != nil {
-			return nil, nil, fmt.Errorf("search tokens: %w", err)
+			return nil, nil, toolErr("search tokens", err)
 		}
 	} else {
 		// SearchTokens only matches keywords/feature/req_id/file_path/test/
@@ -437,7 +366,7 @@ func handleGrep(ctx context.Context, req *mcp.CallToolRequest, params *GrepParam
 		// candidate set and filter in Go on the exact named field instead.
 		candidates, err := db.ListTokens(projectID, nil, "", "", 0)
 		if err != nil {
-			return nil, nil, fmt.Errorf("list tokens: %w", err)
+			return nil, nil, toolErr("list tokens", err)
 		}
 		for _, tok := range candidates {
 			if strings.Contains(grepFieldValue(tok, field), params.Pattern) {
@@ -496,10 +425,10 @@ type BugListResult struct {
 }
 
 // handleBugList implements the bug list tool handler
-func handleBugList(ctx context.Context, req *mcp.CallToolRequest, params *BugListParams) (*mcp.CallToolResult, *BugListResult, error) {
-	projectID := mcpProjectID()
+func (d Deps) handleBugList(ctx context.Context, req *mcp.CallToolRequest, params *BugListParams) (*mcp.CallToolResult, *BugListResult, error) {
+	projectID := d.projectID()
 
-	dbPath := ".canary/canary.db"
+	dbPath := d.db()
 	db, err := storage.OpenRO(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
@@ -517,7 +446,7 @@ func handleBugList(ctx context.Context, req *mcp.CallToolRequest, params *BugLis
 	// in Go instead.
 	tokens, err := db.ListTokens(projectID, filters, "", "updated_desc", 0)
 	if err != nil {
-		return nil, nil, fmt.Errorf("list bugs: %w", err)
+		return nil, nil, toolErr("list bugs", err)
 	}
 
 	var bugs []*storage.Token
@@ -550,55 +479,176 @@ func handleBugList(ctx context.Context, req *mcp.CallToolRequest, params *BugLis
 
 // BugCreateParams defines parameters for the bug create tool
 type BugCreateParams struct {
-	Title       string `json:"title" jsonschema:"description:Bug title/description,required"`
-	Severity    string `json:"severity,omitempty" jsonschema:"description:Severity level (CRITICAL HIGH MEDIUM LOW)"`
-	Component   string `json:"component,omitempty" jsonschema:"description:Affected component"`
-	Description string `json:"description,omitempty" jsonschema:"description:Detailed description"`
+	Title       string `json:"title" jsonschema:"description:Bug title,required"`
+	Aspect      string `json:"aspect,omitempty" jsonschema:"description:Aspect the bug belongs to (API CLI Engine Storage etc.) -- becomes the middle segment of the id"`
+	Severity    string `json:"severity,omitempty" jsonschema:"description:Severity level (S1 S2 S3 S4)"`
+	Priority    string `json:"priority,omitempty" jsonschema:"description:Priority level (P0 P1 P2 P3)"`
+	File        string `json:"file,omitempty" jsonschema:"description:File the bug lives in relative to the server root, optionally with :line"`
+	Owner       string `json:"owner,omitempty" jsonschema:"description:Bug owner/assignee"`
+	Description string `json:"description,omitempty" jsonschema:"description:Detailed description, recorded on the token"`
 }
 
 // BugCreateResult defines the output for the bug create tool
 type BugCreateResult struct {
+	// Token is the CANARY comment to paste into the source file. The row is
+	// rebuilt from source on the next `canary index`, so the comment is what
+	// makes the bug survive a re-index.
 	Token    string `json:"token"`
 	BugID    string `json:"bugId"`
 	Title    string `json:"title"`
+	Aspect   string `json:"aspect"`
 	Severity string `json:"severity"`
+	Priority string `json:"priority"`
+	FilePath string `json:"filePath"`
+	Line     int    `json:"line"`
 }
 
-// handleBugCreate implements the bug create tool handler
-func handleBugCreate(ctx context.Context, req *mcp.CallToolRequest, params *BugCreateParams) (*mcp.CallToolResult, *BugCreateResult, error) {
-	if params.Title == "" {
+// aspectPattern is the shape a bug aspect may have. It becomes part of an id,
+// so it is restricted to what an id segment can hold rather than accepting
+// arbitrary caller text.
+var aspectPattern = regexp.MustCompile(`^[A-Za-z0-9]+$`)
+
+// CANARY: REQ=CP-282; FEATURE="TransactionalIDs"; ASPECT=API; STATUS=TESTED; TEST=TestAuditF10MutatingPostconditions,TestBugCreatePersistsReservedID; UPDATED=2026-08-30
+
+// handleBugCreate reserves a bug id and persists the bug.
+//
+// The previous handler returned the literal string "BUG-001" every time and
+// wrote nothing: two calls produced the same id, and neither produced a row.
+// The id now comes from storage.ReserveID -- one immediate transaction, with
+// the reservation table's primary key rejecting a duplicate -- and the token
+// is upserted, so the id the caller is handed names a row that exists.
+func (d Deps) handleBugCreate(ctx context.Context, req *mcp.CallToolRequest, params *BugCreateParams) (*mcp.CallToolResult, *BugCreateResult, error) {
+	title := strings.TrimSpace(params.Title)
+	if title == "" {
 		return nil, nil, fmt.Errorf("title is required")
 	}
 
-	severity := params.Severity
-	if severity == "" {
-		severity = "MEDIUM"
+	aspect := strings.ToUpper(strings.TrimSpace(params.Aspect))
+	if aspect == "" {
+		aspect = "API"
+	}
+	if !aspectPattern.MatchString(aspect) {
+		return nil, nil, fmt.Errorf("invalid aspect %q: expected letters and digits only", params.Aspect)
 	}
 
-	// Generate bug ID (simplified - actual implementation would check for uniqueness)
-	bugID := fmt.Sprintf("BUG-%03d", 1) // TODO: Generate proper unique ID
+	severity := strings.ToUpper(strings.TrimSpace(params.Severity))
+	if severity == "" {
+		severity = "S3"
+	}
+	priority := strings.ToUpper(strings.TrimSpace(params.Priority))
+	if priority == "" {
+		priority = "P2"
+	}
 
-	token := fmt.Sprintf("// CANARY: REQ=%s; FEATURE=\"%s\"; STATUS=OPEN; SEVERITY=%s",
-		bugID, params.Title, severity)
+	// The file the bug is about is a caller-supplied path, so it is confined
+	// to the server root like any other.
+	filePath, line, err := d.bugLocation(params.File)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	if params.Component != "" {
-		token += fmt.Sprintf("; COMPONENT=%s", params.Component)
+	projectID := d.writeProjectID()
+	db, err := storage.OpenRW(d.db())
+	if err != nil {
+		return nil, nil, fmt.Errorf("open database: %w", err)
+	}
+	defer db.Close()
+
+	bugID, err := db.ReserveID(projectID, "BUG-"+aspect)
+	if err != nil {
+		return nil, nil, toolErr("reserve bug id", err)
+	}
+
+	updated := time.Now().UTC().Format("2006-01-02")
+	token := buildBugToken(bugID, title, aspect, severity, priority, updated)
+
+	row := &storage.Token{
+		ReqID:      bugID,
+		Feature:    title,
+		Aspect:     aspect,
+		Status:     "OPEN",
+		FilePath:   filePath,
+		LineNumber: line,
+		Owner:      strings.TrimSpace(params.Owner),
+		Priority:   bugPriorityValue(priority),
+		Keywords:   fmt.Sprintf("SEVERITY=%s;PRIORITY=%s", severity, priority),
+		Phase:      strings.TrimSpace(params.Description),
+		UpdatedAt:  updated,
+		IndexedAt:  time.Now().UTC().Format(time.RFC3339),
+		RawToken:   token,
+		ProjectID:  projectID,
+	}
+	if err := db.UpsertToken(row); err != nil {
+		return nil, nil, toolErr("save bug "+bugID, err)
 	}
 
 	result := &BugCreateResult{
 		Token:    token,
 		BugID:    bugID,
-		Title:    params.Title,
+		Title:    title,
+		Aspect:   aspect,
 		Severity: severity,
+		Priority: priority,
+		FilePath: filePath,
+		Line:     line,
 	}
 
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{
-				Text: fmt.Sprintf("Created bug %s: %s", bugID, params.Title),
+				Text: fmt.Sprintf("Created bug %s: %s (%s/%s at %s:%d). Add the returned CANARY comment to the source file so the row survives the next 'canary index'.",
+					bugID, title, severity, priority, filePath, line),
 			},
 		},
 	}, result, nil
+}
+
+// bugLocation parses an optional "path" or "path:line" and confines the path
+// to the server root. An unspecified location is recorded as the root itself
+// rather than invented: a bug that names a file it is not in is worse than a
+// bug that names none.
+func (d Deps) bugLocation(file string) (string, int, error) {
+	file = strings.TrimSpace(file)
+	if file == "" {
+		return ".", 0, nil
+	}
+	path := file
+	line := 0
+	if idx := strings.LastIndex(file, ":"); idx > 0 {
+		if n, err := strconv.Atoi(file[idx+1:]); err == nil {
+			path = file[:idx]
+			line = n
+		}
+	}
+	resolved, err := d.confine(path)
+	if err != nil {
+		return "", 0, err
+	}
+	return relativeToRoot(d.root(), resolved), line, nil
+}
+
+// buildBugToken renders the single-line CANARY comment for a bug, in the same
+// grammar `canary bug create` emits so the scanner reads both identically.
+func buildBugToken(bugID, title, aspect, severity, priority, updated string) string {
+	return fmt.Sprintf("// CANARY: BUG=%s; TITLE=%q; FEATURE=%q; ASPECT=%s; STATUS=OPEN; SEVERITY=%s; PRIORITY=%s; UPDATED=%s",
+		bugID, title, title, aspect, severity, priority, updated)
+}
+
+// bugPriorityValue maps P0..P3 onto the numeric priority the index sorts by,
+// matching pkg/cmds/bug's parsePriorityValue.
+func bugPriorityValue(priority string) int {
+	switch priority {
+	case "P0":
+		return 0
+	case "P1":
+		return 1
+	case "P2":
+		return 2
+	case "P3":
+		return 3
+	default:
+		return 2
+	}
 }
 
 // ========== VIEW TOOL ==========
@@ -613,7 +663,7 @@ type ViewParams struct {
 // files, tests, deps, spec/plan, diagrams, and ticket URL, in one call.
 // CANARY: REQ=CP-270; FEATURE="RequirementView"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_204_MCPView,TestCANARY_CBIN_204_MCPViewUnknown,TestCANARY_CBIN_204_MCPViewEmptyReqID; UPDATED=2026-08-28
 // CANARY: REQ=ENG-4325; FEATURE="MigrateNotesView"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_301_MCPViewMigrateNotes; UPDATED=2026-08-29
-func handleView(ctx context.Context, req *mcp.CallToolRequest, params *ViewParams) (*mcp.CallToolResult, *view.View, error) {
+func (d Deps) handleView(ctx context.Context, req *mcp.CallToolRequest, params *ViewParams) (*mcp.CallToolResult, *view.View, error) {
 	if params.ReqID == "" {
 		return nil, nil, fmt.Errorf("reqId is required")
 	}
@@ -622,7 +672,7 @@ func handleView(ctx context.Context, req *mcp.CallToolRequest, params *ViewParam
 	if limit > maxToolLimit {
 		limit = maxToolLimit
 	}
-	v, err := view.BuildView(".canary/canary.db", ".", mcpProjectID(), params.ReqID, limit)
+	v, err := view.BuildView(d.db(), d.root(), d.projectID(), params.ReqID, limit)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -674,7 +724,7 @@ type DepsResult struct {
 // depends on) or reverse (what depends on it). IDs only; callers use the
 // view tool for detail on any returned ID.
 // CANARY: REQ=CP-270; FEATURE="RequirementDeps"; ASPECT=API; STATUS=TESTED; TEST=TestCANARY_CBIN_204_MCPDepsForward,TestCANARY_CBIN_204_MCPDepsReverse,TestCANARY_CBIN_204_MCPDepsInvalidDirection; UPDATED=2026-08-28
-func handleDeps(ctx context.Context, req *mcp.CallToolRequest, params *DepsParams) (*mcp.CallToolResult, *DepsResult, error) {
+func (d Deps) handleDeps(ctx context.Context, req *mcp.CallToolRequest, params *DepsParams) (*mcp.CallToolResult, *DepsResult, error) {
 	if params.ReqID == "" {
 		return nil, nil, fmt.Errorf("reqId is required")
 	}
@@ -687,7 +737,7 @@ func handleDeps(ctx context.Context, req *mcp.CallToolRequest, params *DepsParam
 		return nil, nil, fmt.Errorf("invalid direction %q: must be \"forward\" or \"reverse\"", dir)
 	}
 
-	graph, err := deps.BuildGraph()
+	graph, err := deps.BuildGraphIn(d.root())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -705,46 +755,5 @@ func handleDeps(ctx context.Context, req *mcp.CallToolRequest, params *DepsParam
 	result := &DepsResult{ReqID: params.ReqID, Direction: dir, Dependencies: ids, Count: len(ids)}
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("%s %s deps: %d", params.ReqID, dir, len(ids))}},
-	}, result, nil
-}
-
-// ========== GAP ANALYSIS TOOLS ==========
-
-// GapMarkParams defines parameters for the gap mark tool
-type GapMarkParams struct {
-	ClaimID  string `json:"claimId" jsonschema:"description:Gap analysis claim ID,required"`
-	Judgment string `json:"judgment" jsonschema:"description:Judgment (helpful unhelpful unclear),required"`
-	Reason   string `json:"reason,omitempty" jsonschema:"description:Reason for judgment"`
-}
-
-// GapMarkResult defines the output for the gap mark tool
-type GapMarkResult struct {
-	Message  string `json:"message"`
-	ClaimID  string `json:"claimId"`
-	Judgment string `json:"judgment"`
-}
-
-// handleGapMark implements the gap mark tool handler
-func handleGapMark(ctx context.Context, req *mcp.CallToolRequest, params *GapMarkParams) (*mcp.CallToolResult, *GapMarkResult, error) {
-	if params.ClaimID == "" {
-		return nil, nil, fmt.Errorf("claimId is required")
-	}
-	if params.Judgment == "" {
-		return nil, nil, fmt.Errorf("judgment is required")
-	}
-
-	// TODO: Implement actual gap marking in database
-	result := &GapMarkResult{
-		Message:  fmt.Sprintf("Marked claim %s as %s", params.ClaimID, params.Judgment),
-		ClaimID:  params.ClaimID,
-		Judgment: params.Judgment,
-	}
-
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{
-				Text: result.Message,
-			},
-		},
 	}, result, nil
 }

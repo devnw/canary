@@ -15,72 +15,52 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// Test bug ID generation
-func TestGenerateBugID(t *testing.T) {
-	tmpDir := t.TempDir()
-	dbPath := filepath.Join(tmpDir, "test.db")
-
-	// Test with no database (should start from 001)
-	bugID, err := generateBugID("API", "default", dbPath)
-	if err != nil {
-		t.Fatalf("Failed to generate bug ID: %v", err)
-	}
-
-	if bugID != "BUG-API-001" {
-		t.Errorf("Expected BUG-API-001, got %s", bugID)
-	}
-
-	// Test with existing database
-	if err := storage.MigrateDB(dbPath, "all"); err != nil {
-		t.Fatalf("Failed to migrate database: %v", err)
-	}
-
+// TestReserveBugID covers bug id allocation, which is now a transactional
+// reservation in storage rather than a read-max-then-increment in this
+// package. The old generator could hand the same id to two callers racing on
+// the same series; the reservation table's primary key makes that impossible.
+func TestReserveBugID(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test.db")
 	db, err := storage.OpenRW(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
 	defer db.Close()
 
-	// Add some existing bug tokens
-	tokens := []*storage.Token{
-		{ReqID: "BUG-API-001", Feature: "Bug 1", Aspect: "API", Status: "OPEN", FilePath: "main.go", LineNumber: 1, UpdatedAt: "2025-10-18"},
-		{ReqID: "BUG-API-002", Feature: "Bug 2", Aspect: "API", Status: "OPEN", FilePath: "main.go", LineNumber: 2, UpdatedAt: "2025-10-18"},
-		{ReqID: "BUG-API-005", Feature: "Bug 5", Aspect: "API", Status: "OPEN", FilePath: "main.go", LineNumber: 5, UpdatedAt: "2025-10-18"},
+	// An empty index starts the series at 001.
+	bugID, err := db.ReserveID("default", "BUG-API")
+	if err != nil {
+		t.Fatalf("Failed to reserve bug ID: %v", err)
+	}
+	if bugID != "BUG-API-001" {
+		t.Errorf("Expected BUG-API-001, got %s", bugID)
 	}
 
+	// Ids already carried by indexed tokens are never re-issued, even ones
+	// that entered the index from source rather than through a reservation.
+	tokens := []*storage.Token{
+		{ReqID: "BUG-API-002", Feature: "Bug 2", Aspect: "API", Status: "OPEN", FilePath: "main.go", LineNumber: 2, UpdatedAt: "2025-10-18", ProjectID: "default"},
+		{ReqID: "BUG-API-005", Feature: "Bug 5", Aspect: "API", Status: "OPEN", FilePath: "main.go", LineNumber: 5, UpdatedAt: "2025-10-18", ProjectID: "default"},
+	}
 	for _, token := range tokens {
 		if err := db.UpsertToken(token); err != nil {
 			t.Fatalf("Failed to insert token: %v", err)
 		}
-		t.Logf("Inserted token: %s", token.ReqID)
 	}
 
-	// Check what tokens are in the database
-	allTokens, err := db.ListTokens("", nil, "", "", 0)
+	bugID, err = db.ReserveID("default", "BUG-API")
 	if err != nil {
-		t.Logf("Error listing tokens: %v", err)
+		t.Fatalf("Failed to reserve bug ID: %v", err)
 	}
-	t.Logf("Tokens found before generating new ID: %d", len(allTokens))
-	for _, tok := range allTokens {
-		t.Logf("  - %s", tok.ReqID)
-	}
-
-	// Generate next ID (should be 006)
-	bugID, err = generateBugIDWithDB("API", "", db)
-	if err != nil {
-		t.Fatalf("Failed to generate bug ID: %v", err)
-	}
-
 	if bugID != "BUG-API-006" {
 		t.Errorf("Expected BUG-API-006, got %s", bugID)
 	}
 
-	// Test with different aspect
-	bugID, err = generateBugIDWithDB("CLI", "", db)
+	// A different aspect is a different series.
+	bugID, err = db.ReserveID("default", "BUG-CLI")
 	if err != nil {
-		t.Fatalf("Failed to generate bug ID: %v", err)
+		t.Fatalf("Failed to reserve bug ID: %v", err)
 	}
-
 	if bugID != "BUG-CLI-001" {
 		t.Errorf("Expected BUG-CLI-001, got %s", bugID)
 	}

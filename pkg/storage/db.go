@@ -33,7 +33,7 @@ const (
 	DBSourceName    = "iofs"
 	DBURLProtocol   = "sqlite://"
 	MigrateAll      = "all"
-	LatestVersion   = 7 // Update this when adding new migrations
+	LatestVersion   = 8 // Update this when adding new migrations
 )
 
 var ErrDatabaseNotPopulated = errors.New("database not migrated")

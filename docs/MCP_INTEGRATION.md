@@ -307,12 +307,12 @@ The MCP server leverages existing Canary infrastructure:
 
 - [x] `view` - Full requirement context in one call (status, files, tests, deps, spec, ticket)
 - [x] `deps` - Dependency IDs, forward or reverse
-- [ ] `specify` - Create requirement specifications (stub exists; real generation pending)
-- [ ] `plan` - Generate implementation plans (stub exists; real generation pending)
-- [x] `implement` - Generate implementation guidance
-- [ ] `gap-mark` - Record gap analysis entries (stub exists; database integration pending)
+- [ ] `specify` - Create requirement specifications (not implemented; the placeholder was unregistered)
+- [ ] `plan` - Generate implementation plans (not implemented; the placeholder was unregistered)
+- [x] `implement` - Report implementation state for a requirement
+- [ ] `gap-mark` - Record gap analysis entries (not implemented; the placeholder was unregistered)
 - [ ] `gap-query` - Query gap analysis
-- [ ] `bug-create` - Create bug tracking tokens (stub exists; collision-safe ID generation pending)
+- [x] `bug-create` - Create bug tracking tokens (transactionally reserved id, persisted row)
 - [x] `bug-list` - List bug tokens
 
 ### Advanced Features:

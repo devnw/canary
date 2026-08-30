@@ -18,13 +18,19 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
+// testDeps is what the handler tests run against: the working directory the
+// fixture chdir'd into, with the conventional index inside it. A zero Deps
+// resolves to exactly that, so the tests exercise the same defaults the
+// server uses.
+var testDeps = Deps{}
+
 func TestMCPToolHandlers(t *testing.T) {
 	ctx := context.Background()
 
-	// Every handler resolves its database as ".canary/canary.db" relative to
-	// the working directory. Run from a throwaway directory so the handlers
-	// touch a scratch database rather than the one checked in beside this
-	// test -- `canary index` writes that file, and a test run must not.
+	// Every handler resolves its database relative to the server root, which
+	// here is the working directory. Run from a throwaway directory so the
+	// handlers touch a scratch database rather than the one checked in beside
+	// this test -- `canary index` writes that file, and a test run must not.
 	chdirTemp(t)
 
 	tests := []struct {
@@ -74,40 +80,17 @@ func TestMCPToolHandlers(t *testing.T) {
 		},
 		// Extended tools
 		{
-			name:    "handleSpecify",
-			handler: "specify",
-			params: &SpecifyParams{
-				Description: "Test feature",
-				Aspect:      "API",
-			},
-		},
-		{
-			name:    "handlePlan",
-			handler: "plan",
-			params: &PlanParams{
-				ReqID:     "TEST-001",
-				TechStack: "Go",
-			},
-		},
-		{
-			name:    "handleIndex",
-			handler: "index",
-			params: &IndexParams{
-				Root: ".",
-			},
-		},
-		{
 			name:    "handleImplement",
 			handler: "implement",
 			params: &ImplementParams{
-				ReqID: "TEST-001",
+				ReqID: "CBIN-001",
 			},
 		},
 		{
 			name:    "handleFiles",
 			handler: "files",
 			params: &FilesParams{
-				ReqID: "TEST-001",
+				ReqID: "CBIN-001",
 			},
 		},
 		{
@@ -122,7 +105,7 @@ func TestMCPToolHandlers(t *testing.T) {
 			name:    "handlePrioritize",
 			handler: "prioritize",
 			params: &PrioritizeParams{
-				ReqID:    "TEST-001",
+				ReqID:    "CBIN-001",
 				Priority: 1,
 			},
 		},
@@ -139,15 +122,7 @@ func TestMCPToolHandlers(t *testing.T) {
 			handler: "bug-create",
 			params: &BugCreateParams{
 				Title:    "Test bug",
-				Severity: "MEDIUM",
-			},
-		},
-		{
-			name:    "handleGapMark",
-			handler: "gap-mark",
-			params: &GapMarkParams{
-				ClaimID:  "CLAIM-001",
-				Judgment: "helpful",
+				Severity: "S3",
 			},
 		},
 	}
@@ -163,39 +138,32 @@ func TestMCPToolHandlers(t *testing.T) {
 			//nolint:errcheck // second return (result struct) intentionally discarded
 			switch tt.handler {
 			case "list":
-				result, _, err = handleList(ctx, req, tt.params.(*ListParams))
+				result, _, err = testDeps.handleList(ctx, req, tt.params.(*ListParams))
 			case "create":
-				result, _, err = handleCreate(ctx, req, tt.params.(*CreateParams))
+				result, _, err = testDeps.handleCreate(ctx, req, tt.params.(*CreateParams))
 			case "search":
-				result, _, err = handleSearch(ctx, req, tt.params.(*SearchParams))
+				result, _, err = testDeps.handleSearch(ctx, req, tt.params.(*SearchParams))
 			case "next":
-				result, _, err = handleNext(ctx, req, tt.params.(*NextParams))
+				result, _, err = testDeps.handleNext(ctx, req, tt.params.(*NextParams))
 			case "scan":
-				result, _, err = handleScan(ctx, req, tt.params.(*ScanParams))
-			case "specify":
-				result, _, err = handleSpecify(ctx, req, tt.params.(*SpecifyParams))
-			case "plan":
-				result, _, err = handlePlan(ctx, req, tt.params.(*PlanParams))
-			case "index":
-				result, _, err = handleIndex(ctx, req, tt.params.(*IndexParams))
+				result, _, err = testDeps.handleScan(ctx, req, tt.params.(*ScanParams))
 			case "implement":
-				result, _, err = handleImplement(ctx, req, tt.params.(*ImplementParams))
+				result, _, err = testDeps.handleImplement(ctx, req, tt.params.(*ImplementParams))
 			case "files":
-				result, _, err = handleFiles(ctx, req, tt.params.(*FilesParams))
+				result, _, err = testDeps.handleFiles(ctx, req, tt.params.(*FilesParams))
 			case "grep":
-				result, _, err = handleGrep(ctx, req, tt.params.(*GrepParams))
+				result, _, err = testDeps.handleGrep(ctx, req, tt.params.(*GrepParams))
 			case "prioritize":
-				result, _, err = handlePrioritize(ctx, req, tt.params.(*PrioritizeParams))
+				result, _, err = testDeps.handlePrioritize(ctx, req, tt.params.(*PrioritizeParams))
 			case "bug-list":
-				result, _, err = handleBugList(ctx, req, tt.params.(*BugListParams))
+				result, _, err = testDeps.handleBugList(ctx, req, tt.params.(*BugListParams))
 			case "bug-create":
-				result, _, err = handleBugCreate(ctx, req, tt.params.(*BugCreateParams))
-			case "gap-mark":
-				result, _, err = handleGapMark(ctx, req, tt.params.(*GapMarkParams))
+				result, _, err = testDeps.handleBugCreate(ctx, req, tt.params.(*BugCreateParams))
 			}
 
-			// We expect errors for some handlers (e.g., database not found)
-			// The important thing is that the handler function signature works
+			// A missing index is an expected error here (these handlers run
+			// against an empty scratch directory); what is asserted is that
+			// every registered handler is callable with its declared params.
 			if result != nil && len(result.Content) > 0 {
 				t.Logf("Handler %s returned content: %+v", tt.handler, result.Content[0])
 			}
@@ -207,8 +175,26 @@ func TestMCPToolHandlers(t *testing.T) {
 	}
 }
 
+// TestMCPToolHandlersCoverRegistry proves the table above exercises every
+// registered tool, so a tool added to the registry cannot quietly go
+// uncalled by this suite.
+func TestMCPToolHandlersCoverRegistry(t *testing.T) {
+	covered := map[string]bool{
+		"list": true, "create": true, "search": true, "next": true, "scan": true,
+		"implement": true, "files": true, "grep": true, "prioritize": true,
+		"bug-list": true, "bug-create": true,
+		// Covered by their own dedicated tests below.
+		"show": true, "status": true, "view": true, "deps": true,
+	}
+	for _, s := range Registry() {
+		if !covered[s.Name] {
+			t.Errorf("registered tool %s has no handler test", s.Name)
+		}
+	}
+}
+
 func TestMCPCommandCreation(t *testing.T) {
-	cmd := New()
+	cmd := New("v9.9.9")
 
 	if cmd == nil {
 		t.Fatal("MCP command should not be nil")
@@ -225,6 +211,18 @@ func TestMCPCommandCreation(t *testing.T) {
 
 	if cmd.Flags().Lookup("host") == nil {
 		t.Error("MCP command should have --host flag")
+	}
+
+	// The default bind is loopback. An MCP server exposes every tool on this
+	// machine, so "every interface" is never the default.
+	if got := cmd.Flags().Lookup("host").DefValue; got != "127.0.0.1" {
+		t.Errorf("--host default = %q, want 127.0.0.1", got)
+	}
+
+	for _, name := range []string{"root", "tls-cert", "tls-key", "print-tools"} {
+		if cmd.Flags().Lookup(name) == nil {
+			t.Errorf("MCP command should have --%s flag", name)
+		}
 	}
 }
 
@@ -288,7 +286,7 @@ func TestCANARY_CBIN_205_SearchCapped(t *testing.T) {
 	}
 
 	req := &mcp.CallToolRequest{}
-	_, result, err := handleSearch(ctx, req, &SearchParams{Keywords: "needle"})
+	_, result, err := testDeps.handleSearch(ctx, req, &SearchParams{Keywords: "needle"})
 	if err != nil {
 		t.Fatalf("handleSearch failed: %v", err)
 	}
@@ -329,7 +327,7 @@ func TestCANARY_CBIN_205_SearchLimitRaised(t *testing.T) {
 	}
 
 	req := &mcp.CallToolRequest{}
-	_, result, err := handleSearch(ctx, req, &SearchParams{Keywords: "needle", Limit: 100})
+	_, result, err := testDeps.handleSearch(ctx, req, &SearchParams{Keywords: "needle", Limit: 100})
 	if err != nil {
 		t.Fatalf("handleSearch failed: %v", err)
 	}
@@ -367,7 +365,7 @@ func TestCANARY_CBIN_205_ListCapped(t *testing.T) {
 	}
 
 	req := &mcp.CallToolRequest{}
-	_, result, err := handleList(ctx, req, &ListParams{Status: "IMPL"})
+	_, result, err := testDeps.handleList(ctx, req, &ListParams{Status: "IMPL"})
 	if err != nil {
 		t.Fatalf("handleList failed: %v", err)
 	}
@@ -410,7 +408,7 @@ func TestCANARY_CBIN_205_ListLowerBound(t *testing.T) {
 	}
 
 	req := &mcp.CallToolRequest{}
-	_, result, err := handleList(ctx, req, &ListParams{Status: "IMPL"})
+	_, result, err := testDeps.handleList(ctx, req, &ListParams{Status: "IMPL"})
 	if err != nil {
 		t.Fatalf("handleList failed: %v", err)
 	}
@@ -453,7 +451,7 @@ func TestCANARY_CBIN_205_ListLimitRaised(t *testing.T) {
 	}
 
 	req := &mcp.CallToolRequest{}
-	_, result, err := handleList(ctx, req, &ListParams{Status: "IMPL", Limit: 100})
+	_, result, err := testDeps.handleList(ctx, req, &ListParams{Status: "IMPL", Limit: 100})
 	if err != nil {
 		t.Fatalf("handleList failed: %v", err)
 	}
@@ -466,29 +464,25 @@ func TestCANARY_CBIN_205_ListLimitRaised(t *testing.T) {
 	}
 }
 
-// TestCANARY_CBIN_205_NextDefaultFindsWork verifies handleNext with no
-// filters finds a seeded STUB token rather than reporting "all complete".
+// TestCANARY_CBIN_205_NextDefaultFindsWork verifies the next tool with no
+// filters finds actionable work rather than reporting "all complete".
+//
+// The fixture is a tree, not a hand-seeded index: `next` now delegates to the
+// CLI's selection, which uses the index only when it still describes the tree
+// (see openFreshIndex) and otherwise scans -- so a database with rows and no
+// index metadata is correctly treated as stale.
 func TestCANARY_CBIN_205_NextDefaultFindsWork(t *testing.T) {
 	ctx := context.Background()
-	db := setupMCPTestDB(t)
+	root := t.TempDir()
+	t.Chdir(root)
 
-	tok := &storage.Token{
-		ReqID:    "CBIN-900",
-		Feature:  "NextTargetFeature",
-		Aspect:   "API",
-		Status:   "STUB",
-		Priority: 1,
-		FilePath: "next900.go",
-	}
-	if err := db.UpsertToken(tok); err != nil {
-		t.Fatalf("failed to insert test token: %v", err)
-	}
-	if err := db.Close(); err != nil {
-		t.Fatalf("failed to close seeding db: %v", err)
+	if err := os.WriteFile(filepath.Join(root, "next900.go"), []byte(
+		"// CANARY: REQ=CBIN-900; FEATURE=\"NextTargetFeature\"; ASPECT=API; STATUS=STUB; PRIORITY=1; UPDATED=2026-01-01\n"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
 	}
 
 	req := &mcp.CallToolRequest{}
-	_, result, err := handleNext(ctx, req, &NextParams{})
+	_, result, err := testDeps.handleNext(ctx, req, &NextParams{})
 	if err != nil {
 		t.Fatalf("handleNext failed: %v", err)
 	}
@@ -538,7 +532,7 @@ func TestCANARY_CBIN_205_BugListOnlyBugs(t *testing.T) {
 	}
 
 	req := &mcp.CallToolRequest{}
-	_, result, err := handleBugList(ctx, req, &BugListParams{})
+	_, result, err := testDeps.handleBugList(ctx, req, &BugListParams{})
 	if err != nil {
 		t.Fatalf("handleBugList failed: %v", err)
 	}
@@ -596,7 +590,7 @@ func TestCANARY_CBIN_205_BugListTruncates(t *testing.T) {
 	}
 
 	req := &mcp.CallToolRequest{}
-	_, result, err := handleBugList(ctx, req, &BugListParams{})
+	_, result, err := testDeps.handleBugList(ctx, req, &BugListParams{})
 	if err != nil {
 		t.Fatalf("handleBugList failed: %v", err)
 	}
@@ -617,55 +611,27 @@ func TestCANARY_CBIN_205_BugListTruncates(t *testing.T) {
 	}
 }
 
-// TestCANARY_CBIN_205_NextSkipsBlockedWork verifies handleNext skips a STUB
-// token whose DEPENDS_ON requirement isn't fully TESTED/BENCHED, and returns
-// the next unblocked (dependency-free) candidate instead -- mirroring the
-// CLI's blocked-work filtering in internal/cmds/next/next.go.
+// TestCANARY_CBIN_205_NextSkipsBlockedWork verifies the next tool skips a
+// STUB token whose DEPENDS_ON requirement is not complete and returns the
+// next unblocked candidate instead -- the same rule `canary next` applies,
+// because it is the same code.
 func TestCANARY_CBIN_205_NextSkipsBlockedWork(t *testing.T) {
 	ctx := context.Background()
-	db := setupMCPTestDB(t)
+	root := t.TempDir()
+	t.Chdir(root)
 
-	// Dependency requirement whose only token is IMPL (not TESTED/BENCHED),
-	// so anything depending on it is blocked.
-	dep := &storage.Token{
-		ReqID:    "CBIN-800",
-		Feature:  "DependencyFeature",
-		Aspect:   "API",
-		Status:   "IMPL",
-		Priority: 1,
-		FilePath: "dep800.go",
-	}
-	// Blocked token: highest priority (lowest number) but depends on CBIN-800.
-	blocked := &storage.Token{
-		ReqID:     "CBIN-801",
-		Feature:   "BlockedFeature",
-		Aspect:    "API",
-		Status:    "STUB",
-		Priority:  1,
-		FilePath:  "blocked801.go",
-		DependsOn: "CBIN-800",
-	}
-	// Unblocked token: lower priority (higher number) but no dependencies.
-	unblocked := &storage.Token{
-		ReqID:    "CBIN-802",
-		Feature:  "UnblockedFeature",
-		Aspect:   "API",
-		Status:   "STUB",
-		Priority: 2,
-		FilePath: "unblocked802.go",
-	}
-
-	for _, tok := range []*storage.Token{dep, blocked, unblocked} {
-		if err := db.UpsertToken(tok); err != nil {
-			t.Fatalf("failed to insert test token %s: %v", tok.ReqID, err)
-		}
-	}
-	if err := db.Close(); err != nil {
-		t.Fatalf("failed to close seeding db: %v", err)
+	// CBIN-800 is IMPL, so anything depending on it is incomplete.
+	// CBIN-801 outranks CBIN-802 on priority but is blocked by CBIN-800.
+	fixture := "" +
+		"// CANARY: REQ=CBIN-800; FEATURE=\"DependencyFeature\"; ASPECT=API; STATUS=IMPL; PRIORITY=9; UPDATED=2026-01-01\n" +
+		"// CANARY: REQ=CBIN-801; FEATURE=\"BlockedFeature\"; ASPECT=API; STATUS=STUB; PRIORITY=1; DEPENDS_ON=CBIN-800; UPDATED=2026-01-01\n" +
+		"// CANARY: REQ=CBIN-802; FEATURE=\"UnblockedFeature\"; ASPECT=API; STATUS=STUB; PRIORITY=2; UPDATED=2026-01-01\n"
+	if err := os.WriteFile(filepath.Join(root, "work.go"), []byte(fixture), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
 	}
 
 	req := &mcp.CallToolRequest{}
-	_, result, err := handleNext(ctx, req, &NextParams{})
+	_, result, err := testDeps.handleNext(ctx, req, &NextParams{})
 	if err != nil {
 		t.Fatalf("handleNext failed: %v", err)
 	}
@@ -675,6 +641,9 @@ func TestCANARY_CBIN_205_NextSkipsBlockedWork(t *testing.T) {
 
 	if result.ReqID != "CBIN-802" {
 		t.Errorf("expected next to skip blocked CBIN-801 and return CBIN-802, got %q", result.ReqID)
+	}
+	if result.Blocked == 0 {
+		t.Error("expected the blocked candidate to be counted")
 	}
 }
 
@@ -704,7 +673,7 @@ func TestCANARY_CBIN_205_SearchTotalLowerBound(t *testing.T) {
 	}
 
 	req := &mcp.CallToolRequest{}
-	result, out, err := handleSearch(ctx, req, &SearchParams{Keywords: "haystack"})
+	result, out, err := testDeps.handleSearch(ctx, req, &SearchParams{Keywords: "haystack"})
 	if err != nil {
 		t.Fatalf("handleSearch failed: %v", err)
 	}
@@ -758,7 +727,7 @@ func TestCANARY_CBIN_204_MCPView(t *testing.T) {
 	}
 
 	req := &mcp.CallToolRequest{}
-	result, out, err := handleView(ctx, req, &ViewParams{ReqID: "CBIN-105"})
+	result, out, err := testDeps.handleView(ctx, req, &ViewParams{ReqID: "CBIN-105"})
 	if err != nil {
 		t.Fatalf("handleView failed: %v", err)
 	}
@@ -834,7 +803,7 @@ func TestCANARY_CBIN_301_MCPViewMigrateNotes(t *testing.T) {
 	}
 
 	req := &mcp.CallToolRequest{}
-	result, out, err := handleView(ctx, req, &ViewParams{ReqID: "CBIN-105"})
+	result, out, err := testDeps.handleView(ctx, req, &ViewParams{ReqID: "CBIN-105"})
 	if err != nil {
 		t.Fatalf("handleView failed: %v", err)
 	}
@@ -863,7 +832,7 @@ func TestCANARY_CBIN_204_MCPViewUnknown(t *testing.T) {
 	}
 
 	req := &mcp.CallToolRequest{}
-	result, out, err := handleView(ctx, req, &ViewParams{ReqID: "CBIN-999"})
+	result, out, err := testDeps.handleView(ctx, req, &ViewParams{ReqID: "CBIN-999"})
 	if err == nil {
 		t.Fatal("expected error for unknown requirement, got nil")
 	}
@@ -893,7 +862,7 @@ func TestCANARY_CBIN_204_MCPDepsForward(t *testing.T) {
 	}
 
 	req := &mcp.CallToolRequest{}
-	result, out, err := handleDeps(ctx, req, &DepsParams{ReqID: "CBIN-105"})
+	result, out, err := testDeps.handleDeps(ctx, req, &DepsParams{ReqID: "CBIN-105"})
 	if err != nil {
 		t.Fatalf("handleDeps failed: %v", err)
 	}
@@ -946,7 +915,7 @@ func TestCANARY_CBIN_204_MCPDepsReverse(t *testing.T) {
 	}
 
 	req := &mcp.CallToolRequest{}
-	result, out, err := handleDeps(ctx, req, &DepsParams{ReqID: "CBIN-100", Direction: "reverse"})
+	result, out, err := testDeps.handleDeps(ctx, req, &DepsParams{ReqID: "CBIN-100", Direction: "reverse"})
 	if err != nil {
 		t.Fatalf("handleDeps failed: %v", err)
 	}
@@ -969,7 +938,7 @@ func TestCANARY_CBIN_204_MCPDepsReverse(t *testing.T) {
 func TestCANARY_CBIN_204_MCPViewEmptyReqID(t *testing.T) {
 	ctx := context.Background()
 	req := &mcp.CallToolRequest{}
-	result, out, err := handleView(ctx, req, &ViewParams{ReqID: ""})
+	result, out, err := testDeps.handleView(ctx, req, &ViewParams{ReqID: ""})
 	if err == nil {
 		t.Fatal("expected error for empty reqId, got nil")
 	}
@@ -986,7 +955,7 @@ func TestCANARY_CBIN_204_MCPViewEmptyReqID(t *testing.T) {
 func TestCANARY_CBIN_204_MCPDepsInvalidDirection(t *testing.T) {
 	ctx := context.Background()
 	req := &mcp.CallToolRequest{}
-	result, out, err := handleDeps(ctx, req, &DepsParams{ReqID: "CBIN-100", Direction: "sideways"})
+	result, out, err := testDeps.handleDeps(ctx, req, &DepsParams{ReqID: "CBIN-100", Direction: "sideways"})
 	if err == nil {
 		t.Fatal("expected error for invalid direction, got nil")
 	}

@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
@@ -44,55 +43,6 @@ Subcommands:
 func buildBugToken(bugID, title, feature, aspect, status, severity, priority, updated string) string {
 	return fmt.Sprintf("// CANARY: BUG=%s; TITLE=\"%s\"; FEATURE=\"%s\"; ASPECT=%s; STATUS=%s; SEVERITY=%s; PRIORITY=%s; UPDATED=%s\n",
 		bugID, title, feature, aspect, status, severity, priority, updated)
-}
-
-func generateBugID(aspect, projectID, dbPath string) (string, error) {
-	// Normalize aspect to uppercase
-	aspect = strings.ToUpper(aspect)
-
-	// Read the existing IDs. Read-only: allocating the next bug number must
-	// not be what brings a database into existence.
-	db, err := storage.OpenRO(dbPath)
-	if err != nil {
-		// If no database, start from 001
-		return fmt.Sprintf("BUG-%s-001", aspect), nil
-	}
-	defer db.Close()
-
-	return generateBugIDWithDB(aspect, projectID, db)
-}
-
-func generateBugIDWithDB(aspect, projectID string, db *storage.DB) (string, error) {
-	// Normalize aspect to uppercase
-	aspect = strings.ToUpper(aspect)
-
-	// Every token, in any order: the next number is the maximum over the
-	// whole set, so ordering is irrelevant to the answer. (Before the
-	// order-key allowlist this asked for "req_id DESC", which the loop below
-	// never depended on.)
-	tokens, err := db.ListTokens(projectID, nil, "", "", 0)
-	if err != nil {
-		// If database doesn't have tokens table yet, start from 001
-		return fmt.Sprintf("BUG-%s-001", aspect), nil
-	}
-
-	// Find highest number for this aspect
-	maxNum := 0
-	pattern := fmt.Sprintf(`BUG-%s-([0-9]{3})`, aspect)
-	re := regexp.MustCompile(pattern)
-	for _, token := range tokens {
-		// Extract number from matching tokens
-		if matches := re.FindStringSubmatch(token.ReqID); len(matches) > 1 {
-			num, _ := strconv.Atoi(matches[1])
-			if num > maxNum {
-				maxNum = num
-			}
-		}
-	}
-
-	// Generate next ID
-	nextNum := maxNum + 1
-	return fmt.Sprintf("BUG-%s-%03d", aspect, nextNum), nil
 }
 
 func filterBugTokens(tokens []*storage.Token, severity, priority string) []*storage.Token {

@@ -327,6 +327,36 @@ type result struct {
 	Blocked int
 }
 
+// CANARY: REQ=CP-252; FEATURE="NextSelectionAPI"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_ENG_3960_MCP_Next_ExternalUnknown_Blocking,TestCANARY_ENG_3960_MCP_Next_ExternalSatisfied_NotBlocking; UPDATED=2026-08-30
+
+// SelectNext is the exported entry point to `canary next`'s selection: the
+// same source decision (fresh index, else canonical filesystem scan) and the
+// same dependency gate the CLI applies, returning the chosen token, the
+// source that answered, and how many candidates were passed over as blocked.
+//
+// It exists so the MCP `next` tool can delegate rather than reimplement.
+// The MCP tool used to carry a hand-maintained replica of the dependency
+// rule, and the replica drifted: it still accepted a declared STATUS=TESTED
+// as proof and still let an unresolvable external dependency pass, months
+// after the CLI stopped doing either. Two answers to "may this work start?"
+// is one answer too many, so there is now exactly one implementation and the
+// MCP surface calls it.
+//
+// root is the tree the answer is about; projectID scopes index queries
+// ("" means every project, refused only when ambiguous); stderr receives the
+// one-line notes about unresolvable dependencies (io.Discard is fine).
+func SelectNext(dbPath, root, projectID string, filters map[string]string, allowUnknownExternal bool, stderr io.Writer) (token *storage.Token, source string, blocked int, err error) {
+	res, err := selectNext(selection{
+		DBPath:               dbPath,
+		Root:                 root,
+		ProjectID:            projectID,
+		Filters:              filters,
+		AllowUnknownExternal: allowUnknownExternal,
+		Stderr:               stderr,
+	})
+	return res.Token, res.Source, res.Blocked, err
+}
+
 // selectNextPriority identifies the highest-priority actionable requirement
 // under the default policy, discarding the source. It exists for callers
 // (tests, benchmarks) that only want the token.

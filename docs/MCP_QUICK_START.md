@@ -23,21 +23,53 @@ You should see:
 ```
 Canary MCP Server
 =================
-Server listening on http://localhost:8080
+Server listening on http://127.0.0.1:8080
+Authentication: none (loopback dev mode)
 
-Available MCP Tools (19 total):
-  - view, deps                                   - one-call requirement context
-  - list, show, create, status, search, next     - core token management
-  - scan, specify, plan, implement, index        - workflow (specify/plan/index are stubs)
-  - files, grep, prioritize                      - query & management
-  - bug-list, bug-create                         - bug tracking (bug-create is a stub)
-  - gap-mark                                     - gap analysis (stub)
+Endpoints:
+  GET  /health         - Health check
+  POST /mcp            - MCP endpoint
+
+# ... followed by the generated tool documentation ...
 
 Press Ctrl+C to stop
 ```
 
-Five tools are stubs returning placeholder responses today: `specify`, `plan`,
-`index`, `bug-create`, `gap-mark`.
+The tool list the server prints is generated from the tool registry, so it can
+never drift from what is actually registered. The same text is checked in as
+[MCP_TOOLS.md](MCP_TOOLS.md); regenerate it with:
+
+```bash
+canary mcp --print-tools > docs/MCP_TOOLS.md
+```
+
+Every registered tool does real work. The five placeholders that used to be
+registered -- `specify`, `plan`, `index`, `gap-mark`, and a `bug-create` that
+always answered `BUG-001` -- have been removed; `bug-create` is back as a real
+tool that reserves an id transactionally and persists the row.
+
+### Binding and authentication
+
+The server binds `127.0.0.1` by default. To bind any other interface you must
+supply both a TLS certificate/key pair and a bearer token, or it refuses to
+start:
+
+```bash
+CANARY_MCP_TOKEN=... canary mcp --host 0.0.0.0 --tls-cert cert.pem --tls-key key.pem
+```
+
+| Variable | Grants |
+| --- | --- |
+| `CANARY_MCP_TOKEN` | read and write |
+| `CANARY_MCP_READ_TOKEN` | read only (mutating tools answer 403) |
+
+With neither set, a loopback server serves every request unauthenticated. With
+either set, a `Authorization: Bearer <token>` header is required even on
+loopback.
+
+`--root` selects the tree the server answers for (default: the working
+directory). Tool paths are confined to it; anything resolving outside is
+refused with `ROOT_ESCAPE`.
 
 ### 3. Test the Server
 

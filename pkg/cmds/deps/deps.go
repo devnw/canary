@@ -461,13 +461,22 @@ func findSpecFile(reqID string) (string, error) {
 }
 
 // BuildGraph builds the complete dependency graph from all specs under
-// .canary/specs/. It is exported so callers outside this package (e.g. the
-// MCP deps tool) can reuse it without reconstructing the spec-walk logic.
+// .canary/specs/ in the working directory. It is exported so callers outside
+// this package can reuse it without reconstructing the spec-walk logic.
 func BuildGraph() (*specs.DependencyGraph, error) {
+	return BuildGraphIn(".")
+}
+
+// BuildGraphIn is BuildGraph for an explicit root.
+//
+// The MCP server answers for the tree it was started on, not for whatever
+// directory the process happens to be in, so it needs to name that tree
+// rather than rely on the working directory.
+func BuildGraphIn(root string) (*specs.DependencyGraph, error) {
 	graph := specs.NewDependencyGraph()
 
 	// Find all spec directories
-	specsDir := ".canary/specs"
+	specsDir := filepath.Join(root, ".canary", "specs")
 	entries, err := os.ReadDir(specsDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read specs directory: %w", err)

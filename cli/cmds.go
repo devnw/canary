@@ -50,11 +50,15 @@ import (
 //
 // Usage:
 //
-//	rootCmd.AddCommand(cli.Commands()...)
+//	rootCmd.AddCommand(cli.Commands(version)...)
 //
 // Note: Commands with subcommands (bug, gap, deps, project, db, doc, legacy, migrate)
 // have their subcommands registered in their respective package init() functions.
-func Commands() []*cobra.Command {
+// version is the binary's version (from ldflags). It reaches the MCP server,
+// which reports it to clients as its implementation version -- it used to
+// report a hardcoded "1.0.0", so every build in the field was indistinguishable
+// from every other.
+func Commands(version string) []*cobra.Command {
 	return []*cobra.Command{
 		// Core workflow commands
 		scan.ScanCmd,
@@ -111,7 +115,7 @@ func Commands() []*cobra.Command {
 		project.ProjectCmd,
 
 		// MCP server for AI assistant integration
-		mcp.New(),
+		mcp.New(version),
 	}
 }
 
