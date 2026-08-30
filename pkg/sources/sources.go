@@ -42,10 +42,6 @@ type Source struct {
 	Destination bool
 }
 
-// keyRe is the requirement-ID prefix shape. It is pkg/config's pattern, not a
-// second copy: the config file and the registry must agree on what a key is.
-var keyRe = config.SourceKeyPattern
-
 // Registry answers ID-shaped questions for a set of sources.
 type Registry struct {
 	list    []Source
@@ -97,7 +93,7 @@ func Default() *Registry {
 // project.key; an unset key falls back to Default() (CBIN). A configured but
 // invalid key or source list is an error: a misconfigured registry silently
 // downgraded to CBIN-only makes every non-CBIN requirement invisible.
-// CANARY: REQ=ENG-4322; FEATURE="TicketSources"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_201_FromProjectConfigInvalidKeyError,TestCANARY_CBIN_201_FromProjectConfigMalformedSourceError; UPDATED=2026-08-30
+// CANARY: REQ=ENG-4322; FEATURE="TicketSources"; ASPECT=Engine; STATUS=TESTED; TEST=TestCANARY_CBIN_201_FromProjectConfigInvalidKeyError,TestCANARY_CBIN_201_FromProjectConfigMalformedSourceError,TestCANARY_ENG_3961_FromProjectConfig_PeersSurviveNoSourcesNoKey; UPDATED=2026-08-30
 func FromProjectConfig(cfg *config.ProjectConfig) (*Registry, error) {
 	if cfg == nil {
 		return Default(), nil
@@ -105,10 +101,17 @@ func FromProjectConfig(cfg *config.ProjectConfig) (*Registry, error) {
 	if len(cfg.Sources) == 0 {
 		key := strings.TrimSpace(cfg.Project.Key)
 		if key == "" {
-			return Default(), nil
+			r := Default()
+			r.peers = cfg.Peers
+			return r, nil
 		}
-		if !keyRe.MatchString(key) {
-			return nil, fmt.Errorf("sources: project.key %q must be uppercase alphanumeric starting with a letter", key)
+		// project.key's shape rule has exactly one implementation
+		// (config.ValidateProjectKey), shared with ProjectConfig.validate.
+		// It must be re-checked here too: a *ProjectConfig built directly
+		// (not via config.Load) never runs validate() -- see
+		// TestCANARY_CBIN_201_FromProjectConfigInvalidKeyError.
+		if err := config.ValidateProjectKey(key); err != nil {
+			return nil, fmt.Errorf("sources: %w", err)
 		}
 		r, err := NewRegistry([]Source{{Name: "default", Type: "flatfile", Key: key}})
 		if err != nil {

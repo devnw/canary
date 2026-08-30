@@ -173,13 +173,29 @@ func (c *ProjectConfig) specs() []SourceSpec {
 	return specs
 }
 
+// ValidateProjectKey enforces the project.key shape rule: empty (unset) is
+// legal, a non-empty key must match SourceKeyPattern. It is the single
+// implementation of that rule, called both by ProjectConfig.validate (the
+// config.Load path) and by pkg/sources.FromProjectConfig, which validates a
+// project.key of its own -- direct construction of a *ProjectConfig (used in
+// tests and by any caller that builds one without going through Load) never
+// runs validate(), so FromProjectConfig cannot rely on Load having already
+// checked it.
+func ValidateProjectKey(key string) error {
+	key = strings.TrimSpace(key)
+	if key == "" || SourceKeyPattern.MatchString(key) {
+		return nil
+	}
+	return fmt.Errorf("project.key %q must be uppercase alphanumeric starting with a letter", key)
+}
+
 // validate checks the parsed config's values.
 func (c *ProjectConfig) validate() error {
 	if c == nil {
 		return nil
 	}
-	if key := strings.TrimSpace(c.Project.Key); key != "" && !SourceKeyPattern.MatchString(key) {
-		return fmt.Errorf("project.key %q must be uppercase alphanumeric starting with a letter", key)
+	if err := ValidateProjectKey(c.Project.Key); err != nil {
+		return err
 	}
 	if c.Verification.StalenessDays < 0 {
 		return fmt.Errorf("verification.staleness_days must not be negative, got %d", c.Verification.StalenessDays)
@@ -195,7 +211,7 @@ func (c *ProjectConfig) validate() error {
 	return nil
 }
 
-// CANARY: REQ=ENG-4317; FEATURE="StrictProjectConfig"; ASPECT=Storage; STATUS=TESTED; TEST=TestLoadRejectsUnknownField,TestLoadRejectsDuplicateKey,TestLoadRejectsNegativeStaleness,TestLoadRejectsBadSourceType,TestAuditF19; UPDATED=2026-08-30
+// CANARY: REQ=ENG-4317; FEATURE="StrictProjectConfig"; ASPECT=Storage; STATUS=TESTED; TEST=TestLoadRejectsUnknownField,TestLoadRejectsDuplicateKey,TestLoadRejectsNegativeStaleness,TestLoadRejectsBadSourceType,TestLoadRejectsMultiDocumentYAML,TestAuditF19; UPDATED=2026-08-30
 // Load reads, strictly parses and validates <rootDir>/.canary/project.yaml.
 // Unknown fields, duplicate mapping keys, and invalid values are errors: a
 // config that does not mean what it says must never be silently downgraded to
@@ -221,6 +237,15 @@ func Load(rootDir string) (*ProjectConfig, error) {
 	var cfg ProjectConfig
 	if err := dec.Decode(&cfg); err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("parse %s: %w", configPath, err)
+	}
+
+	// A second `---`-separated document must never be silently discarded: it
+	// may hold configuration (including unknown fields) the author believes
+	// is applied. Only a clean end-of-stream after the first document is
+	// legal.
+	var extra yaml.Node
+	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("%s: multiple YAML documents are not allowed", configPath)
 	}
 
 	if err := cfg.validate(); err != nil {

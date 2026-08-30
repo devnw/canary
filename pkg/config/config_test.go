@@ -306,6 +306,18 @@ func TestLoadRejectsEmptyPeerRoot(t *testing.T) {
 	}
 }
 
+// TestLoadRejectsMultiDocumentYAML proves a project.yaml containing a
+// second `---`-separated YAML document is rejected rather than silently
+// parsed from only its first document -- a second document (here holding an
+// unknown field) must never be discarded without a word.
+// CANARY: REQ=ENG-4317; FEATURE="StrictProjectConfig"; ASPECT=Storage; STATUS=TESTED; TEST=TestLoadRejectsMultiDocumentYAML; UPDATED=2026-08-30
+func TestLoadRejectsMultiDocumentYAML(t *testing.T) {
+	root := writeProjectYAML(t, "project:\n  name: first\n---\nproject:\n  name: second\nbogus_unknown: true\n")
+	if _, err := Load(root); err == nil {
+		t.Fatal("multi-document YAML accepted")
+	}
+}
+
 func TestLoadRejectsBadProjectKey(t *testing.T) {
 	root := writeProjectYAML(t, "project:\n  name: demo\n  key: bad-key\n")
 	if _, err := Load(root); err == nil {

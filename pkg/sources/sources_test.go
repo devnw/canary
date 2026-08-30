@@ -188,6 +188,25 @@ func TestCANARY_CBIN_201_FromProjectConfigEmptyKeyDefault(t *testing.T) {
 	}
 }
 
+// TestCANARY_ENG_3961_FromProjectConfig_PeersSurviveNoSourcesNoKey proves
+// peers configured alongside an unset project.key and empty sources list
+// (the Default() fallback branch) still reach the built registry -- the
+// sibling branches (synthesized flatfile key, explicit sources) already
+// carry cfg.Peers through; this branch must too.
+func TestCANARY_ENG_3961_FromProjectConfig_PeersSurviveNoSourcesNoKey(t *testing.T) {
+	cfg := &config.ProjectConfig{}
+	cfg.Sources = []config.SourceConfig{}
+	cfg.Peers = []config.PeerConfig{{Name: "upstream", Root: "../upstream-repo"}}
+
+	r, err := FromProjectConfig(cfg)
+	if err != nil {
+		t.Fatalf("FromProjectConfig: %v", err)
+	}
+	if len(r.Peers()) != 1 || r.Peers()[0].Name != "upstream" {
+		t.Errorf("Peers() = %+v, want [{upstream ../upstream-repo}]", r.Peers())
+	}
+}
+
 func TestCANARY_CBIN_201_FromProjectConfigMalformedSourceError(t *testing.T) {
 	// Config with a malformed source entry (e.g. Type: "svn") → an error, not
 	// a silent downgrade to the CBIN default registry.

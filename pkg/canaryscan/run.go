@@ -35,10 +35,10 @@ const DefaultStaleDays = config.DefaultStaleDays
 func staleThreshold(cfg Config, projCfg *config.ProjectConfig) time.Duration {
 	days := cfg.StaleDays
 	if days <= 0 {
+		// projCfg.StalenessDays() always returns a positive value (it falls
+		// back to DefaultStaleDays itself), so no further fallback is needed
+		// here.
 		days = projCfg.StalenessDays()
-	}
-	if days <= 0 {
-		days = DefaultStaleDays
 	}
 	return time.Duration(days) * 24 * time.Hour
 }
