@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,6 +21,14 @@ import (
 
 	"devnw.dev/canary/pkg/config"
 )
+
+// ErrDecodeResponse is the sentinel wrapped by a JSON decode failure on an
+// otherwise-successful (2xx) response. The printed error string is always
+// static (method + safePath + this reason) — the underlying json error's
+// text is deliberately discarded because it can quote a fragment of the
+// offending response body (for example an overflowing numeric literal),
+// which must never reach a log line.
+var ErrDecodeResponse = errors.New("decode response")
 
 // maxResponseBytes caps every JIRA response body read; a body larger than
 // this is rejected without ever being buffered in full or echoed into an
@@ -196,7 +205,9 @@ func (c *JiraClient) do(ctx context.Context, method, path string, body, out any)
 
 		if out != nil && len(data) > 0 {
 			if err := json.Unmarshal(data, out); err != nil {
-				return fmt.Errorf("jira: decode %s %s response: %w", method, safePath, err)
+				// Never embed err: its text can quote a fragment of data
+				// (e.g. an overflowing numeric literal) verbatim.
+				return fmt.Errorf("jira: %s %s: %w", method, safePath, ErrDecodeResponse)
 			}
 		}
 		return nil

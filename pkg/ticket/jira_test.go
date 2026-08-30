@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -422,6 +423,146 @@ func TestJiraErrorRedaction(t *testing.T) {
 	}
 	if strings.Contains(msg, "?jql=") || strings.Contains(msg, "jql") {
 		t.Errorf("error leaked the query string: %q", msg)
+	}
+}
+
+// TestJiraDecodeErrorRedaction proves a malformed 2xx JSON response body
+// never leaks a body fragment into the returned decode error. It targets an
+// int field with an overflowing numeric literal — encoding/json's own error
+// for that case quotes the literal verbatim (e.g. "json: cannot unmarshal
+// number 999...999 into Go struct field .code of type int"), which stands in
+// here for a secret-looking token that must never reach the caller.
+func TestJiraDecodeErrorRedaction(t *testing.T) {
+	const secretLikeToken = "94024242424242424242424242424242424242"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"code": ` + secretLikeToken + `}`))
+	}))
+	defer srv.Close()
+
+	c := &JiraClient{BaseURL: srv.URL, Email: "a", Token: "t"}
+	var out struct {
+		Code int `json:"code"`
+	}
+	err := c.do(context.Background(), http.MethodGet, "/x", nil, &out)
+	if err == nil {
+		t.Fatal("expected a decode error for an overflowing numeric field")
+	}
+	if strings.Contains(err.Error(), secretLikeToken) {
+		t.Errorf("decode error leaked a response body fragment: %q", err.Error())
+	}
+	if !errors.Is(err, ErrDecodeResponse) {
+		t.Errorf("error does not wrap ErrDecodeResponse: %v", err)
+	}
+}
+
+// TestParseRetryAfter table-tests parseRetryAfter's edge cases: the 5s
+// boundary (allowed), zero (allowed), a non-numeric HTTP-date (falls back),
+// and a negative value (falls back) — none of which should be confused with
+// each other.
+func TestParseRetryAfter(t *testing.T) {
+	cases := []struct {
+		name    string
+		in      string
+		wantOK  bool
+		wantDur time.Duration
+	}{
+		{"boundary 5s is allowed", "5", true, 5 * time.Second},
+		{"zero is allowed", "0", true, 0},
+		{"http-date falls back", "Wed, 21 Oct 2015 07:28:00 GMT", false, 0},
+		{"negative falls back", "-3", false, 0},
+		{"empty falls back", "", false, 0},
+		{"non-numeric falls back", "soon", false, 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			d, ok := parseRetryAfter(tc.in)
+			if ok != tc.wantOK {
+				t.Errorf("ok = %v, want %v", ok, tc.wantOK)
+			}
+			if ok && d != tc.wantDur {
+				t.Errorf("d = %v, want %v", d, tc.wantDur)
+			}
+		})
+	}
+}
+
+// TestJiraRetryAfterEdgeCases exercises parseRetryAfter's edge cases through
+// the full retry loop in do, using the injected Sleep so no wall-clock time
+// passes: a boundary 5s Retry-After is honored verbatim, "0" is honored as a
+// zero-length sleep, and both a non-numeric (HTTP-date) and a negative
+// Retry-After fall back to the fixed backoff schedule rather than producing
+// a negative or otherwise bogus sleep.
+func TestJiraRetryAfterEdgeCases(t *testing.T) {
+	cases := []struct {
+		name       string
+		retryAfter string // header value on the single 429 response; "" omits the header
+		wantSlept  []time.Duration
+		wantCalls  int
+	}{
+		{
+			name:       "Retry-After 5 boundary honored",
+			retryAfter: "5",
+			wantSlept:  []time.Duration{5 * time.Second},
+			wantCalls:  2,
+		},
+		{
+			name:       "Retry-After 0 honored as zero sleep",
+			retryAfter: "0",
+			wantSlept:  []time.Duration{0},
+			wantCalls:  2,
+		},
+		{
+			name:       "Retry-After HTTP-date falls back to backoff",
+			retryAfter: "Wed, 21 Oct 2015 07:28:00 GMT",
+			wantSlept:  []time.Duration{250 * time.Millisecond},
+			wantCalls:  2,
+		},
+		{
+			name:       "Retry-After negative falls back to backoff",
+			retryAfter: "-3",
+			wantSlept:  []time.Duration{250 * time.Millisecond},
+			wantCalls:  2,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var slept []time.Duration
+			var calls int
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				if calls == 1 {
+					if tc.retryAfter != "" {
+						w.Header().Set("Retry-After", tc.retryAfter)
+					}
+					w.WriteHeader(http.StatusTooManyRequests)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			c := &JiraClient{BaseURL: srv.URL, Email: "a", Token: "t", Sleep: func(d time.Duration) { slept = append(slept, d) }}
+			if err := c.do(context.Background(), http.MethodGet, "/x", nil, nil); err != nil {
+				t.Fatalf("do: %v", err)
+			}
+			if calls != tc.wantCalls {
+				t.Errorf("calls = %d, want %d", calls, tc.wantCalls)
+			}
+			if len(slept) != len(tc.wantSlept) {
+				t.Fatalf("slept = %v, want %v", slept, tc.wantSlept)
+			}
+			for i := range tc.wantSlept {
+				if slept[i] != tc.wantSlept[i] {
+					t.Errorf("slept[%d] = %v, want %v", i, slept[i], tc.wantSlept[i])
+				}
+				if slept[i] < 0 {
+					t.Errorf("slept[%d] = %v, must never be negative", i, slept[i])
+				}
+			}
+		})
 	}
 }
 
