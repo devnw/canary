@@ -244,3 +244,54 @@ func TestPassingTests_SkipsNonEvents(t *testing.T) {
 		t.Fatalf("passed = %v, want TestA in package p", got)
 	}
 }
+
+// TestPassingTests_FailVetoesAcrossPackages proves a test name that fails in
+// one package is excluded even though it passed in another: F-4. A name is
+// not "passing" evidence when the same stream also shows it failing
+// somewhere else.
+func TestPassingTests_FailVetoesAcrossPackages(t *testing.T) {
+	raw := []byte(goTestStream(
+		`{"Action":"pass","Package":"pkgA","Test":"TestNew"}`,
+		`{"Action":"fail","Package":"pkgB","Test":"TestNew"}`,
+		`{"Action":"pass","Package":"pkgC","Test":"TestOther"}`,
+	))
+	got := PassingTests(raw)
+	if _, ok := got["TestNew"]; ok {
+		t.Fatalf("TestNew failed in pkgB and must be vetoed everywhere: %v", got)
+	}
+	if got["TestOther"] != "pkgC" {
+		t.Fatalf("TestOther must still pass: %v", got)
+	}
+}
+
+// TestFromGoTest_FailInOtherPackageVetoesRecord is the end-to-end form of
+// TestPassingTests_FailVetoesAcrossPackages: a stream where TestNew passes in
+// package A and fails in package B must yield no evidence record for
+// TestNew, even though a token declares it.
+func TestFromGoTest_FailInOtherPackageVetoesRecord(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "a.go"), []byte(
+		"// CANARY: REQ=CBIN-010; FEATURE=\"F\"; ASPECT=API; STATUS=TESTED; TEST=TestNew; UPDATED=2026-01-01\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stream := goTestStream(
+		`{"Action":"pass","Package":"pkgA","Test":"TestNew"}`,
+		`{"Action":"fail","Package":"pkgB","Test":"TestNew"}`,
+	)
+
+	var stdout, stderr bytes.Buffer
+	code := RunFromGoTest(FromGoTestOptions{
+		Root: root, ProjectID: "default", Commit: testCommit,
+		ObservedAt: "2026-08-30T00:00:00Z",
+	}, strings.NewReader(stream), &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit=%d stderr=%q", code, stderr.String())
+	}
+	f, err := ev.Parse(bytes.NewReader(stdout.Bytes()))
+	if err != nil {
+		t.Fatalf("emitted file must be strictly parseable: %v\n%s", err, stdout.String())
+	}
+	if len(f.Records) != 0 {
+		t.Fatalf("records = %+v, want none for a name that also failed", f.Records)
+	}
+}

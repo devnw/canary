@@ -71,12 +71,12 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
 
 7. **Provide remediation steps** (if verification failed):
    - For overclaims: "Add TEST= field and create test function for `<PROJECT_KEY>-<NNN>`"
-   - For stale tokens: "Run `canary scan --update-stale` to refresh UPDATED fields"
+   - For stale tokens: "Run `canary scan --update-stale` to see which stale claims still have current PASS evidence (it reports evidence currency and mutates nothing). Where evidence is missing or out of date, refresh it by rerunning the tests and recording the result with `canary evidence from-go-test` (or `canary evidence ingest`), then re-run verification."
    - For missing tokens: "Remove claim for `<PROJECT_KEY>-<NNN>` from GAP_ANALYSIS.md (not found in code)"
 
 ## Verification Rules
 
-**Valid Claim**: Requirement with STATUS=TESTED or STATUS=BENCHED
+**Valid Claim**: A requirement whose declared features all have a current PASS evidence record at HEAD, as determined by `canary verify` (backed by `.canary/evidence.json`). STATUS=TESTED/BENCHED is only a declaration in the token -- it is not itself evidence and does not make a claim valid.
 
 **Overclaim**: Requirement claimed but:
 

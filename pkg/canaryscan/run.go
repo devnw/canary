@@ -157,7 +157,14 @@ func Run(cfg Config, stdout, stderr io.Writer) (exitCode int) {
 		if cerr != nil {
 			// Without a commit nothing can be shown to be current, so every
 			// claim fails closed; the reason is surfaced rather than hidden.
-			_, _ = fmt.Fprintf(stderr, "CANARY_VERIFY_FAIL reason=no_commit err=%q\n", cerr)
+			// A plain --update-stale run (no --verify requested) is a report,
+			// not a verification: it must not emit the CANARY_VERIFY_FAIL
+			// marker, which is reserved for actual --verify failures.
+			if cfg.VerifyPath != "" {
+				_, _ = fmt.Fprintf(stderr, "CANARY_VERIFY_FAIL reason=no_commit err=%q\n", cerr)
+			} else {
+				_, _ = fmt.Fprintf(stderr, "CANARY_UPDATE_STALE_SKIP reason=no_commit err=%q\n", cerr)
+			}
 		}
 	}
 

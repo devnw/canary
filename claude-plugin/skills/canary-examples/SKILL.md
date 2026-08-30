@@ -106,7 +106,9 @@ canary scan --root . --project-only
 ## Maintenance
 
 ```bash
-# Update stale tokens (TESTED/BENCHED older than 30 days)
+# Report evidence currency for stale claims (TESTED/BENCHED older than 30
+# days); mutates nothing. Refresh evidence by rerunning tests and recording
+# the result with `canary evidence from-go-test` / `canary evidence ingest`.
 canary scan --root . --update-stale
 
 # Rebuild token database

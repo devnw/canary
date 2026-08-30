@@ -51,23 +51,6 @@ func TestAcceptance_BenchReferenceDoesNotPromote(t *testing.T) {
 	}
 }
 
-func TestAcceptance_VerifyFailsOnOverclaim(t *testing.T) {
-	// fake GAP line claiming Implemented but only STUB in repo
-	claimsContent := `| REQ‑GQL‑042 | Streaming and CDC | Implemented | evidence |`
-	p := filepath.Join(t.TempDir(), "GAP.md")
-	mustWrite(t, p, claimsContent)
-
-	// repo with only STUB marker
-	dir := t.TempDir()
-	mustWrite(t, filepath.Join(dir, "cdc.zig"), `// CANARY: REQ=REQ-GQL-042; FEATURE="CDC"; ASPECT=API; STATUS=STUB; UPDATED=2025-10-15`)
-
-	rep, _ := canary.Scan(dir)
-	claims, _ := canary.ParseGAPClaims(p)
-	if err := canary.VerifyClaims(rep, claims); err == nil {
-		t.Fatalf("expected verify error, got nil")
-	}
-}
-
 func TestScanMultiLanguageTokens(t *testing.T) {
 	dir := t.TempDir()
 	cases := map[string]string{

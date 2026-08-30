@@ -177,6 +177,35 @@ func TestVerifyRun_TextFormat(t *testing.T) {
 	}
 }
 
+// TestVerifyRun_TextFormatUnknown proves --format text distinguishes an
+// UNKNOWN verdict (F-6) from an ordinary UNVERIFIED one: an unresolvable
+// state must never print as "UNVERIFIED: 0 missing", which would read as
+// verified-except-nothing rather than "the answer could not be determined".
+func TestVerifyRun_TextFormatUnknown(t *testing.T) {
+	root, commit := fixture(t,
+		"// CANARY: REQ=CBIN-001; FEATURE=\"F\"; ASPECT=API; STATUS=TESTED; TEST=TestF; UPDATED=2026-01-01\n",
+		"✅ CBIN-001 - F\n")
+	store := writeStore(t, root, []evidence.Record{record("CBIN-001", "F", "API", commit)})
+	// A binary file makes the scan incomplete -> UNKNOWN/SCAN_INCOMPLETE.
+	if err := os.WriteFile(filepath.Join(root, "blob.dat"), append([]byte("CANARY: x"), 0x00, 0x01), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, _, code := runVerify(Options{
+		Root:         root,
+		ClaimsPath:   filepath.Join(root, "GAP_ANALYSIS.md"),
+		EvidencePath: store,
+		Format:       FormatText,
+	})
+	if code != 1 {
+		t.Fatalf("exit=%d, want 1", code)
+	}
+	want := "UNKNOWN: SCAN_INCOMPLETE\n"
+	if stdout != want {
+		t.Fatalf("stdout=%q want %q", stdout, want)
+	}
+}
+
 // TestVerifyRun_ScanIssueIsIncomplete proves a tree that could not be fully
 // scanned yields UNKNOWN/SCAN_INCOMPLETE, never a verified verdict.
 func TestVerifyRun_ScanIssueIsIncomplete(t *testing.T) {

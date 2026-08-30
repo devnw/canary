@@ -17,6 +17,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -149,16 +150,26 @@ func Run(opts Options, stdout, stderr io.Writer) int {
 	if opts.Format == "" {
 		opts.Format = FormatJSON
 	}
+	// The evidence store path is resolved the same way pkg/canaryscan does:
+	// relative to --root, not the process's CWD. An absolute --evidence
+	// passes through unchanged; a relative one (including the default,
+	// ".canary/evidence.json") is joined under --root so `canary verify
+	// --root <dir>` finds evidence recorded for that project regardless of
+	// where the command is invoked from.
+	evidencePath := opts.EvidencePath
+	if !filepath.IsAbs(evidencePath) {
+		evidencePath = filepath.Join(opts.Root, evidencePath)
+	}
 
 	projCfg, err := config.Load(opts.Root)
 	if err != nil {
 		fmt.Fprintf(stderr, "verify: config: %v\n", err)
-		return emit(stdout, opts.Format, scanIncomplete)
+		return emit(stdout, stderr, opts.Format, scanIncomplete)
 	}
 	reg, err := sources.FromProjectConfig(projCfg)
 	if err != nil {
 		fmt.Fprintf(stderr, "verify: sources: %v\n", err)
-		return emit(stdout, opts.Format, scanIncomplete)
+		return emit(stdout, stderr, opts.Format, scanIncomplete)
 	}
 	projectID := projCfg.ProjectID()
 	if opts.ProjectID != "" {
@@ -168,13 +179,13 @@ func Run(opts Options, stdout, stderr io.Writer) int {
 	ignorePatterns, ignoreErr := canaryscan.LoadCanaryIgnore(opts.Root)
 	if ignoreErr != nil {
 		fmt.Fprintf(stderr, "verify: .canaryignore: %v\n", ignoreErr)
-		return emit(stdout, opts.Format, scanIncomplete)
+		return emit(stdout, stderr, opts.Format, scanIncomplete)
 	}
 
 	rep, err := canaryscan.Scan(opts.Root, canaryscan.StateSkipRegex(), nil, ignorePatterns, reg)
 	if err != nil {
 		fmt.Fprintf(stderr, "verify: scan: %v\n", err)
-		return emit(stdout, opts.Format, scanIncomplete)
+		return emit(stdout, stderr, opts.Format, scanIncomplete)
 	}
 	// A partial scan cannot yield a clean verdict: some part of the tree was
 	// never examined, so its declarations are unknown.
@@ -182,25 +193,25 @@ func Run(opts Options, stdout, stderr io.Writer) int {
 		for _, is := range rep.Issues {
 			fmt.Fprintf(stderr, "CANARY_SCAN_ISSUE path=%s reason=%s\n", is.Path, is.Reason)
 		}
-		return emit(stdout, opts.Format, scanIncomplete)
+		return emit(stdout, stderr, opts.Format, scanIncomplete)
 	}
 
 	commit, err := canaryscan.HeadCommit(opts.Root)
 	if err != nil {
 		fmt.Fprintf(stderr, "verify: cannot determine commit: %v\n", err)
-		return emit(stdout, opts.Format, scanIncomplete)
+		return emit(stdout, stderr, opts.Format, scanIncomplete)
 	}
 
 	claimed, err := canaryscan.Claims(opts.ClaimsPath, reg)
 	if err != nil {
 		fmt.Fprintf(stderr, "verify: claims: %v\n", err)
-		return emit(stdout, opts.Format, scanIncomplete)
+		return emit(stdout, stderr, opts.Format, scanIncomplete)
 	}
 
-	recs, err := loadEvidence(opts.EvidencePath)
+	recs, err := loadEvidence(evidencePath)
 	if err != nil {
 		fmt.Fprintf(stderr, "verify: evidence: %v\n", err)
-		return emit(stdout, opts.Format, scanIncomplete)
+		return emit(stdout, stderr, opts.Format, scanIncomplete)
 	}
 
 	required := canaryscan.RequiredFeatures(rep, claimed)
@@ -218,29 +229,40 @@ func Run(opts Options, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "EXTERNAL_UNKNOWN dep=%s detail=%s\n", u.ID, u.ShortDetail())
 		}
 		if !opts.AllowUnknownExternal {
-			return emit(stdout, opts.Format, externalUnknown)
+			return emit(stdout, stderr, opts.Format, externalUnknown)
 		}
 	}
 
-	return emit(stdout, opts.Format, v)
+	return emit(stdout, stderr, opts.Format, v)
 }
 
 // emit writes the verdict to stdout in the requested format and returns the
 // exit code for it. In JSON mode this is one compact line and nothing else,
-// so the output is machine-consumable without filtering.
-func emit(stdout io.Writer, format string, v evidence.Verdict) int {
+// so the output is machine-consumable without filtering: even the
+// (practically unreachable) marshal-failure fallback goes to stderr, never
+// stdout, so a JSON consumer never has to handle a fifth output shape.
+func emit(stdout, stderr io.Writer, format string, v evidence.Verdict) int {
 	if format == FormatText {
-		if v.OK {
+		switch {
+		case v.OK:
 			fmt.Fprintln(stdout, "VERIFIED")
-		} else {
+		case v.State == "UNKNOWN":
+			// An unknown verdict (SCAN_INCOMPLETE, EXTERNAL_UNKNOWN, ...) has
+			// no "missing" count to report -- printing "0 missing" would
+			// read as verified-except-nothing, which is not what UNKNOWN
+			// means: the answer could not be determined at all.
+			fmt.Fprintf(stdout, "UNKNOWN: %s\n", v.Code)
+		default:
 			fmt.Fprintf(stdout, "UNVERIFIED: %d missing\n", len(v.Missing))
 		}
 	} else {
 		data, err := json.Marshal(v)
 		if err != nil {
 			// Verdict is four strings and a bool; Marshal cannot fail. The
-			// branch exists only so the error is never silently dropped.
-			fmt.Fprintf(stdout, "{\"ok\":false,\"state\":\"UNKNOWN\",\"code\":\"SCAN_INCOMPLETE\",\"message\":%q}\n", err.Error())
+			// branch exists only so the error is never silently dropped --
+			// and it goes to stderr, not stdout, so stdout in JSON mode
+			// never carries anything but the one verdict shape.
+			fmt.Fprintf(stderr, "verify: marshal verdict: %v\n", err)
 			return 1
 		}
 		fmt.Fprintf(stdout, "%s\n", data)

@@ -98,9 +98,11 @@ var fromGoTestCmd = &cobra.Command{
 	Long: `Read a 'go test -json' stream on stdin and emit an evidence file on stdout.
 
 Every token that declares TEST=<name> for a test that reported Action="pass"
-in the stream yields one record. Tests that did not pass yield nothing: this
-command cannot manufacture evidence for a test that did not run or did not
-pass.
+in the stream yields one record. Tests that did not pass yield nothing, and a
+name that reported Action="fail" anywhere in the stream is vetoed everywhere
+-- even if it also reported "pass" for a different package -- so this command
+cannot manufacture evidence for a test that did not run, did not pass, or
+also failed somewhere else in the same run.
 
 The artifact digest is the SHA-256 of the raw input stream, so a record is
 tied to the exact test output it was derived from.
@@ -319,7 +321,13 @@ func RunFromGoTest(opts FromGoTestOptions, stdin io.Reader, stdout, stderr io.Wr
 }
 
 // PassingTests returns the test names that reported Action="pass" in a
-// `go test -json` stream, mapped to the package they ran in.
+// `go test -json` stream, mapped to the package they ran in — but only for
+// names that never also reported Action="fail" anywhere in the stream. A
+// test name that passed in one package and failed in another (e.g. the same
+// subtest name reused across packages) is vetoed entirely: it is a lie to
+// call that name "passing" when the stream also shows it failing, so no
+// record is emitted for it at all, regardless of how many packages it passed
+// in.
 //
 // The stream is read line by line and any line that is not a JSON event is
 // skipped: `go test -json` can interleave raw build/vet output with events,
@@ -328,6 +336,7 @@ func RunFromGoTest(opts FromGoTestOptions, stdin io.Reader, stdout, stderr io.Wr
 // produce FEWER records, never a record for a test that did not pass.
 func PassingTests(raw []byte) map[string]string {
 	passed := map[string]string{}
+	failed := map[string]bool{}
 	sc := bufio.NewScanner(bytes.NewReader(raw))
 	sc.Buffer(make([]byte, 0, 64<<10), maxEventLineBytes)
 	for sc.Scan() {
@@ -339,9 +348,20 @@ func PassingTests(raw []byte) map[string]string {
 		if err := json.Unmarshal(line, &e); err != nil {
 			continue
 		}
-		if e.Action == "pass" && e.Test != "" {
-			passed[e.Test] = e.Package
+		if e.Test == "" {
+			continue
 		}
+		switch e.Action {
+		case "pass":
+			passed[e.Test] = e.Package
+		case "fail":
+			failed[e.Test] = true
+		}
+	}
+	// A fail anywhere in the stream vetoes the name everywhere: passing in
+	// package A does not excuse failing in package B.
+	for name := range failed {
+		delete(passed, name)
 	}
 	return passed
 }

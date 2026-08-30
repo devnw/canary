@@ -108,7 +108,9 @@ canary-verify:
     - ./bin/canary verify --root . --claims GAP_ANALYSIS.md --project CBIN --format json
     - ./bin/canary scan --root . --out status.json
     # The tree must be clean: verification reads the repo, it never edits it.
-    - git diff --exit-code
+    # A porcelain check (not `git diff --exit-code`) also catches untracked
+    # files left behind, not just modifications to tracked ones.
+    - test -z "$(git status --porcelain)" || { git status --porcelain; echo "working tree not clean"; exit 1; }
   artifacts:
     when: always
     paths:

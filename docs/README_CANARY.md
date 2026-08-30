@@ -501,7 +501,7 @@ canary scan --verify GAP_ANALYSIS.md --strict
 # Check for stale tokens
 canary scan --strict
 
-# Auto-update stale tokens
+# Report which stale tokens still have current PASS evidence (mutates nothing)
 canary scan --update-stale
 ```
 

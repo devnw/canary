@@ -129,4 +129,14 @@ func TestCANARY_CBIN_304_UpdateStaleMutatesNothing(t *testing.T) {
 	if !strings.Contains(stderr.String(), "CANARY_UPDATE_STALE req=CBIN-501 evidence=missing") {
 		t.Errorf("expected an evidence-currency report for CBIN-501, got: %s", stderr.String())
 	}
+	// root is not a git repository, so HeadCommit fails; a plain
+	// --update-stale run (no --verify requested) must report that with the
+	// neutral skip marker, never the CANARY_VERIFY_FAIL marker reserved for
+	// actual --verify failures.
+	if strings.Contains(stderr.String(), "CANARY_VERIFY_FAIL") {
+		t.Errorf("plain --update-stale run must not emit CANARY_VERIFY_FAIL, got: %s", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "CANARY_UPDATE_STALE_SKIP reason=no_commit") {
+		t.Errorf("expected CANARY_UPDATE_STALE_SKIP reason=no_commit, got: %s", stderr.String())
+	}
 }

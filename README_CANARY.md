@@ -52,6 +52,6 @@ canary scan --root . --verify GAP_ANALYSIS.md
 # Check for stale tokens (30-day threshold)
 canary scan --root . --strict
 
-# Auto-update stale TESTED/BENCHED tokens
+# Report which stale claims still have current PASS evidence (mutates nothing)
 canary scan --root . --update-stale
 ```
