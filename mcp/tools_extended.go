@@ -508,7 +508,7 @@ type BugCreateResult struct {
 // arbitrary caller text.
 var aspectPattern = regexp.MustCompile(`^[A-Za-z0-9]+$`)
 
-// CANARY: REQ=CP-282; FEATURE="TransactionalIDs"; ASPECT=API; STATUS=TESTED; TEST=TestAuditF10MutatingPostconditions,TestBugCreatePersistsReservedID; UPDATED=2026-08-30
+// CANARY: REQ=ENG-4392; FEATURE="TransactionalIDs"; ASPECT=API; STATUS=TESTED; TEST=TestAuditF10MutatingPostconditions,TestBugCreatePersistsReservedID; UPDATED=2026-08-30
 
 // handleBugCreate reserves a bug id and persists the bug.
 //

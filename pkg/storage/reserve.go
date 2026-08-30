@@ -32,7 +32,7 @@ const reserveAttempts = 100
 // printed, so ids minted before and after this table are the same shape.
 const idNumberWidth = 3
 
-// CANARY: REQ=CP-282; FEATURE="TransactionalIDs"; ASPECT=Storage; STATUS=TESTED; TEST=TestAuditF18,TestAuditF18SeedsPastExistingTokens,TestAuditF18RefusesUnscopedReservation,TestReserveIDConcurrent; UPDATED=2026-08-30
+// CANARY: REQ=ENG-4392; FEATURE="TransactionalIDs"; ASPECT=Storage; STATUS=TESTED; TEST=TestAuditF18,TestAuditF18SeedsPastExistingTokens,TestAuditF18RefusesUnscopedReservation,TestReserveIDConcurrent; UPDATED=2026-08-30
 
 // ReserveID allocates the next identifier in a series and records the
 // allocation, returning e.g. "BUG-API-007".

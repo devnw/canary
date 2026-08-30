@@ -16,7 +16,7 @@ import (
 	"strings"
 )
 
-// CANARY: REQ=CP-283; FEATURE="MCPAuth"; ASPECT=Security; STATUS=TESTED; TEST=TestAuthLoopbackNoTokensAllows,TestAuthNonLoopbackWithoutTokensDenies,TestAuthRequiresBearerWhenConfigured,TestAuthReadTokenRefusedOnMutatingTool,TestAuthNeverEchoesTokens,TestScopesFor,TestIsLoopbackHost; UPDATED=2026-08-30
+// CANARY: REQ=ENG-4393; FEATURE="MCPAuth"; ASPECT=Security; STATUS=TESTED; TEST=TestAuthLoopbackNoTokensAllows,TestAuthNonLoopbackWithoutTokensDenies,TestAuthRequiresBearerWhenConfigured,TestAuthReadTokenRefusedOnMutatingTool,TestAuthNeverEchoesTokens,TestScopesFor,TestIsLoopbackHost; UPDATED=2026-08-30
 
 // Environment variables that configure MCP authentication. Their VALUES are
 // never logged, echoed in an error, or written to a response body: an error
