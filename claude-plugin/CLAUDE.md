@@ -92,7 +92,7 @@ If `canary mcp` is running, MCP tools are available as supplements to CLI comman
 canary mcp  # Starts HTTP server on localhost:8080/mcp
 ```
 
-MCP provides 19 tools. Lead with `view` and `deps` for hierarchical context in one call:
+MCP provides 15 tools (see `docs/MCP_TOOLS.md`, generated). Lead with `view` and `deps` for hierarchical context in one call:
 - **One-call context:** view, deps
 - **Core:** list, show, create, status, search, next
 - **Workflow:** scan, specify (stub — not yet implemented), plan (stub — not yet implemented), implement, index (stub — not yet implemented)
