@@ -18,7 +18,7 @@ GOLANGCI_LINT_VERSION := v2.13.2
 # modules (< v2.29 aborts with "package fmt without types imported from
 # command-line-arguments"); kept pinned as the documented reference version.
 GOSEC_VERSION := v2.29.0
-GOVULNCHECK_VERSION := v1.1.4
+GOVULNCHECK_VERSION := v1.7.0
 
 # Project key from .canary/project.yaml (project.key). Evidence and verify are
 # scoped to it so records bind to this project, not a default.
