@@ -81,6 +81,18 @@ func Complete(required map[string][]FeatureKey, recs []Record, projectID, commit
 	}
 }
 
+// CompleteReq is the single-requirement form of Complete, and the shared
+// entry point behind the two surfaces that answer "is this local dependency
+// satisfied?" -- `canary next`'s dependency gate and `canary deps check`.
+// reqID is complete iff every key has a PASS record for projectID at commit.
+// An empty keys slice yields false (EMPTY_CLAIMS): a dependency with nothing
+// to prove is not proven. Routing both callers through here keeps ONE
+// completion definition -- a declared STATUS=TESTED is a claim on both
+// surfaces, never proof.
+func CompleteReq(reqID string, keys []FeatureKey, recs []Record, projectID, commit string) bool {
+	return Complete(map[string][]FeatureKey{reqID: keys}, recs, projectID, commit, false).OK
+}
+
 // evaluateKey checks whether any record satisfies (reqID, key) at
 // projectID+commit, and when not, classifies why, in this precedence order:
 //

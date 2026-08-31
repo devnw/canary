@@ -3,13 +3,17 @@ package deps
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"devnw.dev/canary/pkg/canaryscan"
 	"devnw.dev/canary/pkg/cmds/internal/utils"
+	"devnw.dev/canary/pkg/config"
+	"devnw.dev/canary/pkg/evidence"
 	"devnw.dev/canary/pkg/external"
 	"devnw.dev/canary/pkg/sources"
 	"devnw.dev/canary/pkg/specs"
@@ -56,9 +60,19 @@ func createDepsCheckCommand() *cobra.Command {
 		Short: "Check if dependencies are satisfied",
 		Long: `Check if all dependencies for a requirement are satisfied.
 
-This command loads the requirement's dependencies and checks their status
-against the CANARY token database. Only TESTED and BENCHED status satisfy
-dependencies - IMPL is insufficient.
+This command loads the requirement's dependencies and checks their status.
+
+A LOCAL dependency (one tracked by CANARY tokens in this project) is
+satisfied only when it has current passing evidence at HEAD: a PASS record
+in .canary/evidence.json for every required feature/aspect, bound to this
+project and this commit. A declared STATUS=TESTED is a claim, not proof, and
+is no longer accepted on its own -- the same one completion definition used
+by 'canary next', 'canary verify', and 'canary view'. With no evidence store
+(or no readable HEAD) local dependencies are reported unsatisfied, never
+assumed done.
+
+An EXTERNAL dependency (owned by a configured ticket source, e.g. JIRA) is
+resolved against that source's cached status as before.
 
 Example:
   canary deps check CBIN-147`,
@@ -106,6 +120,26 @@ Example:
 				return fmt.Errorf("load .canary/project.yaml: %w", err)
 			}
 
+			// Evidence infrastructure for the LOCAL half of the one
+			// completion definition. An unconfigured repo yields an empty
+			// config (project id "default"), a missing evidence store yields
+			// no records, and an unreadable HEAD yields an empty commit that
+			// no record can match -- each of which reports local dependencies
+			// unsatisfied rather than crashing or assuming them done.
+			cfg, err := config.Load(".")
+			if err != nil {
+				return fmt.Errorf("load .canary/project.yaml: %w", err)
+			}
+			evidenceProjectID := utils.ReadProjectID(cmd)
+			if strings.TrimSpace(evidenceProjectID) == "" {
+				evidenceProjectID = cfg.ProjectID()
+			}
+			recs, err := loadEvidenceRecords(".")
+			if err != nil {
+				return err
+			}
+			commit, _ := canaryscan.HeadCommit(".")
+
 			// Display results
 			cmd.Println(fmt.Sprintf("Dependency status for %s:", reqID))
 			cmd.Println()
@@ -133,18 +167,30 @@ Example:
 						}
 						continue
 					}
+
+					// Genuinely missing: no local tokens and no external
+					// source owns it. It names something that does not exist,
+					// so it blocks -- there is nothing to prove evidence for.
+					blockingCount++
+					cmd.Println(fmt.Sprintf("❌ %s - %s", status.Dependency.Target, status.Message))
+					continue
 				}
 
-				if status.IsSatisfied {
+				// LOCAL dependency: satisfaction is evidence-based, mirroring
+				// `canary next`. A declared STATUS=TESTED is a claim; only a
+				// PASS record for this project at this commit is proof.
+				toks := tokenProvider.GetTokensByReqID(status.Dependency.Target)
+				satisfied, missing := localDepSatisfied(status.Dependency, toks, recs, evidenceProjectID, commit)
+				if satisfied {
 					satisfiedCount++
 					if showSatisfied {
-						cmd.Println(fmt.Sprintf("✅ %s - %s", status.Dependency.Target, status.Message))
+						cmd.Println(fmt.Sprintf("✅ %s - required features have current passing evidence", status.Dependency.Target))
 					}
 				} else {
 					blockingCount++
-					cmd.Println(fmt.Sprintf("❌ %s - %s", status.Dependency.Target, status.Message))
-					if len(status.MissingFeatures) > 0 {
-						cmd.Println(fmt.Sprintf("   Missing: %s", strings.Join(status.MissingFeatures, ", ")))
+					cmd.Println(fmt.Sprintf("❌ %s - no current passing evidence at HEAD", status.Dependency.Target))
+					if len(missing) > 0 {
+						cmd.Println(fmt.Sprintf("   Missing: %s", strings.Join(missing, ", ")))
 					}
 				}
 			}
@@ -590,6 +636,115 @@ func countExternalDeps(graph *specs.DependencyGraph, reg *sources.Registry, toke
 		}
 	}
 	return satisfied, unsatisfied, unknown
+}
+
+// loadEvidenceRecords reads root's evidence store for the local dependency
+// satisfaction check. A missing store is not an error -- nothing has been
+// proven yet, so nothing is complete. A malformed one IS an error: treating
+// unparseable evidence as absent would hide tampering behind an "unsatisfied"
+// that reads like ordinary progress. Mirrors the identical loader in
+// pkg/cmds/next so both surfaces fail the same way.
+func loadEvidenceRecords(root string) ([]evidence.Record, error) {
+	path := filepath.Join(root, filepath.FromSlash(canaryscan.EvidenceFile))
+	f, err := evidence.Load(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return f.Records, nil
+}
+
+// localDepSatisfied is the deps-side of the one completion definition: a
+// local dependency is satisfied iff pkg/evidence.CompleteReq passes over the
+// feature/aspect keys the dependency requires, for this project at this
+// commit. It returns the feature names still lacking proof for display.
+//
+// The required keys are scoped to the dependency type so PartialFeatures /
+// PartialAspect keep their meaning: a required feature with no declared token
+// at all is genuinely absent (blocking), independent of any status claim.
+func localDepSatisfied(dep specs.Dependency, toks []specs.TokenInfo, recs []evidence.Record, projectID, commit string) (bool, []string) {
+	keys, absent := requiredKeys(dep, toks)
+
+	// Fail closed when the dependency requires something declared nowhere.
+	if len(absent) > 0 {
+		return false, dedupeStrings(absent)
+	}
+
+	v := evidence.Complete(
+		map[string][]evidence.FeatureKey{dep.Target: keys},
+		recs, projectID, commit, false,
+	)
+	if v.OK {
+		return true, nil
+	}
+	names := make([]string, 0, len(v.Missing))
+	for _, m := range v.Missing {
+		names = append(names, m.Key.Feature)
+	}
+	return false, dedupeStrings(names)
+}
+
+// requiredKeys returns the feature/aspect keys a local dependency requires,
+// scoped to its type, from the target's declared tokens. absent lists any
+// PartialFeatures requirement that has no declared token at all.
+func requiredKeys(dep specs.Dependency, toks []specs.TokenInfo) (keys []evidence.FeatureKey, absent []string) {
+	seen := make(map[evidence.FeatureKey]struct{}, len(toks))
+	add := func(feature, aspect string) {
+		k := evidence.FeatureKey{Feature: feature, Aspect: aspect}
+		if _, dup := seen[k]; dup {
+			return
+		}
+		seen[k] = struct{}{}
+		keys = append(keys, k)
+	}
+
+	switch dep.Type {
+	case specs.DependencyTypePartialFeatures:
+		byFeature := make(map[string][]specs.TokenInfo, len(toks))
+		for _, tk := range toks {
+			byFeature[tk.Feature] = append(byFeature[tk.Feature], tk)
+		}
+		for _, f := range dep.RequiredFeatures {
+			fts := byFeature[f]
+			if len(fts) == 0 {
+				absent = append(absent, f)
+				continue
+			}
+			for _, tk := range fts {
+				add(tk.Feature, tk.Aspect)
+			}
+		}
+	case specs.DependencyTypePartialAspect:
+		for _, tk := range toks {
+			if tk.Aspect == dep.RequiredAspect {
+				add(tk.Feature, tk.Aspect)
+			}
+		}
+	default: // DependencyTypeFull
+		for _, tk := range toks {
+			add(tk.Feature, tk.Aspect)
+		}
+	}
+	return keys, absent
+}
+
+// dedupeStrings returns s with duplicates removed, order preserved.
+func dedupeStrings(s []string) []string {
+	if len(s) == 0 {
+		return s
+	}
+	seen := make(map[string]struct{}, len(s))
+	out := make([]string, 0, len(s))
+	for _, v := range s {
+		if _, dup := seen[v]; dup {
+			continue
+		}
+		seen[v] = struct{}{}
+		out = append(out, v)
+	}
+	return out
 }
 
 // Adapter types

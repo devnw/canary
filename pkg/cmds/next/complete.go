@@ -110,11 +110,7 @@ func (g *depGate) blocked(dependsOn string, declared declaredFn) (blocked bool, 
 // feature of reqID must have a PASS evidence record for this project at this
 // commit.
 func (g *depGate) complete(reqID string, keys []evidence.FeatureKey) bool {
-	v := evidence.Complete(
-		map[string][]evidence.FeatureKey{reqID: keys},
-		g.recs, g.evidenceProjectID, g.commit, false,
-	)
-	return v.OK
+	return evidence.CompleteReq(reqID, keys, g.recs, g.evidenceProjectID, g.commit)
 }
 
 // externalBlocks resolves a dependency with no local declarations against the
