@@ -118,7 +118,7 @@ The command will:
 		}
 
 		// Write documentation file
-		if err := os.WriteFile(outputPath, templateContent, 0640); err != nil {
+		if err := os.WriteFile(outputPath, templateContent, 0640); err != nil { //nolint:gosec // generated doc, group-readable by design
 			return fmt.Errorf("failed to write documentation file: %w", err)
 		}
 

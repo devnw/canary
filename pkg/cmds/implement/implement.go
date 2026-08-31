@@ -303,6 +303,7 @@ func renderImplementPrompt(spec *RequirementSpec, flags *ImplementFlags) (string
 // calculateProgress scans codebase for tokens matching reqID
 func calculateProgress(reqID string) (*ProgressStats, error) {
 	// Use grep to find all tokens for this requirement
+	//nolint:gosec // fixed argv (grep); reqID is a pattern arg, not a shell command
 	grepCmd := exec.Command("grep", "-rn", "--include=*.go", "--include=*.md",
 		fmt.Sprintf("CANARY:.*REQ=%s", reqID), ".")
 
@@ -345,6 +346,7 @@ func calculateProgress(reqID string) (*ProgressStats, error) {
 // placed. Used to populate the implement-prompt-template.md {{.Aspect}}
 // placeholder in the suggested TEST= function name.
 func detectAspect(reqID string) string {
+	//nolint:gosec // fixed argv (grep); reqID is a pattern arg, not a shell command
 	grepCmd := exec.Command("grep", "-rn", "--include=*.go", "--include=*.md",
 		fmt.Sprintf("CANARY:.*REQ=%s", reqID), ".")
 

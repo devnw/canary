@@ -111,7 +111,7 @@ func ScanMigrateNotes(root string, skip *regexp.Regexp, ignorePatterns *ignore.G
 		if info, ierr := d.Info(); ierr == nil && info.Size() > maxMigrateFileSize {
 			return nil
 		}
-		b, rerr := os.ReadFile(path)
+		b, rerr := os.ReadFile(path) //nolint:gosec // path comes from the local scan walk
 		if rerr != nil {
 			// Unreadable file is not fatal to a scan, but it is not
 			// invisible either.

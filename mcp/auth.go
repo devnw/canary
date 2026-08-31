@@ -23,9 +23,9 @@ import (
 // message that names the expected token is the same leak as printing it.
 const (
 	// EnvToken grants read and mutate.
-	EnvToken = "CANARY_MCP_TOKEN"
+	EnvToken = "CANARY_MCP_TOKEN" //nolint:gosec // env var NAME, not a credential value
 	// EnvReadToken grants read only.
-	EnvReadToken = "CANARY_MCP_READ_TOKEN"
+	EnvReadToken = "CANARY_MCP_READ_TOKEN" //nolint:gosec // env var NAME, not a credential value
 )
 
 // Scopes is what a request is allowed to do.

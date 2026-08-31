@@ -140,6 +140,8 @@ func resolveOrder(orderKey string) (string, error) {
 // scanTokens reads them. Having exactly one list keeps project_id from being
 // silently dropped by a query that forgot it -- which is how unscoped reads
 // used to return other projects' rows with an empty ProjectID.
+//
+//nolint:gosec // G101 false positive: SQL column list, not a credential
 const tokenColumns = `id, req_id, feature, aspect, status, file_path, line_number,
 		test, bench, owner, priority, phase, keywords, spec_status,
 		created_at, updated_at, started_at, completed_at,
@@ -155,6 +157,8 @@ func (db *DB) Close() error {
 
 // upsertTokenQuery inserts a token, or updates the row that already occupies
 // its (req_id, feature, file_path, line_number, project_id) slot.
+//
+//nolint:gosec // G101 false positive: SQL upsert statement, not a credential
 const upsertTokenQuery = `
 		INSERT INTO tokens (
 			req_id, feature, aspect, status, file_path, line_number,

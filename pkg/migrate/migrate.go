@@ -332,7 +332,7 @@ func ExecuteMigration(rootDir string, plan *MigrationPlan, dryRun bool) error {
 				return fmt.Errorf("failed to create directory for %s: %w", filename, err)
 			}
 
-			if err := os.WriteFile(destPath, content, 0640); err != nil {
+			if err := os.WriteFile(destPath, content, 0640); err != nil { //nolint:gosec // migrated doc, group-readable by design
 				return fmt.Errorf("failed to create file %s: %w", filename, err)
 			}
 

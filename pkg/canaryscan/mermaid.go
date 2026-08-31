@@ -124,7 +124,7 @@ func ScanDiagramRefs(root string, skip *regexp.Regexp, reg *sources.Registry, ig
 				Detail: fmt.Sprintf("%d bytes exceeds limit %d", info.Size(), MaxFileBytes)})
 			return nil
 		}
-		b, err := os.ReadFile(path)
+		b, err := os.ReadFile(path) //nolint:gosec // path comes from the local scan walk
 		if err != nil {
 			// Unreadable markdown is not fatal to a scan, but it is not
 			// invisible either.

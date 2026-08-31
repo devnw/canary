@@ -211,7 +211,7 @@ func Analyze(root string, limit int) (*OnboardReport, error) {
 		if ierr != nil || info.Size() > maxReadSize {
 			return nil
 		}
-		b, rerr := os.ReadFile(path)
+		b, rerr := os.ReadFile(path) //nolint:gosec // path comes from the local scan walk
 		if rerr != nil {
 			return nil // unreadable file is not fatal to onboard analysis
 		}

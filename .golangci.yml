@@ -23,6 +23,9 @@ linters:
   enable:
     # errcheck disabled until test-file exclusions work; many unchecked errors fixed in non-test code
     - govet
+    # gosec runs through golangci-lint so the repo's //nolint:gosec directives
+    # are honored (standalone gosec ignores //nolint and reports every finding).
+    - gosec
     - ineffassign
     # staticcheck disabled for style suggestions (QF1003/SA1019/QF1012); re-enable and fix later
     - unused
@@ -31,6 +34,13 @@ linters:
     presets:
       - comments
       - common-false-positives
+    rules:
+      # Standalone gosec does not scan _test.go files by default (-tests=false);
+      # match that default so test-only permissions/error-handling patterns
+      # (G104/G301/G306) don't fail the security scan.
+      - path: _test\.go
+        linters:
+          - gosec
   settings:
     govet:
       enable-all: true

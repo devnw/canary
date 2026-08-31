@@ -12,8 +12,11 @@ GO ?= go
 # golangci_version). gosec and govulncheck track their latest go1.27-compatible
 # releases.
 GOLANGCI_LINT_VERSION := v2.13.2
-# gosec < v2.29 aborts under go1.27 with "package fmt without types imported
-# from command-line-arguments"; v2.29.0 type-checks go1.27 modules cleanly.
+# gosec is run through golangci-lint (see the security: target) so the repo's
+# //nolint:gosec directives are honored -- golangci-lint bundles its own gosec.
+# GOSEC_VERSION records the minimum standalone gosec that type-checks go1.27
+# modules (< v2.29 aborts with "package fmt without types imported from
+# command-line-arguments"); kept pinned as the documented reference version.
 GOSEC_VERSION := v2.29.0
 GOVULNCHECK_VERSION := v1.1.4
 
@@ -43,8 +46,12 @@ lint:
 	$(GO) vet ./...
 	$(GO) run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run ./...
 
+# security runs gosec THROUGH golangci-lint (--enable-only=gosec) so the repo's
+# //nolint:gosec directives are honored; standalone gosec ignores //nolint and
+# would report every suppressed finding, so `make security` could never pass.
+# govulncheck then checks the dependency graph and stdlib for known CVEs.
 security:
-	$(GO) run github.com/securego/gosec/v2/cmd/gosec@$(GOSEC_VERSION) ./...
+	$(GO) run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run --enable-only=gosec ./...
 	$(GO) run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 
 # verify proves the gap-analysis claims with evidence rather than trusting

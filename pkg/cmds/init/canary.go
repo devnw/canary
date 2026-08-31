@@ -183,7 +183,7 @@ func customizeProjectYaml(path, projectName, projectKey string) error {
 	text = strings.ReplaceAll(text, "{{PROJECT_DESCRIPTION}}", fmt.Sprintf("%s project with CANARY requirement tracking", projectName))
 	text = strings.ReplaceAll(text, "{{PROJECT_KEY}}", projectKey)
 
-	if err := os.WriteFile(path, []byte(text), 0640); err != nil {
+	if err := os.WriteFile(path, []byte(text), 0640); err != nil { //nolint:gosec // generated doc, group-readable by design
 		return fmt.Errorf("write project.yaml: %w", err)
 	}
 

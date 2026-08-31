@@ -95,7 +95,7 @@ func (s *Scanner) ScanRepository(root string) (ScanResult, error) {
 		if isBinaryExt(path) {
 			return nil
 		}
-		f, err := os.Open(path)
+		f, err := os.Open(path) //nolint:gosec // path comes from the local scan walk
 		if err != nil {
 			return nil
 		}

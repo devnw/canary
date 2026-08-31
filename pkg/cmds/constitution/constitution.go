@@ -34,7 +34,7 @@ If arguments are provided, updates or adds specific principles.`,
 			}
 
 			// Write constitution
-			if err := os.WriteFile(constitutionPath, content, 0640); err != nil {
+			if err := os.WriteFile(constitutionPath, content, 0640); err != nil { //nolint:gosec // generated doc, group-readable by design
 				return fmt.Errorf("write constitution: %w", err)
 			}
 

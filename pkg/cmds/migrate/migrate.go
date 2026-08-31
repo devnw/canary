@@ -244,14 +244,14 @@ Use --dry-run to preview changes without creating files.`,
 
 			// Write spec
 			specPath := filepath.Join(specDir, "spec.md")
-			if err := os.WriteFile(specPath, []byte(specContent), 0640); err != nil {
+			if err := os.WriteFile(specPath, []byte(specContent), 0640); err != nil { //nolint:gosec // generated doc, group-readable by design
 				fmt.Printf("⚠️  Failed to write spec for %s: %v\n", orphan.ReqID, err)
 				continue
 			}
 
 			// Write plan
 			planPath := filepath.Join(specDir, "plan.md")
-			if err := os.WriteFile(planPath, []byte(planContent), 0640); err != nil {
+			if err := os.WriteFile(planPath, []byte(planContent), 0640); err != nil { //nolint:gosec // generated doc, group-readable by design
 				fmt.Printf("⚠️  Failed to write plan for %s: %v\n", orphan.ReqID, err)
 				continue
 			}
