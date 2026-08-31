@@ -55,6 +55,11 @@ fixtures/
 test-fixtures/
 *_test.go
 
+# F-14 parser-unification corpus: deliberately-crafted fixture tokens
+# (CBIN-101, BUG-API-001, REQ-GQL-046, ...) that prove every parse path agrees.
+# They are test fixtures, never real project requirements.
+internal/audit/corpus/
+
 # Version control
 .git/
 .direnv/

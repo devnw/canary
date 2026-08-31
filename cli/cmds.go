@@ -118,3 +118,12 @@ func Commands(version string) []*cobra.Command {
 		mcp.New(version),
 	}
 }
+
+// init wires subcommands that live in one package under a parent command
+// defined in another. `canary db schema` is defined in pkg/cmds/db but the
+// `db` parent command lives in pkg/cmds/project; wiring it here (once, at
+// package load) keeps that cross-package edge in the assembly layer rather
+// than forcing an import between the two leaf packages.
+func init() {
+	project.DbCmd.AddCommand(db.SchemaCmd)
+}

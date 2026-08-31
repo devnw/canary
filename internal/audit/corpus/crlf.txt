@@ -1,0 +1,2 @@
+// CANARY: REQ=CBIN-115; FEATURE="CarriageReturn"; ASPECT=Storage; STATUS=IMPL; UPDATED=2026-01-14
+code();

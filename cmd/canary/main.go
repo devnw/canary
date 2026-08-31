@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"runtime/debug"
 
 	"github.com/spf13/cobra"
 
@@ -22,8 +23,17 @@ import (
 	"devnw.dev/canary/pkg/contract"
 )
 
+// version, commit and date are overwritten at release time by goreleaser via
+// -X main.version / -X main.commit / -X main.date ldflags. They MUST exist as
+// package-level vars for those flags to land -- a missing var makes the linker
+// silently drop the -X. For a plain `go install ...@vX` build (no ldflags),
+// resolveVersion falls back to the module version stamped into the binary by
+// the toolchain.
 var (
 	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+
 	rootCmd = &cobra.Command{
 		Use:   "canary",
 		Short: "Track requirements via CANARY tokens in source code",
@@ -31,7 +41,7 @@ var (
 
 Inspired by spec-kit's specification-driven development, canary provides
 commands for scanning, creating, and managing requirement tokens.`,
-		Version: version,
+		Version: resolveVersion(),
 
 		// main() prints the error itself; without this cobra prints it too,
 		// so every failure arrived twice.
@@ -46,6 +56,22 @@ commands for scanning, creating, and managing requirement tokens.`,
 		// storage.OpenRW to write (creates and migrates, banners on stderr).
 	}
 )
+
+// resolveVersion returns the version to report. A release build has version
+// set by ldflags. A `go install devnw.dev/canary/cmd/canary@vX.Y.Z` build
+// leaves it "dev", but the toolchain stamps the module version into the
+// binary's build info, so fall back to that (tag-derived) value when present.
+func resolveVersion() string {
+	if version != "dev" {
+		return version
+	}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		if v := info.Main.Version; v != "" && v != "(devel)" {
+			return v
+		}
+	}
+	return version
+}
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
@@ -69,10 +95,17 @@ func init() {
 	handler := slog.NewTextHandler(os.Stderr, opts)
 	slog.SetDefault(slog.New(handler))
 
+	// Resolve the effective version once (ldflags at release, module build
+	// info for `go install`, else "dev") and thread it everywhere: the
+	// --version output, and every subcommand that reports a version (mcp).
+	resolved := resolveVersion()
+	rootCmd.Version = resolved
+	rootCmd.SetVersionTemplate(fmt.Sprintf("canary %s (%s %s)\n", resolved, commit, date))
+
 	// Add all commands using the centralized Commands() function
 	// This automatically includes all subcommands which are registered
 	// in their respective package init() functions
-	rootCmd.AddCommand(cli.Commands(version)...)
+	rootCmd.AddCommand(cli.Commands(resolved)...)
 
 	// initCmd flags
 	canaryinit.InitCmd.Flags().Bool("local", false, "install commands locally in project directory (default: global in home directory)")
