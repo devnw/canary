@@ -15,10 +15,23 @@ import (
 	"devnw.dev/canary/pkg/storage"
 )
 
-// TestAuditF27_ConstitutionAmends proves `canary constitution "<text>"` on a
-// repo that already has a constitution appends a dated amendment inside the
-// managed markers rather than doing nothing.
-func TestAuditF27_ConstitutionAmends(t *testing.T) {
+// TestAuditF27 covers F-27: tag-derived version with agreeing plugin manifests,
+// constitution amendments, show filesystem fallback + ambiguity reporting, and
+// the DB schema doc staying in lockstep with storage.SchemaDDL. The individual
+// behaviors run as subtests so the exact acceptance name TestAuditF27 exists
+// once and exercises every half.
+func TestAuditF27(t *testing.T) {
+	t.Run("ConstitutionAmends", f27ConstitutionAmends)
+	t.Run("ShowAmbiguous", f27ShowAmbiguous)
+	t.Run("ShowFilesystemFallback", f27ShowFilesystemFallback)
+	t.Run("PluginVersionsMatch", f27PluginVersionsMatch)
+	t.Run("SchemaDocMatches", f27SchemaDocMatches)
+}
+
+// f27ConstitutionAmends proves `canary constitution "<text>"` on a repo that
+// already has a constitution appends a dated amendment inside the managed
+// markers rather than doing nothing.
+func f27ConstitutionAmends(t *testing.T) {
 	bin := buildCanary(t)
 	root := t.TempDir()
 	memDir := filepath.Join(root, ".canary", "memory")
@@ -57,9 +70,9 @@ func TestAuditF27_ConstitutionAmends(t *testing.T) {
 	}
 }
 
-// TestAuditF27_ShowAmbiguous proves a prefix that matches several requirements
-// prints the sorted candidate list and exits non-zero.
-func TestAuditF27_ShowAmbiguous(t *testing.T) {
+// f27ShowAmbiguous proves a prefix that matches several requirements prints the
+// sorted candidate list and exits non-zero.
+func f27ShowAmbiguous(t *testing.T) {
 	bin := buildCanary(t)
 	root := t.TempDir()
 	seedShowTokens(t, root)
@@ -78,9 +91,9 @@ func TestAuditF27_ShowAmbiguous(t *testing.T) {
 	}
 }
 
-// TestAuditF27_ShowFilesystemFallback proves that with no index, show resolves
-// a requirement by scanning the filesystem and marks the source.
-func TestAuditF27_ShowFilesystemFallback(t *testing.T) {
+// f27ShowFilesystemFallback proves that with no index, show resolves a
+// requirement by scanning the filesystem and marks the source.
+func f27ShowFilesystemFallback(t *testing.T) {
 	bin := buildCanary(t)
 	root := t.TempDir()
 	seedShowTokens(t, root)
@@ -95,10 +108,10 @@ func TestAuditF27_ShowFilesystemFallback(t *testing.T) {
 	}
 }
 
-// TestAuditF27_PluginVersionsMatch proves the two plugin manifests declare the
-// same version. The released binary version is tag-derived; the manifests must
-// at least agree with each other.
-func TestAuditF27_PluginVersionsMatch(t *testing.T) {
+// f27PluginVersionsMatch proves the two plugin manifests declare the same
+// version. The released binary version is tag-derived; the manifests must at
+// least agree with each other.
+func f27PluginVersionsMatch(t *testing.T) {
 	claude := readPluginVersion(t, repoPath(t, filepath.Join("claude-plugin", ".claude-plugin", "plugin.json")))
 	cursor := readPluginVersion(t, repoPath(t, filepath.Join("cursor-plugin", ".cursor-plugin", "plugin.json")))
 	if claude == "" || cursor == "" {
@@ -109,10 +122,10 @@ func TestAuditF27_PluginVersionsMatch(t *testing.T) {
 	}
 }
 
-// TestAuditF27_SchemaDocMatches proves docs/DB_SCHEMA.md is exactly what
-// `canary db schema` prints (storage.SchemaDDL). If they drift, regenerate the
-// doc with `canary db schema > docs/DB_SCHEMA.md`.
-func TestAuditF27_SchemaDocMatches(t *testing.T) {
+// f27SchemaDocMatches proves docs/DB_SCHEMA.md is exactly what `canary db
+// schema` prints (storage.SchemaDDL). If they drift, regenerate the doc with
+// `canary db schema > docs/DB_SCHEMA.md`.
+func f27SchemaDocMatches(t *testing.T) {
 	ddl, err := storage.SchemaDDL()
 	if err != nil {
 		t.Fatalf("SchemaDDL: %v", err)

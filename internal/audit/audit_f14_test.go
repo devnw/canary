@@ -16,6 +16,7 @@ import (
 	"devnw.dev/canary/pkg/canaryscan"
 	"devnw.dev/canary/pkg/cmds/next"
 	"devnw.dev/canary/pkg/storage"
+	"devnw.dev/canary/pkg/upgrade"
 )
 
 // tuple is the canonical, source-independent identity of a scanned token: the
@@ -36,10 +37,11 @@ var requiredKeys = []string{"REQ", "FEATURE", "ASPECT", "STATUS", "UPDATED"}
 //
 // Paths exercised:
 //   - canaryscan.Scan (the report) -- the canonical set.
-//   - canaryscan.ParseTokenLine, applied per source line. This is also the
-//     exact primitive pkg/upgrade's pre-parse uses (upgrade.tokenShapeOf calls
-//     canaryscan.ParseTokenLine), so proving it agrees with Scan proves the
-//     upgrade pre-parse agrees too.
+//   - canaryscan.ParseTokenLine, applied per source line.
+//   - pkg/upgrade's preservation guard (upgrade.TokenLineFields -> the real
+//     tokenShapeOf path canary upgrade uses to decide a token survived), fed
+//     each corpus line. Executed for real -- not argued by comment -- so all
+//     five public parse paths are compared against one canonical set.
 //   - `canary index` -> database rows, read back through pkg/storage.
 //   - `canary next`'s filesystem source (next.SelectNext with no index), whose
 //     selected token must be a member of the canonical set.
@@ -52,16 +54,19 @@ func TestAuditF14(t *testing.T) {
 		t.Fatal("corpus produced no tokens via canaryscan.Scan")
 	}
 
-	// Path 2: ParseTokenLine per source line (also the upgrade pre-parse
-	// primitive).
+	// Path 2: ParseTokenLine per source line.
 	lineSet := parseLineTuples(t, corpus)
 	assertSameSet(t, "canaryscan.Scan", scanSet, "ParseTokenLine-per-line", lineSet)
 
-	// Path 3: `canary index` -> DB rows.
+	// Path 3: pkg/upgrade preservation guard per source line.
+	upgradeSet := upgradeShapeTuples(t, corpus)
+	assertSameSet(t, "canaryscan.Scan", scanSet, "upgrade.TokenLineFields-per-line", upgradeSet)
+
+	// Path 4: `canary index` -> DB rows.
 	dbSet := indexTuples(t, corpus)
 	assertSameSet(t, "canaryscan.Scan", scanSet, "canary index (DB rows)", dbSet)
 
-	// Path 4: `canary next` filesystem source -- the selected token must be a
+	// Path 5: `canary next` filesystem source -- the selected token must be a
 	// member of the canonical set (next scans the same tree with the same
 	// parser).
 	tmp := t.TempDir()
@@ -119,6 +124,56 @@ func parseLineTuples(t *testing.T, root string) map[tuple]struct{} {
 			m := map[string]string{}
 			for _, f := range fields {
 				m[strings.ToUpper(f.Key)] = f.Value
+			}
+			if m["REQ"] == "" && m["BUG"] != "" {
+				m["REQ"] = m["BUG"]
+			}
+			complete := true
+			for _, k := range requiredKeys {
+				if m[k] == "" {
+					complete = false
+					break
+				}
+			}
+			if !complete {
+				continue
+			}
+			set[tuple{m["REQ"], m["FEATURE"], m["ASPECT"], m["STATUS"], m["UPDATED"]}] = struct{}{}
+		}
+	}
+	return set
+}
+
+// upgradeShapeTuples reads every corpus file and derives tuples by feeding each
+// source line to upgrade.TokenLineFields -- the real tokenShapeOf preservation
+// guard `canary upgrade` uses. It applies the same field rules Scan applies
+// (upper-cased keys, BUG= aliased to REQ, all five required fields present) so
+// a match proves the upgrade guard reads tokens through the one canaryscan
+// parser. CRLF is stripped, matching the scanner.
+func upgradeShapeTuples(t *testing.T, root string) map[tuple]struct{} {
+	t.Helper()
+	set := map[tuple]struct{}{}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatalf("read corpus dir: %v", err)
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		b, rerr := os.ReadFile(filepath.Join(root, e.Name()))
+		if rerr != nil {
+			t.Fatalf("read %s: %v", e.Name(), rerr)
+		}
+		for _, raw := range strings.Split(string(b), "\n") {
+			line := strings.TrimRight(raw, "\r")
+			fields, ok := upgrade.TokenLineFields(line)
+			if !ok {
+				continue
+			}
+			m := map[string]string{}
+			for k, v := range fields {
+				m[strings.ToUpper(k)] = v
 			}
 			if m["REQ"] == "" && m["BUG"] != "" {
 				m["REQ"] = m["BUG"]

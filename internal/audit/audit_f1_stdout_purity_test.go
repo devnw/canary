@@ -13,12 +13,14 @@ import (
 	"testing"
 )
 
-// TestAuditF1SearchJSONStdoutPurity covers F1: `canary search <nomatch>
-// --json` must put ONLY valid JSON on stdout, even when there are zero
-// results. The pre-fix implementation printed "No tokens found for: ..."
-// straight to stdout before ever consulting the --json flag, so a machine
-// caller parsing stdout as JSON would fail regardless of exit code.
-func TestAuditF1SearchJSONStdoutPurity(t *testing.T) {
+// TestSearchJSONStdoutPurity is part of the F-17 output-correctness family:
+// `canary search <nomatch> --json` must put ONLY valid JSON on stdout, even
+// when there are zero results. The pre-fix implementation printed "No tokens
+// found for: ..." straight to stdout before ever consulting the --json flag,
+// so a machine caller parsing stdout as JSON would fail regardless of exit
+// code. Named without the TestAuditFNN prefix so it does not collide with the
+// anchored acceptance sweep.
+func TestSearchJSONStdoutPurity(t *testing.T) {
 	root := indexedEmptyRepo(t)
 	bin := buildCanary(t)
 
@@ -38,13 +40,14 @@ func TestAuditF1SearchJSONStdoutPurity(t *testing.T) {
 	}
 }
 
-// TestAuditF1ShowJSONStdoutPurity covers F1: `canary show <missing> --json`
-// must put ONLY valid JSON on stdout. show's human-mode not-found case exits
-// 1 (returns an error) -- that exit convention must be preserved, but the
-// "No tokens found" / "Suggestions" prose that used to print unconditionally
-// before the --json check must move to stderr, and stdout must still decode
-// as JSON.
-func TestAuditF1ShowJSONStdoutPurity(t *testing.T) {
+// TestShowJSONStdoutPurity is part of the F-17 output-correctness family:
+// `canary show <missing> --json` must put ONLY valid JSON on stdout. show's
+// human-mode not-found case exits 1 (returns an error) -- that exit convention
+// must be preserved, but the "No tokens found" / "Suggestions" prose that used
+// to print unconditionally before the --json check must move to stderr, and
+// stdout must still decode as JSON. Named without the TestAuditFNN prefix so it
+// does not collide with the anchored acceptance sweep.
+func TestShowJSONStdoutPurity(t *testing.T) {
 	root := indexedEmptyRepo(t)
 	bin := buildCanary(t)
 

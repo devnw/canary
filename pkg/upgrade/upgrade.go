@@ -373,6 +373,28 @@ func tokenShapeOf(line string, touched map[string]bool) (tokenShape, bool) {
 	return tokenShape{display: display, exact: strings.Join(parts, ";"), fields: counts}, true
 }
 
+// TokenLineFields exposes the per-line token identity the upgrade preservation
+// guard derives -- tokenShapeOf with no rule touched, so every declared field
+// is kept. It lets the F-14 cross-parser parity test prove `canary upgrade`
+// reads tokens through the same canaryscan parser as scan, index, and next.
+// Fields come back keyed by upper-cased name with canonicalized values (BUG is
+// left un-aliased, exactly as the scanner first sees it); ok is false for a
+// line that carries no token. It is a thin, side-effect-free reflection of the
+// real guard path -- not a general parsing API.
+func TokenLineFields(line string) (map[string]string, bool) {
+	shape, ok := tokenShapeOf(line, nil)
+	if !ok {
+		return nil, false
+	}
+	out := make(map[string]string, len(shape.fields))
+	for kv := range shape.fields {
+		if i := strings.IndexByte(kv, '='); i >= 0 {
+			out[kv[:i]] = kv[i+1:]
+		}
+	}
+	return out, true
+}
+
 // canonicalValue strips a block-comment terminator the token grammar leaves
 // glued to the last field's value ("STATUS=IMPL */"). The terminator belongs
 // to the comment, not the value, and a rule that relocates it -- add-updated
