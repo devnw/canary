@@ -118,9 +118,3 @@ func Commands(version string) []*cobra.Command {
 		mcp.New(version),
 	}
 }
-
-func Tools() []*cobra.Command {
-	return []*cobra.Command{
-		// Add tool commands here
-	}
-}

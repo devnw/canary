@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 
@@ -105,25 +104,4 @@ func EffectiveLimit(flag, def int) int {
 	default:
 		return flag
 	}
-}
-
-// ExtractField extracts a field value from a CANARY token string
-func ExtractField(token, field string) string {
-	// Look for FIELD="value" or FIELD=value
-	pattern := field + `="([^"]+)"`
-	re := regexp.MustCompile(pattern)
-	matches := re.FindStringSubmatch(token)
-	if len(matches) > 1 {
-		return matches[1]
-	}
-
-	// Try without quotes
-	pattern = field + `=([^;\s]+)`
-	re = regexp.MustCompile(pattern)
-	matches = re.FindStringSubmatch(token)
-	if len(matches) > 1 {
-		return matches[1]
-	}
-
-	return ""
 }

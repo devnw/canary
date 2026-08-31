@@ -17,9 +17,34 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"devnw.dev/canary/pkg/canaryscan"
 	"devnw.dev/canary/pkg/cmds/internal/utils"
 	"devnw.dev/canary/pkg/matcher"
 )
+
+// tokenField returns the value of the named field (case-insensitive) from a
+// CANARY token line, or "" when the line holds no parseable token or the field
+// is absent. It routes through the single canaryscan parser so field
+// extraction can never disagree with the scanner.
+func tokenField(line, key string) string {
+	// calculateProgress/detectAspect feed grep output ("file:line:// CANARY:
+	// ...") here, so the token is not at the start of the line. ParseTokenLine
+	// is line-anchored; slice from the CANARY: marker so the anchored parser
+	// sees a bare token line.
+	if i := strings.Index(line, "CANARY:"); i >= 0 {
+		line = line[i:]
+	}
+	fields, ok, err := canaryscan.ParseTokenLine(line)
+	if !ok || err != nil {
+		return ""
+	}
+	for _, f := range fields {
+		if strings.EqualFold(f.Key, key) {
+			return f.Value
+		}
+	}
+	return ""
+}
 
 // CANARY: REQ=CP-253; FEATURE="ImplementCmd"; ASPECT=CLI; STATUS=TESTED; TEST=TestCANARY_CBIN_133_CLI_ExactMatch; OWNER=canary; DOC=user:docs/user/implement-command-guide.md; DOC_HASH=ed68fb1d97cf0562; UPDATED=2026-08-29
 var ImplementCmd = &cobra.Command{
@@ -320,7 +345,7 @@ func calculateProgress(reqID string) (*ProgressStats, error) {
 			continue
 		}
 
-		status := utils.ExtractField(line, "STATUS")
+		status := tokenField(line, "STATUS")
 		stats.Total++
 
 		switch status {
@@ -359,7 +384,7 @@ func detectAspect(reqID string) string {
 		if line == "" {
 			continue
 		}
-		if aspect := utils.ExtractField(line, "ASPECT"); aspect != "" {
+		if aspect := tokenField(line, "ASPECT"); aspect != "" {
 			return aspect
 		}
 	}
