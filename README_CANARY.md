@@ -10,7 +10,10 @@ CANARY tokens track requirements directly in source code:
 
 ## Required Fields
 
-- **REQ**: Requirement ID (format: CBIN-###)
+- **REQ**: Requirement ID. The prefix is your project's configured source key
+  (set via `canary init --key`, e.g. `CBIN`, `PROJ`, `ENG`), followed by a
+  number — e.g. `CBIN-123`. Ticket-source keys (e.g. a JIRA project key) are
+  configured per project; `CBIN-###` is only the default example.
 - **FEATURE**: Short feature name
 - **ASPECT**: Category (API, CLI, Engine, Storage, etc.)
 - **STATUS**: Implementation state
@@ -21,14 +24,20 @@ CANARY tokens track requirements directly in source code:
 - **MISSING**: Planned but not implemented
 - **STUB**: Placeholder implementation
 - **IMPL**: Implemented
-- **TESTED**: Implemented with tests (auto-promoted from IMPL+TEST)
-- **BENCHED**: Tested with benchmarks (auto-promoted from TESTED+BENCH)
+- **TESTED**: Declared as implemented with tests
+- **BENCHED**: Declared as tested with benchmarks
 - **REMOVED**: Deprecated/removed
+
+> STATUS is a **declaration**, written by the author. CANARY never promotes it
+> automatically. Whether a requirement is actually done is answered by
+> *verification* against evidence (passing TEST=/BENCH= at the scanned commit),
+> exported as the `verified` set — see
+> [docs/canary-evidence.schema.json](docs/canary-evidence.schema.json).
 
 ## Optional Fields
 
-- **TEST**: Test function name (promotes IMPL → TESTED)
-- **BENCH**: Benchmark function name (promotes TESTED → BENCHED)
+- **TEST**: Test function name (recorded as evidence for verification; does not change STATUS)
+- **BENCH**: Benchmark function name (recorded as evidence for verification; does not change STATUS)
 - **OWNER**: Team/person responsible
 
 ## Example

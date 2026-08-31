@@ -509,8 +509,10 @@ canary scan --update-stale
 
 1. **Overclaim Detection**
 
-   - Claims in GAP_ANALYSIS.md must have STATUS=TESTED or BENCHED
-   - Exit code 2 if claimed but only IMPL or STUB
+   - A claim in GAP_ANALYSIS.md is valid only when the requirement is in the
+     scan's `verified` export (every declared feature had passing evidence at
+     the scanned commit). A declared STATUS=TESTED/BENCHED alone is not proof.
+   - Exit code 2 if claimed but not verified
 
 2. **Staleness Detection**
 

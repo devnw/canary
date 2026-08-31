@@ -135,7 +135,7 @@ peers:
 | `name` | Label shown in resolution details, e.g. `peer:platform-service`. |
 | `root` | The peer project's root directory; relative paths resolve against this project's own root. Its `<root>/status.json` is read. |
 
-**Resolution order**: for an ID that isn't a known local flatfile ID, every configured peer is consulted, in declaration order, **before** the ticket-status cache — the first peer with an entry for that ID wins. A requirement found with at least one `TESTED`/`BENCHED` feature is `satisfied` (Detail `peer:<name>`); found but not is `unsatisfied` (Detail `peer:<name> (<worst status>)`). A missing or malformed peer `status.json` is a soft skip — Resolve falls through to the next peer, then the ticket cache, never erroring.
+**Resolution order**: for an ID that isn't a known local flatfile ID, every configured peer is consulted, in declaration order, **before** the ticket-status cache — the first peer with an entry for that ID wins. A requirement is `satisfied` only when it appears in the peer's `verified` export in that `status.json` — i.e. the peer's own scan proved every declared feature had passing evidence. A declared `TESTED`/`BENCHED` STATUS that was never verified does not make a peer dependency satisfied; found-but-not-verified is `unsatisfied` (Detail `peer:<name> (<worst status>)`). A missing or malformed peer `status.json` is a soft skip — Resolve falls through to the next peer, then the ticket cache, never erroring.
 
 ## Referencing Tickets in Tokens
 

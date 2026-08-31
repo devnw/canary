@@ -68,12 +68,15 @@ Verify that claims in GAP_ANALYSIS.md match actual requirement implementation st
 
 6. **Provide remediation steps** (if verification failed):
    - For overclaims: "Add TEST= field and create test function for <PROJECT_KEY>-XXX"
-   - For stale tokens: "Run `canary scan --update-stale` to refresh UPDATED fields"
+   - For stale tokens: "Review the requirement, then run `canary scan --update-stale` (only bump UPDATED once the token again reflects reality — the date is a currency signal, never evidence)"
    - For missing tokens: "Remove ✅ <PROJECT_KEY>-XXX from GAP_ANALYSIS.md (not found in code)"
 
 ## Verification Rules
 
-**Valid Claim**: Requirement with STATUS=TESTED or STATUS=BENCHED
+**Valid Claim**: A GAP_ANALYSIS.md claim is valid only when the requirement is
+in the scan's `verified` export — i.e. every declared feature had passing
+evidence (TEST=/BENCH=) at the scanned commit. STATUS=TESTED/BENCHED is a
+declaration by the author and is **not**, on its own, proof the claim holds.
 
 **Overclaim**: Requirement claimed with ✅ but:
 

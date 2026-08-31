@@ -3,8 +3,7 @@
 **Agentic-Coding-Friendly Requirement Tracking System**
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev/)
-[![Build](https://github.com/devnw/canary/actions/workflows/build.yml/badge.svg)](https://github.com/devnw/canary/actions/workflows/build.yml)
+[![Go Version](https://img.shields.io/badge/Go-1.27+-00ADD8?logo=go)](https://go.dev/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 [![Go Reference](https://pkg.go.dev/badge/devnw.dev/canary.svg)](https://pkg.go.dev/devnw.dev/canary)
 [![Version](https://img.shields.io/github/v/tag/devnw/canary?sort=semver&style=plastic)](https://github.com/devnw/canary/releases)
@@ -48,7 +47,7 @@ sudo apt install canary
 go install devnw.dev/canary/cmd/canary@latest
 
 # Or clone and build
-git clone https://github.com/devnw/canary.git
+git clone https://github.com/devnw/canary
 cd canary
 make build
 ```
@@ -104,7 +103,7 @@ canary status CBIN-001
 Tokens are structured comments that track requirements:
 
 ```go
-// CANARY: REQ=CBIN-105; FEATURE="UserAuth"; ASPECT=Security; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2026-08-29
+// CANARY: REQ=<CBIN-105>; FEATURE="UserAuth"; ASPECT=Security; STATUS=TESTED; TEST=TestUserAuth; UPDATED=2026-08-29
 func AuthenticateUser(creds *Credentials) (*Session, error) {
     // implementation
 }
@@ -131,7 +130,7 @@ Rules:
 Use the canonical format in new code:
 
 ```go
-// CANARY: REQ=CBIN-005; FEATURE="Parser"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-10-18
+// CANARY: REQ=<CBIN-005>; FEATURE="Parser"; ASPECT=Engine; STATUS=IMPL; UPDATED=2025-10-18
 ```
 
 Legacy forms are supported for historical tokens but should not be added to new implementations.
@@ -376,7 +375,7 @@ canary grep Authentication
 Track documentation status with cryptographic hashes:
 
 ```go
-// CANARY: REQ=CBIN-105; FEATURE="FuzzySearch"; ASPECT=Engine; STATUS=TESTED; TEST=TestFuzzySearch; DOC=user:docs/user/search-guide.md; DOC_HASH=a3f5b8c2e1d4a6f9; UPDATED=2026-08-29
+// CANARY: REQ=<CBIN-105>; FEATURE="FuzzySearch"; ASPECT=Engine; STATUS=TESTED; TEST=TestFuzzySearch; DOC=user:docs/user/search-guide.md; DOC_HASH=a3f5b8c2e1d4a6f9; UPDATED=2026-08-29
 ```
 
 ```bash
@@ -506,19 +505,18 @@ canary init --local
 canary/
 ├── cmd/canary/              # Main CLI application
 │   ├── main.go             # CLI entry point and command registration
-│   ├── deps.go             # Dependency management commands (CBIN-147)
 │   └── *_test.go           # Command tests
-├── internal/
+├── cli/                    # Root command assembly (Commands())
+├── pkg/
+│   ├── canaryscan/         # The scanner and token parser
 │   ├── specs/              # Specification and dependency engine
-│   │   ├── types.go        # Data models (Token, Dependency, Graph)
-│   │   ├── parser_dependency.go      # Dependency parser
-│   │   ├── validator.go             # Circular dependency detection
-│   │   ├── status_checker.go        # Dependency satisfaction
-│   │   ├── graph_generator.go       # Tree visualization
-│   │   └── *_test.go                # Comprehensive test suite
-│   └── storage/            # SQLite database layer
-│       ├── storage.go      # Database operations
-│       └── migrations.go   # Schema migrations
+│   ├── storage/            # SQLite database layer + migrations
+│   ├── cmds/               # One package per CLI subcommand
+│   ├── sources/            # Requirement-ID source configuration
+│   ├── ticket/             # Ticket-destination integrations
+│   └── ...                 # evidence, drift, upgrade, migrate, etc.
+├── mcp/                    # MCP server for AI-assistant integration
+├── gate/                   # Managed-marker engine (init doc updates)
 ├── .canary/
 │   ├── memory/
 │   │   └── constitution.md          # Project principles
@@ -539,15 +537,6 @@ canary/
 └── README.md               # This file
 ```
 
-## Performance
-
-CANARY is designed for speed and efficiency:
-
-- **Circular Detection**: O(V+E) using DFS, <209ms for 500 requirements
-- **Database Queries**: SQLite with indexes, <50ms for typical queries
-- **Scanning**: Streams file I/O, <10s for 50k files
-- **Memory**: ≤512 MiB RSS for large repositories
-
 ## Development
 
 ### Build
@@ -556,7 +545,8 @@ CANARY is designed for speed and efficiency:
 make build          # Build binary
 make test           # Run tests
 make bench          # Run benchmarks
-make verify         # Self-verify with CANARY
+make fuzz           # Run fuzz targets
+make verify         # Self-verify with CANARY (canary scan --verify --strict)
 ```
 
 ### Self-Canary
@@ -580,15 +570,33 @@ canary deps validate
 # Unit tests
 go test ./...
 
-# Integration tests
-go test ./internal/specs -run Integration
+# Package tests (scanner, specs engine, storage, ...)
+go test ./pkg/specs/...
 
 # Benchmarks
-go test ./internal/specs -bench=. -benchmem
+go test ./pkg/... -bench=. -benchmem
 
-# Acceptance tests
-go test ./tools/canary/internal -run Acceptance -v
+# Audit acceptance tests
+go test ./internal/audit/...
 ```
+
+## MCP Server
+
+CANARY ships an MCP (Model Context Protocol) server so AI assistants can drive
+it through tools rather than shelling out:
+
+```bash
+canary mcp
+```
+
+- **Bind address**: the server listens on `127.0.0.1` (loopback) by default, so
+  it is not reachable off the host unless you deliberately expose it.
+- **Auth model**: mutating tools require a bearer token; read-only tools can be
+  gated behind a separate read token. On a loopback bind with no token
+  configured, requests from localhost are accepted.
+- **Tool list**: the authoritative, generated list of exposed tools lives in
+  [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md). See
+  [docs/MCP_QUICK_START.md](docs/MCP_QUICK_START.md) for IDE wiring.
 
 ## Contributing
 
